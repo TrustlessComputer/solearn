@@ -9,6 +9,7 @@
     "dotenv": "^16.0.3",
     "hardhat": "^2.13.0",
     "hardhat-deploy": "^0.11.25",
-    "solmate": "^6.7.0"
+    "solmate": "^6.7.0",
+    "@prb/math": "^4.0.0"
   }
 }
