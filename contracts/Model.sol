@@ -1,75 +1,94 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-// contract Model {
-// 	Perceptron perceptron;
-// 	uint inputDim;
-// 	string modelName;
-// 	string[] classesName;
+import "./Perceptron.sol";
+import "./Tensors.sol";
 
-// 	constructor(bytes memory inscription) {
-// 		(string memory model_name, uint[] memory layers_config, string memory weight_b64, string[] memory classes_name) = abi.decode(inscription, (string, uint[], string, string[]));
-// 		(Perceptron memory perceptron, uint inputDim) = loadPerceptron(layers_config, weight_b64);
-// 		perceptron = perceptron;
-// 		inputDim = inputDim;
-// 		modelName = model_name;
-// 		classesName = classes_name;
-// 	}
+import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-// 	function loadPerceptron(uint[] memory layersConfig, string memory weights_b64) public pure returns (Perceptron memory, uint) {
-// 		RescaleLayer[] memory preprocessLayers = new RescaleLayer[](0);
-// 		DenseLayer[] memory hiddenLayers = new DenseLayer[](0);
+contract Model {
+	using Tensors for Tensors.Tensor;
+	MultilayerPerceptron perceptron;
+	uint inputDim;
+	string modelName;
+	string[] classesName;
 
-// 		uint[] memory weights = base64ToFloatArray(weights_b64);
+	constructor(bytes memory inscription) {
+		(string memory model_name, uint[] memory layers_config, string memory weight_b64, string[] memory classes_name) = abi.decode(inscription, (string, uint[], string, string[]));
+		(address perc, uint ipd) = loadPerceptron(layers_config, weight_b64);
+		perceptron = MultilayerPerceptron(perc);
+		inputDim = ipd;
+		modelName = model_name;
+		
+		for (uint i = 0; i < classes_name.length; i++) {
+			classesName.push(classes_name[i]);
+		}
+	}
 
-// 		uint dim = 0;
-// 		uint p = 0;
-// 		uint inputDim = 0;
-// 		for (uint i = 0; i < layersConfig.length; i++) {
-// 			if (layersConfig[i] == 0) {
-// 				dim = layersConfig[i + 1];
-// 				inputDim = dim;
-// 			} else if (layersConfig[i] == 1) {
-// 				preprocessLayers.push(new RescaleLayer(layersConfig[i + 1], layersConfig[i + 2]));
-// 			} else if (layersConfig[i] == 2) {
-// 				dim = [dim.reduce((a, b) => a * b)];
-// 			} else if (layersConfig[i] == 3) {
-// 				uint nxt_dim = [layersConfig[i + 1]];
-// 				uint w_size = dim[0] * nxt_dim[0];
-// 				uint b_size = nxt_dim[0];
+	function loadPerceptron(SD59x18[] memory layersConfig, string memory weights_b64) public pure returns (MultilayerPerceptron, uint) {
+		// TODO
+		Layers.RescaleLayer[] memory preprocessLayers = new Layers.RescaleLayer[](0);
+		Layers.DenseLayer[] memory hiddenLayers = new Layers.DenseLayer[](0);
 
-// 				uint[] memory w_array = weights.subarray(p, p + w_size);
-// 				p += w_size;
-// 				uint[] memory b_array = weights.subarray(p, p + b_size);
-// 				p += b_size;
+		uint[] memory weights = base64ToFloatArray(weights_b64);
 
-// 				Tensor memory w_tensor = new Tensor(w_array, dim[0], nxt_dim[0]);
-// 				Tensor memory b_tensor = new Tensor(b_array, 1, nxt_dim[0]);
-// 				uint activation = getActivationFromName(layersConfig[i + 1]);
+		uint dim = 0;
+		uint p = 0;
+		uint ipd = 0;
+		for (uint i = 0; i < layersConfig.length; i++) {
+			if (layersConfig[i] == 0) {
+				dim = layersConfig[i + 1];
+				ipd = dim;
+			} else if (layersConfig[i] == 1) {
+				preprocessLayers.push(Layers.RescaleLayer(layersConfig[i + 1], layersConfig[i + 2]));
+			} else if (layersConfig[i] == 2) {
+				// dim = [dim.reduce((a, b) => a * b)];
+				// solidity:
+				dim = 1;
+				for (uint j = 0; j < layersConfig[i + 1]; j++) {
+					dim *= layersConfig[i + 2 + j];
+				}
+			} else if (layersConfig[i] == 3) {
+				uint nxt_dim = [layersConfig[i + 1]];
+				uint w_size = dim[0] * nxt_dim[0];
+				uint b_size = nxt_dim[0];
 
-// 				hiddenLayers.push(new DenseLayer(nxt_dim[0], activation, w_tensor, b_tensor));
+				uint[] memory w_array = weights.subarray(p, p + w_size);
+				p += w_size;
+				uint[] memory b_array = weights.subarray(p, p + b_size);
+				p += b_size;
 
-// 				dim = nxt_dim;
-// 			}
-// 		}
+				Tensors.Tensor memory w_tensor;
+				w_tensor.load(w_array, dim[0], nxt_dim[0]);
+				Tensors.Tensor memory b_tensor;
+				b_tensor.load(b_array, 1, nxt_dim[0]);
 
-// 		DenseLayer memory outputLayer = hiddenLayers.pop();
+				// uint activation = getActivationFromName(layersConfig[i + 1]);
 
-// 		Perceptron memory perceptron = new Perceptron(preprocessLayers, hiddenLayers, outputLayer);
-// 		return { perceptron, inputDim };
-// 	}
+				hiddenLayers.push(Layers.DenseLayer(nxt_dim[0], w_tensor, b_tensor));
 
-// 	function getInfo() public view returns (uint, uint[] memory, uint[] memory, uint[] memory, string memory, string[] memory) {
-// 		(uint[] memory hiddenNeurons, uint[] memory activationFunc, uint[][][] memory parameters) = perceptron.getInfo();
-// 		return (inputDim, parameters, hiddenNeurons, activationFunc, modelName, classesName);
-// 	}
+				dim = nxt_dim;
+			}
+		}
 
-// 	function classifyImage(uint[] memory pixels) public view returns (uint[] memory) {
-// 		Tensor memory img_tensor = new Tensor(pixels, 1, pixels.length);
+		Layers.DenseLayer memory outputLayer = hiddenLayers.pop();
 
-// 		Tensor memory result_tensor = perceptron.forward(img_tensor);
-// 		uint[] memory result = result_tensor.mat[0];
+		MultilayerPerceptron perc = new MultilayerPerceptron(preprocessLayers, hiddenLayers, outputLayer);
+		return ( perceptron, ipd );
+	}
 
-// 		return result;
-// 	}
-// }
+	function getInfo() public view returns (uint, uint[] memory, uint[] memory, uint[] memory, string memory, string[] memory) {
+		(uint[] memory hiddenNeurons, uint[] memory activationFunc, uint[][][] memory parameters) = perceptron.getInfo();
+		return (inputDim, parameters, hiddenNeurons, activationFunc, modelName, classesName);
+	}
+
+	function classifyImage(SD59x18[] memory pixels) public view returns (uint[] memory) {
+		Tensors.Tensor memory img_tensor;
+		img_tensor.load(pixels, 1, pixels.length);
+
+		Tensors.Tensor memory result_tensor = perceptron.forward(img_tensor);
+		uint[] memory result = result_tensor.mat[0];
+
+		return result;
+	}
+}
