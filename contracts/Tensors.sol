@@ -64,11 +64,12 @@ library Tensors {
 	}
 
 	function __sigmoid(SD59x18 x) internal pure returns (SD59x18) {
-		return sd(1e18).div(sd(1e18) + sd(-x.unwrap()).exp2());
+		return sd(1e18).div(sd(1e18) + sd(-x.unwrap()).exp());
 	}
 
 	function __tanh(SD59x18 x) internal pure returns (SD59x18) {
-		return (sd(2e18).div(sd(1e18) + x.mul(sd(-2e18)).exp2())) - sd(1e18);
+		SD59x18 t = sd(2e18).mul(x).exp();
+		return (t - sd(1e18)).div(t + sd(1e18));
 	}
 
 	function __apply_unary_op(
