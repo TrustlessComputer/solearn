@@ -6,7 +6,7 @@ import fs from 'fs';
 const abic = ethers.utils.defaultAbiCoder;
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts } = hre;
-    const { deploy } = deployments;
+    const { deploy, execute } = deployments;
     const { deployer } = await getNamedAccounts();
     const modelParams = JSON.parse(fs.readFileSync('sample-model.json', 'utf-8'));
     const params = Object.assign({}, modelParams);
@@ -38,9 +38,11 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     await deploy('Model', {
         from: deployer,
-        args: [params.model_name, params.layers_config, [], params.classes_name], // weight could exeed limit, causing error during deployment
+        args: [params.model_name, params.classes_name], // weight could exeed limit, causing error during deployment
         log: true,
+        // waitConfirmations: 2,
     });
+    await execute('Model', {from: deployer, log: true}, 'loadWeights', params.layers_config, params.weights);
 };
 
 func.tags = ['1', 'Model'];

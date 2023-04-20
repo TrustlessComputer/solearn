@@ -3,10 +3,11 @@ pragma solidity ^0.8.9;
 
 import "./Perceptron.sol";
 import "./Tensors.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-contract Model is MultilayerPerceptron {
+contract Model is MultilayerPerceptron, Ownable {
 	using Tensors for Tensors.Tensor;
 	uint inputDim;
 	string modelName;
@@ -18,14 +19,17 @@ contract Model is MultilayerPerceptron {
 		Rescale
 	}
 
-	constructor(string memory model_name, bytes[] memory layers_config, SD59x18[] memory weights, string[] memory classes_name) MultilayerPerceptron() {
-		uint ipd = loadPerceptron(layers_config, weights);
-		inputDim = ipd;
+	constructor(string memory model_name, string[] memory classes_name) MultilayerPerceptron() {
 		modelName = model_name;
 		
 		for (uint i = 0; i < classes_name.length; i++) {
 			classesName.push(classes_name[i]);
 		}
+	}
+
+	function loadWeights(bytes[] memory layers_config, SD59x18[] memory weights) external onlyOwner {
+		uint ipd = loadPerceptron(layers_config, weights);
+		inputDim = ipd;
 	}
 
 	function makeLayer(bytes memory conf, bool isOutput) internal {
