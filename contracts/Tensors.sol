@@ -30,7 +30,7 @@ library Tensors {
 		return result;
 	}
 
-	function load(Tensor memory ts, SD59x18[] memory data, uint n, uint m) public pure {
+	function load(Tensor memory ts, SD59x18[] memory data, uint n, uint m) internal pure {
 		ts.n = n;
 		ts.m = m;
 		ts.mat = new SD59x18[][](n);
@@ -45,7 +45,7 @@ library Tensors {
 		}
 	}
 
-	function cloneTensor(Tensor memory ts) public pure returns (Tensor memory) {
+	function cloneTensor(Tensor memory ts) internal pure returns (Tensor memory) {
 		Tensor memory result;
 		load(result, flat(ts.mat), ts.n, ts.m);
 		return result;
@@ -85,23 +85,23 @@ library Tensors {
 		return res;
 	}
 
-	function linear(Tensor memory a) public pure returns (Tensor memory) {
+	function linear(Tensor memory a) internal pure returns (Tensor memory) {
 		return __apply_unary_op(a, __linear);
 	}
 
-	function relu(Tensor memory a) public pure returns (Tensor memory) {
+	function relu(Tensor memory a) internal pure returns (Tensor memory) {
 		return __apply_unary_op(a, __relu);
 	}
 
-	function leaky_relu(Tensor memory a) public pure returns (Tensor memory) {
+	function leaky_relu(Tensor memory a) internal pure returns (Tensor memory) {
 		return __apply_unary_op(a, __leaky_relu);
 	}
 
-	function sigmoid(Tensor memory a) public pure returns (Tensor memory) {
+	function sigmoid(Tensor memory a) internal pure returns (Tensor memory) {
 		return __apply_unary_op(a, __sigmoid);
 	}
 
-	function tanh(Tensor memory a) public pure returns (Tensor memory) {
+	function tanh(Tensor memory a) internal pure returns (Tensor memory) {
 		return __apply_unary_op(a, __tanh);
 	}
 
@@ -134,14 +134,14 @@ library Tensors {
 	}
 
 
-    function mul(Tensor memory a, Tensor memory b) public pure returns (Tensor memory) {
+    function mul(Tensor memory a, Tensor memory b) internal pure returns (Tensor memory) {
 		return __apply_binary_op(a, b, __mul);
 	}
-    function add(Tensor memory a, Tensor memory b) public pure returns (Tensor memory) {
+    function add(Tensor memory a, Tensor memory b) internal pure returns (Tensor memory) {
     	return __apply_binary_op(a, b, __add);
     }
 
-    function matMul(Tensor memory a, Tensor memory b) public pure returns (Tensor memory) {
+    function matMul(Tensor memory a, Tensor memory b) internal pure returns (Tensor memory) {
     	Tensor memory res;
     	res.n = a.n;
     	res.m = b.m;
@@ -157,7 +157,7 @@ library Tensors {
 		return res;
 	}
 
-    function softmax(Tensor memory a) public pure returns (Tensor memory) {
+    function softmax(Tensor memory a) internal pure returns (Tensor memory) {
 		Tensor memory res = __apply_unary_op(a, __exp);
 		SD59x18 sum_e = sd(0);
 		for (uint i = 0; i < res.n; i++) {

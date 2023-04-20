@@ -26,12 +26,12 @@ library Layers {
 		SD59x18[] b;
 	}
 
-	function forward(FlattenLayer memory layer, SD59x18[][] memory mat) public view returns (SD59x18[] memory) {
+	function forward(FlattenLayer memory layer, SD59x18[][] memory mat) internal view returns (SD59x18[] memory) {
 		return Tensors.flat(mat);
 	}
 
 
-	function forward(RescaleLayer memory layer, SD59x18[][] memory x) public pure returns (SD59x18[][] memory) {
+	function forward(RescaleLayer memory layer, SD59x18[][] memory x) internal pure returns (SD59x18[][] memory) {
 		SD59x18[][] memory y = new SD59x18[][](x.length);
 		for (uint i = 0; i < x.length; i++) {
 			y[i] = new SD59x18[](x[0].length);
@@ -42,7 +42,7 @@ library Layers {
 		return y;
 	}
 
-	function forward(DenseLayer memory layer, SD59x18[][] memory x, IActivation actv) public view returns (SD59x18[][] memory) {
+	function forward(DenseLayer memory layer, SD59x18[][] memory x, IActivation actv) internal view returns (SD59x18[][] memory) {
 		Tensors.Tensor memory xt;
 		Tensors.from(xt, x);
 		Tensors.Tensor memory wt;
