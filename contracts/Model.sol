@@ -9,9 +9,14 @@ import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 contract Model {
 	using Tensors for Tensors.Tensor;
 	MultilayerPerceptron perceptron;
-	uint inputDim;
+	uint[3] inputDim;
 	string modelName;
 	string[] classesName;
+
+	struct Config {
+		uint layerType;
+		int[] data;
+	}
 
 	constructor(bytes memory inscription) {
 		(string memory model_name, uint[] memory layers_config, string memory weight_b64, string[] memory classes_name) = abi.decode(inscription, (string, uint[], string, string[]));
@@ -25,30 +30,29 @@ contract Model {
 		}
 	}
 
-	function loadPerceptron(SD59x18[] memory layersConfig, string memory weights_b64) public pure returns (MultilayerPerceptron, uint) {
+	function loadPerceptron(Config[] memory layersConfig, SD59x18[] memory weights) public pure returns (MultilayerPerceptron, uint[3] memory) {
 		// TODO
-		Layers.RescaleLayer[] memory preprocessLayers = new Layers.RescaleLayer[](0);
-		Layers.DenseLayer[] memory hiddenLayers = new Layers.DenseLayer[](0);
-
-		uint[] memory weights = base64ToFloatArray(weights_b64);
-
 		uint dim = 0;
 		uint p = 0;
-		uint ipd = 0;
+		uint[3] memory ipd;
+		
+		uint layerType = 0;
+		int[] memory data;
 		for (uint i = 0; i < layersConfig.length; i++) {
-			if (layersConfig[i] == 0) {
-				dim = layersConfig[i + 1];
-				ipd = dim;
-			} else if (layersConfig[i] == 1) {
-				preprocessLayers.push(Layers.RescaleLayer(layersConfig[i + 1], layersConfig[i + 2]));
-			} else if (layersConfig[i] == 2) {
+			layerType = layersConfig[i].layerType;
+			data = layersConfig[i].data;
+			if (layerType == 0) {
+				ipd = [uint(data[0]), uint(data[1]), uint(data[2])];
+			} else if (layerType == 1) {
+				preprocessLayers.push(Layers.RescaleLayer(sd(data[0]), sd(data[1])));
+			} else if (layerType == 2) {
 				// dim = [dim.reduce((a, b) => a * b)];
 				// solidity:
 				dim = 1;
-				for (uint j = 0; j < layersConfig[i + 1]; j++) {
-					dim *= layersConfig[i + 2 + j];
+				for (uint j = 0; j < 3; j++) {
+					dim *= ipd[j];
 				}
-			} else if (layersConfig[i] == 3) {
+			} else if (layerType == 3) {
 				uint nxt_dim = [layersConfig[i + 1]];
 				uint w_size = dim[0] * nxt_dim[0];
 				uint b_size = nxt_dim[0];

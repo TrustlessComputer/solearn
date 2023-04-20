@@ -52,9 +52,10 @@ contract MultilayerPerceptron {
 			x = preprocessLayers[i].forward(x);
 		}
 		for (uint i = 0; i < hiddenLayers.length; i++) {
-			x = hiddenLayers[i].forward(x, IActivation(address(this)));
+			x = hiddenLayers[i].forward(x);
 		}
-		x = outputLayer.forward(x, IActivation(address(this)));
+		// , IActivation(address(this))
+		x = outputLayer.forward(x);
 		Tensors.Tensor memory xt;
 		xt.from(x);
 		return Tensors.flat(xt.softmax().mat);

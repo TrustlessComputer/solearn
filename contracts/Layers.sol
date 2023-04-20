@@ -24,10 +24,11 @@ library Layers {
 		uint out_dim;
 		SD59x18[][] w;
 		SD59x18[] b;
+		IActivation actv;
 	}
 
-	function forward(FlattenLayer memory layer, SD59x18[][] memory mat) public view returns (SD59x18[] memory) {
-		return Tensors.flat(mat);
+	function forward(FlattenLayer memory layer, SD59x18[][] memory x) public view returns (SD59x18[] memory) {
+		return Tensors.flat(x);
 	}
 
 
@@ -42,7 +43,7 @@ library Layers {
 		return y;
 	}
 
-	function forward(DenseLayer memory layer, SD59x18[][] memory x, IActivation actv) public view returns (SD59x18[][] memory) {
+	function forward(DenseLayer memory layer, SD59x18[][] memory x) public view returns (SD59x18[][] memory) {
 		Tensors.Tensor memory xt;
 		Tensors.from(xt, x);
 		Tensors.Tensor memory wt;
@@ -50,7 +51,7 @@ library Layers {
 		Tensors.Tensor memory bt;
 		Tensors.load(bt, layer.b, 1, layer.b.length);
 		Tensors.Tensor memory y = Tensors.add(Tensors.matMul(xt, wt), bt);
-		SD59x18[] memory z = actv.activation(Tensors.flat(y.mat));
+		SD59x18[] memory z = layer.actv.activation(Tensors.flat(y.mat));
 		Tensors.Tensor memory zt;
 		Tensors.load(zt, z, y.mat.length, y.mat[0].length);
 		return zt.mat;
