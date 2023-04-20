@@ -6,22 +6,20 @@ import "./Tensors.sol";
 
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-contract Model {
+contract Model is MultilayerPerceptron {
 	using Tensors for Tensors.Tensor;
-	MultilayerPerceptron perceptron;
-	uint[3] inputDim;
+	uint inputDim;
 	string modelName;
 	string[] classesName;
 
-	struct Config {
-		uint layerType;
-		int[] data;
+	enum LayerType {
+		Dense,
+		Flatten,
+		Rescale
 	}
 
-	constructor(bytes memory inscription) {
-		(string memory model_name, uint[] memory layers_config, string memory weight_b64, string[] memory classes_name) = abi.decode(inscription, (string, uint[], string, string[]));
-		(address perc, uint ipd) = loadPerceptron(layers_config, weight_b64);
-		perceptron = MultilayerPerceptron(perc);
+	constructor(string memory model_name, bytes[] memory layers_config, SD59x18[] memory weights, string[] memory classes_name) {
+		(address perc, uint ipd) = loadPerceptron(layers_config, weights);
 		inputDim = ipd;
 		modelName = model_name;
 		
@@ -30,8 +28,31 @@ contract Model {
 		}
 	}
 
-	function loadPerceptron(Config[] memory layersConfig, SD59x18[] memory weights) public pure returns (MultilayerPerceptron, uint[3] memory) {
+	function makeLayer(bytes memory conf, isOutput bool) internal {
 		// TODO
+		bytes1 layerType = conf[0];
+		if (layerType == LayerType.Dense) {
+			(d, w, b) = abi.decode(conf[1:], (uint, SD59x18[][], SD59x18[]));
+			Layers.DenseLayer memory layer = Layers.DenseLayer(d, w, b);
+			if (isOutput) {
+				outputLayer = layer;
+			} else {
+				hiddenLayers.push(layer);
+			}
+		} else if (layerType == LayerType.Flatten) {
+			Layers.FlattenLayer memory layer = FlattenLayer();
+		} else if (layerType == LayerType.Rescale) {
+			(scale, offset) = abi.decode(conf[1:], (SD59x18, SD59x18));
+			Layers.RescaleLayer memory layer = RescaleLayer(scale, offset);
+			preprocessLayers.push(layer);
+		}
+	}
+
+	function loadPerceptron(SD59x18[] memory layersConfig, SD59x18[] memory weights) public pure returns (uint) {
+		// TODO
+		Layers.RescaleLayer[] memory preprocessLayers = new Layers.RescaleLayer[](0);
+		Layers.DenseLayer[] memory hiddenLayers = new Layers.DenseLayer[](0);
+
 		uint dim = 0;
 		uint p = 0;
 		uint[3] memory ipd;
@@ -67,10 +88,7 @@ contract Model {
 				Tensors.Tensor memory b_tensor;
 				b_tensor.load(b_array, 1, nxt_dim[0]);
 
-				// uint activation = getActivationFromName(layersConfig[i + 1]);
-
 				hiddenLayers.push(Layers.DenseLayer(nxt_dim[0], w_tensor, b_tensor));
-
 				dim = nxt_dim;
 			}
 		}
@@ -81,8 +99,8 @@ contract Model {
 		return ( perceptron, ipd );
 	}
 
-	function getInfo() public view returns (uint, uint[] memory, uint[] memory, uint[] memory, string memory, string[] memory) {
-		(uint[] memory hiddenNeurons, uint[] memory activationFunc, uint[][][] memory parameters) = perceptron.getInfo();
+	function getInfo() public virtual view returns (uint, uint[] memory, uint[] memory, uint[] memory, string memory, string[] memory) {
+		(uint[] memory hiddenNeurons, uint[] memory activationFunc, uint[][][] memory parameters) = super.getInfo();
 		return (inputDim, parameters, hiddenNeurons, activationFunc, modelName, classesName);
 	}
 
@@ -90,7 +108,7 @@ contract Model {
 		Tensors.Tensor memory img_tensor;
 		img_tensor.load(pixels, 1, pixels.length);
 
-		Tensors.Tensor memory result_tensor = perceptron.forward(img_tensor);
+		Tensors.Tensor memory result_tensor = forward(img_tensor);
 		uint[] memory result = result_tensor.mat[0];
 
 		return result;
