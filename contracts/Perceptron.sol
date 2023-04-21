@@ -7,7 +7,7 @@ import "./Layers.sol";
 
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-contract MultilayerPerceptron {
+abstract contract MultilayerPerceptron {
 	using Layers for Layers.RescaleLayer;
 	using Layers for Layers.FlattenLayer;
 	using Layers for Layers.DenseLayer;
@@ -17,14 +17,8 @@ contract MultilayerPerceptron {
 	Layers.DenseLayer[] hiddenLayers;
 	Layers.DenseLayer outputLayer;
 
-	constructor(Layers.RescaleLayer[] memory _preprocessLayers, Layers.DenseLayer[] memory _hiddenLayers, Layers.DenseLayer memory _outputLayer) {
-		for (uint i = 0; i < _preprocessLayers.length; i++) {
-			preprocessLayers.push(_preprocessLayers[i]);
-		}
-		for (uint i = 0; i < _hiddenLayers.length; i++) {
-			hiddenLayers.push(_hiddenLayers[i]);
-		}
-		outputLayer = _outputLayer;
+	constructor() {
+
 	}
 
 	function getInfo() public view returns (uint[] memory, SD59x18[][][] memory) {

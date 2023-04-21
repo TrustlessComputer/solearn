@@ -5,10 +5,6 @@ import "./Utils.sol";
 import "./Tensors.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-interface IActivation {
-	function activation(SD59x18[] memory x) external view returns (SD59x18[] memory);
-}
-
 
 library Layers {
 	struct RescaleLayer {
