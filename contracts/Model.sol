@@ -32,14 +32,14 @@ contract Model is MultilayerPerceptron, Ownable {
 		inputDim = ipd;
 	}
 
-	function makeLayer(bytes memory conf, bool isOutput) internal {
+	function makeLayer(bytes memory conf, bool isOutput, uint ind) internal {
 		bytes memory temp = new bytes(1);
 		temp[0] = conf[0];
 		uint8 layerType = abi.decode(temp, (uint8));
 		
 		if (layerType == uint8(LayerType.Dense)) {
-			(uint8 t1, uint d, SD59x18[][] memory w, SD59x18[] memory b) = abi.decode(conf, (uint8, uint, SD59x18[][], SD59x18[]));
-			Layers.DenseLayer memory layer = Layers.DenseLayer(d, w, b);
+			(uint8 t1, uint8 actv, uint d, SD59x18[][] memory w, SD59x18[] memory b) = abi.decode(conf, (uint8, uint8, uint, SD59x18[][], SD59x18[]));
+			Layers.DenseLayer memory layer = Layers.DenseLayer(ind, Layers.ActivationFunc(actv), d, w, b);
 			if (isOutput) {
 				outputLayer = layer;
 			} else {
@@ -49,7 +49,7 @@ contract Model is MultilayerPerceptron, Ownable {
 			// Layers.FlattenLayer memory layer = Layers.FlattenLayer();
 		} else if (layerType == uint8(LayerType.Rescale)) {
 			(uint8 t1, SD59x18 scale, SD59x18 offset) = abi.decode(conf, (uint8, SD59x18, SD59x18));
-			Layers.RescaleLayer memory layer = Layers.RescaleLayer(scale, offset);
+			Layers.RescaleLayer memory layer = Layers.RescaleLayer(ind, scale, offset);
 			preprocessLayers.push(layer);
 		}
 	}

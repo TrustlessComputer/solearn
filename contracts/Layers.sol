@@ -1,35 +1,44 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./Utils.sol";
 import "./Tensors.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-interface IActivation {
-	function activation(SD59x18[] memory x) external view returns (SD59x18[] memory);
-}
-
+error InvalidActivationFunction();
 
 library Layers {
+	using Tensors for Tensors.Tensor;
+	enum ActivationFunc {
+		LeakyReLU,
+		Linear,
+		ReLU,
+		Sigmoid,
+		Tanh
+	}
+
 	struct RescaleLayer {
+		uint layerIndex; // index within the model
 		SD59x18 scale;
 		SD59x18 offset;
 	}
 
 	struct FlattenLayer {
-		bytes32 temp;
+		uint layerIndex;
 	}
 
 	struct DenseLayer {
+		uint layerIndex;
+		ActivationFunc activation;
 		uint out_dim;
 		SD59x18[][] w;
 		SD59x18[] b;
 	}
 
-	function forward(FlattenLayer memory layer, SD59x18[][] memory mat) internal view returns (SD59x18[] memory) {
-		return Tensors.flat(mat);
+	function forward(FlattenLayer memory layer, SD59x18[][] memory mat) internal view returns (SD59x18[][] memory) {
+		SD59x18[][] memory result = new SD59x18[][](1);
+		result[0] = Tensors.flat(mat);
+		return result;
 	}
-
 
 	function forward(RescaleLayer memory layer, SD59x18[][] memory x) internal pure returns (SD59x18[][] memory) {
 		SD59x18[][] memory y = new SD59x18[][](x.length);
@@ -42,17 +51,33 @@ library Layers {
 		return y;
 	}
 
-	function forward(DenseLayer memory layer, SD59x18[][] memory x, IActivation actv) internal view returns (SD59x18[][] memory) {
+	function activation(DenseLayer memory layer, Tensors.Tensor memory x) internal pure returns (Tensors.Tensor memory) {
+		ActivationFunc actv = layer.activation;
+		if (actv == ActivationFunc.LeakyReLU) {
+			return x.cloneTensor().leaky_relu();
+		} else if (actv == ActivationFunc.Linear) {
+			return x.cloneTensor().linear();
+		} else if (actv == ActivationFunc.ReLU) {
+			return x.cloneTensor().relu();
+		} else if (actv == ActivationFunc.Sigmoid) {
+			return x.cloneTensor().sigmoid();
+		} else if (actv == ActivationFunc.Tanh) {
+			return x.cloneTensor().tanh();
+		} else {
+			revert InvalidActivationFunction();
+		}
+	}
+
+	function forward(DenseLayer memory layer, SD59x18[][] memory x) internal pure returns (SD59x18[][] memory) {
 		Tensors.Tensor memory xt;
-		Tensors.from(xt, x);
+		xt.from(x);
 		Tensors.Tensor memory wt;
-		Tensors.from(wt, layer.w);
+		wt.from(layer.w);
 		Tensors.Tensor memory bt;
-		Tensors.load(bt, layer.b, 1, layer.b.length);
-		Tensors.Tensor memory y = Tensors.add(Tensors.matMul(xt, wt), bt);
-		SD59x18[] memory z = actv.activation(Tensors.flat(y.mat));
-		Tensors.Tensor memory zt;
-		Tensors.load(zt, z, y.mat.length, y.mat[0].length);
+		bt.load(layer.b, 1, layer.b.length);
+		Tensors.Tensor memory y = xt.matMul(wt).add(bt);
+		Tensors.Tensor memory zt = activation(layer, y);
 		return zt.mat;
 	}
+
 }
