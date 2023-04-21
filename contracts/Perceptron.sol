@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./Utils.sol";
 import "./Tensors.sol";
 import "./Layers.sol";
 
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-abstract contract MultilayerPerceptron {
+contract MultilayerPerceptron {
 	using Layers for Layers.RescaleLayer;
 	using Layers for Layers.FlattenLayer;
 	using Layers for Layers.DenseLayer;
@@ -17,9 +16,15 @@ abstract contract MultilayerPerceptron {
 	Layers.DenseLayer[] hiddenLayers;
 	Layers.DenseLayer outputLayer;
 
-	constructor() {
-
-	}
+	// constructor(Layers.RescaleLayer[] memory _preprocessLayers, Layers.DenseLayer[] memory _hiddenLayers, Layers.DenseLayer memory _outputLayer) {
+	// 	for (uint i = 0; i < _preprocessLayers.length; i++) {
+	// 		preprocessLayers.push(_preprocessLayers[i]);
+	// 	}
+	// 	for (uint i = 0; i < _hiddenLayers.length; i++) {
+	// 		hiddenLayers.push(_hiddenLayers[i]);
+	// 	}
+	// 	outputLayer = _outputLayer;
+	// }
 
 	function getInfo() public view returns (uint[] memory, SD59x18[][][] memory) {
 		uint[] memory out_dim = new uint[](hiddenLayers.length);
@@ -48,7 +53,6 @@ abstract contract MultilayerPerceptron {
 		for (uint i = 0; i < hiddenLayers.length; i++) {
 			x = hiddenLayers[i].forward(x);
 		}
-		// , IActivation(address(this))
 		x = outputLayer.forward(x);
 		Tensors.Tensor memory xt;
 		xt.from(x);
