@@ -22,8 +22,13 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             const n1 = ethers.BigNumber.from(String(layer.config.scale * 1e18))
             const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("1000000000000000000"));
             result = abic.encode(["uint8", "int256", "int256"], [2, n1, n2]);
+        } else if (layer.class_name === 'InputLayer') {
+            const w = ethers.BigNumber.from(String(layer.config.batch_input_shape[1] * 1e18))
+            const h = ethers.BigNumber.from(String(layer.config.batch_input_shape[2] * 1e18))
+            const c = ethers.BigNumber.from(String(layer.config.batch_input_shape[3] * 1e18))
+            result = abic.encode(["uint8", "uint[3]"], [3, [w, h, c]]);
         }
-        return result;
+    return result;
     }).filter((x: any) => x !== null);
     params.weights = Buffer.from(params.weight_b64, 'base64');
     params.weights = params.weights.reduce((acc: any, val: any, idx: number) => {

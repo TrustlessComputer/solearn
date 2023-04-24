@@ -184,18 +184,5 @@ library Tensors {
 		}
 		return res;
 	}
-
-	function getActivationFunction(Activation actType) public pure returns (function (SD59x18[] memory) external view returns (SD59x18[] memory)) {	
-		if (actType == Activation.ReLU)
-			return relu;
-		if (actType == Activation.Sigmoid)
-			return sigmoid;
-		if (actType == Activation.Tanh)
-			return tanh;
-		if (actType == Activation.LeakyReLU)
-			return leaky_relu;
-		return linear;
-        
-    }
 }
 

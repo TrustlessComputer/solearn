@@ -16,7 +16,8 @@ contract Model is MultilayerPerceptron, Ownable {
 	enum LayerType {
 		Dense,
 		Flatten,
-		Rescale
+		Rescale,
+		Input
 	}
 
 	constructor(string memory model_name, string[] memory classes_name) MultilayerPerceptron() {
@@ -28,8 +29,7 @@ contract Model is MultilayerPerceptron, Ownable {
 	}
 
 	function loadWeights(bytes[] memory layers_config, SD59x18[] memory weights) external onlyOwner {
-		uint[3] memory ipd = loadPerceptron(layers_config, weights);
-		inputDim = ipd;
+		loadPerceptron(layers_config, weights);		
 	}
 
 	function makeLayer(bytes memory conf, bool isOutput, uint ind) internal {
@@ -51,18 +51,16 @@ contract Model is MultilayerPerceptron, Ownable {
 			(uint8 t1, SD59x18 scale, SD59x18 offset) = abi.decode(conf, (uint8, SD59x18, SD59x18));
 			Layers.RescaleLayer memory layer = Layers.RescaleLayer(ind, scale, offset);
 			preprocessLayers.push(layer);
+		} else if (layerType == uint8(LayerType.Input)) {
+			inputDim = abi.decode(conf, (uint8[3]));
 		}
 	}
 
-	function loadPerceptron(bytes[] memory layersConfig, SD59x18[] memory weights) public pure returns (uint[3] memory) {
+	function loadPerceptron(bytes[] memory layersConfig, SD59x18[] memory weights) public {
 		// TODO
-		uint[3] memory ipd;
-		
 		for (uint i = 0; i < layersConfig.length; i++) {
 			makeLayer(layersConfig[i], i + 1 < layersConfig.length, i);
 		}
-
-		return ipd;
 	}
 
 	function getModelInfo() public view returns (uint[3] memory, SD59x18[][][] memory, uint[] memory, string memory, string[] memory) {
