@@ -34,7 +34,7 @@ library Layers {
 		SD59x18[] b;
 	}
 
-	function forward(FlattenLayer memory layer, SD59x18[][] memory mat) internal view returns (SD59x18[][] memory) {
+	function forward(FlattenLayer memory layer, SD59x18[][] memory mat) internal pure returns (SD59x18[][] memory) {
 		SD59x18[][] memory result = new SD59x18[][](1);
 		result[0] = Tensors.flat(mat);
 		return result;

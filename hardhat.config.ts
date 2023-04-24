@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-deploy";
+import './scripts/perceptron.task';
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {

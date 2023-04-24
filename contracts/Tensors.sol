@@ -3,23 +3,11 @@ pragma solidity ^0.8.9;
 
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-interface IActivation {
-	function activation(SD59x18[] memory x) external view returns (SD59x18[] memory);
-}
-
 library Tensors {
 	struct Tensor {
 		SD59x18[][] mat;
 		uint n;
 		uint m;
-	}
-	
-	enum Activation {
-		Linear,
-		ReLU,
-		LeakyReLU,
-		Tanh,
-		Sigmoid
 	}
 
 	function from(Tensor memory ts, SD59x18[][] memory mat) internal pure returns (Tensor memory) {

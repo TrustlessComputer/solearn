@@ -13,7 +13,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "./Layers.sol";
 
 error NotTokenOwner();
@@ -24,15 +23,12 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
     using Tensors for Tensors.Tensor;
-    using CountersUpgradeable for CountersUpgradeable.Counter;
-
-    CountersUpgradeable.Counter private _tokenIdCounter;
 
     mapping(uint => Model) public models;
     uint public mintPrice;
 
     struct Model {
-        uint inputDim;
+        uint[3] inputDim;
         string modelName;
         string[] classesName;
 
@@ -48,10 +44,18 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
         uint256 denseLayerIndex;
     }
 
+    struct SingleLayerConfig {
+        bytes conf;
+        uint ind;
+        uint prevDim;
+        uint ptr;
+    }
+
     enum LayerType {
         Dense,
         Flatten,
-        Rescale
+        Rescale,
+        Input
     }
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -98,7 +102,12 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
         __ERC721URIStorage_init();
     }
 
-    function getInfo(uint256 modelId) public view returns (uint, SD59x18[][][] memory, uint[] memory, string memory, string[] memory) {
+    function afterUpgrade() public {
+
+    }
+
+
+    function getInfo(uint256 modelId) public view returns (uint[3] memory, SD59x18[][][] memory, uint[] memory, string memory, string[] memory) {
         Model storage m = models[modelId];
         uint[] memory out_dim = new uint[](m.d.length);
         SD59x18[][][] memory w_b = new SD59x18[][][](m.d.length);
@@ -112,10 +121,8 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
         return (models[modelId].inputDim, w_b, out_dim, models[modelId].modelName, models[modelId].classesName);
     }
 
-    function safeMint(address to, string memory uri, string memory modelName, string[] memory classesName) external payable {
+    function safeMint(address to, uint modelId, string memory uri, string memory modelName, string[] memory classesName) external payable {
         if (msg.value < mintPrice) revert InsufficientMintPrice();
-        uint256 modelId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
         _safeMint(to, modelId);
         _setTokenURI(modelId, uri);
         models[modelId].modelName = modelName;
@@ -134,8 +141,6 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
     }
 
     function forward(uint256 modelId, SD59x18[][] memory x) public view returns (SD59x18[] memory) {
-        // if (msg.sender != ownerOf(modelId)) revert NotTokenOwner();
-
         LayerTypeIndexes memory lti;
         for (uint256 i = 0; i < models[modelId].numLayers; i++) {
             if (models[modelId].r[lti.rescaleLayerIndex].layerIndex == i) {
@@ -155,124 +160,66 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
         return Tensors.flat(xt.softmax().mat);
     }
 
-    function loadWeights(uint256 modelId, bytes[] memory layers_config, SD59x18[] memory weights) external {
+    function setWeights(uint256 modelId, bytes[] memory layers_config, SD59x18[] calldata weights) external {
         if (msg.sender != ownerOf(modelId)) revert NotTokenOwner();
-
-        uint ipd = loadPerceptron(modelId, layers_config, weights);
-        models[modelId].inputDim = ipd;
+        loadPerceptron(modelId, layers_config, weights);
     }
 
-    function makeLayer(uint256 modelId, bytes memory conf, uint ind) internal {
-        bytes memory temp = new bytes(1);
-        temp[0] = conf[0];
-        uint8 layerType = abi.decode(temp, (uint8));
+    function makeLayer(uint256 modelId, SingleLayerConfig memory slc, SD59x18[] calldata weights) internal returns (uint, uint) {
+        uint8 layerType = abi.decode(slc.conf, (uint8));
+        uint dim = 0;
         
         if (layerType == uint8(LayerType.Dense)) {
-            (uint8 t1, uint8 actv, uint d, SD59x18[][] memory w, SD59x18[] memory b) = abi.decode(conf, (uint8, uint8, uint, SD59x18[][], SD59x18[]));
-            Layers.DenseLayer memory layer = Layers.DenseLayer(ind, Layers.ActivationFunc(actv), d, w, b);
-            models[modelId].d.push(layer);
+            (uint8 _t, uint8 actv, uint d) = abi.decode(slc.conf, (uint8, uint8, uint));
+            uint len = models[modelId].d.length;
+            {
+                Layers.DenseLayer memory temp = Layers.DenseLayer(slc.ind, Layers.ActivationFunc(actv), d, new SD59x18[][](0), new SD59x18[](0));
+                models[modelId].d.push(temp);
+            }
+
+            if (weights.length > 0) {
+                for (uint i = 0; i < slc.prevDim; i++) {
+                    models[modelId].d[len].w.push(new SD59x18[](0));
+                    for (uint j = 0; j < d; j++) {
+                        models[modelId].d[len].w[i].push(weights[slc.ptr++]);
+                    }
+                }
+                for (uint i = 0; i < d; i++) {
+                    models[modelId].d[len].b.push(weights[slc.ptr++]);
+                }
+            }
+        
+            dim = d;
         } else if (layerType == uint8(LayerType.Flatten)) {
-            Layers.FlattenLayer memory layer = Layers.FlattenLayer(ind);
-            models[modelId].f.push(layer);
+            uint len = models[modelId].d.length;
+            Layers.FlattenLayer memory temp;
+            models[modelId].f.push(temp);
+            models[modelId].f[len].layerIndex = slc.ind;
+            dim = slc.prevDim;
         } else if (layerType == uint8(LayerType.Rescale)) {
-            (uint8 t1, SD59x18 scale, SD59x18 offset) = abi.decode(conf, (uint8, SD59x18, SD59x18));
-            Layers.RescaleLayer memory layer = Layers.RescaleLayer(ind, scale, offset);
-            models[modelId].r.push(layer);
+            uint len = models[modelId].r.length;
+            Layers.RescaleLayer memory temp;
+            models[modelId].r.push(temp);
+            (uint8 _t, SD59x18 scale, SD59x18 offset) = abi.decode(slc.conf, (uint8, SD59x18, SD59x18));
+            models[modelId].r[len].layerIndex = slc.ind;
+            models[modelId].r[len].scale = scale;
+            models[modelId].r[len].offset = offset;
+            dim = slc.prevDim;
+        } else if (layerType == uint8(LayerType.Input)) {
+            (uint8 _t, uint[3] memory ipd) = abi.decode(slc.conf, (uint8, uint[3]));
+            models[modelId].inputDim = ipd;
+            dim = ipd[0] * ipd[1] * ipd[2];
+        }
+
+        return (slc.ptr, dim);
+    }
+
+    function loadPerceptron(uint256 modelId, bytes[] memory layersConfig, SD59x18[] calldata weights) internal {
+        uint ptr = 0;
+        uint dim = 0;
+        for (uint i = 0; i < layersConfig.length; i++) {
+            (ptr, dim) = makeLayer(modelId, SingleLayerConfig(layersConfig[i], i, dim, ptr), weights);
         }
     }
-
-    function loadPerceptron(uint256 modelId, bytes[] memory layersConfig, SD59x18[] memory weights) internal pure returns (uint) {
-
-        uint dim = 0;
-        uint p = 0;
-        uint ipd = 0;
-        // for (uint i = 0; i < layersConfig.length; i++) {
-        //  if (layersConfig[i] == 0) {
-        //      dim = layersConfig[i + 1];
-        //      ipd = dim;
-        //  } else if (layersConfig[i] == 1) {
-        //      preprocessLayers.push(Layers.RescaleLayer(layersConfig[i + 1], layersConfig[i + 2]));
-        //  } else if (layersConfig[i] == 2) {
-        //      // dim = [dim.reduce((a, b) => a * b)];
-        //      // solidity:
-        //      dim = 1;
-        //      for (uint j = 0; j < layersConfig[i + 1]; j++) {
-        //          dim *= layersConfig[i + 2 + j];
-        //      }
-        //  } else if (layersConfig[i] == 3) {
-        //      uint nxt_dim = [layersConfig[i + 1]];
-        //      uint w_size = dim[0] * nxt_dim[0];
-        //      uint b_size = nxt_dim[0];
-
-                // uint[] memory w_array = weights.subarray(p, p + w_size);
-                // p += w_size;
-                // uint[] memory b_array = weights.subarray(p, p + b_size);
-                // p += b_size;
-
-                // Tensors.Tensor memory w_tensor;
-                // w_tensor.load(w_array, dim[0], nxt_dim[0]);
-                // Tensors.Tensor memory b_tensor;
-                // b_tensor.load(b_array, 1, nxt_dim[0]);
-
-                // hiddenLayers.push(Layers.DenseLayer(nxt_dim[0], w_tensor, b_tensor));
-        //      dim = nxt_dim;
-        //  }
-        // }
-
-        // Layers.DenseLayer memory outputLayer = hiddenLayers.pop();
-
-        return ipd;
-    }
 }
-
-// contract Example is ERC721, ERC721URIStorage, AccessControl {
-//     using Counters for Counters.Counter;
-
-//     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-//     Counters.Counter private _tokenIdCounter;
-
-//     constructor() ERC721("Perceptrons", "PCT") {
-//         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-//         _grantRole(MINTER_ROLE, msg.sender);
-//     }
-
-//     function safeMint(address to, string memory uri) public onlyRole(MINTER_ROLE) {
-//         uint256 modelId = _tokenIdCounter.current();
-//         _tokenIdCounter.increment();
-//         _safeMint(to, modelId);
-//         _setTokenURI(modelId, uri);
-//     }
-
-//     function batchMint(address[] memory to, string[] memory uri) public onlyRole(MINTER_ROLE) {
-//         if (to.length != uri.length) revert InvalidArrayLength();
-//         for (uint256 i = 0; i < to.length; i++) {
-//             safeMint(to[i], uri[i]);
-//         }
-//     }
-
-
-//     // The following functions are overrides required by Solidity.
-
-//     function _burn(uint256 modelId) internal override(ERC721, ERC721URIStorage) {
-//         super._burn(modelId);
-//     }
-
-//     function tokenURI(uint256 modelId)
-//         public
-//         view
-//         override(ERC721, ERC721URIStorage)
-//         returns (string memory)
-//     {
-//         return super.tokenURI(modelId);
-//     }
-
-//     function supportsInterface(bytes4 interfaceId)
-//         public
-//         view
-//         override(ERC721, AccessControl)
-//         returns (bool)
-//     {
-//         return super.supportsInterface(interfaceId);
-//     }
-// }
 
