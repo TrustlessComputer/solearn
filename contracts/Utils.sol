@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
+
 contract Utils {
-	function zip(uint[][] memory rows) public pure returns (uint[][] memory) {
-		uint[][] memory result = new uint[][](rows[0].length);
+	function zip(SD59x18[][] memory rows) public pure returns (SD59x18[][] memory) {
+		SD59x18[][] memory result = new SD59x18[][](rows[0].length);
 		for (uint i = 0; i < rows[0].length; i++) {
-			result[i] = new uint[](rows.length);
+			result[i] = new SD59x18[](rows.length);
 			for (uint j = 0; j < rows.length; j++) {
 				result[i][j] = rows[j][i];
 			}
@@ -13,8 +15,8 @@ contract Utils {
 		return result;
 	}
 
-	function clone(uint[] memory items) public pure returns (uint[] memory) {
-		uint[] memory result = new uint[](items.length);
+	function clone(SD59x18[] memory items) public pure returns (SD59x18[] memory) {
+		SD59x18[] memory result = new SD59x18[](items.length);
 		for (uint i = 0; i < items.length; i++) {
 			result[i] = items[i];
 		}
