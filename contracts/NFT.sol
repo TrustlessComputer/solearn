@@ -126,7 +126,7 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
         _safeMint(to, modelId);
         _setTokenURI(modelId, uri);
         models[modelId].modelName = modelName;
-        for (uint i = 0; i < models[modelId].classesName.length; i++) {
+        for (uint i = 0; i < classesName.length; i++) {
             models[modelId].classesName.push(classesName[i]);
         }
     }
@@ -160,34 +160,30 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
         return Tensors.flat(xt.softmax().mat);
     }
 
-    function setWeights(uint256 modelId, bytes[] memory layers_config, SD59x18[] calldata weights) external {
+    function setWeights(uint256 modelId, bytes[] memory layers_config, SD59x18[][][] calldata weights, SD59x18[][] calldata biases, int appendLayer) external {
         if (msg.sender != ownerOf(modelId)) revert NotTokenOwner();
-        loadPerceptron(modelId, layers_config, weights);
+        if (appendLayer < 0) {
+            loadPerceptron(modelId, layers_config, weights, biases);
+        } else {
+            appendWeights(modelId, weights[0], uint(appendLayer));
+        }
     }
 
-    function makeLayer(uint256 modelId, SingleLayerConfig memory slc, SD59x18[] calldata weights) internal returns (uint, uint) {
+    function appendWeights(uint256 modelId, SD59x18[][] memory weights, uint layerInd) internal {
+        for (uint i = 0; i < weights.length; i++) {
+            models[modelId].d[layerInd].w.push(weights[i]);
+        }
+    }
+
+    function makeLayer(uint256 modelId, SingleLayerConfig memory slc, SD59x18[][][] memory weights, SD59x18[][] memory biases) internal returns (uint, uint) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
         uint dim = 0;
         
         if (layerType == uint8(LayerType.Dense)) {
             (uint8 _t, uint8 actv, uint d) = abi.decode(slc.conf, (uint8, uint8, uint));
-            uint len = models[modelId].d.length;
-            {
-                Layers.DenseLayer memory temp = Layers.DenseLayer(slc.ind, Layers.ActivationFunc(actv), d, new SD59x18[][](0), new SD59x18[](0));
-                models[modelId].d.push(temp);
-            }
-
-            if (weights.length > 0) {
-                for (uint i = 0; i < slc.prevDim; i++) {
-                    models[modelId].d[len].w.push(new SD59x18[](0));
-                    for (uint j = 0; j < d; j++) {
-                        models[modelId].d[len].w[i].push(weights[slc.ptr++]);
-                    }
-                }
-                for (uint i = 0; i < d; i++) {
-                    models[modelId].d[len].b.push(weights[slc.ptr++]);
-                }
-            }
+            Layers.DenseLayer memory temp = Layers.DenseLayer(slc.ind, Layers.ActivationFunc(actv), d, weights[slc.ptr], biases[slc.ptr]);
+            models[modelId].d.push(temp);
+            slc.ptr++;
         
             dim = d;
         } else if (layerType == uint8(LayerType.Flatten)) {
@@ -214,11 +210,12 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
         return (slc.ptr, dim);
     }
 
-    function loadPerceptron(uint256 modelId, bytes[] memory layersConfig, SD59x18[] calldata weights) internal {
+    function loadPerceptron(uint256 modelId, bytes[] memory layersConfig, SD59x18[][][] calldata weights, SD59x18[][] calldata biases) internal {
+        models[modelId].numLayers = layersConfig.length;
         uint ptr = 0;
         uint dim = 0;
         for (uint i = 0; i < layersConfig.length; i++) {
-            (ptr, dim) = makeLayer(modelId, SingleLayerConfig(layersConfig[i], i, dim, ptr), weights);
+            (ptr, dim) = makeLayer(modelId, SingleLayerConfig(layersConfig[i], i, dim, ptr), weights, biases);
         }
     }
 }
