@@ -2,6 +2,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-deploy";
 import './scripts/perceptron.task';
+import "hardhat-tracer";
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
@@ -28,7 +29,7 @@ const config: HardhatUserConfig = {
       blockGasLimit: 2_500_000_000,
     },
     tctest: {
-      url: "https://tc-regtest.trustless.computer/",
+      url: "https://tc-node-auto.regtest.trustless.computer",
       accounts: {
         mnemonic: localTestMnemonic,
         count: 4,

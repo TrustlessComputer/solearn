@@ -10,6 +10,8 @@
     "dotenv": "^16.0.3",
     "hardhat": "^2.13.0",
     "hardhat-deploy": "^0.11.25",
+    "hardhat-tracer": "^2.2.2",
+    "sharp": "^0.32.0",
     "solmate": "^6.7.0"
   }
 }

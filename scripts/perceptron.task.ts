@@ -1,6 +1,7 @@
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
+import sharp from 'sharp';
 
 task("mint-perceptron", "mint perceptron (and upload weights)")
   .addOptionalParam("model", "model file name", "model.json", types.string)
@@ -145,9 +146,13 @@ task("eval-perceptron", "evaluate perceptron")
     const tokenId = ethers.BigNumber.from(taskArgs.tokenid);
 
     const img = fs.readFileSync(taskArgs.img);
-    // TODO
-    // const imgData = await sharp(img).raw().toBuffer();
-    await c.classify(tokenId, img);
+    // How to get input image size?
+    const imgBuffer = await sharp(img).removeAlpha().resize(28, 28).raw().toBuffer();
+    const imgArray = [...imgBuffer];
+    const pixels = imgArray.map((b: any) => 
+        ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
+
+    await c.classify(tokenId, pixels);
     });
 
 
@@ -165,6 +170,8 @@ task("get-perceptron", "get perceptron")
         const c = await ethers.getContractAt("Perceptrons", contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.tokenid);
         const perceptron = await c.getInfo(tokenId);
-        console.log(JSON.stringify(perceptron));
+
+        fs.writeFileSync("perceptronDesc.json", JSON.stringify(perceptron));
+        // console.log(JSON.stringify(perceptron));
     });
   
