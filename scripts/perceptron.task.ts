@@ -96,11 +96,13 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
     const c = await ethers.getContractAt("Perceptrons", contractAddress, signer);
     const tokenId = ethers.BigNumber.from(taskArgs.tokenid);
     try {
-        const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name);
+        const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, { value: ethers.utils.parseEther("0.01") });
         await tx.wait();
         console.log("Minted new perceptron");
-    } catch {
-        const ownerAddress = await c.ownerOf(tokenId);
+    } catch(e) {
+        const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
+            throw e;
+        });
         if (ethers.utils.getAddress(ownerAddress) === ethers.utils.getAddress(signer.address)) {
             console.log("Using existing perceptron #" + tokenId.toString());
         } else {
