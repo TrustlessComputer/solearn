@@ -110,7 +110,7 @@ library Tensors {
 	}
 
 	function __mul(SD59x18 a, SD59x18 b) internal pure returns (SD59x18) {
-		return a * b;
+		return a.mul(b);
 	}
 
 	function __exp(SD59x18 a) internal pure returns (SD59x18) {
