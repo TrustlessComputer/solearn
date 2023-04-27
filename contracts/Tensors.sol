@@ -148,6 +148,7 @@ library Tensors {
     	res.mat = new SD59x18[][](res.n);
 
     	for (uint i = 0; i < res.n; i++) {
+    		res.mat[i] = new SD59x18[](res.m);
 			for (uint j = 0; j < res.m; j++) {
 				for (uint k = 0; k < a.m; k++) {
 					res.mat[i][j] = res.mat[i][j] + a.mat[i][k].mul(b.mat[k][j]);

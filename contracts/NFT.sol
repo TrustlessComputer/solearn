@@ -143,15 +143,31 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
     function forward(uint256 modelId, SD59x18[][] memory x) public view returns (SD59x18[] memory) {
         LayerTypeIndexes memory lti;
         for (uint256 i = 0; i < models[modelId].numLayers; i++) {
-            if (models[modelId].r[lti.rescaleLayerIndex].layerIndex == i) {
+            if (lti.rescaleLayerIndex < models[modelId].r.length && models[modelId].r[lti.rescaleLayerIndex].layerIndex == i) {
                 x = models[modelId].r[lti.rescaleLayerIndex].forward(x);
                 lti.rescaleLayerIndex++;
-            } else if (models[modelId].f[lti.flattenLayerIndex].layerIndex == i) {
+                console.log("#%s is rescale -> x dimensions %s %s", i, x.length, x[0].length);
+            } else if (lti.flattenLayerIndex < models[modelId].f.length && models[modelId].f[lti.flattenLayerIndex].layerIndex == i) {
                 x = models[modelId].f[lti.flattenLayerIndex].forward(x);
                 lti.flattenLayerIndex++;
-            } else if (models[modelId].d[lti.denseLayerIndex].layerIndex == i) {
+                console.log("#%s is flatten -> x dimensions %s %s", i, x.length, x[0].length);
+            } else if (lti.denseLayerIndex < models[modelId].d.length && models[modelId].d[lti.denseLayerIndex].layerIndex == i) {
                 x = models[modelId].d[lti.denseLayerIndex].forward(x);
                 lti.denseLayerIndex++;
+                console.log("#%s is dense -> x dimensions %s %s", i, x.length, x[0].length);
+            }
+
+            if (x.length == 1 && x[0].length < 50) {
+                for (uint i = 0; i < x[0].length; i++) {
+                    console.logInt(x[0][i].unwrap());
+                }
+            }
+        }
+
+        console.log("x dimensions %s %s", x.length, x[0].length);
+        if (x.length == 1 && x[0].length < 50) {
+            for (uint i = 0; i < x[0].length; i++) {
+                console.logInt(x[0][i].unwrap());
             }
         }
 
