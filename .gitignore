@@ -8,5 +8,7 @@ typechain-types
 # Hardhat files
 cache
 artifacts
+deployments
+out.log
 
 .DS_Store
