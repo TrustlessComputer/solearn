@@ -5,9 +5,13 @@ import fs from 'fs';
 
 const abic = ethers.utils.defaultAbiCoder;
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-    const { deployments, getNamedAccounts } = hre;
+    const { deployments, getNamedAccounts, network } = hre;
     const { deploy, execute } = deployments;
     const { deployer } = await getNamedAccounts();
+
+    if (network.name === 'hardhat' || network.name === 'localhost') {
+        await network.provider.send("evm_setIntervalMining", [3000]);
+    }
 
     await deploy('Perceptrons', {
         from: deployer,
@@ -30,5 +34,5 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     
 };
 
-func.tags = ['2', 'NFT'];
+func.tags = ['2', 'Perceptrons'];
 export default func;
