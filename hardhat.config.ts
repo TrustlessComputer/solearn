@@ -6,6 +6,7 @@ import "hardhat-tracer";
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
+  defaultNetwork: "tcbtc",
   solidity: {
     compilers: [
       { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 200 } } },
