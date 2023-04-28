@@ -137,6 +137,8 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
 
 task("eval-perceptron", "evaluate perceptron")
     .addOptionalParam("img", "image file name", "image.png", types.string)
+    .addOptionalParam("w", "perceptron input image width", 28, types.int)
+    .addOptionalParam("h", "perceptron input image height", 28, types.int)
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "0", types.string)
     .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
@@ -154,8 +156,10 @@ task("eval-perceptron", "evaluate perceptron")
         const tokenId = ethers.BigNumber.from(taskArgs.id);
 
         const img = fs.readFileSync(taskArgs.img);
+        // TODO: Get inputDim from perceptron and use the width and height from inputDim instead
+        let { w, h } = taskArgs;        
         // How to get input image size?
-        const imgBuffer = await sharp(img).removeAlpha().resize(28, 28).raw().toBuffer();
+        const imgBuffer = await sharp(img).removeAlpha().resize(w, h).raw().toBuffer();
         const imgArray = [...imgBuffer];
         const pixels = imgArray.map((b: any) => 
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
