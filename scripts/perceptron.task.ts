@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 task("mint-perceptron", "mint perceptron (and upload weights)")
   .addOptionalParam("model", "model file name", "sample-models/2x2.json", types.string)
   .addOptionalParam("contract", "contract address", "", types.string)
-  .addOptionalParam("tokenid", "token id", "0", types.string)
+  .addOptionalParam("id", "token id", "0", types.string)
   .addOptionalParam("uri", "token URI", "", types.string)
   .addOptionalParam("maxlen", "max length for weights/tx", 250, types.int)
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
@@ -94,7 +94,7 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
         contractAddress = Perceptrons.address;
     }
     const c = await ethers.getContractAt("Perceptrons", contractAddress, signer);
-    const tokenId = ethers.BigNumber.from(taskArgs.tokenid);
+    const tokenId = ethers.BigNumber.from(taskArgs.id);
     try {
         const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, { value: ethers.utils.parseEther("0.01") });
         await tx.wait();
@@ -138,7 +138,7 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
 task("eval-perceptron", "evaluate perceptron")
     .addOptionalParam("img", "image file name", "image.png", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("tokenid", "token id of model", "0", types.string)
+    .addOptionalParam("id", "token id of model", "0", types.string)
     .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
@@ -151,7 +151,7 @@ task("eval-perceptron", "evaluate perceptron")
             contractAddress = Perceptrons.address;
         }
         const c = await ethers.getContractAt("Perceptrons", contractAddress, signer);
-        const tokenId = ethers.BigNumber.from(taskArgs.tokenid);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
 
         const img = fs.readFileSync(taskArgs.img);
         // How to get input image size?
@@ -176,7 +176,7 @@ task("eval-perceptron", "evaluate perceptron")
 
 task("get-perceptron", "get perceptron")
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("tokenid", "token id", "0", types.string)
+    .addOptionalParam("id", "token id", "0", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments } = hre;
         const [ signer ] = await ethers.getSigners();
@@ -186,7 +186,7 @@ task("get-perceptron", "get perceptron")
             contractAddress = Perceptrons.address;
         }
         const c = await ethers.getContractAt("Perceptrons", contractAddress, signer);
-        const tokenId = ethers.BigNumber.from(taskArgs.tokenid);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
         const perceptron = await c.getInfo(tokenId);
 
         fs.writeFileSync("perceptronDesc.json", JSON.stringify(perceptron));
