@@ -5,10 +5,10 @@ import sharp from 'sharp';
 import { ethers } from "ethers";
 
 task("mint-perceptron", "mint perceptron (and upload weights)")
-  .addOptionalParam("model", "model file name", "model.json", types.string)
+  .addOptionalParam("model", "model file name", "sample-models/2x2.json", types.string)
   .addOptionalParam("contract", "contract address", "", types.string)
   .addOptionalParam("tokenid", "token id", "0", types.string)
-  .addOptionalParam("uri", "token URI", "perceptrons.uri", types.string)
+  .addOptionalParam("uri", "token URI", "", types.string)
   .addOptionalParam("maxlen", "max length for weights/tx", 250, types.int)
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
     const { ethers, deployments, getNamedAccounts } = hre;
@@ -168,8 +168,7 @@ task("eval-perceptron", "evaluate perceptron")
                 console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
             });
             const tx = await c.classify(tokenId, pixels, { value: ethers.utils.parseEther("0.0001") });
-            await tx.wait();
-            await evPromise;
+            await tx.wait(5);
             console.log("tx:", tx.hash);
         }
     });

@@ -28,6 +28,13 @@ const config: HardhatUserConfig = {
       timeout: 500_000,
       blockGasLimit: 2_500_000_000,
     },
+    tcbtc: {
+      url: "http://localhost:10002", // your TC node
+      accounts: {
+        mnemonic: localTestMnemonic,
+      },
+      timeout: 100_000,
+    },
     tctest: {
       url: "https://tc-node-auto.regtest.trustless.computer",
       accounts: {

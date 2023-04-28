@@ -34,5 +34,5 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     
 };
 
-func.tags = ['2', 'NFT'];
+func.tags = ['2', 'Perceptrons'];
 export default func;
