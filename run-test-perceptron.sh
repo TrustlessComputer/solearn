@@ -1,1 +1,1 @@
-npx hardhat eval-perceptron --network tctest --img 'sample-images/artblock20/00-Friendship Bracelets/000.png' --tokenid 0 --contract 0xF75Cc7C8ff32Fe64a3AF00Ad45B8eca3A690a605
+npx hardhat eval-perceptron --network tctest --img 'sample-images/artblock20/01-Chromie Squiggle/000.png' --tokenid 0 --contract 0x34B530B9bCd310a6752C483f1Ad8259d367452B5
