@@ -142,6 +142,21 @@ contract Perceptrons is Initializable, ERC721Upgradeable, ERC721EnumerableUpgrad
         }
     }
 
+    function evaluateToIndex(uint256 modelId, SD59x18[] memory pixels) public view returns (uint256) {
+        Tensors.Tensor memory img_tensor;
+        img_tensor.load(pixels, 1, pixels.length);
+
+        SD59x18[] memory result = forward(modelId, img_tensor.mat);
+        uint256 maxInd = 0;
+        for (uint256 i = 1; i < result.length; i++) {
+            if (result[i].gt(result[maxInd])) {
+                maxInd = i;
+            }
+        }
+
+        return maxInd;
+    }
+
     function evaluate(uint256 modelId, SD59x18[] memory pixels) public view returns (string memory) {
         Tensors.Tensor memory img_tensor;
         img_tensor.load(pixels, 1, pixels.length);
