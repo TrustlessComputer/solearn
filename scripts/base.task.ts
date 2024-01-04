@@ -1,13 +1,17 @@
 import { task, types } from "hardhat/config";
+
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
 import sharp from 'sharp';
 import { ethers } from "ethers";
 
+
+const ContractName = "UnstoppableAI";
+
 task("mint-perceptron", "mint perceptron (and upload weights)")
     .addOptionalParam("model", "model file name", "sample-models/2x2.json", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id", "0", types.string)
+    .addOptionalParam("id", "token id", "3", types.string)
     .addOptionalParam("uri", "token URI", "", types.string)
     .addOptionalParam("maxlen", "max length for weights/tx", 250, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
@@ -90,10 +94,10 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const Perceptrons = await deployments.get('Perceptrons');
-            contractAddress = Perceptrons.address;
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt("Perceptrons", contractAddress, signer);
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         try {
             const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, { value: ethers.utils.parseEther("0.01") });
@@ -137,10 +141,10 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
 
 task("eval-perceptron", "evaluate perceptron")
     .addOptionalParam("img", "image file name", "image.png", types.string)
-    .addOptionalParam("w", "perceptron input image width", 28, types.int)
-    .addOptionalParam("h", "perceptron input image height", 28, types.int)
+    .addOptionalParam("w", "perceptron input image width", 2, types.int)
+    .addOptionalParam("h", "perceptron input image height", 2, types.int)
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id of model", "0", types.string)
+    .addOptionalParam("id", "token id of model", "1", types.string)
     .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
@@ -149,13 +153,14 @@ task("eval-perceptron", "evaluate perceptron")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const Perceptrons = await deployments.get('Perceptrons');
-            contractAddress = Perceptrons.address;
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt("Perceptrons", contractAddress, signer);
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
 
         const img = fs.readFileSync(taskArgs.img);
+        console.log("img: ", img);
         // TODO: Get inputDim from perceptron and use the width and height from inputDim instead
         let { w, h } = taskArgs;
         // How to get input image size?
@@ -178,21 +183,93 @@ task("eval-perceptron", "evaluate perceptron")
     });
 
 
+task("eval-perceptron-v2", "evaluate perceptron for each layer")
+    .addOptionalParam("img", "image file name", "image.png", types.string)
+    .addOptionalParam("w", "perceptron input image width", 2, types.int)
+    .addOptionalParam("h", "perceptron input image height", 2, types.int)
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("id", "token id of model", "1", types.string)
+    .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        let contractAddress = taskArgs.contract;
+        if (contractAddress === "") {
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
+        }
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+
+        const img = fs.readFileSync(taskArgs.img);
+        console.log("img: ", img);
+        // TODO: Get inputDim from perceptron and use the width and height from inputDim instead
+        let { w, h } = taskArgs;
+        // How to get input image size?
+        const imgBuffer = await sharp(img).removeAlpha().resize(w, h).raw().toBuffer();
+        const imgArray = [...imgBuffer];
+        const pixels = imgArray.map((b: any) =>
+            ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
+
+        let layerIndex = 0;
+        let inputs = pixels;
+        let pixelMat: any[] = [];
+        let classsNameRes = "";
+
+
+
+        console.log("classsNameRes: ", classsNameRes);
+
+        if (taskArgs.offline) {
+            while (layerIndex < 5) {
+                const [className, output] = await c.evaluatev2(tokenId, layerIndex, inputs, pixelMat);
+                pixelMat = output;
+                classsNameRes = className;
+                layerIndex++;
+
+
+                console.log("result:", output, className);
+            }
+
+        } else {
+            while (classsNameRes === "") {
+                const evPromise2 = c.once('ForwardedV2', (tokenId, layerIndexEv, outputs) => {
+                    console.log('"ForwardedV2" event emitted', { tokenId, layerIndexEv, outputs });
+                    pixelMat = outputs;
+                    layerIndex++;
+                });
+                const tx = await c.classifyv2(tokenId, layerIndex, inputs, pixelMat, { value: ethers.utils.parseEther("0.0001") });
+                await tx.wait(5);
+                console.log("Layer index: ", layerIndex, " - Tx: ", tx.hash);
+            }
+
+            const evPromise = c.once('ClassifiedV2', (tokenId, classIndex, className, outputs) => {
+                console.log('"ClassifiedV2" event emitted', { tokenId, classIndex, className, outputs });
+                pixelMat = outputs;
+                layerIndex++;
+                classsNameRes = className;
+            });
+        }
+    });
+
+
 task("get-perceptron", "get perceptron")
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id", "0", types.string)
+    .addOptionalParam("id", "token id", "3", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments } = hre;
         const [signer] = await ethers.getSigners();
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const Perceptrons = await deployments.get('Perceptrons');
-            contractAddress = Perceptrons.address;
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt("Perceptrons", contractAddress, signer);
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const perceptron = await c.getInfo(tokenId);
 
-        fs.writeFileSync("perceptronDesc.json", JSON.stringify(perceptron));
+        fs.writeFileSync("baseDesc.json", JSON.stringify(perceptron));
         // console.log(JSON.stringify(perceptron));
     });

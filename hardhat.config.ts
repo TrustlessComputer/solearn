@@ -46,6 +46,17 @@ const config: HardhatUserConfig = {
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000,
     },
+    regtest: {
+      url: "https://l2-node.regtest.trustless.computer",
+      accounts: [
+        "", // private key
+      ],
+      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
+      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
+      timeout: 500_000,
+      gas: 2100000,
+      gasPrice: 8000000000,
+    },
   },
   namedAccounts: {
     deployer: 0,

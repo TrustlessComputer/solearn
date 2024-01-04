@@ -20,7 +20,7 @@ error InsufficientMintPrice();
 error InsufficientEvalPrice();
 error TransferFailed();
 
-contract Perceptrons is
+contract UnstoppableAI is
     Initializable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
@@ -44,6 +44,13 @@ contract Perceptrons is
         SD59x18[] outputs
     );
 
+    event Forwarded(
+        uint256 indexed tokenId,
+        uint256 fromLayerIndex,
+        uint256 toLayerIndex,
+        SD59x18[][] outputs
+    );
+
     struct Model {
         uint256[3] inputDim;
         string modelName;
@@ -52,6 +59,12 @@ contract Perceptrons is
         Layers.RescaleLayer[] r;
         Layers.FlattenLayer[] f;
         Layers.DenseLayer[] d;
+        Info[] layers;
+    }
+
+    struct Info {
+        LayerType layerType;
+        uint256 layerIndex;
     }
 
     struct LayerTypeIndexes {
@@ -140,7 +153,8 @@ contract Perceptrons is
             SD59x18[][][] memory,
             uint256[] memory,
             string memory,
-            string[] memory
+            string[] memory,
+            Info[] memory
         )
     {
         Model storage m = models[modelId];
@@ -158,7 +172,8 @@ contract Perceptrons is
             w_b,
             out_dim,
             models[modelId].modelName,
-            models[modelId].classesName
+            models[modelId].classesName,
+            m.layers
         );
     }
 
@@ -279,6 +294,125 @@ contract Perceptrons is
         return Tensors.flat(xt.softmax().mat);
     }
 
+    function forwardv2(
+        uint256 modelId,
+        SD59x18[][] memory x,
+        uint256 fromLayerIndex,
+        uint256 toLayerIndex
+    ) public view returns (SD59x18[][] memory) {
+        for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
+            Info memory layerInfo = models[modelId].layers[i];
+
+            // add more layers
+            if (layerInfo.layerType == LayerType.Rescale) {
+                x = models[modelId].r[layerInfo.layerIndex].forward(x);
+            } else if (layerInfo.layerType == LayerType.Flatten) {
+                x = models[modelId].f[layerInfo.layerIndex].forward(x);
+            } else if (layerInfo.layerType == LayerType.Dense) {
+                x = models[modelId].d[layerInfo.layerIndex].forward(x);
+            }
+
+            // the last layer
+            if (i == models[modelId].layers.length - 1) {
+                Tensors.Tensor memory xt;
+                xt.from(x);
+                SD59x18[][] memory result = new SD59x18[][](1);
+                result[0] = Tensors.flat(xt.softmax().mat);
+                return result;
+            }
+        }
+
+        return x;
+    }
+
+    function evaluatev2(
+        uint256 modelId,
+        uint256 fromLayerIndex,
+        uint256 toLayerIndex,
+        SD59x18[] memory pixels,
+        SD59x18[][] memory pixelMat
+    ) public view returns (string memory, SD59x18[][] memory) {
+        if (pixelMat.length == 0) {
+            Tensors.Tensor memory img_tensor;
+            img_tensor.load(pixels, 1, pixels.length);
+            pixelMat = img_tensor.mat;
+        }
+
+        if (toLayerIndex >= models[modelId].layers.length) {
+            toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
+        }
+
+        SD59x18[][] memory result = forwardv2(
+            modelId,
+            pixelMat,
+            fromLayerIndex,
+            toLayerIndex
+        );
+
+        if (toLayerIndex == models[modelId].layers.length - 1) {
+            uint256 maxInd = 0;
+            for (uint256 i = 1; i < result[0].length; i++) {
+                if (result[0][i].gt(result[0][maxInd])) {
+                    maxInd = i;
+                }
+            }
+
+            return (models[modelId].classesName[maxInd], result);
+        } else {
+            return ("", result);
+        }
+    }
+
+    function classifyv2(
+        uint256 modelId,
+        uint256 fromLayerIndex,
+        uint256 toLayerIndex,
+        SD59x18[] memory pixels,
+        SD59x18[][] memory pixelMat
+    ) external payable {
+        if (msg.value < evalPrice) revert InsufficientEvalPrice();
+
+        if (pixelMat.length == 0) {
+            Tensors.Tensor memory img_tensor;
+            img_tensor.load(pixels, 1, pixels.length);
+            pixelMat = img_tensor.mat;
+        }
+
+        if (toLayerIndex >= models[modelId].layers.length) {
+            toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
+        }
+
+        SD59x18[][] memory result = forwardv2(
+            modelId,
+            pixelMat,
+            fromLayerIndex,
+            toLayerIndex
+        );
+
+        if (toLayerIndex == models[modelId].layers.length - 1) {
+            uint256 maxInd = 0;
+            for (uint256 i = 1; i < result[0].length; i++) {
+                if (result[0][i].gt(result[0][maxInd])) {
+                    maxInd = i;
+                }
+            }
+
+            emit Classified(
+                modelId,
+                maxInd,
+                models[modelId].classesName[maxInd],
+                result[0]
+            );
+        } else {
+            emit Forwarded(modelId, fromLayerIndex, toLayerIndex, result);
+        }
+
+        uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
+        uint256 royalty = msg.value - protocolFee;
+        (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
+        if (!success) revert TransferFailed();
+    }
+
     function setWeights(
         uint256 modelId,
         bytes[] memory layers_config,
@@ -320,6 +454,7 @@ contract Perceptrons is
         uint8 layerType = abi.decode(slc.conf, (uint8));
         uint256 dim = 0;
 
+        // add more layers
         if (layerType == uint8(LayerType.Dense)) {
             (uint8 _t, uint8 actv, uint256 d) = abi.decode(
                 slc.conf,
@@ -333,15 +468,24 @@ contract Perceptrons is
                 biases[slc.ptr]
             );
             models[modelId].d.push(temp);
+            uint256 index = models[modelId].d.length - 1;
+            Info memory layerInfo = Info(LayerType.Dense, index);
+            models[modelId].layers.push(layerInfo);
             slc.ptr++;
 
             dim = d;
         } else if (layerType == uint8(LayerType.Flatten)) {
-            uint256 len = models[modelId].d.length;
+            // TODO: why?
+            // uint256 len = models[modelId].d.length;
+            uint256 len = models[modelId].f.length;
             Layers.FlattenLayer memory temp;
             models[modelId].f.push(temp);
             models[modelId].f[len].layerIndex = slc.ind;
             dim = slc.prevDim;
+
+            uint256 index = models[modelId].f.length - 1;
+            Info memory layerInfo = Info(LayerType.Flatten, index);
+            models[modelId].layers.push(layerInfo);
         } else if (layerType == uint8(LayerType.Rescale)) {
             uint256 len = models[modelId].r.length;
             Layers.RescaleLayer memory temp;
@@ -354,6 +498,8 @@ contract Perceptrons is
             models[modelId].r[len].scale = scale;
             models[modelId].r[len].offset = offset;
             dim = slc.prevDim;
+            Info memory layerInfo = Info(LayerType.Rescale, len);
+            models[modelId].layers.push(layerInfo);
         } else if (layerType == uint8(LayerType.Input)) {
             (uint8 _t, uint256[3] memory ipd) = abi.decode(
                 slc.conf,
@@ -361,6 +507,10 @@ contract Perceptrons is
             );
             models[modelId].inputDim = ipd;
             dim = ipd[0] * ipd[1] * ipd[2];
+
+            // TODO: have only one layer type input ?
+            Info memory layerInfo = Info(LayerType.Input, 0);
+            models[modelId].layers.push(layerInfo);
         }
 
         return (slc.ptr, dim);
