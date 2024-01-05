@@ -5,7 +5,7 @@ import "./Tensors.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
 library Layers {
-	using Tensors for Tensors.Tensor2D;
+	using Tensor2DMethods for Tensors.Tensor2D;
 
 	struct RescaleLayer {
 		uint layerIndex; // index within the model
@@ -27,7 +27,7 @@ library Layers {
 
 	function forward(FlattenLayer memory layer, SD59x18[][] memory mat) internal pure returns (SD59x18[][] memory) {
 		SD59x18[][] memory result = new SD59x18[][](1);
-		result[0] = Tensors.flat(mat);
+		result[0] = Tensor2DMethods.flat(mat);
 		return result;
 	}
 

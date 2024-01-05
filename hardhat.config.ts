@@ -6,7 +6,7 @@ import "hardhat-tracer";
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "tcbtc",
+  defaultNetwork: "hardhat",
   solidity: {
     compilers: [
       { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 200 } } },
@@ -51,7 +51,7 @@ const config: HardhatUserConfig = {
     regtest: {
       url: "https://l2-node.regtest.trustless.computer",
       accounts: [
-        "", // private key
+        "0x5333efdeaa7e5ab71e95775c0b1d1a15db1585f961b224625805505127248ee3", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582

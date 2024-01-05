@@ -29,7 +29,7 @@ contract UnstoppableAI is
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
-    using Tensors for Tensors.Tensor2D;
+    using Tensor2DMethods for Tensors.Tensor2D;
 
     mapping(uint256 => Model) public models;
     uint256 public mintPrice;
@@ -163,7 +163,7 @@ contract UnstoppableAI is
         for (uint256 i = 0; i < m.d.length; i++) {
             out_dim[i] = m.d[i].out_dim;
             w_b[i] = new SD59x18[][](2);
-            w_b[i][0] = Tensors.flat(m.d[i].w);
+            w_b[i][0] = Tensor2DMethods.flat(m.d[i].w);
             w_b[i][1] = m.d[i].b;
         }
 
@@ -216,7 +216,7 @@ contract UnstoppableAI is
                 Tensors.Tensor2D memory xt;
                 xt.from(x);
                 SD59x18[][] memory result = new SD59x18[][](1);
-                result[0] = Tensors.flat(xt.softmax().mat);
+                result[0] = Tensor2DMethods.flat(xt.softmax().mat);
                 return result;
             }
         }
