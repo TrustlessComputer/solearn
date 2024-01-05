@@ -29,7 +29,7 @@ contract UnstoppableAI is
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
-    using Tensors for Tensors.Tensor;
+    using Tensors for Tensors.Tensor2D;
 
     mapping(uint256 => Model) public models;
     uint256 public mintPrice;
@@ -213,7 +213,7 @@ contract UnstoppableAI is
 
             // the last layer
             if (i == models[modelId].layers.length - 1) {
-                Tensors.Tensor memory xt;
+                Tensors.Tensor2D memory xt;
                 xt.from(x);
                 SD59x18[][] memory result = new SD59x18[][](1);
                 result[0] = Tensors.flat(xt.softmax().mat);
@@ -232,7 +232,7 @@ contract UnstoppableAI is
         SD59x18[][] memory pixelMat
     ) public view returns (string memory, SD59x18[][] memory) {
         if (pixelMat.length == 0) {
-            Tensors.Tensor memory img_tensor;
+            Tensors.Tensor2D memory img_tensor;
             img_tensor.load(pixels, 1, pixels.length);
             pixelMat = img_tensor.mat;
         }
@@ -272,7 +272,7 @@ contract UnstoppableAI is
         if (msg.value < evalPrice) revert InsufficientEvalPrice();
 
         if (pixelMat.length == 0) {
-            Tensors.Tensor memory img_tensor;
+            Tensors.Tensor2D memory img_tensor;
             img_tensor.load(pixels, 1, pixels.length);
             pixelMat = img_tensor.mat;
         }
@@ -362,7 +362,7 @@ contract UnstoppableAI is
             );
             Layers.DenseLayer memory temp = Layers.DenseLayer(
                 slc.ind,
-                Layers.ActivationFunc(actv),
+                Tensors.ActivationFunc(actv),
                 d,
                 weights[slc.ptr],
                 biases[slc.ptr]

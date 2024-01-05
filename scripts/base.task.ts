@@ -196,7 +196,7 @@ task("eval-img", "evaluate perceptron for each layer")
         let pixelMat: any[] = [];
         let classsNameRes = "";
 
-        console.log("classsNameRes: ", classsNameRes);
+        // console.log("classsNameRes: ", classsNameRes);
 
         if (taskArgs.offline) {
             for (let i = 0; ; i = i + batchLayerNum) {
@@ -207,8 +207,11 @@ task("eval-img", "evaluate perceptron for each layer")
                 pixelMat = output;
                 classsNameRes = className;
 
+                if (className != "") {
+                    console.log("result: ", className);
+                }
 
-                console.log("result:", output, className);
+                // console.log("result:", output, className);
 
                 if (toLayerIndex >= numLayers - 1) {
                     break;

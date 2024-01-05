@@ -4,17 +4,8 @@ pragma solidity ^0.8.9;
 import "./Tensors.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-error InvalidActivationFunction();
-
 library Layers {
-	using Tensors for Tensors.Tensor;
-	enum ActivationFunc {
-		LeakyReLU,
-		Linear,
-		ReLU,
-		Sigmoid,
-		Tanh
-	}
+	using Tensors for Tensors.Tensor2D;
 
 	struct RescaleLayer {
 		uint layerIndex; // index within the model
@@ -28,7 +19,7 @@ library Layers {
 
 	struct DenseLayer {
 		uint layerIndex;
-		ActivationFunc activation;
+		Tensors.ActivationFunc activation;
 		uint out_dim;
 		SD59x18[][] w;
 		SD59x18[] b;
@@ -51,32 +42,15 @@ library Layers {
 		return y;
 	}
 
-	function activation(DenseLayer memory layer, Tensors.Tensor memory x) internal pure returns (Tensors.Tensor memory) {
-		ActivationFunc actv = layer.activation;
-		if (actv == ActivationFunc.LeakyReLU) {
-			return x.cloneTensor().leaky_relu();
-		} else if (actv == ActivationFunc.Linear) {
-			return x.cloneTensor().linear();
-		} else if (actv == ActivationFunc.ReLU) {
-			return x.cloneTensor().relu();
-		} else if (actv == ActivationFunc.Sigmoid) {
-			return x.cloneTensor().sigmoid();
-		} else if (actv == ActivationFunc.Tanh) {
-			return x.cloneTensor().tanh();
-		} else {
-			revert InvalidActivationFunction();
-		}
-	}
-
 	function forward(DenseLayer memory layer, SD59x18[][] memory x) internal pure returns (SD59x18[][] memory) {
-		Tensors.Tensor memory xt;
+		Tensors.Tensor2D memory xt;
 		xt.from(x);
-		Tensors.Tensor memory wt;
+		Tensors.Tensor2D memory wt;
 		wt.from(layer.w);
-		Tensors.Tensor memory bt;
+		Tensors.Tensor2D memory bt;
 		bt.load(layer.b, 1, layer.b.length);
-		Tensors.Tensor memory y = xt.matMul(wt).add(bt);
-		Tensors.Tensor memory zt = activation(layer, y);
+		Tensors.Tensor2D memory y = xt.matMul(wt).add(bt);
+		Tensors.Tensor2D memory zt = y.activation(layer.activation);
 		return zt.mat;
 	}
 
