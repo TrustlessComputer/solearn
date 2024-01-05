@@ -1,7 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-deploy";
-import './scripts/perceptron.task';
+import './scripts/base.task';
 import "hardhat-tracer";
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
@@ -54,8 +54,8 @@ const config: HardhatUserConfig = {
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000,
-      gas: 2100000,
-      gasPrice: 8000000000,
+      // gas: 2100000,
+      // gasPrice: 8000000000,
     },
   },
   namedAccounts: {

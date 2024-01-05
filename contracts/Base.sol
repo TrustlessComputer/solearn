@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 // import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 // import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "@openzeppelin/contracts/utils/Strings.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 // import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
@@ -193,108 +193,7 @@ contract UnstoppableAI is
         }
     }
 
-    function evaluate(
-        uint256 modelId,
-        SD59x18[] memory pixels
-    ) public view returns (string memory) {
-        Tensors.Tensor memory img_tensor;
-        img_tensor.load(pixels, 1, pixels.length);
-
-        SD59x18[] memory result = forward(modelId, img_tensor.mat);
-        uint256 maxInd = 0;
-        for (uint256 i = 1; i < result.length; i++) {
-            if (result[i].gt(result[maxInd])) {
-                maxInd = i;
-            }
-        }
-
-        return models[modelId].classesName[maxInd];
-    }
-
-    function classify(
-        uint256 modelId,
-        SD59x18[] memory pixels
-    ) external payable {
-        if (msg.value < evalPrice) revert InsufficientEvalPrice();
-        Tensors.Tensor memory img_tensor;
-        img_tensor.load(pixels, 1, pixels.length);
-
-        SD59x18[] memory result = forward(modelId, img_tensor.mat);
-        uint256 maxInd = 0;
-        for (uint256 i = 1; i < result.length; i++) {
-            if (result[i].gt(result[maxInd])) {
-                maxInd = i;
-            }
-        }
-
-        emit Classified(
-            modelId,
-            maxInd,
-            models[modelId].classesName[maxInd],
-            result
-        );
-
-        uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
-        uint256 royalty = msg.value - protocolFee;
-        (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
-        if (!success) revert TransferFailed();
-    }
-
     function forward(
-        uint256 modelId,
-        SD59x18[][] memory x
-    ) public view returns (SD59x18[] memory) {
-        LayerTypeIndexes memory lti;
-        for (uint256 i = 0; i < models[modelId].numLayers; i++) {
-            if (
-                lti.rescaleLayerIndex < models[modelId].r.length &&
-                models[modelId].r[lti.rescaleLayerIndex].layerIndex == i
-            ) {
-                x = models[modelId].r[lti.rescaleLayerIndex].forward(x);
-
-                // console.logInt(models[modelId].r[lti.rescaleLayerIndex].scale.unwrap());
-                // console.logInt(models[modelId].r[lti.rescaleLayerIndex].offset.unwrap());
-                lti.rescaleLayerIndex++;
-                // console.log("#%s is rescale -> x dimensions %s %s", i, x.length, x[0].length);
-            } else if (
-                lti.flattenLayerIndex < models[modelId].f.length &&
-                models[modelId].f[lti.flattenLayerIndex].layerIndex == i
-            ) {
-                x = models[modelId].f[lti.flattenLayerIndex].forward(x);
-                lti.flattenLayerIndex++;
-                // console.log("#%s is flatten -> x dimensions %s %s", i, x.length, x[0].length);
-            } else if (
-                lti.denseLayerIndex < models[modelId].d.length &&
-                models[modelId].d[lti.denseLayerIndex].layerIndex == i
-            ) {
-                x = models[modelId].d[lti.denseLayerIndex].forward(x);
-                lti.denseLayerIndex++;
-                // console.log("#%s is dense -> x dimensions %s %s", i, x.length, x[0].length);
-            }
-
-            // if (x.length == 1 && x[0].length < 50) {
-            //     for (uint256 i2 = 0; i2 < x[0].length; i2++) {
-            //         console.logInt(x[0][i2].unwrap());
-            //     }
-            // } else {
-            //     console.logInt(x[0][0].unwrap());
-            //     console.logInt(x[0][x[0].length - 1].unwrap());
-            // }
-        }
-
-        // console.log("x dimensions %s %s", x.length, x[0].length);
-        // if (x.length == 1 && x[0].length < 50) {
-        //     for (uint256 i = 0; i < x[0].length; i++) {
-        //         console.logInt(x[0][i].unwrap());
-        //     }
-        // }
-
-        Tensors.Tensor memory xt;
-        xt.from(x);
-        return Tensors.flat(xt.softmax().mat);
-    }
-
-    function forwardv2(
         uint256 modelId,
         SD59x18[][] memory x,
         uint256 fromLayerIndex,
@@ -325,7 +224,7 @@ contract UnstoppableAI is
         return x;
     }
 
-    function evaluatev2(
+    function evaluate(
         uint256 modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
@@ -342,7 +241,7 @@ contract UnstoppableAI is
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }
 
-        SD59x18[][] memory result = forwardv2(
+        SD59x18[][] memory result = forward(
             modelId,
             pixelMat,
             fromLayerIndex,
@@ -363,7 +262,7 @@ contract UnstoppableAI is
         }
     }
 
-    function classifyv2(
+    function classify(
         uint256 modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
@@ -382,7 +281,7 @@ contract UnstoppableAI is
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }
 
-        SD59x18[][] memory result = forwardv2(
+        SD59x18[][] memory result = forward(
             modelId,
             pixelMat,
             fromLayerIndex,
@@ -427,6 +326,7 @@ contract UnstoppableAI is
                 delete models[modelId].d;
                 delete models[modelId].f;
                 delete models[modelId].r;
+                delete models[modelId].layers;
             }
 
             loadPerceptron(modelId, layers_config, weights, biases);

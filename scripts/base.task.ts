@@ -7,13 +7,16 @@ import { ethers } from "ethers";
 
 
 const ContractName = "UnstoppableAI";
+const MaxWeightLen = 40;
 
-task("mint-perceptron", "mint perceptron (and upload weights)")
-    .addOptionalParam("model", "model file name", "sample-models/2x2.json", types.string)
+// model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
+
+task("mint-model-id", "mint model id (and upload weights)")
+    .addOptionalParam("model", "model file name", "", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id", "3", types.string)
+    .addOptionalParam("id", "token id", "0", types.string)
     .addOptionalParam("uri", "token URI", "", types.string)
-    .addOptionalParam("maxlen", "max length for weights/tx", 250, types.int)
+    .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -35,6 +38,8 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
 
         let weightMats = [];
         let biases = [];
+
+        let weightMatsSize = 0;
 
         let newLayerConfig = [];
         let input_units = 0;
@@ -66,10 +71,14 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
 
                 // reconstruct weights
                 let w = [], b = [];
+                let wsize = 0;
                 for (let i = 0; i < input_units; i++) {
-                    w.push(weightsFlat.splice(0, output_units));
+                    let tmp = weightsFlat.splice(0, output_units)
+                    w.push(tmp);
+                    wsize += tmp.length;
                 }
 
+                weightMatsSize += wsize;
                 weightMats.push(w);
                 biases.push(weightsFlat.splice(0, output_units));
 
@@ -115,6 +124,8 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
             }
         }
 
+        console.log("Weight size: ", weightMatsSize);
+
         console.log(`Set weights`);
         const truncateWeights = (_w: any[][], maxlen: number) => {
             let result = [];
@@ -125,7 +136,15 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
         }
         const maxlen = taskArgs.maxlen;
 
-        const setWeightTx = await c.setWeights(tokenId, params.layers_config, truncateWeights(weightMats, maxlen), biases, -1);
+
+        const tmp = truncateWeights(weightMats, maxlen);
+        const paramsTmp = [
+            tokenId, params.layers_config, tmp, biases, - 1
+        ];
+        const paramStr = JSON.stringify(paramsTmp);
+        console.log("paramStr len: ", paramStr.length);
+
+        const setWeightTx = await c.setWeights(tokenId, params.layers_config, tmp, biases, -1);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
         for (let wi = 0; wi < weightMats.length; wi++) {
@@ -139,7 +158,7 @@ task("mint-perceptron", "mint perceptron (and upload weights)")
         console.log("Set weights done");
     });
 
-task("eval-perceptron", "evaluate perceptron")
+task("eval-img", "evaluate perceptron for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
     .addOptionalParam("w", "perceptron input image width", 2, types.int)
     .addOptionalParam("h", "perceptron input image height", 2, types.int)
@@ -169,95 +188,62 @@ task("eval-perceptron", "evaluate perceptron")
         const pixels = imgArray.map((b: any) =>
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
 
-        if (taskArgs.offline) {
-            const result = await c.evaluate(tokenId, pixels);
-            console.log("result:", result);
-        } else {
-            const evPromise = c.once('Classified', (tokenId, classIndex, className, outputs) => {
-                console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
-            });
-            const tx = await c.classify(tokenId, pixels, { value: ethers.utils.parseEther("0.0001") });
-            await tx.wait(5);
-            console.log("tx:", tx.hash);
-        }
-    });
 
 
-task("eval-perceptron-v2", "evaluate perceptron for each layer")
-    .addOptionalParam("img", "image file name", "image.png", types.string)
-    .addOptionalParam("w", "perceptron input image width", 2, types.int)
-    .addOptionalParam("h", "perceptron input image height", 2, types.int)
-    .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id of model", "1", types.string)
-    .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
-    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-        const { ethers, deployments, getNamedAccounts } = hre;
-        const { deployer: signerAddress } = await getNamedAccounts();
-        const signer = await ethers.getSigner(signerAddress);
-
-        let contractAddress = taskArgs.contract;
-        if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
-            contractAddress = baseContract.address;
-        }
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
-        const tokenId = ethers.BigNumber.from(taskArgs.id);
-
-        const img = fs.readFileSync(taskArgs.img);
-        console.log("img: ", img);
-        // TODO: Get inputDim from perceptron and use the width and height from inputDim instead
-        let { w, h } = taskArgs;
-        // How to get input image size?
-        const imgBuffer = await sharp(img).removeAlpha().resize(w, h).raw().toBuffer();
-        const imgArray = [...imgBuffer];
-        const pixels = imgArray.map((b: any) =>
-            ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
-
-        let layerIndex = 0;
+        let numLayers = 7;
+        let batchLayerNum = 3;
         let inputs = pixels;
         let pixelMat: any[] = [];
         let classsNameRes = "";
 
-
-
         console.log("classsNameRes: ", classsNameRes);
 
         if (taskArgs.offline) {
-            while (layerIndex < 5) {
-                const [className, output] = await c.evaluatev2(tokenId, layerIndex, inputs, pixelMat);
+            for (let i = 0; ; i = i + batchLayerNum) {
+                const fromLayerIndex = i;
+                const toLayerIndex = i + batchLayerNum - 1;
+
+                const [className, output] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, inputs, pixelMat);
                 pixelMat = output;
                 classsNameRes = className;
-                layerIndex++;
 
 
                 console.log("result:", output, className);
+
+                if (toLayerIndex >= numLayers - 1) {
+                    break;
+                }
             }
 
         } else {
-            while (classsNameRes === "") {
-                const evPromise2 = c.once('ForwardedV2', (tokenId, layerIndexEv, outputs) => {
-                    console.log('"ForwardedV2" event emitted', { tokenId, layerIndexEv, outputs });
-                    pixelMat = outputs;
-                    layerIndex++;
-                });
-                const tx = await c.classifyv2(tokenId, layerIndex, inputs, pixelMat, { value: ethers.utils.parseEther("0.0001") });
-                await tx.wait(5);
-                console.log("Layer index: ", layerIndex, " - Tx: ", tx.hash);
-            }
-
-            const evPromise = c.once('ClassifiedV2', (tokenId, classIndex, className, outputs) => {
-                console.log('"ClassifiedV2" event emitted', { tokenId, classIndex, className, outputs });
-                pixelMat = outputs;
-                layerIndex++;
+            const evPromise = c.once('Classified', (tokenId, classIndex, className, outputs) => {
+                console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
                 classsNameRes = className;
             });
+
+            for (let i = 0; ; i = i + batchLayerNum) {
+                const fromLayerIndex = i;
+                const toLayerIndex = i + batchLayerNum - 1;
+                const evPromise2 = c.once('Forwarded', (tokenId, fromLayerIndex, toLayerIndex, outputs) => {
+                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs });
+                    pixelMat = outputs;
+                });
+
+                const tx = await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, pixelMat, { value: ethers.utils.parseEther("0.0001") });
+                console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
+                await tx.wait(5);
+
+                if (toLayerIndex >= numLayers - 1) {
+                    break;
+                }
+            }
         }
     });
 
 
-task("get-perceptron", "get perceptron")
+task("get-model", "get perceptron")
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id", "3", types.string)
+    .addOptionalParam("id", "token id", "0", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments } = hre;
         const [signer] = await ethers.getSigners();
