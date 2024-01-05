@@ -18,6 +18,8 @@ const config: HardhatUserConfig = {
         mnemonic: localTestMnemonic,
         accountsBalance: "10000000000000000000000000",
       },
+      gas: 100_000_000,
+      allowUnlimitedContractSize: true,
       blockGasLimit: 2_500_000_000,
     },
     localhost: {
