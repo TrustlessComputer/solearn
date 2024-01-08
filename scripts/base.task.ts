@@ -184,8 +184,8 @@ task("mint-model-id", "mint model id (and upload weights)")
                 input_units = [W, H, input_units[2]];
             } else if (layer.class_name === 'Conv2D') {
                 const filters = layer.config.filters;
-                const f_w = layer.config.pool_size[0];
-                const f_h = layer.config.pool_size[1]; 
+                const f_w = layer.config.kernel_size[0];
+                const f_h = layer.config.kernel_size[1]; 
                 const s_w = layer.config.strides[0];
                 const s_h = layer.config.strides[1];
                 const padding = layer.config.padding;
