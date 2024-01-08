@@ -10,5 +10,3 @@ npx hardhat eval-img --network regtest --id '0' --offline false --contract '0x3E
 
 # get info model from sc
 npx hardhat get-model --network regtest --id '0' --contract '0x3Ef48814d91D79927d16dA531931E1D6080cdcdE'
-
-
