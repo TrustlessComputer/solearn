@@ -36,6 +36,8 @@ task("mint-model-id", "mint model id (and upload weights)")
             }
         }
 
+        console.log("weightsFlat length: ", weightsFlat.length);
+
         let weightMats = [];
         let biases = [];
 
@@ -48,8 +50,11 @@ task("mint-model-id", "mint model id (and upload weights)")
             let result: String = "";
             // class_name field to first byte: 0 = Dense, 1 = Flatten, 2 = Rescaling
             if (layer.class_name === 'Dense') {
+
                 let temp = ethers.BigNumber.from(layer.config.units).toHexString();
                 const output_units = layer.config.units;
+
+                console.log(`Layer index ${i} - output_units ${output_units} - input_units ${input_units}`);
                 // activation field to second byte:
                 // 0 - LeakyReLU,
                 // 1 - Linear,
@@ -77,6 +82,8 @@ task("mint-model-id", "mint model id (and upload weights)")
                     w.push(tmp);
                     wsize += tmp.length;
                 }
+
+                console.log(`Layer index ${i} - output_units ${output_units} - input_units ${input_units} - w temp length: ${w.length}`);
 
                 weightMatsSize += wsize;
                 weightMats.push(w);
@@ -124,9 +131,12 @@ task("mint-model-id", "mint model id (and upload weights)")
             }
         }
 
+        console.log("weightMats length: ", weightMats.length);
+
         console.log("Weight size: ", weightMatsSize);
 
         console.log(`Set weights`);
+
         const truncateWeights = (_w: any[][], maxlen: number) => {
             let result = [];
             for (let i = 0; i < _w.length; i++) {
@@ -151,8 +161,10 @@ task("mint-model-id", "mint model id (and upload weights)")
             let currentWeights = [weightMats[wi]];
             for (let temp = truncateWeights(currentWeights, maxlen); temp[0].length > 0; temp = truncateWeights(currentWeights, maxlen)) {
                 const setWeightTx = await c.setWeights(tokenId, params.layers_config, temp, [], wi);
-                await setWeightTx.wait(2);
+
                 console.log('append layer dense #', wi, '- tx', setWeightTx.hash);
+                await setWeightTx.wait(2);
+
             }
         }
         console.log("Set weights done");

@@ -375,8 +375,6 @@ contract UnstoppableAI is
 
             dim = d;
         } else if (layerType == uint8(LayerType.Flatten)) {
-            // TODO: why?
-            // uint256 len = models[modelId].d.length;
             uint256 len = models[modelId].f.length;
             Layers.FlattenLayer memory temp;
             models[modelId].f.push(temp);
@@ -408,7 +406,7 @@ contract UnstoppableAI is
             models[modelId].inputDim = ipd;
             dim = ipd[0] * ipd[1] * ipd[2];
 
-            // TODO: have only one layer type input ?
+            // NOTE: there is only one layer type input
             Info memory layerInfo = Info(LayerType.Input, 0);
             models[modelId].layers.push(layerInfo);
         }
