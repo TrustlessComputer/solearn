@@ -11,6 +11,88 @@ const MaxWeightLen = 40;
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
+function getLayerType(name: string): number {
+    // 0 - Dense
+    // 1 - Flatten
+    // 2 - Rescaling
+    // 3 - InputLayer
+    // 4 - MaxPooling2D
+    // 5 - Conv2D
+    let layerType: number = -1;
+    if (name === 'Dense') {
+        layerType = 0;
+    } else if (name === 'Flatten') {
+        layerType = 1;
+    } else if (name === 'Rescaling') {
+        layerType = 2;
+    } else if (name === 'InputLayer') {
+        layerType = 3;
+    } else if (name === 'MaxPooling2D') {
+        layerType = 4;
+    } else if (name === 'Conv2D') {
+        layerType = 5;
+    }
+    return layerType
+}
+
+function getActivationType(name: string): number {
+    // activation field to second byte:
+    // 0 - LeakyReLU,
+    // 1 - Linear,
+    // 2 - ReLU,
+    // 3 - Sigmoid,
+    // 4 - Tanh
+    let activationFn: number = -1;
+    if (name === 'LeakyReLU') {
+        activationFn = 0;
+    } else if (name === 'Linear') {
+        activationFn = 1;
+    } else if (name === 'ReLU') {
+        activationFn = 2;
+    } else if (name === 'Sigmoid') {
+        activationFn = 3;
+    } else if (name === 'Tanh') {
+        activationFn = 4;
+    }
+    return activationFn;
+}
+
+function getPaddingType(name: string): number {
+    let paddingType: number = -1;
+    if (name === "valid") {
+        paddingType = 0;
+    } else if (name === "same") {
+        paddingType = 1;
+    }
+    return paddingType;
+}
+
+function getConvSize(
+    w: number,
+    h: number,
+    f_w: number,
+    f_h: number,
+    s_w: number,
+    s_h: number,
+    padding: string,
+) {
+    let W = 0, H = 0, L = 0, R = 0, T = 0, B = 0;
+    
+    if (padding == "same") {
+        W = (w + s_w - 1) / s_w;
+        H = (h + s_h - 1) / s_h;
+        const pad_w = (w % s_w == 0) ? Math.max(f_w - s_w, 0) : Math.max(f_w - w % s_w, 0);
+        const pad_h = (h % s_h == 0) ? Math.max(f_h - s_h, 0) : Math.max(f_h - h % s_h, 0);
+        L = pad_w / 2; R = pad_w - L;
+        T = pad_h / 2; B = pad_h - T;
+    } else if (padding = "valid") {
+        W = (w - f_w) / s_w + 1;
+        H = (h - f_h) / s_h + 1;
+    }
+  
+    return {W, H, L, R, T, B};
+}
+
 task("mint-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
@@ -36,13 +118,16 @@ task("mint-model-id", "mint model id (and upload weights)")
             }
         }
 
-        let weightMats = [];
-        let biases = [];
+        let weightDenseMats = [];
+        let biasesDense = [];
+        let weightConv2DMats = [];
+        let biasesConv2D = [];
 
-        let weightMatsSize = 0;
+        let weightDenseMatsSize = 0;
+        let weightConv2DMatsSize = 0;
 
         let newLayerConfig = [];
-        let input_units = 0;
+        let input_units: any = 0;
         for (let i = 0; i < params.layers_config.config.layers.length; i++) {
             const layer = params.layers_config.config.layers[i];
             let result: String = "";
@@ -50,27 +135,11 @@ task("mint-model-id", "mint model id (and upload weights)")
             if (layer.class_name === 'Dense') {
                 let temp = ethers.BigNumber.from(layer.config.units).toHexString();
                 const output_units = layer.config.units;
-                // activation field to second byte:
-                // 0 - LeakyReLU,
-                // 1 - Linear,
-                // 2 - ReLU,
-                // 3 - Sigmoid,
-                // 4 - Tanh
-                let activationFn: number = 0;
-                if (layer.config.activation === 'LeakyReLU') {
-                    activationFn = 0;
-                } else if (layer.config.activation === 'Linear') {
-                    activationFn = 1;
-                } else if (layer.config.activation === 'ReLU') {
-                    activationFn = 2;
-                } else if (layer.config.activation === 'Sigmoid') {
-                    activationFn = 3;
-                } else if (layer.config.activation === 'Tanh') {
-                    activationFn = 4;
-                }
+
+                let activationFn: number = getActivationType(layer.config.activation);
 
                 // reconstruct weights
-                let w = [], b = [];
+                let w = [];
                 let wsize = 0;
                 for (let i = 0; i < input_units; i++) {
                     let tmp = weightsFlat.splice(0, output_units)
@@ -78,14 +147,15 @@ task("mint-model-id", "mint model id (and upload weights)")
                     wsize += tmp.length;
                 }
 
-                weightMatsSize += wsize;
-                weightMats.push(w);
-                biases.push(weightsFlat.splice(0, output_units));
+                weightDenseMatsSize += wsize;
+                weightDenseMats.push(w);
+                biasesDense.push(weightsFlat.splice(0, output_units));
 
                 result = abic.encode(["uint8", "uint8", "uint256"], [0, activationFn, temp]);
                 input_units = output_units;
             } else if (layer.class_name === 'Flatten') {
                 result = abic.encode(["uint8"], [1]);
+                input_units = input_units[0] * input_units[1] * input_units[2];
             } else if (layer.class_name === 'Rescaling') {
                 const n1 = ethers.BigNumber.from(String(layer.config.scale * 1e18))
                 const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("1000000000000000000"));
@@ -95,8 +165,66 @@ task("mint-model-id", "mint model id (and upload weights)")
                 const h = ethers.BigNumber.from(layer.config.batch_input_shape[2])
                 const c = ethers.BigNumber.from(layer.config.batch_input_shape[3])
                 result = abic.encode(["uint8", "uint[3]"], [3, [w, h, c]]);
-                input_units = w.mul(h).mul(c).toNumber();
-            }
+                input_units = [w.toNumber(), h.toNumber(), c.toNumber()];
+            } else if (layer.class_name === 'MaxPooling2D') {
+                const f_w = layer.config.pool_size[0];
+                const f_h = layer.config.pool_size[1]; 
+                const s_w = layer.config.strides[0];
+                const s_h = layer.config.strides[1];
+                const padding = layer.config.padding;
+
+                result = abic.encode(["uint8", "uint[2]", "uint[2]", "uint8"], [
+                    4, 
+                    [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)], 
+                    [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
+                    getPaddingType(padding),
+                ]);
+
+                const {W, H} = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
+                input_units = [W, H, input_units[2]];
+            } else if (layer.class_name === 'Conv2D') {
+                const filters = layer.config.filters;
+                const f_w = layer.config.pool_size[0];
+                const f_h = layer.config.pool_size[1]; 
+                const s_w = layer.config.strides[0];
+                const s_h = layer.config.strides[1];
+                const padding = layer.config.padding;
+                const d = input_units[2];
+
+                let activationFn: number = getActivationType(layer.config.activation);
+
+                // reconstruct weights
+                // Filter: (F_W, F_H, D, K)
+                let w: ethers.BigNumber[][][][] = [];
+                let wsize = 0;
+                for (let i = 0; i < f_w; i++) {
+                    w.push([]);
+                    for(let j = 0; j < f_h; j++) {
+                        w[i].push([]);
+                        for(let k = 0; k < d; k++) {
+                            let tmp = weightsFlat.splice(0, filters)
+                            w[i][j].push(tmp);
+                            wsize += tmp.length;            
+                        }
+                    }
+                }
+
+                weightConv2DMatsSize += wsize;
+                weightConv2DMats.push(w);
+                biasesConv2D.push(weightsFlat.splice(0, filters));
+                
+                result = abic.encode(["uint8", "uint8", "uint", "uint[2]", "uint[2]", "uint8"], [
+                    5,
+                    activationFn,
+                    ethers.BigNumber.from(filters),
+                    [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)],
+                    [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
+                    getPaddingType(padding),
+                ]);
+
+                const {W, H} = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
+                input_units = [W, H, filters];
+            } 
             newLayerConfig.push(result);
         }
         params.layers_config = newLayerConfig.filter((x: any) => x !== null);
@@ -124,7 +252,8 @@ task("mint-model-id", "mint model id (and upload weights)")
             }
         }
 
-        console.log("Weight size: ", weightMatsSize);
+        console.log("Weight dense size: ", weightDenseMatsSize);
+        console.log("Weight conv2d size: ", weightConv2DMatsSize);
 
         console.log(`Set weights`);
         const truncateWeights = (_w: any[][], maxlen: number) => {
@@ -137,20 +266,20 @@ task("mint-model-id", "mint model id (and upload weights)")
         const maxlen = taskArgs.maxlen;
 
 
-        const tmp = truncateWeights(weightMats, maxlen);
+        const tmpDense = truncateWeights(weightDenseMats, maxlen);
         const paramsTmp = [
-            tokenId, params.layers_config, tmp, biases, - 1
+            tokenId, params.layers_config, tmpDense, biasesDense, weightConv2DMats, biasesConv2D, -1
         ];
         const paramStr = JSON.stringify(paramsTmp);
         console.log("paramStr len: ", paramStr.length);
 
-        const setWeightTx = await c.setWeights(tokenId, params.layers_config, tmp, biases, -1);
+        const setWeightTx = await c.setWeights(tokenId, params.layers_config, tmpDense, biasesDense, weightConv2DMats, biasesConv2D, -1);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
-        for (let wi = 0; wi < weightMats.length; wi++) {
-            let currentWeights = [weightMats[wi]];
+        for (let wi = 0; wi < weightDenseMats.length; wi++) {
+            let currentWeights = [weightDenseMats[wi]];
             for (let temp = truncateWeights(currentWeights, maxlen); temp[0].length > 0; temp = truncateWeights(currentWeights, maxlen)) {
-                const setWeightTx = await c.setWeights(tokenId, params.layers_config, temp, [], wi);
+                const setWeightTx = await c.setWeights(tokenId, params.layers_config, temp, [], [], [], wi);
                 await setWeightTx.wait(2);
                 console.log('append layer dense #', wi, '- tx', setWeightTx.hash);
             }
@@ -193,7 +322,9 @@ task("eval-img", "evaluate perceptron for each layer")
         let numLayers = 7;
         let batchLayerNum = 3;
         let inputs = pixels;
-        let pixelMat: any[] = [];
+        let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(w), ethers.BigNumber.from(h), ethers.BigNumber.from(3)];
+        let x1: any[] = [];
+        let x2: any[] = [];
         let classsNameRes = "";
 
         // console.log("classsNameRes: ", classsNameRes);
@@ -203,8 +334,9 @@ task("eval-img", "evaluate perceptron for each layer")
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
 
-                const [className, output] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, inputs, pixelMat);
-                pixelMat = output;
+                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2);
+                x1 = r1;
+                x2 = r2;
                 classsNameRes = className;
 
                 if (className != "") {
@@ -227,12 +359,13 @@ task("eval-img", "evaluate perceptron for each layer")
             for (let i = 0; ; i = i + batchLayerNum) {
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
-                const evPromise2 = c.once('Forwarded', (tokenId, fromLayerIndex, toLayerIndex, outputs) => {
-                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs });
-                    pixelMat = outputs;
+                const evPromise2 = c.once('Forwarded', (tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2) => {
+                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
+                    x1 = outputs1;
+                    x2 = outputs2;
                 });
 
-                const tx = await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, pixelMat, { value: ethers.utils.parseEther("0.0001") });
+                const tx = await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2, { value: ethers.utils.parseEther("0.0001") });
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
                 await tx.wait(5);
 

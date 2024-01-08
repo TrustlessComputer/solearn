@@ -29,7 +29,10 @@ contract UnstoppableAI is
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
+    using Layers for Layers.MaxPooling2DLayer;
+    using Layers for Layers.Conv2DLayer;
     using Tensor2DMethods for Tensors.Tensor2D;
+    using Tensor4DMethods for Tensors.Tensor4D;
 
     mapping(uint256 => Model) public models;
     uint256 public mintPrice;
@@ -48,7 +51,8 @@ contract UnstoppableAI is
         uint256 indexed tokenId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[][] outputs
+        SD59x18[][][][] outputs1,
+        SD59x18[][] outputs2
     );
 
     struct Model {
@@ -59,6 +63,8 @@ contract UnstoppableAI is
         Layers.RescaleLayer[] r;
         Layers.FlattenLayer[] f;
         Layers.DenseLayer[] d;
+        Layers.MaxPooling2DLayer[] mp2;
+        Layers.Conv2DLayer[] c2;
         Info[] layers;
     }
 
@@ -76,15 +82,19 @@ contract UnstoppableAI is
     struct SingleLayerConfig {
         bytes conf;
         uint256 ind;
-        uint256 prevDim;
-        uint256 ptr;
+        uint256[3] prevDim1;
+        uint256 prevDim2;
+        uint256 ptrDense;
+        uint256 ptrConv2D;
     }
 
     enum LayerType {
         Dense,
         Flatten,
         Rescale,
-        Input
+        Input,
+        MaxPooling2D,
+        Conv2D
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -195,33 +205,41 @@ contract UnstoppableAI is
 
     function forward(
         uint256 modelId,
-        SD59x18[][] memory x,
+        SD59x18[][][][] memory x1,
+        SD59x18[][] memory x2,
         uint256 fromLayerIndex,
         uint256 toLayerIndex
-    ) public view returns (SD59x18[][] memory) {
+    ) public view returns (
+        SD59x18[][][][] memory,
+        SD59x18[][] memory
+    ) {
         for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
             Info memory layerInfo = models[modelId].layers[i];
 
             // add more layers
             if (layerInfo.layerType == LayerType.Rescale) {
-                x = models[modelId].r[layerInfo.layerIndex].forward(x);
+                x1 = models[modelId].r[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Flatten) {
-                x = models[modelId].f[layerInfo.layerIndex].forward(x);
+                x2 = models[modelId].f[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Dense) {
-                x = models[modelId].d[layerInfo.layerIndex].forward(x);
+                x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
+            } else if (layerInfo.layerType == LayerType.MaxPooling2D) {
+                x1 = models[modelId].mp2[layerInfo.layerIndex].forward(x1);
+            } else if (layerInfo.layerType == LayerType.Conv2D) {
+                x1 = models[modelId].c2[layerInfo.layerIndex].forward(x1);
             }
 
             // the last layer
             if (i == models[modelId].layers.length - 1) {
                 Tensors.Tensor2D memory xt;
-                xt.from(x);
+                xt.from(x2);
                 SD59x18[][] memory result = new SD59x18[][](1);
                 result[0] = Tensor2DMethods.flat(xt.softmax().mat);
-                return result;
+                return (x1, result);
             }
         }
 
-        return x;
+        return (x1, x2);
     }
 
     function evaluate(
@@ -229,36 +247,39 @@ contract UnstoppableAI is
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         SD59x18[] memory pixels,
-        SD59x18[][] memory pixelMat
-    ) public view returns (string memory, SD59x18[][] memory) {
-        if (pixelMat.length == 0) {
-            Tensors.Tensor2D memory img_tensor;
-            img_tensor.load(pixels, 1, pixels.length);
-            pixelMat = img_tensor.mat;
+        uint256[3] memory dim,
+        SD59x18[][][][] memory x1,
+        SD59x18[][] memory x2 
+    ) public view returns (string memory, SD59x18[][][][] memory, SD59x18[][] memory) {
+        if (x1.length == 0) {
+            Tensors.Tensor4D memory img_tensor;
+            img_tensor.load(pixels, 1, dim[0], dim[1], dim[2]);
+            x1 = img_tensor.mat;
         }
 
         if (toLayerIndex >= models[modelId].layers.length) {
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }
 
-        SD59x18[][] memory result = forward(
+        (SD59x18[][][][] memory r1, SD59x18[][] memory r2) = forward(
             modelId,
-            pixelMat,
+            x1,
+            x2,
             fromLayerIndex,
             toLayerIndex
         );
 
         if (toLayerIndex == models[modelId].layers.length - 1) {
             uint256 maxInd = 0;
-            for (uint256 i = 1; i < result[0].length; i++) {
-                if (result[0][i].gt(result[0][maxInd])) {
+            for (uint256 i = 1; i < r2[0].length; i++) {
+                if (r2[0][i].gt(r2[0][maxInd])) {
                     maxInd = i;
                 }
             }
 
-            return (models[modelId].classesName[maxInd], result);
+            return (models[modelId].classesName[maxInd], r1, r2);
         } else {
-            return ("", result);
+            return ("", r1, r2);
         }
     }
 
@@ -267,31 +288,34 @@ contract UnstoppableAI is
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         SD59x18[] memory pixels,
-        SD59x18[][] memory pixelMat
+        uint256[3] memory dim,
+        SD59x18[][][][] memory x1,
+        SD59x18[][] memory x2
     ) external payable {
         if (msg.value < evalPrice) revert InsufficientEvalPrice();
 
-        if (pixelMat.length == 0) {
-            Tensors.Tensor2D memory img_tensor;
-            img_tensor.load(pixels, 1, pixels.length);
-            pixelMat = img_tensor.mat;
+        if (x1.length == 0) {
+            Tensors.Tensor4D memory img_tensor;
+            img_tensor.load(pixels, 1, dim[0], dim[1], dim[2]);
+            x1 = img_tensor.mat;
         }
 
         if (toLayerIndex >= models[modelId].layers.length) {
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }
 
-        SD59x18[][] memory result = forward(
+        (SD59x18[][][][] memory r1, SD59x18[][] memory r2) = forward(
             modelId,
-            pixelMat,
+            x1,
+            x2,
             fromLayerIndex,
             toLayerIndex
         );
 
         if (toLayerIndex == models[modelId].layers.length - 1) {
             uint256 maxInd = 0;
-            for (uint256 i = 1; i < result[0].length; i++) {
-                if (result[0][i].gt(result[0][maxInd])) {
+            for (uint256 i = 1; i < r2[0].length; i++) {
+                if (r2[0][i].gt(r2[0][maxInd])) {
                     maxInd = i;
                 }
             }
@@ -300,10 +324,10 @@ contract UnstoppableAI is
                 modelId,
                 maxInd,
                 models[modelId].classesName[maxInd],
-                result[0]
+                r2[0]
             );
         } else {
-            emit Forwarded(modelId, fromLayerIndex, toLayerIndex, result);
+            emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);
         }
 
         uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
@@ -315,8 +339,10 @@ contract UnstoppableAI is
     function setWeights(
         uint256 modelId,
         bytes[] memory layers_config,
-        SD59x18[][][] calldata weights,
-        SD59x18[][] calldata biases,
+        SD59x18[][][] calldata weightsDense,
+        SD59x18[][] calldata biasesDense,
+        SD59x18[][][][][] calldata weightsConv2D,
+        SD59x18[][] calldata biasesConv2D,
         int appendLayer
     ) external {
         if (msg.sender != ownerOf(modelId)) revert NotTokenOwner();
@@ -329,9 +355,9 @@ contract UnstoppableAI is
                 delete models[modelId].layers;
             }
 
-            loadPerceptron(modelId, layers_config, weights, biases);
+            loadPerceptron(modelId, layers_config, weightsDense, biasesDense, weightsConv2D, biasesConv2D);
         } else {
-            appendWeights(modelId, weights[0], uint256(appendLayer));
+            appendWeights(modelId, weightsDense[0], uint256(appendLayer));
         }
     }
 
@@ -348,11 +374,14 @@ contract UnstoppableAI is
     function makeLayer(
         uint256 modelId,
         SingleLayerConfig memory slc,
-        SD59x18[][][] memory weights,
-        SD59x18[][] memory biases
-    ) internal returns (uint256, uint256) {
+        SD59x18[][][] calldata weightsDense,
+        SD59x18[][] calldata biasesDense,
+        SD59x18[][][][][] calldata weightsConv2D,
+        SD59x18[][] calldata biasesConv2D
+    ) internal returns (uint256, uint256, uint256[3] memory, uint256) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
-        uint256 dim = 0;
+        uint256[3] memory dim1 = slc.prevDim1;
+        uint256 dim2 = slc.prevDim2;
 
         // add more layers
         if (layerType == uint8(LayerType.Dense)) {
@@ -364,16 +393,16 @@ contract UnstoppableAI is
                 slc.ind,
                 Tensors.ActivationFunc(actv),
                 d,
-                weights[slc.ptr],
-                biases[slc.ptr]
+                weightsDense[slc.ptrDense],
+                biasesDense[slc.ptrDense]
             );
             models[modelId].d.push(temp);
             uint256 index = models[modelId].d.length - 1;
             Info memory layerInfo = Info(LayerType.Dense, index);
             models[modelId].layers.push(layerInfo);
-            slc.ptr++;
+            slc.ptrDense++;
 
-            dim = d;
+            dim2 = d;
         } else if (layerType == uint8(LayerType.Flatten)) {
             // TODO: why?
             // uint256 len = models[modelId].d.length;
@@ -381,7 +410,7 @@ contract UnstoppableAI is
             Layers.FlattenLayer memory temp;
             models[modelId].f.push(temp);
             models[modelId].f[len].layerIndex = slc.ind;
-            dim = slc.prevDim;
+            dim2 = dim1[0] * dim1[1] * dim1[2];
 
             uint256 index = models[modelId].f.length - 1;
             Info memory layerInfo = Info(LayerType.Flatten, index);
@@ -397,7 +426,7 @@ contract UnstoppableAI is
             models[modelId].r[len].layerIndex = slc.ind;
             models[modelId].r[len].scale = scale;
             models[modelId].r[len].offset = offset;
-            dim = slc.prevDim;
+
             Info memory layerInfo = Info(LayerType.Rescale, len);
             models[modelId].layers.push(layerInfo);
         } else if (layerType == uint8(LayerType.Input)) {
@@ -406,31 +435,92 @@ contract UnstoppableAI is
                 (uint8, uint256[3])
             );
             models[modelId].inputDim = ipd;
-            dim = ipd[0] * ipd[1] * ipd[2];
+            dim1 = ipd;
 
             // TODO: have only one layer type input ?
             Info memory layerInfo = Info(LayerType.Input, 0);
             models[modelId].layers.push(layerInfo);
-        }
+        } else if (layerType == uint8(LayerType.MaxPooling2D)) {
+            (uint8 _t, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
+                slc.conf,
+                (uint8, uint256[2], uint256[2], uint8)
+            );
+            Layers.MaxPooling2DLayer memory temp = Layers.MaxPooling2DLayer(
+                slc.ind,
+                size,
+                stride,
+                Tensors.PaddingType(padding)
+            );
+            models[modelId].mp2.push(temp);
+            uint256 index = models[modelId].mp2.length - 1;
+            Info memory layerInfo = Info(LayerType.MaxPooling2D, index);
+            models[modelId].layers.push(layerInfo);
 
-        return (slc.ptr, dim);
+            (uint W, uint H, , ) = Tensors.getConvSize(
+                slc.prevDim1[0],
+                slc.prevDim1[1],
+                size[0],
+                size[1],
+                stride[0],
+                stride[1],
+                Tensors.PaddingType(padding)
+            );
+            dim1 = [W, H, dim1[2]];
+        } else if (layerType == uint8(LayerType.Conv2D)) {
+            (uint8 _t, uint8 actv, uint256 filters, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
+                slc.conf,
+                (uint8, uint8, uint256, uint256[2], uint256[2], uint8)
+            );
+            Layers.Conv2DLayer memory temp = Layers.Conv2DLayer(
+                slc.ind,
+                Tensors.ActivationFunc(actv),
+                filters,
+                stride,
+                Tensors.PaddingType(padding),
+                weightsConv2D[slc.ptrConv2D],
+                biasesConv2D[slc.ptrConv2D]
+            );
+            models[modelId].c2.push(temp);
+            uint256 index = models[modelId].c2.length - 1;
+            Info memory layerInfo = Info(LayerType.Conv2D, index);
+            models[modelId].layers.push(layerInfo);
+            slc.ptrConv2D++;
+
+            (uint W, uint H, , ) = Tensors.getConvSize(
+                slc.prevDim1[0],
+                slc.prevDim1[1],
+                size[0],
+                size[1],
+                stride[0],
+                stride[1],
+                Tensors.PaddingType(padding)
+            );
+            dim1 = [W, H, filters];
+        }
+        return (slc.ptrDense, slc.ptrConv2D, dim1, dim2);
     }
 
     function loadPerceptron(
         uint256 modelId,
         bytes[] memory layersConfig,
-        SD59x18[][][] calldata weights,
-        SD59x18[][] calldata biases
+        SD59x18[][][] calldata weightsDense,
+        SD59x18[][] calldata biasesDense,
+        SD59x18[][][][][] calldata weightsConv2D,
+        SD59x18[][] calldata biasesConv2D
     ) internal {
         models[modelId].numLayers = layersConfig.length;
-        uint256 ptr = 0;
-        uint256 dim = 0;
+        uint256 ptrDense = 0;
+        uint256 ptrConv2D = 0;
+        uint256[3] memory dim1;
+        uint256 dim2;
         for (uint256 i = 0; i < layersConfig.length; i++) {
-            (ptr, dim) = makeLayer(
+            (ptrDense, ptrConv2D, dim1, dim2) = makeLayer(
                 modelId,
-                SingleLayerConfig(layersConfig[i], i, dim, ptr),
-                weights,
-                biases
+                SingleLayerConfig(layersConfig[i], i, dim1, dim2, ptrDense, ptrConv2D),
+                weightsDense,
+                biasesDense,
+                weightsConv2D,
+                biasesConv2D
             );
         }
     }

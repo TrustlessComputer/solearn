@@ -9,7 +9,7 @@ const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   solidity: {
     compilers: [
-      { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 200 } } },
+      { version: "0.8.19", settings: { viaIR: true, optimizer: { enabled: true, runs: 2000 } } },
     ]
   },
   networks: {
