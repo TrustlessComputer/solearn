@@ -4,6 +4,8 @@ pragma solidity ^0.8.9;
 import "./Tensors.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
+import "hardhat/console.sol";
+
 library Layers {
 	using Tensor2DMethods for Tensors.Tensor2D;
 	using Tensor4DMethods for Tensors.Tensor4D;
@@ -63,7 +65,7 @@ library Layers {
 				y[i][j] = new SD59x18[][](p);
 				for (uint k = 0; k < p; k++) {
 					y[i][j][k] = new SD59x18[](q);
-					for (uint l = 0; l < p; l++) {
+					for (uint l = 0; l < q; l++) {
 						y[i][j][k][l] = x[i][j][k][l].mul(layer.scale) + layer.offset;
 					}
 				}

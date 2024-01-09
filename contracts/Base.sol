@@ -40,6 +40,18 @@ contract UnstoppableAI is
     uint8 protocolFeePercent;
     uint256 version;
 
+    event Debug1(
+        uint256 n,
+        uint256 m,
+        uint256 p,
+        uint256 q
+    );
+
+    event Debug2(
+        uint256 n,
+        uint256 m
+    );
+
     event Classified(
         uint256 indexed tokenId,
         uint256 classIndex,
@@ -214,6 +226,7 @@ contract UnstoppableAI is
         SD59x18[][] memory
     ) {
         for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
+            // console.log(i);
             Info memory layerInfo = models[modelId].layers[i];
 
             // add more layers
@@ -246,8 +259,8 @@ contract UnstoppableAI is
         uint256 modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[] memory pixels,
-        uint256[3] memory dim,
+        SD59x18[] calldata pixels,
+        uint256[3] calldata dim,
         SD59x18[][][][] memory x1,
         SD59x18[][] memory x2 
     ) public view returns (string memory, SD59x18[][][][] memory, SD59x18[][] memory) {
@@ -287,8 +300,8 @@ contract UnstoppableAI is
         uint256 modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[] memory pixels,
-        uint256[3] memory dim,
+        SD59x18[] calldata pixels,
+        uint256[3] calldata dim,
         SD59x18[][][][] memory x1,
         SD59x18[][] memory x2
     ) external payable {
@@ -311,6 +324,13 @@ contract UnstoppableAI is
             fromLayerIndex,
             toLayerIndex
         );
+
+        if (r1.length > 0) {
+            emit Debug1(r1.length, r1[0].length, r1[0][0].length, r1[0][0][0].length);
+        }
+        if (r2.length > 0) {
+            emit Debug2(r2.length, r2[0].length);
+        }
 
         if (toLayerIndex == models[modelId].layers.length - 1) {
             uint256 maxInd = 0;
@@ -338,7 +358,7 @@ contract UnstoppableAI is
 
     function setWeights(
         uint256 modelId,
-        bytes[] memory layers_config,
+        bytes[] calldata layers_config,
         SD59x18[][][] calldata weightsDense,
         SD59x18[][] calldata biasesDense,
         SD59x18[][][][][] calldata weightsConv2D,
@@ -502,7 +522,7 @@ contract UnstoppableAI is
 
     function loadPerceptron(
         uint256 modelId,
-        bytes[] memory layersConfig,
+        bytes[] calldata layersConfig,
         SD59x18[][][] calldata weightsDense,
         SD59x18[][] calldata biasesDense,
         SD59x18[][][][][] calldata weightsConv2D,

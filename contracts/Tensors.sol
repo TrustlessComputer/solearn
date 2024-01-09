@@ -93,11 +93,12 @@ library Tensors {
 		if (padding == PaddingType.Same) {
 			W = (w + s_w - 1) / s_w;
 			H = (h + s_h - 1) / s_h;
-			uint pad_w = (w % s_w == 0) ? Math.max(f_w - s_w, 0) : Math.max(f_w - w % s_w, 0);
-			uint pad_h = (h % s_h == 0) ? Math.max(f_h - s_h, 0) : Math.max(f_h - h % s_h, 0);
+			uint pad_w = (w % s_w == 0) ? (f_w >= s_w ? f_w - s_w : 0) : (f_w >= w % s_w ? f_w - w % s_w : 0);
+			uint pad_h = (h % s_h == 0) ? (f_h >= s_h ? f_h - s_h : 0) : (f_h >= w % s_h ? f_h - w % s_h : 0);
 			L = pad_w / 2;
 			T = pad_h / 2;
 		} else if (padding == PaddingType.Valid) {
+			// TODO: What if w < f_w
 			W = (w - f_w) / s_w + 1;
 			H = (h - f_h) / s_h + 1;
 		} else {
@@ -270,7 +271,7 @@ library Tensor4DMethods {
 			ts.mat[i] = new SD59x18[][][](m);
 			for (uint j = 0; j < m; j++) {
 				ts.mat[i][j] = new SD59x18[][](p);
-				for (uint k = 0; j < p; k++) {
+				for (uint k = 0; k < p; k++) {
 					ts.mat[i][j][k] = new SD59x18[](q);
 					for (uint l = 0; l < q; l++) {
 						ts.mat[i][j][k][l] = ptr < data.length ? data[ptr] : sd(0);
@@ -367,13 +368,16 @@ library Tensor4DMethods {
 				for(uint y = 0; y < H; ++y) {
 					for(uint p = 0; p < d; ++p) {            
 						SD59x18 cell = sd(-1e9 * 1e18);
+						// bool maxed = false;
 						for(uint dx = 0; dx < f_w; ++dx) {
 							for(uint dy = 0; dy < f_h; ++dy) {
-								uint X = x*s_w + dx - L;
-								uint Y = y*s_h + dy - T;
-								bool isIn = (X >= 0 && X < w && Y >= 0 && Y < h);
-								SD59x18 val = isIn ? a.mat[i][X][Y][p] : sd(0);
+								int X = int(x*s_w + dx) - int(L);
+								int Y = int(y*s_h + dy) - int(T);
+								bool isIn = (X >= 0 && X < int(w) && Y >= 0 && Y < int(h));
+								SD59x18 val = isIn ? a.mat[i][uint(X)][uint(Y)][p] : sd(0);
 								cell = Tensors.max(cell, val);
+								// cell = maxed ? Tensors.max(cell, val) : val;
+								// maxed = true;
 							}
 						}
 						res.mat[i][x][y][p] = cell;
@@ -409,11 +413,11 @@ library Tensor4DMethods {
 						SD59x18 cell = sd(0);
 						for(uint dx = 0; dx < f_w; ++dx) {
 							for(uint dy = 0; dy < f_h; ++dy) {
-								uint X = x*s_w + dx - L;
-								uint Y = y*s_h + dy - T;
-								bool isIn = (X >= 0 && X < w && Y >= 0 && Y < h);
+								int X = int(x*s_w + dx) - int(L);
+								int Y = int(y*s_h + dy) - int(T);
+								bool isIn = (X >= 0 && X < int(w) && Y >= 0 && Y < int(h));
 								for(uint q = 0; q < d; ++q) {
-									SD59x18 val = isIn ? a.mat[i][X][Y][q] : sd(0);
+									SD59x18 val = isIn ? a.mat[i][uint(X)][uint(Y)][q] : sd(0);
 									cell = cell + val * b.mat[dx][dy][q][p];
 								}
 							}

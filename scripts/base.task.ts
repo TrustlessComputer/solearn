@@ -43,15 +43,15 @@ function getActivationType(name: string): number {
     // 3 - Sigmoid,
     // 4 - Tanh
     let activationFn: number = -1;
-    if (name === 'LeakyReLU') {
+    if (name === 'leakyrelu') {
         activationFn = 0;
-    } else if (name === 'Linear') {
+    } else if (name === 'linear') {
         activationFn = 1;
-    } else if (name === 'ReLU') {
+    } else if (name === 'relu') {
         activationFn = 2;
-    } else if (name === 'Sigmoid') {
+    } else if (name === 'sigmoid') {
         activationFn = 3;
-    } else if (name === 'Tanh') {
+    } else if (name === 'tanh') {
         activationFn = 4;
     }
     return activationFn;
@@ -304,6 +304,9 @@ task("eval-img", "evaluate perceptron for each layer")
             const baseContract = await deployments.get(ContractName);
             contractAddress = baseContract.address;
         }
+        
+        // console.log(contractAddress);
+
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
 
@@ -317,10 +320,8 @@ task("eval-img", "evaluate perceptron for each layer")
         const pixels = imgArray.map((b: any) =>
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
 
-
-
-        let numLayers = 7;
-        let batchLayerNum = 3;
+        let numLayers = 9;
+        let batchLayerNum = 1;
         let inputs = pixels;
         let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(w), ethers.BigNumber.from(h), ethers.BigNumber.from(3)];
         let x1: any[] = [];
@@ -364,7 +365,18 @@ task("eval-img", "evaluate perceptron for each layer")
                     x1 = outputs1;
                     x2 = outputs2;
                 });
-
+                const evPromise3 = c.once('Debug1', (n, m, p, q) => {
+                    console.log('"Debug1" event emitted', { n, m, p, q });
+                });
+                const evPromise4 = c.once('Debug2', (n, m) => {
+                    console.log('"Debug2" event emitted', { n, m });
+                });
+                if (x1.length > 0) {
+                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}, ${x1[0][0][0].length})`);
+                }
+                if (x2.length > 0) {
+                    console.log(`x2: (${x2.length}, ${x2[0].length})`);
+                }
                 const tx = await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2, { value: ethers.utils.parseEther("0.0001") });
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
                 await tx.wait(5);
