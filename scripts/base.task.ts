@@ -320,7 +320,8 @@ task("eval-img", "evaluate perceptron for each layer")
         const pixels = imgArray.map((b: any) =>
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
 
-        let numLayers = 9;
+        const perceptron = await c.getInfo(tokenId);
+        let numLayers = perceptron[5].length;
         let batchLayerNum = 1;
         let inputs = pixels;
         let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(w), ethers.BigNumber.from(h), ethers.BigNumber.from(3)];
@@ -352,34 +353,50 @@ task("eval-img", "evaluate perceptron for each layer")
             }
 
         } else {
-            const evPromise = c.once('Classified', (tokenId, classIndex, className, outputs) => {
-                console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
-                classsNameRes = className;
-            });
+            // const evPromise = c.once('Classified', (tokenId, classIndex, className, outputs) => {
+            //     console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
+            //     classsNameRes = className;
+            // });
 
             for (let i = 0; ; i = i + batchLayerNum) {
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
-                const evPromise2 = c.once('Forwarded', (tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2) => {
-                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
-                    x1 = outputs1;
-                    x2 = outputs2;
-                });
-                const evPromise3 = c.once('Debug1', (n, m, p, q) => {
-                    console.log('"Debug1" event emitted', { n, m, p, q });
-                });
-                const evPromise4 = c.once('Debug2', (n, m) => {
-                    console.log('"Debug2" event emitted', { n, m });
-                });
+                // const evPromise2 = c.once('Forwarded', (tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2) => {
+                    // console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
+                    // x1 = outputs1;
+                    // x2 = outputs2;
+                // });
+
                 if (x1.length > 0) {
                     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}, ${x1[0][0][0].length})`);
                 }
                 if (x2.length > 0) {
                     console.log(`x2: (${x2.length}, ${x2[0].length})`);
                 }
+
                 const tx = await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2, { value: ethers.utils.parseEther("0.0001") });
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
-                await tx.wait(5);
+                const receipt = await tx.wait(5);
+
+                const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
+                const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
+                if (forwardedEvent) {
+                    const tokenId = forwardedEvent.args?.tokenId;
+                    const fromLayerIndex = forwardedEvent.args?.fromLayerIndex;
+                    const toLayerIndex = forwardedEvent.args?.toLayerIndex;
+                    const outputs1 = forwardedEvent.args?.outputs1;
+                    const outputs2 = forwardedEvent.args?.outputs2;
+                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
+                    x1 = outputs1;
+                    x2 = outputs2;
+                } else if (classifiedEvent) {
+                    const tokenId = classifiedEvent.args?.tokenId;
+                    const classIndex = classifiedEvent.args?.classIndex;
+                    const className = classifiedEvent.args?.className;
+                    const outputs = classifiedEvent.args?.outputs;
+                    console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
+                    classsNameRes = className;
+                }
 
                 if (toLayerIndex >= numLayers - 1) {
                     break;

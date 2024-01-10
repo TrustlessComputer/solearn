@@ -40,18 +40,6 @@ contract UnstoppableAI is
     uint8 protocolFeePercent;
     uint256 version;
 
-    event Debug1(
-        uint256 n,
-        uint256 m,
-        uint256 p,
-        uint256 q
-    );
-
-    event Debug2(
-        uint256 n,
-        uint256 m
-    );
-
     event Classified(
         uint256 indexed tokenId,
         uint256 classIndex,
@@ -324,13 +312,6 @@ contract UnstoppableAI is
             fromLayerIndex,
             toLayerIndex
         );
-
-        if (r1.length > 0) {
-            emit Debug1(r1.length, r1[0].length, r1[0][0].length, r1[0][0][0].length);
-        }
-        if (r2.length > 0) {
-            emit Debug2(r2.length, r2[0].length);
-        }
 
         if (toLayerIndex == models[modelId].layers.length - 1) {
             uint256 maxInd = 0;
