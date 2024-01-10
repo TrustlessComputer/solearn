@@ -250,7 +250,7 @@ contract UnstoppableAI is
         SD59x18[] calldata pixels,
         uint256[3] calldata dim,
         SD59x18[][][][] memory x1,
-        SD59x18[][] memory x2 
+        SD59x18[][] calldata x2 
     ) public view returns (string memory, SD59x18[][][][] memory, SD59x18[][] memory) {
         if (x1.length == 0) {
             Tensors.Tensor4D memory img_tensor;
@@ -291,7 +291,7 @@ contract UnstoppableAI is
         SD59x18[] calldata pixels,
         uint256[3] calldata dim,
         SD59x18[][][][] memory x1,
-        SD59x18[][] memory x2
+        SD59x18[][] calldata x2
     ) external payable {
         if (msg.value < evalPrice) revert InsufficientEvalPrice();
 
