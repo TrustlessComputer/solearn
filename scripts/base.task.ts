@@ -361,9 +361,9 @@ task("eval-img", "evaluate perceptron for each layer")
         let x2: any[] = [];
         let classsNameRes = "";
 
-        await measureTime(async () => {
-            return await c.test(ethers.BigNumber.from(13243), ethers.BigNumber.from(1e6));
-        });
+        // await measureTime(async () => {
+        //     return await c.test(ethers.BigNumber.from(13243), ethers.BigNumber.from(1e6));
+        // });
 
         // console.log("classsNameRes: ", classsNameRes);
 

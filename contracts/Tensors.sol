@@ -354,6 +354,7 @@ library Tensor4DMethods {
 		uint[2] memory stride,
 		Tensors.PaddingType padding
 	) internal pure returns (Tensors.Tensor4D memory) {
+		unchecked {
 		uint n = a.n; uint w = a.m; uint h = a.p; uint d = a.q;
 		(uint f_w, uint f_h) = (size[0], size[1]);
 		(uint s_w, uint s_h) = (stride[0], stride[1]);
@@ -371,10 +372,10 @@ library Tensor4DMethods {
 						// bool maxed = false;
 						for(uint dx = 0; dx < f_w; ++dx) {
 							for(uint dy = 0; dy < f_h; ++dy) {
-								int X = int(x*s_w + dx) - int(L);
-								int Y = int(y*s_h + dy) - int(T);
-								bool isIn = (X >= 0 && X < int(w) && Y >= 0 && Y < int(h));
-								SD59x18 val = isIn ? a.mat[i][uint(X)][uint(Y)][p] : sd(0);
+								uint X = x*s_w + dx - L;
+								uint Y = y*s_h + dy - T;
+								bool isIn = X >= 0 && X < w && Y >= 0 && Y < h;
+								SD59x18 val = isIn ? a.mat[i][X][Y][p] : sd(0);
 								cell = Tensors.max(cell, val);
 								// cell = maxed ? Tensors.max(cell, val) : val;
 								// maxed = true;
@@ -387,6 +388,7 @@ library Tensor4DMethods {
 		}
 
 		return res;
+		}
 	}
 
 	// Input: (N, W, H, D)
@@ -397,6 +399,7 @@ library Tensor4DMethods {
 		uint[2] memory stride,
 		Tensors.PaddingType padding
 	) internal pure returns (Tensors.Tensor4D memory) {
+		unchecked {
 		uint n = a.n; uint w = a.m; uint h = a.p; uint d = a.q;
 		uint f_w = b.n; uint f_h = b.m; uint k = b.q;
 		(uint s_w, uint s_h) = (stride[0], stride[1]);
@@ -413,12 +416,13 @@ library Tensor4DMethods {
 						SD59x18 cell = sd(0);
 						for(uint dx = 0; dx < f_w; ++dx) {
 							for(uint dy = 0; dy < f_h; ++dy) {
-								int X = int(x*s_w + dx) - int(L);
-								int Y = int(y*s_h + dy) - int(T);
-								bool isIn = (X >= 0 && X < int(w) && Y >= 0 && Y < int(h));
-								for(uint q = 0; q < d; ++q) {
-									SD59x18 val = isIn ? a.mat[i][uint(X)][uint(Y)][q] : sd(0);
-									cell = cell + val * b.mat[dx][dy][q][p];
+								uint X = x*s_w + dx - L;
+								uint Y = y*s_h + dy - T;
+								bool isIn = X >= 0 && X < w && Y >= 0 && Y < h;
+								if (isIn) {
+									for(uint q = 0; q < d; ++q) {
+										cell = cell + a.mat[i][X][Y][q] * b.mat[dx][dy][q][p];
+									}
 								}
 							}
 						}
@@ -428,7 +432,8 @@ library Tensor4DMethods {
 			}
 		}
 
-		return res;
+		return res;			
+		}
 	}
 
     function softmax(Tensors.Tensor4D memory a) internal pure returns (Tensors.Tensor4D memory) {

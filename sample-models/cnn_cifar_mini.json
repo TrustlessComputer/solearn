@@ -1,0 +1,96 @@
+{
+  "model_name": "cifar10",
+  "layers_config": {
+    "config": {
+      "layers": [
+        {
+          "class_name": "InputLayer",
+          "config": { "batch_input_shape": [null, 32, 32, 3] }
+        },
+        {
+          "class_name": "Rescaling",
+          "config": { "scale": 0.00784313725490196, "offset": -1 }
+        },
+        {
+          "class_name": "Conv2D",
+          "config": {
+            "filters": 1,
+            "kernel_size": [3, 3],
+            "strides": [1, 1],
+            "activation": "relu",
+            "padding": "same"
+          }
+        },
+        {
+          "class_name": "MaxPooling2D",
+          "config": {
+            "pool_size": [2, 2],
+            "strides": [2, 2],
+            "padding": "valid"
+          }
+        },
+        {
+          "class_name": "Conv2D",
+          "config": {
+            "filters": 1,
+            "kernel_size": [3, 3],
+            "strides": [1, 1],
+            "activation": "relu",
+            "padding": "same"
+          }
+        },
+        {
+          "class_name": "MaxPooling2D",
+          "config": {
+            "pool_size": [2, 2],
+            "strides": [2, 2],
+            "padding": "valid"
+          }
+        },
+        {
+          "class_name": "Conv2D",
+          "config": {
+            "filters": 1,
+            "kernel_size": [3, 3],
+            "strides": [1, 1],
+            "activation": "relu",
+            "padding": "same"
+          }
+        },
+        {
+          "class_name": "MaxPooling2D",
+          "config": {
+            "pool_size": [2, 2],
+            "strides": [2, 2],
+            "padding": "valid"
+          }
+        },
+        { "class_name": "Flatten" },
+        {
+          "class_name": "Dense",
+          "config": { "units": 10, "activation": "linear" }
+        }
+      ]
+    }
+  },
+  "weight_b64": "XZGNPIm5CT0gcBg//c2dPdtOkr6Mrek+L7eGPTgHnL1rIwg/STMhvcZW5LxJdcu+CcSBPjmCs76NWbi9Y1nYu0ZJ+r0U9729q+M+viXKmjsEX1K7xY6NvqBauL02rmE+DU+yPh4mkju7piW/lmFOuz3g8T6X6rK+AOXSvT4K8rztXks/scbtPk/F4j5LxA6/eh5QvdIfsjrHf+Q+CDelPtq93T63f64+FTfmPlF6oT6E9t8+a4rFPlc/oT5t152+LGfovemuPr3AWjO8NVjHvDxrvj7mln4+H2fAPgtrQj5FwoW+gIqivrCQHr9sYcI9t86nvSHMJT8wyLO9saSoPsboMj0cTJ0+zcaivv8hID6DuBK/oqyIPsHbHD/swkk+fZCLvCmFkD7547c9a4mGPnucJ7++ju0+PjYqvsk+hr3J2wC/fCKQvS/JST7G5g492nV0PuSC3Dwgdh6+6dkHv0hGjT7coRc9PZh/v1oEKr4KZMy+Bolav2L5Ir7FYOu8B1W2PXV2/T43Iuc+mM1ZviNjcD4Q6Nq+NI2yvjSxfD5glXS+/itGvfVwDb4deKG+Hh9EOyXaSb6LiyM+SVopvp0CHb2odaE7tJovv+FUCr6x5Zu9GoHpvv2aSD5Nxju9+Uw5v6+Qg76vAja/0sb7vqCoQr6w1lI+RYf8vaeMAz+1joW9fHfBPosfgr4AL9O+Ls0+vieLkb7E51++Mni+vpQZwT4uXtg+L0InvRqV3j4K84S+w/zsvcEFCb68PBG/2dn8vUVQ9bxO6Dc+rpyNvAYwfj6VFiI9EkR5PhqMF7+o+80+HWW7vEq6PrzHEaC95YJBPgjz3TxBYDg+G5ltP7Lt1L720wG+cWiCvmZ1I7/wNAC+9hxXvl9oAD9L1u8+A13fPt03qr3TGRo+uRFePi50Jz4rYTg+09uIvazgoj0KHo8+eRc8Pn3bS74TTps+Rc5ivrW2iD7BJCi/HGeYPfbieT5pHvW+yaWAPvHqqzwpPt+9vYmXOxjUHz4msVA+JTq/vkIh0j6ULcs+bwNkvmL5X75jx48+BwtkPim8k74h7iE+D5E1PsYZyL3q8KQ9qKLIvhW4rDshD3A+98muuqKPt74E1RzATZi0P8CVKT+tMds/CcYYP/ofaj+kmgk+uZ0bv2AI7L8=",
+  "training_traits": {
+    "structure_gen": "Custom",
+    "n_layers": 3,
+    "max_nodes": 20,
+    "activation_func": "ReLU",
+    "epoch_num": 10
+  },
+  "classes_name": [
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck"
+  ]
+}

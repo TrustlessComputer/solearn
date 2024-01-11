@@ -525,4 +525,15 @@ contract UnstoppableAI is
             );
         }
     }
+
+    function test(
+        uint x,
+        uint n
+    ) external view returns (uint) {
+        uint res = x;
+        for(uint i = 0; i < n; ++i) {
+            res = (x * 231234 + 125678) % 312412;
+        }
+        return res;
+    }
 }
