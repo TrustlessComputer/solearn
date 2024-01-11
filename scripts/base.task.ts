@@ -77,7 +77,7 @@ function getConvSize(
     padding: string,
 ) {
     let W = 0, H = 0, L = 0, R = 0, T = 0, B = 0;
-    
+
     if (padding == "same") {
         W = (w + s_w - 1) / s_w;
         H = (h + s_h - 1) / s_h;
@@ -89,8 +89,8 @@ function getConvSize(
         W = (w - f_w) / s_w + 1;
         H = (h - f_h) / s_h + 1;
     }
-  
-    return {W, H, L, R, T, B};
+
+    return { W, H, L, R, T, B };
 }
 
 task("mint-model-id", "mint model id (and upload weights)")
@@ -168,24 +168,24 @@ task("mint-model-id", "mint model id (and upload weights)")
                 input_units = [w.toNumber(), h.toNumber(), c.toNumber()];
             } else if (layer.class_name === 'MaxPooling2D') {
                 const f_w = layer.config.pool_size[0];
-                const f_h = layer.config.pool_size[1]; 
+                const f_h = layer.config.pool_size[1];
                 const s_w = layer.config.strides[0];
                 const s_h = layer.config.strides[1];
                 const padding = layer.config.padding;
 
                 result = abic.encode(["uint8", "uint[2]", "uint[2]", "uint8"], [
-                    4, 
-                    [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)], 
+                    4,
+                    [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)],
                     [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
                     getPaddingType(padding),
                 ]);
 
-                const {W, H} = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
+                const { W, H } = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
                 input_units = [W, H, input_units[2]];
             } else if (layer.class_name === 'Conv2D') {
                 const filters = layer.config.filters;
                 const f_w = layer.config.kernel_size[0];
-                const f_h = layer.config.kernel_size[1]; 
+                const f_h = layer.config.kernel_size[1];
                 const s_w = layer.config.strides[0];
                 const s_h = layer.config.strides[1];
                 const padding = layer.config.padding;
@@ -199,12 +199,12 @@ task("mint-model-id", "mint model id (and upload weights)")
                 let wsize = 0;
                 for (let i = 0; i < f_w; i++) {
                     w.push([]);
-                    for(let j = 0; j < f_h; j++) {
+                    for (let j = 0; j < f_h; j++) {
                         w[i].push([]);
-                        for(let k = 0; k < d; k++) {
+                        for (let k = 0; k < d; k++) {
                             let tmp = weightsFlat.splice(0, filters)
                             w[i][j].push(tmp);
-                            wsize += tmp.length;            
+                            wsize += tmp.length;
                         }
                     }
                 }
@@ -212,7 +212,7 @@ task("mint-model-id", "mint model id (and upload weights)")
                 weightConv2DMatsSize += wsize;
                 weightConv2DMats.push(w);
                 biasesConv2D.push(weightsFlat.splice(0, filters));
-                
+
                 result = abic.encode(["uint8", "uint8", "uint", "uint[2]", "uint[2]", "uint8"], [
                     5,
                     activationFn,
@@ -222,9 +222,9 @@ task("mint-model-id", "mint model id (and upload weights)")
                     getPaddingType(padding),
                 ]);
 
-                const {W, H} = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
+                const { W, H } = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
                 input_units = [W, H, filters];
-            } 
+            }
             newLayerConfig.push(result);
         }
         params.layers_config = newLayerConfig.filter((x: any) => x !== null);
@@ -304,7 +304,7 @@ task("eval-img", "evaluate perceptron for each layer")
             const baseContract = await deployments.get(ContractName);
             contractAddress = baseContract.address;
         }
-        
+
         // console.log(contractAddress);
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
@@ -330,6 +330,8 @@ task("eval-img", "evaluate perceptron for each layer")
         let classsNameRes = "";
 
         // console.log("classsNameRes: ", classsNameRes);
+
+        let startTime = new Date().getTime();
 
         if (taskArgs.offline) {
             for (let i = 0; ; i = i + batchLayerNum) {
@@ -362,9 +364,9 @@ task("eval-img", "evaluate perceptron for each layer")
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
                 // const evPromise2 = c.once('Forwarded', (tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2) => {
-                    // console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
-                    // x1 = outputs1;
-                    // x2 = outputs2;
+                // console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
+                // x1 = outputs1;
+                // x2 = outputs2;
                 // });
 
                 if (x1.length > 0) {
@@ -376,7 +378,7 @@ task("eval-img", "evaluate perceptron for each layer")
 
                 const tx = await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2, { value: ethers.utils.parseEther("0.0001") });
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
-                const receipt = await tx.wait(5);
+                const receipt = await tx.wait(1);
 
                 const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
                 const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
@@ -403,6 +405,9 @@ task("eval-img", "evaluate perceptron for each layer")
                 }
             }
         }
+
+        let endTime = new Date().getTime();
+        console.log("Time: ", (endTime - startTime) / (60 * 1000));
     });
 
 
