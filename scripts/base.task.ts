@@ -32,7 +32,31 @@ function getLayerType(name: string): number {
     } else if (name === 'Conv2D') {
         layerType = 5;
     }
-    return layerType
+    return layerType;
+}
+
+function getLayerName(type: number): string {
+    // 0 - Dense
+    // 1 - Flatten
+    // 2 - Rescaling
+    // 3 - InputLayer
+    // 4 - MaxPooling2D
+    // 5 - Conv2D
+    let layerName: string = "N/A";
+    if (type === 0) {
+        layerName = 'Dense';
+    } else if (type === 1) {
+        layerName = 'Flatten';
+    } else if (type === 2) {
+        layerName = 'Rescaling';
+    } else if (type === 3) {
+        layerName = 'InputLayer';
+    } else if (type === 4) {
+        layerName = 'MaxPooling2D';
+    } else if (type === 5) {
+        layerName = 'Conv2D';
+    }
+    return layerName;
 }
 
 function getActivationType(name: string): number {
@@ -65,6 +89,14 @@ function getPaddingType(name: string): number {
         paddingType = 1;
     }
     return paddingType;
+}
+
+async function measureTime(f: any): Promise<any> {
+    const start = Date.now();
+    const ret = await f();
+    const end = Date.now();
+    console.log(`Execution time: ${(end - start) / 1000.0} s`);
+    return ret
 }
 
 function getConvSize(
@@ -329,6 +361,10 @@ task("eval-img", "evaluate perceptron for each layer")
         let x2: any[] = [];
         let classsNameRes = "";
 
+        await measureTime(async () => {
+            return await c.test(ethers.BigNumber.from(13243), ethers.BigNumber.from(1e6));
+        });
+
         // console.log("classsNameRes: ", classsNameRes);
 
         if (taskArgs.offline) {
@@ -336,7 +372,10 @@ task("eval-img", "evaluate perceptron for each layer")
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
 
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2);
+                console.log(`Layer ${i}: ${getLayerName(perceptron[5][i][0])}`)
+                const [className, r1, r2] = await measureTime(async () => {
+                    return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2);
+                });
                 x1 = r1;
                 x2 = r2;
                 classsNameRes = className;
@@ -350,8 +389,7 @@ task("eval-img", "evaluate perceptron for each layer")
                 if (toLayerIndex >= numLayers - 1) {
                     break;
                 }
-            }
-
+            }    
         } else {
             // const evPromise = c.once('Classified', (tokenId, classIndex, className, outputs) => {
             //     console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
@@ -367,6 +405,7 @@ task("eval-img", "evaluate perceptron for each layer")
                     // x2 = outputs2;
                 // });
 
+                console.log(`Layer ${i}: ${getLayerName(perceptron[5][i][0])}`)
                 if (x1.length > 0) {
                     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}, ${x1[0][0][0].length})`);
                 }
@@ -374,7 +413,10 @@ task("eval-img", "evaluate perceptron for each layer")
                     console.log(`x2: (${x2.length}, ${x2[0].length})`);
                 }
 
-                const tx = await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2, { value: ethers.utils.parseEther("0.0001") });
+                const tx: ethers.ContractTransaction = await measureTime(async () => {
+                    return await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2, { value: ethers.utils.parseEther("0.0001") });
+                });
+
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
                 const receipt = await tx.wait(5);
 
