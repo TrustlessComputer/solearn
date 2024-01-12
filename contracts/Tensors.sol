@@ -8,6 +8,11 @@ error InvalidActivationFunction();
 error InvalidPaddingType();
 
 library Tensors {
+	struct Tensor1D {
+		SD59x18[] mat;
+		uint n;
+	}
+
 	struct Tensor2D {
 		SD59x18[][] mat;
 		uint n;
@@ -107,7 +112,37 @@ library Tensors {
 	}
 }
 
+library Tensor1DMethods {
+	function emptyTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
+		ts.n = n;
+		ts.mat = new SD59x18[](n);
+	}
+
+	function size(Tensors.Tensor1D memory ts) internal pure returns (uint) {
+		return ts.n;
+	}
+
+	function loadPartial(Tensors.Tensor1D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
+		uint n = ts.n; 
+		while (idx < data.length && ptr < n) {
+			ts.mat[ptr] = data[idx];
+			ptr++;
+			idx++;
+		}
+		return (ptr, idx);
+	}
+}
+
 library Tensor2DMethods {
+	function emptyTensor(uint n, uint m) internal pure returns (Tensors.Tensor2D memory ts) {
+		ts.n = n;
+		ts.m = m;
+		ts.mat = new SD59x18[][](n);
+		for (uint i = 0; i < n; i++) {
+			ts.mat[i] = new SD59x18[](m);
+		}
+	}
+	
 	function from(Tensors.Tensor2D memory ts, SD59x18[][] memory mat) internal pure returns (Tensors.Tensor2D memory) {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
@@ -140,6 +175,21 @@ library Tensor2DMethods {
 				ptr += 1;
 			}
 		}
+	}
+
+	function size(Tensors.Tensor2D memory ts) internal pure returns (uint) {
+		return ts.n * ts.m;
+	}
+
+	function loadPartial(Tensors.Tensor2D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
+		uint n = ts.n; 
+		uint m = ts.m;
+		while (idx < data.length && ptr < n * m) {
+			ts.mat[ptr / m][ptr % m] = data[idx];
+			ptr++;
+			idx++;
+		}
+		return (ptr, idx);
 	}
 
 	function cloneTensor(Tensors.Tensor2D memory ts) internal pure returns (Tensors.Tensor2D memory) {
@@ -230,6 +280,23 @@ library Tensor2DMethods {
 }
 
 library Tensor4DMethods {
+	function emptyTensor(uint n, uint m, uint p, uint q) internal pure returns (Tensors.Tensor4D memory ts) {
+		ts.n = n;
+		ts.m = m;
+		ts.p = p;
+		ts.q = q;
+		ts.mat = new SD59x18[][][][](n);
+		for (uint i = 0; i < n; i++) {
+			ts.mat[i] = new SD59x18[][][](m);
+			for(uint j = 0; j < m; j++) {
+				ts.mat[i][j] = new SD59x18[][](p);
+				for(uint k = 0; k < p; k++) {
+					ts.mat[i][j][k] = new SD59x18[](q);
+				}
+			}
+		}
+	}
+	
 	function from(Tensors.Tensor4D memory ts, SD59x18[][][][] memory mat) internal pure returns (Tensors.Tensor4D memory) {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
@@ -280,6 +347,23 @@ library Tensor4DMethods {
 				}
 			}
 		}
+	}
+
+	function size(Tensors.Tensor4D memory ts) internal pure returns (uint) {
+		return ts.n * ts.m * ts.p * ts.q;
+	}
+
+	function loadPartial(Tensors.Tensor4D memory ts, SD59x18[] memory data, uint ptr, uint idx) internal pure returns (uint, uint) {
+		uint n = ts.n; 
+		uint m = ts.m;
+		uint p = ts.p;
+		uint q = ts.q;
+		while (idx < data.length && ptr < n * m * p * q) {
+			ts.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p][ptr % q] = data[idx];
+			ptr++;
+			idx++;
+		}
+		return (ptr, idx);
 	}
 
 	function flatKeep1stDim(Tensors.Tensor4D memory ts) internal pure returns (Tensors.Tensor2D memory res) {

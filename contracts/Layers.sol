@@ -6,7 +6,10 @@ import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
 import "hardhat/console.sol";
 
+error TooMuchData();
+
 library Layers {
+	using Tensor1DMethods for Tensors.Tensor1D;
 	using Tensor2DMethods for Tensors.Tensor2D;
 	using Tensor4DMethods for Tensors.Tensor4D;
 
@@ -24,8 +27,10 @@ library Layers {
 		uint layerIndex;
 		Tensors.ActivationFunc activation;
 		uint out_dim;
-		SD59x18[][] w;
-		SD59x18[] b;
+		Tensors.Tensor2D w;
+		Tensors.Tensor1D b;
+		uint ptrLayer;
+		uint ptr;
 	}
 
 	struct MaxPooling2DLayer {
@@ -41,8 +46,10 @@ library Layers {
 		uint filters;
 		uint[2] stride;
 		Tensors.PaddingType padding;
-		SD59x18[][][][] w;
-		SD59x18[] b;
+		Tensors.Tensor4D w;
+		Tensors.Tensor1D b;
+		uint ptrLayer;
+		uint ptr;
 	}
 
 	function forward(FlattenLayer memory layer, SD59x18[][][][] memory mat) internal pure returns (SD59x18[][] memory) {
@@ -78,9 +85,9 @@ library Layers {
 		Tensors.Tensor2D memory xt;
 		xt.from(x);
 		Tensors.Tensor2D memory wt;
-		wt.from(layer.w);
+		wt = layer.w;
 		Tensors.Tensor2D memory bt;
-		bt.load(layer.b, 1, layer.b.length);
+		bt.load(layer.b.mat, 1, layer.b.n);
 		Tensors.Tensor2D memory y = xt.matMul(wt).add(bt);
 		Tensors.Tensor2D memory zt = y.activation(layer.activation);
 		return zt.mat;
@@ -97,11 +104,53 @@ library Layers {
 		Tensors.Tensor4D memory xt;
 		xt.from(x);
 		Tensors.Tensor4D memory wt;
-		wt.from(layer.w);
+		wt = layer.w;
 		Tensors.Tensor4D memory bt;
-		bt.load(layer.b, 1, 1, 1, layer.b.length);
+		bt.load(layer.b.mat, 1, 1, 1, layer.b.n);
 		Tensors.Tensor4D memory yt = xt.conv2D(wt, layer.stride, layer.padding).add(bt);
 		Tensors.Tensor4D memory zt = yt.activation(layer.activation);
 		return zt.mat;
+	}
+
+	function appendWeights(DenseLayer storage layer, SD59x18[] memory x) internal {
+		uint ptrLayer = layer.ptrLayer;
+		uint ptr = layer.ptr;
+		uint idx = 0;
+		if (ptrLayer == 0) {
+			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
+			if (ptr == layer.w.size()) {
+				++ptrLayer;
+				ptr = 0;
+			}
+		}
+		if (ptrLayer == 1) {
+			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
+		}
+		if (idx < x.length) {
+			revert TooMuchData();
+		}
+		layer.ptrLayer = ptrLayer;
+		layer.ptr = ptr;
+	}
+
+	function appendWeights(Conv2DLayer storage layer, SD59x18[] memory x) internal {
+		uint ptrLayer = layer.ptrLayer;
+		uint ptr = layer.ptr;
+		uint idx = 0;
+		if (ptrLayer == 0) {
+			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
+			if (ptr == layer.w.size()) {
+				++ptrLayer;
+				ptr = 0;
+			}
+		}
+		if (ptrLayer == 1) {
+			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
+		}
+		if (idx < x.length) {
+			revert TooMuchData();
+		}
+		layer.ptrLayer = ptrLayer;
+		layer.ptr = ptr;
 	}
 }

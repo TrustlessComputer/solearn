@@ -173,8 +173,8 @@ contract UnstoppableAI is
         for (uint256 i = 0; i < m.d.length; i++) {
             out_dim[i] = m.d[i].out_dim;
             w_b[i] = new SD59x18[][](2);
-            w_b[i][0] = Tensor2DMethods.flat(m.d[i].w);
-            w_b[i][1] = m.d[i].b;
+            w_b[i][0] = Tensor2DMethods.flat(m.d[i].w.mat);
+            w_b[i][1] = m.d[i].b.mat;
         }
 
         return (
@@ -185,6 +185,50 @@ contract UnstoppableAI is
             models[modelId].classesName,
             m.layers
         );
+    }
+
+    function getDenseLayer(
+        uint256 modelId,
+        uint256 layerIdx
+    )
+        public
+        view
+        returns (
+            uint256 dim_in,
+            uint256 dim_out,
+            SD59x18[][] memory w,
+            SD59x18[] memory b
+        )
+    {
+        Layers.DenseLayer memory layer = models[modelId].d[layerIdx];
+        dim_in = layer.w.n;
+        dim_out = layer.w.m;
+        w = layer.w.mat;
+        b = layer.b.mat;
+    }
+
+    function getConv2DLayer(
+        uint256 modelId,
+        uint256 layerIdx
+    )
+        public
+        view
+        returns (
+            uint256 n,
+            uint256 m,
+            uint256 p,
+            uint256 q,
+            SD59x18[][][][] memory w,
+            SD59x18[] memory b
+        )
+    {
+        Layers.Conv2DLayer memory layer = models[modelId].c2[layerIdx];
+        n = layer.w.n;
+        m = layer.w.m;
+        p = layer.w.p;
+        q = layer.w.q;
+        w = layer.w.mat;
+        b = layer.b.mat;
     }
 
     function safeMint(
@@ -337,48 +381,41 @@ contract UnstoppableAI is
         if (!success) revert TransferFailed();
     }
 
-    function setWeights(
+    function setPerceptron(
         uint256 modelId,
-        bytes[] calldata layers_config,
-        SD59x18[][][] calldata weightsDense,
-        SD59x18[][] calldata biasesDense,
-        SD59x18[][][][][] calldata weightsConv2D,
-        SD59x18[][] calldata biasesConv2D,
-        int appendLayer
+        bytes[] calldata layers_config
     ) external {
         if (msg.sender != ownerOf(modelId)) revert NotTokenOwner();
-        if (appendLayer < 0) {
-            if (models[modelId].numLayers > 0) {
-                models[modelId].numLayers = 0;
-                delete models[modelId].d;
-                delete models[modelId].f;
-                delete models[modelId].r;
-                delete models[modelId].layers;
-            }
 
-            loadPerceptron(modelId, layers_config, weightsDense, biasesDense, weightsConv2D, biasesConv2D);
-        } else {
-            appendWeights(modelId, weightsDense[0], uint256(appendLayer));
+        if (models[modelId].numLayers > 0) {
+            models[modelId].numLayers = 0;
+            delete models[modelId].d;
+            delete models[modelId].f;
+            delete models[modelId].r;
+            delete models[modelId].c2;
+            delete models[modelId].mp2;
+            delete models[modelId].layers;
         }
+
+        loadPerceptron(modelId, layers_config);
     }
 
     function appendWeights(
         uint256 modelId,
-        SD59x18[][] memory weights,
-        uint256 layerInd
-    ) internal {
-        for (uint256 i = 0; i < weights.length; i++) {
-            models[modelId].d[layerInd].w.push(weights[i]);
+        SD59x18[] memory weights,
+        uint256 layerInd,
+        LayerType layerType
+    ) external {
+        if (layerType == LayerType.Dense) {
+            models[modelId].d[layerInd].appendWeights(weights);
+        } else if (layerType == LayerType.Conv2D) {
+            models[modelId].c2[layerInd].appendWeights(weights);
         }
     }
 
     function makeLayer(
         uint256 modelId,
-        SingleLayerConfig memory slc,
-        SD59x18[][][] calldata weightsDense,
-        SD59x18[][] calldata biasesDense,
-        SD59x18[][][][][] calldata weightsConv2D,
-        SD59x18[][] calldata biasesConv2D
+        SingleLayerConfig memory slc
     ) internal returns (uint256, uint256, uint256[3] memory, uint256) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
         uint256[3] memory dim1 = slc.prevDim1;
@@ -394,8 +431,10 @@ contract UnstoppableAI is
                 slc.ind,
                 Tensors.ActivationFunc(actv),
                 d,
-                weightsDense[slc.ptrDense],
-                biasesDense[slc.ptrDense]
+                Tensor2DMethods.emptyTensor(dim2, d),
+                Tensor1DMethods.emptyTensor(d),
+                0,
+                0
             );
             models[modelId].d.push(temp);
             uint256 index = models[modelId].d.length - 1;
@@ -478,8 +517,10 @@ contract UnstoppableAI is
                 filters,
                 stride,
                 Tensors.PaddingType(padding),
-                weightsConv2D[slc.ptrConv2D],
-                biasesConv2D[slc.ptrConv2D]
+                Tensor4DMethods.emptyTensor(size[0], size[1], dim1[2], filters),
+                Tensor1DMethods.emptyTensor(filters),
+                0,
+                0
             );
             models[modelId].c2.push(temp);
             uint256 index = models[modelId].c2.length - 1;
@@ -503,11 +544,7 @@ contract UnstoppableAI is
 
     function loadPerceptron(
         uint256 modelId,
-        bytes[] calldata layersConfig,
-        SD59x18[][][] calldata weightsDense,
-        SD59x18[][] calldata biasesDense,
-        SD59x18[][][][][] calldata weightsConv2D,
-        SD59x18[][] calldata biasesConv2D
+        bytes[] calldata layersConfig
     ) internal {
         models[modelId].numLayers = layersConfig.length;
         uint256 ptrDense = 0;
@@ -517,23 +554,8 @@ contract UnstoppableAI is
         for (uint256 i = 0; i < layersConfig.length; i++) {
             (ptrDense, ptrConv2D, dim1, dim2) = makeLayer(
                 modelId,
-                SingleLayerConfig(layersConfig[i], i, dim1, dim2, ptrDense, ptrConv2D),
-                weightsDense,
-                biasesDense,
-                weightsConv2D,
-                biasesConv2D
+                SingleLayerConfig(layersConfig[i], i, dim1, dim2, ptrDense, ptrConv2D)
             );
         }
-    }
-
-    function test(
-        uint x,
-        uint n
-    ) external view returns (uint) {
-        uint res = x;
-        for(uint i = 0; i < n; ++i) {
-            res = (x * 231234 + 125678) % 312412;
-        }
-        return res;
     }
 }
