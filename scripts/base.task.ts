@@ -99,6 +99,22 @@ async function measureTime(f: any): Promise<any> {
     return ret
 }
 
+function pixelsToImage(pixels: ethers.BigNumber[], w: number, h: number, c: number): ethers.BigNumber[][][] {
+    let ptr = 0;
+    let img: ethers.BigNumber[][][] = [];
+    for(let i = 0; i < w; ++i) {
+        img.push([]);
+        for(let j = 0; j < h; ++j) {
+            img[i].push([]);
+            for(let k = 0; k < c; ++k) {
+                img[i][j].push(pixels[ptr]);
+                ++ptr;
+            }
+        }
+    }
+    return img;
+}
+
 function getConvSize(
     w: number,
     h: number,
@@ -340,7 +356,7 @@ task("eval-img", "evaluate perceptron for each layer")
         let batchLayerNum = 1;
         let inputs = pixels;
         let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(w), ethers.BigNumber.from(h), ethers.BigNumber.from(3)];
-        let x1: any[] = [];
+        let x1: any[] = [pixelsToImage(pixels, w, h, 3)];
         let x2: any[] = [];
         let classsNameRes = "";
 
@@ -351,10 +367,10 @@ task("eval-img", "evaluate perceptron for each layer")
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
 
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2);
+                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // console.log(`Layer ${i}: ${getLayerName(perceptron[5][i][0])}`)
                 // const [className, r1, r2] = await measureTime(async () => {
-                //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2);
+                //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // });
                 x1 = r1;
                 x2 = r2;
@@ -394,7 +410,7 @@ task("eval-img", "evaluate perceptron for each layer")
                 }
 
                 const tx: ethers.ContractTransaction = await measureTime(async () => {
-                    return await c.classify(tokenId, fromLayerIndex, toLayerIndex, inputs, dim, x1, x2, { value: ethers.utils.parseEther("0.0001") });
+                    return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, { value: ethers.utils.parseEther("0.0001") });
                 });
 
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);

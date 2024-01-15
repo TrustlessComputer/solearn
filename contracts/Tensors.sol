@@ -73,41 +73,34 @@ library Tensors {
 		return a.exp();
 	}
 	
+	function __subMax0(uint a, uint b) public pure returns (uint) {
+		return a > b ? a - b : 0;
+	}
+
 	function max(SD59x18 a, SD59x18 b) internal pure returns (SD59x18) {
 		return a.unwrap() > b.unwrap() ? a : b;
 	}
 
 	function getConvSize(
-		uint w, 
-		uint h, 
-		uint f_w, 
-		uint f_h, 
-		uint s_w,
-		uint s_h, 
+		uint[2] memory dim,
+		uint[2] memory size,
+		uint[2] memory stride,
 		PaddingType padding
 	) internal pure returns (
-		uint W,
-		uint H,
-		uint L,
-		uint T
+		uint[2] memory out,
+		uint[2] memory pad
 	) {
-		W = 0; 
-		H = 0; 
-		L = 0; 
-		T = 0; 		
-		if (padding == PaddingType.Same) {
-			W = (w + s_w - 1) / s_w;
-			H = (h + s_h - 1) / s_h;
-			uint pad_w = (w % s_w == 0) ? (f_w >= s_w ? f_w - s_w : 0) : (f_w >= w % s_w ? f_w - w % s_w : 0);
-			uint pad_h = (h % s_h == 0) ? (f_h >= s_h ? f_h - s_h : 0) : (f_h >= w % s_h ? f_h - w % s_h : 0);
-			L = pad_w / 2;
-			T = pad_h / 2;
-		} else if (padding == PaddingType.Valid) {
-			// TODO: What if w < f_w
-			W = (w - f_w) / s_w + 1;
-			H = (h - f_h) / s_h + 1;
-		} else {
-			revert InvalidPaddingType();
+		for(uint i = 0; i < 2; ++i) {
+			if (padding == PaddingType.Same) {
+				out[i] = (dim[i] + stride[i] - 1) / stride[i];
+				uint total_pad = (dim[i] % stride[i] == 0) ? __subMax0(size[i], stride[i]) : __subMax0(size[i], dim[i] % stride[i]);
+				pad[i] = total_pad / 2;
+			} else if (padding == PaddingType.Valid) {
+				// TODO: What if dim[i] < size[i]
+				out[i] = (dim[i] - size[i]) / stride[i] + 1;
+			} else {
+				revert InvalidPaddingType();
+			}
 		}
 	}
 }
@@ -118,7 +111,7 @@ library Tensor1DMethods {
 		ts.mat = new SD59x18[](n);
 	}
 
-	function size(Tensors.Tensor1D memory ts) internal pure returns (uint) {
+	function count(Tensors.Tensor1D memory ts) internal pure returns (uint) {
 		return ts.n;
 	}
 
@@ -177,7 +170,7 @@ library Tensor2DMethods {
 		}
 	}
 
-	function size(Tensors.Tensor2D memory ts) internal pure returns (uint) {
+	function count(Tensors.Tensor2D memory ts) internal pure returns (uint) {
 		return ts.n * ts.m;
 	}
 
@@ -349,7 +342,7 @@ library Tensor4DMethods {
 		}
 	}
 
-	function size(Tensors.Tensor4D memory ts) internal pure returns (uint) {
+	function count(Tensors.Tensor4D memory ts) internal pure returns (uint) {
 		return ts.n * ts.m * ts.p * ts.q;
 	}
 
@@ -431,6 +424,52 @@ library Tensor4DMethods {
     	return __apply_binary_op(a, b, Tensors.__add);
     }
 
+	function __cell_max(
+		Tensors.Tensor4D memory a,
+		uint[2] memory pos,
+		uint[2] memory size,
+		uint i,
+		uint p
+	) internal pure returns (SD59x18) {
+		unchecked {
+		SD59x18 cell = sd(-1e9 * 1e18);
+		for(uint dx = 0; dx < size[0]; ++dx) {
+			for(uint dy = 0; dy < size[1]; ++dy) {
+				uint X = pos[0] + dx;
+				uint Y = pos[1] + dy;
+				SD59x18 val = (X >= 0 && X < a.m && Y >= 0 && Y < a.p) ? a.mat[i][X][Y][p] : sd(0);
+				cell = Tensors.max(cell, val);
+			}
+		}
+		return cell;
+		}
+	}
+
+	function __cell_conv(
+		Tensors.Tensor4D memory a,
+		Tensors.Tensor4D memory b,
+		uint[2] memory pos,
+		uint[2] memory size,
+		uint i,
+		uint p
+	) internal pure returns (SD59x18) {
+		unchecked {
+		SD59x18 cell = sd(0);
+		for(uint dx = 0; dx < size[0]; ++dx) {
+			for(uint dy = 0; dy < size[1]; ++dy) {
+				uint X = pos[0] + dx;
+				uint Y = pos[1] + dy;
+				if (X >= 0 && X < a.m && Y >= 0 && Y < a.p) {
+					for(uint q = 0; q < a.q; ++q) {
+						cell = cell + a.mat[i][X][Y][q] * b.mat[dx][dy][q][p];
+					}
+				}
+			}
+		}
+		return cell;
+		}
+	}
+
 	// Input: (N, W, H, D)
 	function maxPooling2D(
 		Tensors.Tensor4D memory a,
@@ -439,33 +478,15 @@ library Tensor4DMethods {
 		Tensors.PaddingType padding
 	) internal pure returns (Tensors.Tensor4D memory) {
 		unchecked {
-		uint n = a.n; uint w = a.m; uint h = a.p; uint d = a.q;
-		(uint f_w, uint f_h) = (size[0], size[1]);
-		(uint s_w, uint s_h) = (stride[0], stride[1]);
-		
-		(uint W, uint H, uint L, uint T) = Tensors.getConvSize(w, h, f_w, f_h, s_w, s_h, padding);
+		(uint[2] memory dim, uint[2] memory pad) = Tensors.getConvSize([a.m, a.p], size, stride, padding);
 
-		SD59x18[] memory data;
-		Tensors.Tensor4D memory res;
-		load(res, data, n, W, H, d);
-		for(uint i = 0; i < n; ++i) {
-			for(uint x = 0; x < W; ++x) {
-				for(uint y = 0; y < H; ++y) {
-					for(uint p = 0; p < d; ++p) {            
-						SD59x18 cell = sd(-1e9 * 1e18);
-						// bool maxed = false;
-						for(uint dx = 0; dx < f_w; ++dx) {
-							for(uint dy = 0; dy < f_h; ++dy) {
-								uint X = x*s_w + dx - L;
-								uint Y = y*s_h + dy - T;
-								bool isIn = X >= 0 && X < w && Y >= 0 && Y < h;
-								SD59x18 val = isIn ? a.mat[i][X][Y][p] : sd(0);
-								cell = Tensors.max(cell, val);
-								// cell = maxed ? Tensors.max(cell, val) : val;
-								// maxed = true;
-							}
-						}
-						res.mat[i][x][y][p] = cell;
+		Tensors.Tensor4D memory res = Tensor4DMethods.emptyTensor(a.n, dim[0], dim[1], a.q);
+		for(uint i = 0; i < a.n; ++i) {
+			for(uint x = 0; x < dim[0]; ++x) {
+				for(uint y = 0; y < dim[1]; ++y) {
+					uint[2] memory pos = [x*stride[0] - pad[0], y*stride[1] - pad[1]];
+					for(uint p = 0; p < a.q; ++p) {
+						res.mat[i][x][y][p] = __cell_max(a, pos, size, i, p);
 					}
 				}
 			}
@@ -484,33 +505,16 @@ library Tensor4DMethods {
 		Tensors.PaddingType padding
 	) internal pure returns (Tensors.Tensor4D memory) {
 		unchecked {
-		uint n = a.n; uint w = a.m; uint h = a.p; uint d = a.q;
-		uint f_w = b.n; uint f_h = b.m; uint k = b.q;
-		(uint s_w, uint s_h) = (stride[0], stride[1]);
-		
-		(uint W, uint H, uint L, uint T) = Tensors.getConvSize(w, h, f_w, f_h, s_w, s_h, padding);
+		uint[2] memory size = [b.n, b.m];
+		(uint[2] memory dim, uint[2] memory pad) = Tensors.getConvSize([a.m, a.p], size, stride, padding);
 
-		SD59x18[] memory data;
-		Tensors.Tensor4D memory res;
-		load(res, data, n, W, H, k);
-		for(uint i = 0; i < n; ++i) {
-			for(uint x = 0; x < W; ++x) {
-				for(uint y = 0; y < H; ++y) {
-					for(uint p = 0; p < k; ++p) {            
-						SD59x18 cell = sd(0);
-						for(uint dx = 0; dx < f_w; ++dx) {
-							for(uint dy = 0; dy < f_h; ++dy) {
-								uint X = x*s_w + dx - L;
-								uint Y = y*s_h + dy - T;
-								bool isIn = X >= 0 && X < w && Y >= 0 && Y < h;
-								if (isIn) {
-									for(uint q = 0; q < d; ++q) {
-										cell = cell + a.mat[i][X][Y][q] * b.mat[dx][dy][q][p];
-									}
-								}
-							}
-						}
-						res.mat[i][x][y][p] = cell;
+		Tensors.Tensor4D memory res = Tensor4DMethods.emptyTensor(a.n, dim[0], dim[1], b.q);
+		for(uint i = 0; i < a.n; ++i) {
+			for(uint x = 0; x < dim[0]; ++x) {
+				for(uint y = 0; y < dim[1]; ++y) {
+					uint[2] memory pos = [x*stride[0] - pad[0], y*stride[1] - pad[1]];
+					for(uint p = 0; p < b.q; ++p) {
+						res.mat[i][x][y][p] = __cell_conv(a, b, pos, size, i, p);
 					}
 				}
 			}

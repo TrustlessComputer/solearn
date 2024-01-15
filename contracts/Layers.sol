@@ -118,7 +118,7 @@ library Layers {
 		uint idx = 0;
 		if (ptrLayer == 0) {
 			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
-			if (ptr == layer.w.size()) {
+			if (ptr == layer.w.count()) {
 				++ptrLayer;
 				ptr = 0;
 			}
@@ -139,7 +139,7 @@ library Layers {
 		uint idx = 0;
 		if (ptrLayer == 0) {
 			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
-			if (ptr == layer.w.size()) {
+			if (ptr == layer.w.count()) {
 				++ptrLayer;
 				ptr = 0;
 			}
