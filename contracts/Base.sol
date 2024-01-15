@@ -417,31 +417,26 @@ contract UnstoppableAI is
 
             dim2 = d;
         } else if (layerType == uint8(LayerType.Flatten)) {
-            // TODO: why?
-            // uint256 len = models[modelId].d.length;
-            uint256 len = models[modelId].f.length;
-            Layers.FlattenLayer memory temp;
-            models[modelId].f.push(temp);
-            models[modelId].f[len].layerIndex = slc.ind;
+            models[modelId].f.push(Layers.FlattenLayer(
+                slc.ind
+            ));
             dim2 = dim1[0] * dim1[1] * dim1[2];
 
             uint256 index = models[modelId].f.length - 1;
-            Info memory layerInfo = Info(LayerType.Flatten, index);
-            models[modelId].layers.push(layerInfo);
+            models[modelId].layers.push(Info(LayerType.Flatten, index));
         } else if (layerType == uint8(LayerType.Rescale)) {
-            uint256 len = models[modelId].r.length;
-            Layers.RescaleLayer memory temp;
-            models[modelId].r.push(temp);
             (, SD59x18 scale, SD59x18 offset) = abi.decode(
                 slc.conf,
                 (uint8, SD59x18, SD59x18)
             );
-            models[modelId].r[len].layerIndex = slc.ind;
-            models[modelId].r[len].scale = scale;
-            models[modelId].r[len].offset = offset;
+            models[modelId].r.push(Layers.RescaleLayer(
+                slc.ind,
+                scale,
+                offset
+            ));
 
-            Info memory layerInfo = Info(LayerType.Rescale, len);
-            models[modelId].layers.push(layerInfo);
+            uint256 index = models[modelId].r.length - 1;
+            models[modelId].layers.push(Info(LayerType.Rescale, index));
         } else if (layerType == uint8(LayerType.Input)) {
             (, uint256[3] memory ipd) = abi.decode(
                 slc.conf,
