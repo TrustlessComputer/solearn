@@ -1,1 +1,0 @@
-npx hardhat eval-perceptron --network tctest --img 'sample-images/artblock20/01-Chromie Squiggle/000.png' --tokenid 0 --contract 0x34B530B9bCd310a6752C483f1Ad8259d367452B5

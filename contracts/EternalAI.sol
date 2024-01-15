@@ -20,7 +20,7 @@ error InsufficientMintPrice();
 error InsufficientEvalPrice();
 error TransferFailed();
 
-contract UnstoppableAI is
+contract EternalAI is
     Initializable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
@@ -134,7 +134,7 @@ contract UnstoppableAI is
     }
 
     function initialize() public initializer {
-        __ERC721_init("Perceptron", "PCT");
+        __ERC721_init("EternalAI", "EAI");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
         mintPrice = 0.01 ether;
@@ -152,27 +152,14 @@ contract UnstoppableAI is
         view
         returns (
             uint256[3] memory,
-            SD59x18[][][] memory,
-            uint256[] memory,
             string memory,
             string[] memory,
             Info[] memory
         )
     {
         Model storage m = models[modelId];
-        uint256[] memory out_dim = new uint256[](m.d.length);
-        SD59x18[][][] memory w_b = new SD59x18[][][](m.d.length);
-        for (uint256 i = 0; i < m.d.length; i++) {
-            out_dim[i] = m.d[i].out_dim;
-            w_b[i] = new SD59x18[][](2);
-            w_b[i][0] = Tensor2DMethods.flat(m.d[i].w.mat);
-            w_b[i][1] = m.d[i].b.mat;
-        }
-
         return (
             models[modelId].inputDim,
-            w_b,
-            out_dim,
             models[modelId].modelName,
             models[modelId].classesName,
             m.layers
@@ -357,7 +344,7 @@ contract UnstoppableAI is
         if (!success) revert TransferFailed();
     }
 
-    function setPerceptron(
+    function setEternalAI(
         uint256 modelId,
         bytes[] calldata layers_config
     ) external {
@@ -373,7 +360,7 @@ contract UnstoppableAI is
             delete models[modelId].layers;
         }
 
-        loadPerceptron(modelId, layers_config);
+        loadEternalAI(modelId, layers_config);
     }
 
     function appendWeights(
@@ -504,7 +491,7 @@ contract UnstoppableAI is
         return (dim1, dim2);
     }
 
-    function loadPerceptron(
+    function loadEternalAI(
         uint256 modelId,
         bytes[] calldata layersConfig
     ) internal {

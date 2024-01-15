@@ -1,7 +1,7 @@
 # Deploy local node
 # npx hardhat node
 
-# npx hardhat deploy --tags 3 --network localhost
+# npx hardhat deploy --tags 2 --network localhost
 
 npx hardhat mint-model-id --network localhost --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --model 'sample-models/cnn_10x10_small.json'
 

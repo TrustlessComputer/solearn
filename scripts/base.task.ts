@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import { ethers } from "ethers";
 
 
-const ContractName = "UnstoppableAI";
+const ContractName = "EternalAI";
 const MaxWeightLen = 100;
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
@@ -262,15 +262,15 @@ task("mint-model-id", "mint model id (and upload weights)")
         try {
             const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, { value: ethers.utils.parseEther("0.01") });
             await tx.wait();
-            console.log("Minted new perceptron");
+            console.log("Minted new EternalAI model");
         } catch (e) {
             const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
                 throw e;
             });
             if (ethers.utils.getAddress(ownerAddress) === ethers.utils.getAddress(signer.address)) {
-                console.log("Using existing perceptron #" + tokenId.toString());
+                console.log("Using existing EternalAI model #" + tokenId.toString());
             } else {
-                console.log("Perceptron #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
+                console.log("EternalAI #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
                 return;
             }
         }
@@ -287,7 +287,7 @@ task("mint-model-id", "mint model id (and upload weights)")
         const weightStr = JSON.stringify([weightsFlat]);
         console.log("Total weights len: ", weightStr.length);
 
-        const setWeightTx = await c.setPerceptron(tokenId, params.layers_config);
+        const setWeightTx = await c.setEternalAI(tokenId, params.layers_config);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
 
@@ -318,10 +318,10 @@ task("mint-model-id", "mint model id (and upload weights)")
         console.log("Set weights done");
     });
 
-task("eval-img", "evaluate perceptron for each layer")
+task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
-    .addOptionalParam("w", "perceptron input image width", 2, types.int)
-    .addOptionalParam("h", "perceptron input image height", 2, types.int)
+    .addOptionalParam("w", "model input image width", 2, types.int)
+    .addOptionalParam("h", "model input image height", 2, types.int)
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
     .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
@@ -343,7 +343,7 @@ task("eval-img", "evaluate perceptron for each layer")
 
         const img = fs.readFileSync(taskArgs.img);
         console.log("img: ", img);
-        // TODO: Get inputDim from perceptron and use the width and height from inputDim instead
+        // TODO: Get inputDim from EternalAI and use the width and height from inputDim instead
         let { w, h } = taskArgs;
         // How to get input image size?
         const imgBuffer = await sharp(img).removeAlpha().resize(w, h).raw().toBuffer();
@@ -351,8 +351,8 @@ task("eval-img", "evaluate perceptron for each layer")
         const pixels = imgArray.map((b: any) =>
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
 
-        const perceptron = await c.getInfo(tokenId);
-        let numLayers = perceptron[5].length;
+        const model = await c.getInfo(tokenId);
+        let numLayers = model[5].length;
         let batchLayerNum = 1;
         let inputs = pixels;
         let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(w), ethers.BigNumber.from(h), ethers.BigNumber.from(3)];
@@ -368,7 +368,7 @@ task("eval-img", "evaluate perceptron for each layer")
                 const toLayerIndex = i + batchLayerNum - 1;
 
                 const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
-                // console.log(`Layer ${i}: ${getLayerName(perceptron[5][i][0])}`)
+                // console.log(`Layer ${i}: ${getLayerName(model[5][i][0])}`)
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // });
@@ -401,13 +401,13 @@ task("eval-img", "evaluate perceptron for each layer")
                     // x2 = outputs2;
                 // });
 
-                console.log(`Layer ${i}: ${getLayerName(perceptron[5][i][0])}`)
-                if (x1.length > 0) {
-                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}, ${x1[0][0][0].length})`);
-                }
-                if (x2.length > 0) {
-                    console.log(`x2: (${x2.length}, ${x2[0].length})`);
-                }
+                // console.log(`Layer ${i}: ${getLayerName(model[5][i][0])}`)
+                // if (x1.length > 0) {
+                //     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}, ${x1[0][0][0].length})`);
+                // }
+                // if (x2.length > 0) {
+                //     console.log(`x2: (${x2.length}, ${x2[0].length})`);
+                // }
 
                 const tx: ethers.ContractTransaction = await measureTime(async () => {
                     return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, { value: ethers.utils.parseEther("0.0001") });
@@ -444,7 +444,7 @@ task("eval-img", "evaluate perceptron for each layer")
     });
 
 
-task("get-model", "get perceptron")
+task("get-model", "get eternal AI model")
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id", "0", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
@@ -457,8 +457,8 @@ task("get-model", "get perceptron")
         }
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const perceptron = await c.getInfo(tokenId);
+        const model = await c.getInfo(tokenId);
 
-        fs.writeFileSync("baseDesc.json", JSON.stringify(perceptron));
-        // console.log(JSON.stringify(perceptron));
+        fs.writeFileSync("baseDesc.json", JSON.stringify(model));
+        // console.log(JSON.stringify(model));
     });

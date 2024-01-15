@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await network.provider.send("evm_setIntervalMining", [3000]);
     }
 
-    await deploy('UnstoppableAI', {
+    await deploy('EternalAI', {
         from: deployer,
         proxy: {
             proxyContract: 'OpenZeppelinTransparentProxy',
@@ -34,5 +34,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 };
 
-func.tags = ['3', 'UnstoppableAI'];
+func.tags = ['2', 'EternalAI'];
 export default func;
