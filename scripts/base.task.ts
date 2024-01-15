@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 
 
 const ContractName = "EternalAI";
-const MaxWeightLen = 100;
+const MaxWeightLen = 500;
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -284,7 +284,7 @@ task("mint-model-id", "mint model id (and upload weights)")
         }
         const maxlen = taskArgs.maxlen;
 
-        const weightStr = JSON.stringify([weightsFlat]);
+        const weightStr = JSON.stringify([weightsDense, weightsConv2D]);
         console.log("Total weights len: ", weightStr.length);
 
         const setWeightTx = await c.setEternalAI(tokenId, params.layers_config);

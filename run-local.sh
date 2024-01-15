@@ -3,7 +3,7 @@
 
 # npx hardhat deploy --tags 2 --network localhost
 
-npx hardhat mint-model-id --network localhost --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --model 'sample-models/cnn_10x10_small.json'
+# npx hardhat mint-model-id --network localhost --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --model 'sample-models/cnn_10x10_small.json'
 
 # npx hardhat get-model --network localhost --id '0' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'
 

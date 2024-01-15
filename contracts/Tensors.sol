@@ -106,9 +106,13 @@ library Tensors {
 }
 
 library Tensor1DMethods {
-	function emptyTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
+	function zerosTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
 		ts.mat = new SD59x18[](n);
+	}
+
+	function emptyTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
+		ts.n = n;
 	}
 
 	function count(Tensors.Tensor1D memory ts) internal pure returns (uint) {
@@ -118,7 +122,7 @@ library Tensor1DMethods {
 	function loadPartial(Tensors.Tensor1D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint n = ts.n; 
 		while (idx < data.length && ptr < n) {
-			ts.mat[ptr] = data[idx];
+			ts.mat.push(data[idx]);
 			ptr++;
 			idx++;
 		}
@@ -127,13 +131,19 @@ library Tensor1DMethods {
 }
 
 library Tensor2DMethods {
-	function emptyTensor(uint n, uint m) internal pure returns (Tensors.Tensor2D memory ts) {
+	function zerosTensor(uint n, uint m) internal pure returns (Tensors.Tensor2D memory ts) {
 		ts.n = n;
 		ts.m = m;
 		ts.mat = new SD59x18[][](n);
 		for (uint i = 0; i < n; i++) {
 			ts.mat[i] = new SD59x18[](m);
 		}
+	}
+	
+	function emptyTensor(uint n, uint m) internal pure returns (Tensors.Tensor2D memory ts) {
+		ts.n = n;
+		ts.m = m;
+		ts.mat = new SD59x18[][](n);
 	}
 	
 	function from(Tensors.Tensor2D memory ts, SD59x18[][] memory mat) internal pure returns (Tensors.Tensor2D memory) {
@@ -178,7 +188,7 @@ library Tensor2DMethods {
 		uint n = ts.n; 
 		uint m = ts.m;
 		while (idx < data.length && ptr < n * m) {
-			ts.mat[ptr / m][ptr % m] = data[idx];
+			ts.mat[ptr / m].push(data[idx]);
 			ptr++;
 			idx++;
 		}
@@ -273,7 +283,7 @@ library Tensor2DMethods {
 }
 
 library Tensor4DMethods {
-	function emptyTensor(uint n, uint m, uint p, uint q) internal pure returns (Tensors.Tensor4D memory ts) {
+	function zerosTensor(uint n, uint m, uint p, uint q) internal pure returns (Tensors.Tensor4D memory ts) {
 		ts.n = n;
 		ts.m = m;
 		ts.p = p;
@@ -289,7 +299,21 @@ library Tensor4DMethods {
 			}
 		}
 	}
-	
+
+	function emptyTensor(uint n, uint m, uint p, uint q) internal pure returns (Tensors.Tensor4D memory ts) {
+		ts.n = n;
+		ts.m = m;
+		ts.p = p;
+		ts.q = q;
+		ts.mat = new SD59x18[][][][](n);
+		for (uint i = 0; i < n; i++) {
+			ts.mat[i] = new SD59x18[][][](m);
+			for(uint j = 0; j < m; j++) {
+				ts.mat[i][j] = new SD59x18[][](p);
+			}
+		}
+	}
+
 	function from(Tensors.Tensor4D memory ts, SD59x18[][][][] memory mat) internal pure returns (Tensors.Tensor4D memory) {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
@@ -352,7 +376,7 @@ library Tensor4DMethods {
 		uint p = ts.p;
 		uint q = ts.q;
 		while (idx < data.length && ptr < n * m * p * q) {
-			ts.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p][ptr % q] = data[idx];
+			ts.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p].push(data[idx]);
 			ptr++;
 			idx++;
 		}
@@ -480,7 +504,7 @@ library Tensor4DMethods {
 		unchecked {
 		(uint[2] memory dim, uint[2] memory pad) = Tensors.getConvSize([a.m, a.p], size, stride, padding);
 
-		Tensors.Tensor4D memory res = Tensor4DMethods.emptyTensor(a.n, dim[0], dim[1], a.q);
+		Tensors.Tensor4D memory res = Tensor4DMethods.zerosTensor(a.n, dim[0], dim[1], a.q);
 		for(uint i = 0; i < a.n; ++i) {
 			for(uint x = 0; x < dim[0]; ++x) {
 				for(uint y = 0; y < dim[1]; ++y) {
@@ -508,7 +532,7 @@ library Tensor4DMethods {
 		uint[2] memory size = [b.n, b.m];
 		(uint[2] memory dim, uint[2] memory pad) = Tensors.getConvSize([a.m, a.p], size, stride, padding);
 
-		Tensors.Tensor4D memory res = Tensor4DMethods.emptyTensor(a.n, dim[0], dim[1], b.q);
+		Tensors.Tensor4D memory res = Tensor4DMethods.zerosTensor(a.n, dim[0], dim[1], b.q);
 		for(uint i = 0; i < a.n; ++i) {
 			for(uint x = 0; x < dim[0]; ++x) {
 				for(uint y = 0; y < dim[1]; ++y) {
