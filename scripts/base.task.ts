@@ -352,7 +352,7 @@ task("eval-img", "evaluate model for each layer")
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
 
         const model = await c.getInfo(tokenId);
-        let numLayers = model[5].length;
+        let numLayers = model[3].length;
         let batchLayerNum = 1;
         let inputs = pixels;
         let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(w), ethers.BigNumber.from(h), ethers.BigNumber.from(3)];
@@ -368,7 +368,7 @@ task("eval-img", "evaluate model for each layer")
                 const toLayerIndex = i + batchLayerNum - 1;
 
                 const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
-                // console.log(`Layer ${i}: ${getLayerName(model[5][i][0])}`)
+                // console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // });
@@ -401,7 +401,7 @@ task("eval-img", "evaluate model for each layer")
                     // x2 = outputs2;
                 // });
 
-                // console.log(`Layer ${i}: ${getLayerName(model[5][i][0])}`)
+                // console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
                 // if (x1.length > 0) {
                 //     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}, ${x1[0][0][0].length})`);
                 // }
