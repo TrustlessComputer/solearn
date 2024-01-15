@@ -353,7 +353,7 @@ library Tensor4DMethods {
 		return ts.n * ts.m * ts.p * ts.q;
 	}
 
-	function loadPartial(Tensors.Tensor4D memory ts, SD59x18[] memory data, uint ptr, uint idx) internal pure returns (uint, uint) {
+	function loadPartial(Tensors.Tensor4D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint n = ts.n; 
 		uint m = ts.m;
 		uint p = ts.p;

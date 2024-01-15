@@ -298,7 +298,7 @@ task("mint-model-id", "mint model id (and upload weights)")
             layerInfos.push(layerInfo);
         }
 
-        fs.writeFileSync("baseDesc.json", JSON.stringify(layerInfos));
+        fs.writeFileSync("tmp_model.json", JSON.stringify(layerInfos));
         console.log("Set weights done");
     });
 
