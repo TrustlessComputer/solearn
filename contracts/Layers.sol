@@ -53,8 +53,7 @@ library Layers {
 	}
 
 	function forward(FlattenLayer memory layer, SD59x18[][][][] memory mat) internal pure returns (SD59x18[][] memory) {
-		Tensors.Tensor4D memory xt;
-		xt.from(mat);
+		Tensors.Tensor4D memory xt = Tensor4DMethods.from(mat);
 		Tensors.Tensor2D memory yt = Tensor4DMethods.flatKeep1stDim(xt);
 		return yt.mat;
 	}
@@ -82,31 +81,24 @@ library Layers {
 	}
 
 	function forward(DenseLayer memory layer, SD59x18[][] memory x) internal pure returns (SD59x18[][] memory) {
-		Tensors.Tensor2D memory xt;
-		xt.from(x);
-		Tensors.Tensor2D memory wt;
-		wt = layer.w;
-		Tensors.Tensor2D memory bt;
-		bt.load(layer.b.mat, 1, layer.b.n);
+		Tensors.Tensor2D memory xt = Tensor2DMethods.from(x);
+		Tensors.Tensor2D memory wt = layer.w;
+		Tensors.Tensor1D memory bt = layer.b;
 		Tensors.Tensor2D memory y = xt.matMul(wt).add(bt);
 		Tensors.Tensor2D memory zt = y.activation(layer.activation);
 		return zt.mat;
 	}
 
 	function forward(MaxPooling2DLayer memory layer, SD59x18[][][][] memory x) internal pure returns (SD59x18[][][][] memory) {
-		Tensors.Tensor4D memory xt;
-		xt.from(x);
+		Tensors.Tensor4D memory xt = Tensor4DMethods.from(x);
 		Tensors.Tensor4D memory yt = xt.maxPooling2D(layer.stride, layer.size, layer.padding);
 		return yt.mat;
 	}
 
 	function forward(Conv2DLayer memory layer, SD59x18[][][][] memory x) internal pure returns (SD59x18[][][][] memory) {
-		Tensors.Tensor4D memory xt;
-		xt.from(x);
-		Tensors.Tensor4D memory wt;
-		wt = layer.w;
-		Tensors.Tensor4D memory bt;
-		bt.load(layer.b.mat, 1, 1, 1, layer.b.n);
+		Tensors.Tensor4D memory xt = Tensor4DMethods.from(x);
+		Tensors.Tensor4D memory wt = layer.w;
+		Tensors.Tensor1D memory bt = layer.b;
 		Tensors.Tensor4D memory yt = xt.conv2D(wt, layer.stride, layer.padding).add(bt);
 		Tensors.Tensor4D memory zt = yt.activation(layer.activation);
 		return zt.mat;

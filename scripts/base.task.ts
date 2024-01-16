@@ -362,13 +362,36 @@ task("eval-img", "evaluate model for each layer")
 
         // console.log("classsNameRes: ", classsNameRes);
 
+        // await measureTime(async () => {
+        //     return await c.testAdd(ethers.BigNumber.from(10800));
+        // });
+
+        // await measureTime(async () => {
+        //     return await c.testMul(ethers.BigNumber.from(10800));
+        // });
+
+        // await measureTime(async () => {
+        //     return await c.testAddInt256(ethers.BigNumber.from(10800));
+        // });
+
+        // await measureTime(async () => {
+        //     return await c.testForLoop(ethers.BigNumber.from(10800));
+        // });
+
         if (taskArgs.offline) {
             for (let i = 0; ; i = i + batchLayerNum) {
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
 
                 const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
-                // console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
+                console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
+                if (x1.length > 0) {
+                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}, ${x1[0][0][0].length})`);
+                }
+                if (x2.length > 0) {
+                    console.log(`x2: (${x2.length}, ${x2[0].length})`);
+                }
+
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // });

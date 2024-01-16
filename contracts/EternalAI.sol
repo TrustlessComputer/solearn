@@ -255,8 +255,7 @@ contract EternalAI is
 
             // the last layer
             if (i == models[modelId].layers.length - 1) {
-                Tensors.Tensor2D memory xt;
-                xt.from(x2);
+                Tensors.Tensor2D memory xt = Tensor2DMethods.from(x2);
                 SD59x18[][] memory result = new SD59x18[][](1);
                 result[0] = Tensor2DMethods.flat(xt.softmax().mat);
                 return (x1, result);
@@ -503,6 +502,33 @@ contract EternalAI is
                 modelId,
                 SingleLayerConfig(layersConfig[i], i, dim1, dim2)
             );
+        }
+    }
+
+    function testMul(uint256 n) external {
+        SD59x18 res = sd(1 * 1e18);
+        for(uint i = 0; i < n; ++i) {
+            res = res * sd(1.01 * 1e18);
+        }
+    }
+
+    function testAdd(uint256 n) external {
+        SD59x18 res = sd(0);
+        for(uint i = 0; i < n; ++i) {
+            res = res + sd(1.01 * 1e18);
+        }
+    }
+
+    function testAddInt256(uint256 n) external {
+        int res = 0;
+        for(uint i = 0; i < n; ++i) {
+            res = res + 12314;
+        }
+    }
+
+    function testForLoop(uint256 n) external {
+        for(uint i = 0; i < n; ++i) {
+            
         }
     }
 }

@@ -146,11 +146,10 @@ library Tensor2DMethods {
 		ts.mat = new SD59x18[][](n);
 	}
 	
-	function from(Tensors.Tensor2D memory ts, SD59x18[][] memory mat) internal pure returns (Tensors.Tensor2D memory) {
+	function from(SD59x18[][] memory mat) internal pure returns (Tensors.Tensor2D memory ts) {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
 		ts.mat = mat;
-		return ts;
 	}
 
 	function flat(SD59x18[][] memory mat) internal pure returns (SD59x18[] memory) {
@@ -185,9 +184,9 @@ library Tensor2DMethods {
 	}
 
 	function loadPartial(Tensors.Tensor2D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
-		uint n = ts.n; 
 		uint m = ts.m;
-		while (idx < data.length && ptr < n * m) {
+		uint cnt = count(ts);
+		while (idx < data.length && ptr < cnt) {
 			ts.mat[ptr / m].push(data[idx]);
 			ptr++;
 			idx++;
@@ -205,10 +204,10 @@ library Tensor2DMethods {
 		Tensors.Tensor2D memory a,
 		function(SD59x18) internal pure returns (SD59x18) op
 	) internal pure returns (Tensors.Tensor2D memory) {
-		Tensors.Tensor2D memory res = cloneTensor(a);
+		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
-				res.mat[i][j] = op(res.mat[i][j]);
+				res.mat[i][j] = op(a.mat[i][j]);
 			}
 		}
 		return res;
@@ -230,11 +229,21 @@ library Tensor2DMethods {
 		}
   	}
 
-    function __apply_binary_op(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor2D memory) {
-		Tensors.Tensor2D memory res = cloneTensor(a);
+    function __apply_binary_op(Tensors.Tensor2D memory a, Tensors.Tensor1D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor2D memory) {
+		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
-				res.mat[i][j] = op(res.mat[i][j], b.mat[i % b.n][j % b.m]);
+				res.mat[i][j] = op(a.mat[i][j], b.mat[j]);
+			}
+		}
+		return res;
+	}
+
+    function __apply_binary_op(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor2D memory) {
+		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
+		for (uint i = 0; i < res.n; i++) {
+			for (uint j = 0; j < res.m; j++) {
+				res.mat[i][j] = op(a.mat[i][j], b.mat[i % b.n][j % b.m]);
 			}
 		}
 		return res;
@@ -244,7 +253,15 @@ library Tensor2DMethods {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 	
+    function mul(Tensors.Tensor2D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor2D memory) {
+		return __apply_binary_op(a, b, Tensors.__mul);
+	}
+
     function add(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor2D memory) {
+    	return __apply_binary_op(a, b, Tensors.__add);
+    }
+
+    function add(Tensors.Tensor2D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor2D memory) {
     	return __apply_binary_op(a, b, Tensors.__add);
     }
 
@@ -314,13 +331,12 @@ library Tensor4DMethods {
 		}
 	}
 
-	function from(Tensors.Tensor4D memory ts, SD59x18[][][][] memory mat) internal pure returns (Tensors.Tensor4D memory) {
+	function from(SD59x18[][][][] memory mat) internal pure returns (Tensors.Tensor4D memory ts) {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
 		ts.p = mat[0][0].length;
 		ts.q = mat[0][0][0].length;
 		ts.mat = mat;
-		return ts;
 	}
 
 	function flat(SD59x18[][][][] memory mat) internal pure returns (SD59x18[] memory) {
@@ -371,11 +387,11 @@ library Tensor4DMethods {
 	}
 
 	function loadPartial(Tensors.Tensor4D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
-		uint n = ts.n; 
 		uint m = ts.m;
 		uint p = ts.p;
 		uint q = ts.q;
-		while (idx < data.length && ptr < n * m * p * q) {
+		uint cnt = count(ts);
+		while (idx < data.length && ptr < cnt) {
 			ts.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p].push(data[idx]);
 			ptr++;
 			idx++;
@@ -397,12 +413,12 @@ library Tensor4DMethods {
 		Tensors.Tensor4D memory a,
 		function(SD59x18) internal pure returns (SD59x18) op
 	) internal pure returns (Tensors.Tensor4D memory) {
-		Tensors.Tensor4D memory res = cloneTensor(a);
+		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
 				for (uint k = 0; k < res.p; k++) {
 					for (uint l = 0; l < res.q; l++) {
-						res.mat[i][j][k][l] = op(res.mat[i][j][k][l]);
+						res.mat[i][j][k][l] = op(a.mat[i][j][k][l]);
 					}
 				}
 			}
@@ -426,13 +442,27 @@ library Tensor4DMethods {
 		}
   	}
 
-    function __apply_binary_op(Tensors.Tensor4D memory a, Tensors.Tensor4D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor4D memory) {
-		Tensors.Tensor4D memory res = cloneTensor(a);
+    function __apply_binary_op(Tensors.Tensor4D memory a, Tensors.Tensor1D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor4D memory) {
+		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
 				for (uint k = 0; k < res.p; k++) {
 					for (uint l = 0; l < res.q; l++) {
-						res.mat[i][j][k][l] = op(res.mat[i][j][k][l], b.mat[i % b.n][j % b.m][k % b.p][l % b.q]);
+						res.mat[i][j][k][l] = op(a.mat[i][j][k][l], b.mat[l]);
+					}
+				}
+			}
+		}
+		return res;
+	}
+
+    function __apply_binary_op(Tensors.Tensor4D memory a, Tensors.Tensor4D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor4D memory) {
+		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
+		for (uint i = 0; i < res.n; i++) {
+			for (uint j = 0; j < res.m; j++) {
+				for (uint k = 0; k < res.p; k++) {
+					for (uint l = 0; l < res.q; l++) {
+						res.mat[i][j][k][l] = op(a.mat[i][j][k][l], b.mat[i % b.n][j % b.m][k % b.p][l % b.q]);
 					}
 				}
 			}
@@ -444,7 +474,15 @@ library Tensor4DMethods {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 	
+    function mul(Tensors.Tensor4D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor4D memory) {
+		return __apply_binary_op(a, b, Tensors.__mul);
+	}
+	
     function add(Tensors.Tensor4D memory a, Tensors.Tensor4D memory b) internal pure returns (Tensors.Tensor4D memory) {
+    	return __apply_binary_op(a, b, Tensors.__add);
+    }
+
+    function add(Tensors.Tensor4D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor4D memory) {
     	return __apply_binary_op(a, b, Tensors.__add);
     }
 
@@ -544,7 +582,7 @@ library Tensor4DMethods {
 			}
 		}
 
-		return res;			
+		return res;
 		}
 	}
 
