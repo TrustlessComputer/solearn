@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./Tensors.sol";
+import "./tensors/Tensors.sol";
+import "./tensors/Tensor1DMethods.sol";
+import "./tensors/Tensor2DMethods.sol";
+import "./tensors/Tensor4DMethods.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
 import "hardhat/console.sol";
