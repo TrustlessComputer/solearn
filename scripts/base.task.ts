@@ -356,8 +356,8 @@ task("eval-img", "evaluate model for each layer")
         let batchLayerNum = 1;
         let inputs = pixels;
         let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(w), ethers.BigNumber.from(h), ethers.BigNumber.from(3)];
-        let x1: any[] = [pixelsToImage(pixels, w, h, 3)];
-        let x2: any[] = [];
+        let x1: ethers.BigNumber[][][] = pixelsToImage(pixels, w, h, 3);
+        let x2: ethers.BigNumber[] = [];
         let classsNameRes = "";
 
         // console.log("classsNameRes: ", classsNameRes);

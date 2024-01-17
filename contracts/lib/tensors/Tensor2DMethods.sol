@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./Tensors.sol";
+import "./Tensor1DMethods.sol";
 
 library Tensor2DMethods {
 	function zerosTensor(uint n, uint m) internal pure returns (Tensors.Tensor2D memory ts) {
@@ -25,6 +26,10 @@ library Tensor2DMethods {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
 		ts.mat = mat;
+	}
+
+	function flat(Tensors.Tensor2D memory ts) internal pure returns (Tensors.Tensor1D memory) {
+		return Tensor1DMethods.from(flat(ts.mat));
 	}
 
 	function flat(SD59x18[][] memory mat) internal pure returns (SD59x18[] memory) {
@@ -104,7 +109,11 @@ library Tensor2DMethods {
 		}
   	}
 
-    function __apply_binary_op(Tensors.Tensor2D memory a, Tensors.Tensor1D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor2D memory) {
+    function __apply_binary_op(
+		Tensors.Tensor2D memory a, 
+		Tensors.Tensor1D memory b, 
+		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
+	) internal pure returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
@@ -114,7 +123,11 @@ library Tensor2DMethods {
 		return res;
 	}
 
-    function __apply_binary_op(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor2D memory) {
+    function __apply_binary_op(
+		Tensors.Tensor2D memory a, 
+		Tensors.Tensor2D memory b, 
+		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
+	) internal pure returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {

@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import "./tensors/Tensors.sol";
 import "./tensors/Tensor1DMethods.sol";
 import "./tensors/Tensor2DMethods.sol";
+import "./tensors/Tensor3DMethods.sol";
 import "./tensors/Tensor4DMethods.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
@@ -14,6 +15,7 @@ error TooMuchData();
 library Layers {
 	using Tensor1DMethods for Tensors.Tensor1D;
 	using Tensor2DMethods for Tensors.Tensor2D;
+	using Tensor3DMethods for Tensors.Tensor3D;
 	using Tensor4DMethods for Tensors.Tensor4D;
 
 	struct RescaleLayer {
@@ -55,55 +57,50 @@ library Layers {
 		uint ptr;
 	}
 
-	function forward(FlattenLayer memory layer, SD59x18[][][][] memory mat) internal pure returns (SD59x18[][] memory) {
-		Tensors.Tensor4D memory xt = Tensor4DMethods.from(mat);
-		Tensors.Tensor2D memory yt = Tensor4DMethods.flatKeep1stDim(xt);
-		return yt.mat;
+	function forward(FlattenLayer memory layer, SD59x18[][][] memory mat) internal pure returns (SD59x18[] memory) {
+		Tensors.Tensor3D memory xt = Tensor3DMethods.from(mat);
+		return Tensor3DMethods.flat(xt.mat);
 	}
 
-	function forward(RescaleLayer memory layer, SD59x18[][][][] memory x) internal pure returns (SD59x18[][][][] memory) {
+	function forward(RescaleLayer memory layer, SD59x18[][][] memory x) internal pure returns (SD59x18[][][] memory) {
 		uint n = x.length;
 		uint m = x[0].length;
 		uint p = x[0][0].length;
-		uint q = x[0][0][0].length;
 
-		SD59x18[][][][] memory y = new SD59x18[][][][](n);
+		SD59x18[][][] memory y = new SD59x18[][][](n);
 		for (uint i = 0; i < n; i++) {
-			y[i] = new SD59x18[][][](m);
+			y[i] = new SD59x18[][](m);
 			for (uint j = 0; j < m; j++) {
-				y[i][j] = new SD59x18[][](p);
+				y[i][j] = new SD59x18[](p);
 				for (uint k = 0; k < p; k++) {
-					y[i][j][k] = new SD59x18[](q);
-					for (uint l = 0; l < q; l++) {
-						y[i][j][k][l] = x[i][j][k][l].mul(layer.scale) + layer.offset;
-					}
+					y[i][j][k] = x[i][j][k].mul(layer.scale) + layer.offset;					
 				}
 			}
 		}
 		return y;
 	}
 
-	function forward(DenseLayer memory layer, SD59x18[][] memory x) internal pure returns (SD59x18[][] memory) {
-		Tensors.Tensor2D memory xt = Tensor2DMethods.from(x);
+	function forward(DenseLayer memory layer, SD59x18[] memory x) internal pure returns (SD59x18[] memory) {
+		Tensors.Tensor1D memory xt = Tensor1DMethods.from(x);
 		Tensors.Tensor2D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
-		Tensors.Tensor2D memory y = xt.matMul(wt).add(bt);
-		Tensors.Tensor2D memory zt = y.activation(layer.activation);
+		Tensors.Tensor1D memory y = xt.matMul(wt).add(bt);
+		Tensors.Tensor1D memory zt = y.activation(layer.activation);
 		return zt.mat;
 	}
 
-	function forward(MaxPooling2DLayer memory layer, SD59x18[][][][] memory x) internal pure returns (SD59x18[][][][] memory) {
-		Tensors.Tensor4D memory xt = Tensor4DMethods.from(x);
-		Tensors.Tensor4D memory yt = xt.maxPooling2D(layer.stride, layer.size, layer.padding);
+	function forward(MaxPooling2DLayer memory layer, SD59x18[][][] memory x) internal pure returns (SD59x18[][][] memory) {
+		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
+		Tensors.Tensor3D memory yt = xt.maxPooling2D(layer.stride, layer.size, layer.padding);
 		return yt.mat;
 	}
 
-	function forward(Conv2DLayer memory layer, SD59x18[][][][] memory x) internal pure returns (SD59x18[][][][] memory) {
-		Tensors.Tensor4D memory xt = Tensor4DMethods.from(x);
+	function forward(Conv2DLayer memory layer, SD59x18[][][] memory x) internal pure returns (SD59x18[][][] memory) {
+		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
 		Tensors.Tensor4D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
-		Tensors.Tensor4D memory yt = xt.conv2D(wt, layer.stride, layer.padding).add(bt);
-		Tensors.Tensor4D memory zt = yt.activation(layer.activation);
+		Tensors.Tensor3D memory yt = xt.conv2D(wt, layer.stride, layer.padding).add(bt);
+		Tensors.Tensor3D memory zt = yt.activation(layer.activation);
 		return zt.mat;
 	}
 

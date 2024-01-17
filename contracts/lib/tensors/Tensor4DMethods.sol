@@ -149,7 +149,11 @@ library Tensor4DMethods {
 		}
   	}
 
-    function __apply_binary_op(Tensors.Tensor4D memory a, Tensors.Tensor1D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor4D memory) {
+    function __apply_binary_op(
+		Tensors.Tensor4D memory a,
+		Tensors.Tensor1D memory b,
+		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
+	) internal pure returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
@@ -163,7 +167,11 @@ library Tensor4DMethods {
 		return res;
 	}
 
-    function __apply_binary_op(Tensors.Tensor4D memory a, Tensors.Tensor4D memory b, function(SD59x18, SD59x18) internal pure returns (SD59x18) op) internal pure returns (Tensors.Tensor4D memory) {
+    function __apply_binary_op(
+		Tensors.Tensor4D memory a,
+		Tensors.Tensor4D memory b,
+		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
+	) internal pure returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {

@@ -31,6 +31,7 @@ contract EternalAI is
     using Layers for Layers.DenseLayer;
     using Layers for Layers.MaxPooling2DLayer;
     using Layers for Layers.Conv2DLayer;
+    using Tensor1DMethods for Tensors.Tensor1D;
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor4DMethods for Tensors.Tensor4D;
 
@@ -51,8 +52,8 @@ contract EternalAI is
         uint256 indexed tokenId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[][][][] outputs1,
-        SD59x18[][] outputs2
+        SD59x18[][][] outputs1,
+        SD59x18[] outputs2
     );
 
     struct Model {
@@ -228,13 +229,13 @@ contract EternalAI is
 
     function forward(
         uint256 modelId,
-        SD59x18[][][][] memory x1,
-        SD59x18[][] memory x2,
+        SD59x18[][][] memory x1,
+        SD59x18[] memory x2,
         uint256 fromLayerIndex,
         uint256 toLayerIndex
     ) public view returns (
-        SD59x18[][][][] memory,
-        SD59x18[][] memory
+        SD59x18[][][] memory,
+        SD59x18[] memory
     ) {
         for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
             // console.log(i);
@@ -255,9 +256,8 @@ contract EternalAI is
 
             // the last layer
             if (i == models[modelId].layers.length - 1) {
-                Tensors.Tensor2D memory xt = Tensor2DMethods.from(x2);
-                SD59x18[][] memory result = new SD59x18[][](1);
-                result[0] = Tensor2DMethods.flat(xt.softmax().mat);
+                Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
+                SD59x18[] memory result = xt.softmax().mat;
                 return (x1, result);
             }
         }
@@ -269,14 +269,14 @@ contract EternalAI is
         uint256 modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[][][][] calldata x1,
-        SD59x18[][] calldata x2 
-    ) public view returns (string memory, SD59x18[][][][] memory, SD59x18[][] memory) {
+        SD59x18[][][] calldata x1,
+        SD59x18[] calldata x2 
+    ) public view returns (string memory, SD59x18[][][] memory, SD59x18[] memory) {
         if (toLayerIndex >= models[modelId].layers.length) {
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }
 
-        (SD59x18[][][][] memory r1, SD59x18[][] memory r2) = forward(
+        (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
             modelId,
             x1,
             x2,
@@ -286,8 +286,8 @@ contract EternalAI is
 
         if (toLayerIndex == models[modelId].layers.length - 1) {
             uint256 maxInd = 0;
-            for (uint256 i = 1; i < r2[0].length; i++) {
-                if (r2[0][i].gt(r2[0][maxInd])) {
+            for (uint256 i = 1; i < r2.length; i++) {
+                if (r2[i].gt(r2[maxInd])) {
                     maxInd = i;
                 }
             }
@@ -302,8 +302,8 @@ contract EternalAI is
         uint256 modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[][][][] calldata x1,
-        SD59x18[][] calldata x2
+        SD59x18[][][] calldata x1,
+        SD59x18[] calldata x2
     ) external payable {
         if (msg.value < evalPrice) revert InsufficientEvalPrice();
 
@@ -311,7 +311,7 @@ contract EternalAI is
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }
 
-        (SD59x18[][][][] memory r1, SD59x18[][] memory r2) = forward(
+        (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
             modelId,
             x1,
             x2,
@@ -321,8 +321,8 @@ contract EternalAI is
 
         if (toLayerIndex == models[modelId].layers.length - 1) {
             uint256 maxInd = 0;
-            for (uint256 i = 1; i < r2[0].length; i++) {
-                if (r2[0][i].gt(r2[0][maxInd])) {
+            for (uint256 i = 1; i < r2.length; i++) {
+                if (r2[i].gt(r2[maxInd])) {
                     maxInd = i;
                 }
             }
@@ -331,7 +331,7 @@ contract EternalAI is
                 modelId,
                 maxInd,
                 models[modelId].classesName[maxInd],
-                r2[0]
+                r2
             );
         } else {
             emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);
@@ -505,30 +505,30 @@ contract EternalAI is
         }
     }
 
-    function testMul(uint256 n) external {
-        SD59x18 res = sd(1 * 1e18);
-        for(uint i = 0; i < n; ++i) {
-            res = res * sd(1.01 * 1e18);
-        }
-    }
+    // function testMul(uint256 n) external {
+    //     SD59x18 res = sd(1 * 1e18);
+    //     for(uint i = 0; i < n; ++i) {
+    //         res = res * sd(1.01 * 1e18);
+    //     }
+    // }
 
-    function testAdd(uint256 n) external {
-        SD59x18 res = sd(0);
-        for(uint i = 0; i < n; ++i) {
-            res = res + sd(1.01 * 1e18);
-        }
-    }
+    // function testAdd(uint256 n) external {
+    //     SD59x18 res = sd(0);
+    //     for(uint i = 0; i < n; ++i) {
+    //         res = res + sd(1.01 * 1e18);
+    //     }
+    // }
 
-    function testAddInt256(uint256 n) external {
-        int res = 0;
-        for(uint i = 0; i < n; ++i) {
-            res = res + 12314;
-        }
-    }
+    // function testAddInt256(uint256 n) external {
+    //     int res = 0;
+    //     for(uint i = 0; i < n; ++i) {
+    //         res = res + 12314;
+    //     }
+    // }
 
-    function testForLoop(uint256 n) external {
-        for(uint i = 0; i < n; ++i) {
+    // function testForLoop(uint256 n) external {
+    //     for(uint i = 0; i < n; ++i) {
             
-        }
-    }
+    //     }
+    // }
 }
