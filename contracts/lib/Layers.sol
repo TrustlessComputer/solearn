@@ -117,6 +117,10 @@ library Layers {
 		}
 		if (ptrLayer == 1) {
 			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
+			if (ptr == layer.b.count()) {
+				++ptrLayer;
+				ptr = 0;
+			}
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -138,6 +142,10 @@ library Layers {
 		}
 		if (ptrLayer == 1) {
 			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
+			if (ptr == layer.b.count()) {
+				++ptrLayer;
+				ptr = 0;
+			}
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
