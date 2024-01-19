@@ -63,6 +63,12 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: 0,
   },
+  paths: {
+    sources: './contracts',
+    tests: './tests',
+    cache: './cache',
+    artifacts: './artifacts',
+  },
 };
 
 export default config;
