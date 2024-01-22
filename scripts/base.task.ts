@@ -291,7 +291,7 @@ task("mint-model-id", "mint model id (and upload weights)")
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
 
-        const layerInfos = [];
+        // const layerInfos = [];
         for (let wi = 0; wi < weightsDense.length; wi++) {
             let currentWeights = weightsDense[wi];
             for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
@@ -300,8 +300,8 @@ task("mint-model-id", "mint model id (and upload weights)")
                 await setWeightTx.wait(2);
                 console.log('append layer dense #', wi, '- tx', setWeightTx.hash);
             }
-            const layerInfo = await c.getDenseLayer(tokenId, wi);
-            layerInfos.push(layerInfo);
+            // const layerInfo = await c.getDenseLayer(tokenId, wi);
+            // layerInfos.push(layerInfo);
         }
         for (let wi = 0; wi < weightsConv2D.length; wi++) {
             let currentWeights = weightsConv2D[wi];
@@ -311,11 +311,11 @@ task("mint-model-id", "mint model id (and upload weights)")
                 await setWeightTx.wait(2);
                 console.log('append layer conv2D #', wi, '- tx', setWeightTx.hash);
             }
-            const layerInfo = await c.getConv2DLayer(tokenId, wi);
-            layerInfos.push(layerInfo);
+            // const layerInfo = await c.getConv2DLayer(tokenId, wi);
+            // layerInfos.push(layerInfo);
         }
 
-        fs.writeFileSync("tmp_model.json", JSON.stringify(layerInfos));
+        // fs.writeFileSync("tmp_model.json", JSON.stringify(layerInfos));
         console.log("Set weights done");
     });
 
@@ -390,11 +390,11 @@ task("eval-img", "evaluate model for each layer")
                 console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
                 if (x1.length > 0) {
                     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
-                    fs.writeFileSync(`x1_${i}.json`, JSON.stringify(x1));
+                    // fs.writeFileSync(`x1_${i}.json`, JSON.stringify(x1));
                 }
                 if (x2.length > 0) {
                     console.log(`x2: (${x2.length})`);
-                    fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
+                    // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
                 }
 
                 // const [className, r1, r2] = await measureTime(async () => {
@@ -429,13 +429,13 @@ task("eval-img", "evaluate model for each layer")
                     // x2 = outputs2;
                 // });
 
-                // console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
-                // if (x1.length > 0) {
-                //     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}, ${x1[0][0][0].length})`);
-                // }
-                // if (x2.length > 0) {
-                //     console.log(`x2: (${x2.length}, ${x2[0].length})`);
-                // }
+                console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
+                if (x1.length > 0) {
+                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
+                }
+                if (x2.length > 0) {
+                    console.log(`x2: (${x2.length})`);
+                }
 
                 const tx: ethers.ContractTransaction = await measureTime(async () => {
                     return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, { value: ethers.utils.parseEther("0.0001") });

@@ -271,6 +271,7 @@ contract EternalAI is
         SD59x18[][][] calldata x1,
         SD59x18[] calldata x2 
     ) public view returns (string memory, SD59x18[][][] memory, SD59x18[] memory) {
+        console.log("evaluate", toLayerIndex, models[modelId].layers.length);
         if (toLayerIndex >= models[modelId].layers.length) {
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }
