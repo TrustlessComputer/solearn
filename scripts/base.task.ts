@@ -386,7 +386,6 @@ task("eval-img", "evaluate model for each layer")
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
 
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
                 if (x1.length > 0) {
                     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
@@ -396,6 +395,7 @@ task("eval-img", "evaluate model for each layer")
                     console.log(`x2: (${x2.length})`);
                     // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
                 }
+                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
 
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
