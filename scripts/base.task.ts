@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 
 
 const ContractName = "EternalAI";
-const MaxWeightLen = 5000;
+const MaxWeightLen = 2000;
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -321,8 +321,6 @@ task("mint-model-id", "mint model id (and upload weights)")
 
 task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
-    .addOptionalParam("w", "model input image width", 2, types.int)
-    .addOptionalParam("h", "model input image height", 2, types.int)
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
     .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
@@ -342,12 +340,16 @@ task("eval-img", "evaluate model for each layer")
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
 
-        const img = fs.readFileSync(taskArgs.img);
-        console.log("img: ", img);
+        const imgRaw = fs.readFileSync(taskArgs.img);
+        console.log("imgRaw: ", imgRaw);
         // TODO: Get inputDim from EternalAI and use the width and height from inputDim instead
-        let { w, h } = taskArgs;
         // How to get input image size?
-        const imgBuffer = await sharp(img).removeAlpha().resize(w, h).raw().toBuffer();
+
+        const img = sharp(imgRaw);
+        const metadata = await img.metadata(); 
+        const w = metadata.width;
+        const h = metadata.height;
+        const imgBuffer = await img.removeAlpha().resize(w, h).raw().toBuffer();
         const imgArray = [...imgBuffer];
         const pixels = imgArray.map((b: any) =>
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
@@ -387,7 +389,7 @@ task("eval-img", "evaluate model for each layer")
                 const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
                 if (x1.length > 0) {
-                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length}})`);
+                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
                     fs.writeFileSync(`x1_${i}.json`, JSON.stringify(x1));
                 }
                 if (x2.length > 0) {

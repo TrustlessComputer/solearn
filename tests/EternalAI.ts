@@ -316,18 +316,23 @@ describe("EternalAI", function () {
     it("debug maxPooling2D", async function () {
       const { eternalAI, owner, abic } = await loadDeployedContract();
 
-      const tokenId = BigNumber.from("0");
-      // const imgPath = "sample-images/10x10/cryptoadz/000.png"
-      const imgPath = "sample-images/cifar10/airplane/0000.jpg"
-      const offline = true;
-      // TODO: Get inputDim from EternalAI and use the width and height from inputDim instead
-      let { w, h } = { w: 32, h: 32 };
+      const tokenId = BigNumber.from("2");
+      const imgPath = "sample-images/10x10/cryptoadz/000.png"
+      // const imgPath = "sample-images/cifar10/airplane/0000.jpg"
+      const offline = false;
 
-      const img = fs.readFileSync(imgPath);
-      console.log("img: ", img);
+      const imgRaw = fs.readFileSync(imgPath);
+      console.log("img: ", imgRaw);
+
+      // console.log(eternalAI.address);
+      // console.log(await ethers.provider.getCode(eternalAI.address));
 
       // How to get input image size?
-      const imgBuffer = await sharp(img).removeAlpha().resize(w, h).raw().toBuffer();
+      const img = sharp(imgRaw);
+      const metadata = await img.metadata(); 
+      const w = metadata.width;
+      const h = metadata.height;
+      const imgBuffer = await img.removeAlpha().resize(w, h).raw().toBuffer();
       const imgArray = [...imgBuffer];
       const pixels = imgArray.map((b: any) =>
           BigNumber.from(b).mul(BigNumber.from(10).pow(BigNumber.from(18))));

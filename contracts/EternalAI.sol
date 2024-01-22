@@ -238,7 +238,6 @@ contract EternalAI is
         SD59x18[] memory
     ) {
         for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
-            // console.log(i);
             Info memory layerInfo = models[modelId].layers[i];
 
             // add more layers

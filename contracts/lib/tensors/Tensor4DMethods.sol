@@ -5,6 +5,7 @@ import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./Tensors.sol";
 import "./Tensor2DMethods.sol";
+import "hardhat/console.sol";
 
 library Tensor4DMethods {
 	function zerosTensor(uint n, uint m, uint p, uint q) internal pure returns (Tensors.Tensor4D memory ts) {

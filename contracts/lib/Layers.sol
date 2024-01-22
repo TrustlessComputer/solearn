@@ -89,7 +89,8 @@ library Layers {
 		return zt.mat;
 	}
 
-	function forward(MaxPooling2DLayer memory layer, SD59x18[][][] memory x) internal pure returns (SD59x18[][][] memory) {
+	function forward(MaxPooling2DLayer memory layer, SD59x18[][][] memory x) internal view returns (SD59x18[][][] memory) {
+		console.log("MaxPooling2D", x.length, x[0].length, x[0][0].length);
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
 		Tensors.Tensor3D memory yt = xt.maxPooling2D(layer.stride, layer.size, layer.padding);
 		return yt.mat;
