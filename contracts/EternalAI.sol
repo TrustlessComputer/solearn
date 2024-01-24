@@ -33,6 +33,7 @@ contract EternalAI is
     using Layers for Layers.Conv2DLayer;
     using Tensor1DMethods for Tensors.Tensor1D;
     using Tensor2DMethods for Tensors.Tensor2D;
+    using Tensor3DMethods for Tensors.Tensor3D;
     using Tensor4DMethods for Tensors.Tensor4D;
 
     mapping(uint256 => Model) public models;
@@ -271,7 +272,6 @@ contract EternalAI is
         SD59x18[][][] calldata x1,
         SD59x18[] calldata x2 
     ) public view returns (string memory, SD59x18[][][] memory, SD59x18[] memory) {
-        console.log("evaluate", toLayerIndex, models[modelId].layers.length);
         if (toLayerIndex >= models[modelId].layers.length) {
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }

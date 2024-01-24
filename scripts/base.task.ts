@@ -395,7 +395,7 @@ task("eval-img", "evaluate model for each layer")
                     console.log(`x2: (${x2.length})`);
                     // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
                 }
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
+                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, { gasLimit: 1e9 });
 
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
