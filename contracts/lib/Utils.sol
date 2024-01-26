@@ -37,5 +37,4 @@ contract Utils {
 		}
 		return string(result);
 	}
-
 }
