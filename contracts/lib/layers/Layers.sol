@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./tensors/Tensors.sol";
-import "./tensors/Tensor1DMethods.sol";
-import "./tensors/Tensor2DMethods.sol";
-import "./tensors/Tensor3DMethods.sol";
-import "./tensors/Tensor4DMethods.sol";
+import "../tensors/Tensors.sol";
+import "../tensors/Tensor1DMethods.sol";
+import "../tensors/Tensor2DMethods.sol";
+import "../tensors/Tensor3DMethods.sol";
+import "../tensors/Tensor4DMethods.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
 import "hardhat/console.sol";
@@ -17,6 +17,11 @@ library Layers {
 	using Tensor2DMethods for Tensors.Tensor2D;
 	using Tensor3DMethods for Tensors.Tensor3D;
 	using Tensor4DMethods for Tensors.Tensor4D;
+
+	struct SingleLayerConfig {
+		bytes conf;
+		uint256 ind;
+	}
 
 	struct RescaleLayer {
 		uint layerIndex; // index within the model
@@ -152,5 +157,87 @@ library Layers {
 		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
+	}
+
+	function makeDenseLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (DenseLayer memory layer, uint256 out_dim) {
+		(, uint8 actv, uint256 d) = abi.decode(
+			slc.conf,
+			(uint8, uint8, uint256)
+		);
+		layer = Layers.DenseLayer(
+			slc.ind,
+			Tensors.ActivationFunc(actv),
+			d,
+			Tensor2DMethods.emptyTensor(dim, d),
+			Tensor1DMethods.emptyTensor(d),
+			0,
+			0
+		);
+		out_dim = d;
+	}
+
+	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (FlattenLayer memory layer, uint256 out_dim) {
+		layer = FlattenLayer(slc.ind);
+		out_dim = dim[0] * dim[1] * dim[2];
+	}
+
+	function makeRescaleLayer(SingleLayerConfig memory slc) internal pure returns (RescaleLayer memory layer) {
+		(, SD59x18 scale, SD59x18 offset) = abi.decode(
+			slc.conf,
+			(uint8, SD59x18, SD59x18)
+		);
+		layer = RescaleLayer(
+			slc.ind,
+			scale,
+			offset
+		);
+	}
+
+	function makeMaxPooling2DLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (MaxPooling2DLayer memory layer, uint256[3] memory out_dim) {
+		(, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
+			slc.conf,
+			(uint8, uint256[2], uint256[2], uint8)
+		);
+		layer = Layers.MaxPooling2DLayer(
+			slc.ind,
+			size,
+			stride,
+			Tensors.PaddingType(padding)
+		);
+ 		uint256[2] memory out;
+    (out, ) = Tensors.getConvSize(
+			[dim[0], dim[1]],
+			size,
+			stride,
+			Tensors.PaddingType(padding)
+		);
+		out_dim = [out[0], out[1], dim[2]];
+	}
+
+	function makeConv2DLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (Conv2DLayer memory layer, uint256[3] memory out_dim) {
+		(, uint8 actv, uint256 filters, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
+				slc.conf,
+				(uint8, uint8, uint256, uint256[2], uint256[2], uint8)
+		);
+		layer = Layers.Conv2DLayer(
+			slc.ind,
+			Tensors.ActivationFunc(actv),
+			filters,
+			stride,
+			Tensors.PaddingType(padding),
+			Tensor4DMethods.emptyTensor(size[0], size[1], dim[2], filters),
+			Tensor1DMethods.emptyTensor(filters),
+			0,
+			0
+		);
+
+		uint256[2] memory out;
+		(out, ) = Tensors.getConvSize(
+			[dim[0], dim[1]],
+			size,
+			stride,
+			Tensors.PaddingType(padding)
+		);
+		out_dim = [out[0], out[1], filters];
 	}
 }

@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./lib/Layers.sol";
+import "./lib/layers/Layers.sol";
 
 error NotTokenOwner();
 error InsufficientMintPrice();
@@ -73,13 +73,6 @@ contract EternalAI is
     struct Info {
         LayerType layerType;
         uint256 layerIndex;
-    }
-
-    struct SingleLayerConfig {
-        bytes conf;
-        uint256 ind;
-        uint256[3] prevDim1;
-        uint256 prevDim2;
     }
 
     enum LayerType {
@@ -377,49 +370,30 @@ contract EternalAI is
 
     function makeLayer(
         uint256 modelId,
-        SingleLayerConfig memory slc
+        Layers.SingleLayerConfig memory slc,
+        uint256[3] memory dim1,
+        uint256 dim2
     ) internal returns (uint256[3] memory, uint256) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
-        uint256[3] memory dim1 = slc.prevDim1;
-        uint256 dim2 = slc.prevDim2;
 
         // add more layers
         if (layerType == uint8(LayerType.Dense)) {
-            (, uint8 actv, uint256 d) = abi.decode(
-                slc.conf,
-                (uint8, uint8, uint256)
-            );
-            models[modelId].d.push(Layers.DenseLayer(
-                slc.ind,
-                Tensors.ActivationFunc(actv),
-                d,
-                Tensor2DMethods.emptyTensor(dim2, d),
-                Tensor1DMethods.emptyTensor(d),
-                0,
-                0
-            ));
+            (Layers.DenseLayer memory layer, uint out_dim2) = Layers.makeDenseLayer(slc, dim2);
+            models[modelId].d.push(layer);
+            dim2 = out_dim2;
+
             uint256 index = models[modelId].d.length - 1;
             models[modelId].layers.push(Info(LayerType.Dense, index));
-
-            dim2 = d;
         } else if (layerType == uint8(LayerType.Flatten)) {
-            models[modelId].f.push(Layers.FlattenLayer(
-                slc.ind
-            ));
-            dim2 = dim1[0] * dim1[1] * dim1[2];
+            (Layers.FlattenLayer memory layer, uint out_dim2) = Layers.makeFlattenLayer(slc, dim1);
+            models[modelId].f.push(layer);
+            dim2 = out_dim2;
 
             uint256 index = models[modelId].f.length - 1;
             models[modelId].layers.push(Info(LayerType.Flatten, index));
         } else if (layerType == uint8(LayerType.Rescale)) {
-            (, SD59x18 scale, SD59x18 offset) = abi.decode(
-                slc.conf,
-                (uint8, SD59x18, SD59x18)
-            );
-            models[modelId].r.push(Layers.RescaleLayer(
-                slc.ind,
-                scale,
-                offset
-            ));
+            (Layers.RescaleLayer memory layer) = Layers.makeRescaleLayer(slc);
+            models[modelId].r.push(layer);
 
             uint256 index = models[modelId].r.length - 1;
             models[modelId].layers.push(Info(LayerType.Rescale, index));
@@ -435,57 +409,19 @@ contract EternalAI is
             Info memory layerInfo = Info(LayerType.Input, 0);
             models[modelId].layers.push(layerInfo);
         } else if (layerType == uint8(LayerType.MaxPooling2D)) {
-            (, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
-                slc.conf,
-                (uint8, uint256[2], uint256[2], uint8)
-            );
-            models[modelId].mp2.push(Layers.MaxPooling2DLayer(
-                slc.ind,
-                size,
-                stride,
-                Tensors.PaddingType(padding)
-            ));
+            (Layers.MaxPooling2DLayer memory layer, uint[3] memory out_dim1) = Layers.makeMaxPooling2DLayer(slc, dim1);
+            models[modelId].mp2.push(layer);
+            dim1 = out_dim1;
+
             uint256 index = models[modelId].mp2.length - 1;
             models[modelId].layers.push(Info(LayerType.MaxPooling2D, index));
-
-            uint256[2] memory out;
-            (out, ) = Tensors.getConvSize(
-                [dim1[0], dim1[1]],
-                size,
-                stride,
-                Tensors.PaddingType(padding)
-            );
-            dim1[0] = out[0];
-            dim1[1] = out[1];
         } else if (layerType == uint8(LayerType.Conv2D)) {
-            (, uint8 actv, uint256 filters, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
-                slc.conf,
-                (uint8, uint8, uint256, uint256[2], uint256[2], uint8)
-            );
-            models[modelId].c2.push(Layers.Conv2DLayer(
-                slc.ind,
-                Tensors.ActivationFunc(actv),
-                filters,
-                stride,
-                Tensors.PaddingType(padding),
-                Tensor4DMethods.emptyTensor(size[0], size[1], dim1[2], filters),
-                Tensor1DMethods.emptyTensor(filters),
-                0,
-                0
-            ));
+            (Layers.Conv2DLayer memory layer, uint[3] memory out_dim1) = Layers.makeConv2DLayer(slc, dim1);
+            models[modelId].c2.push(layer);
+            dim1 = out_dim1;
+
             uint256 index = models[modelId].c2.length - 1;
             models[modelId].layers.push(Info(LayerType.Conv2D, index));
-
-            uint256[2] memory out;
-            (out, ) = Tensors.getConvSize(
-                [dim1[0], dim1[1]],
-                size,
-                stride,
-                Tensors.PaddingType(padding)
-            );
-            dim1[0] = out[0];
-            dim1[1] = out[1];
-            dim1[2] = filters;
         }
         return (dim1, dim2);
     }
@@ -500,35 +436,10 @@ contract EternalAI is
         for (uint256 i = 0; i < layersConfig.length; i++) {
             (dim1, dim2) = makeLayer(
                 modelId,
-                SingleLayerConfig(layersConfig[i], i, dim1, dim2)
+                Layers.SingleLayerConfig(layersConfig[i], i),
+                dim1,
+                dim2
             );
         }
     }
-
-    // function testMul(uint256 n) external {
-    //     SD59x18 res = sd(1 * 1e18);
-    //     for(uint i = 0; i < n; ++i) {
-    //         res = res * sd(1.01 * 1e18);
-    //     }
-    // }
-
-    // function testAdd(uint256 n) external {
-    //     SD59x18 res = sd(0);
-    //     for(uint i = 0; i < n; ++i) {
-    //         res = res + sd(1.01 * 1e18);
-    //     }
-    // }
-
-    // function testAddInt256(uint256 n) external {
-    //     int res = 0;
-    //     for(uint i = 0; i < n; ++i) {
-    //         res = res + 12314;
-    //     }
-    // }
-
-    // function testForLoop(uint256 n) external {
-    //     for(uint i = 0; i < n; ++i) {
-            
-    //     }
-    // }
 }
