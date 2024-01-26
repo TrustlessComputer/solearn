@@ -1,10 +1,10 @@
-import {HardhatRuntimeEnvironment} from 'hardhat/types';
-import {DeployFunction} from 'hardhat-deploy/types';
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { DeployFunction } from 'hardhat-deploy/types';
 import { ethers } from 'hardhat';
 import fs from 'fs';
 
 const abic = ethers.utils.defaultAbiCoder;
-const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts, network } = hre;
     const { deploy, execute } = deployments;
     const { deployer } = await getNamedAccounts();
@@ -13,7 +13,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         await network.provider.send("evm_setIntervalMining", [3000]);
     }
 
-    await deploy('Perceptrons', {
+    await deploy('EternalAI', {
         from: deployer,
         proxy: {
             proxyContract: 'OpenZeppelinTransparentProxy',
@@ -31,8 +31,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
         log: true,
     });
-    
+
 };
 
-func.tags = ['2', 'Perceptrons'];
+func.tags = ['2', 'EternalAI'];
 export default func;

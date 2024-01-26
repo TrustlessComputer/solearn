@@ -3,13 +3,14 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-deploy";
 import './scripts/base.task';
 import "hardhat-tracer";
+// import "@foundry-rs/hardhat-anvil";
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "tcbtc",
+  defaultNetwork: "hardhat",
   solidity: {
     compilers: [
-      { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 200 } } },
+      { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 2000 } } },
     ]
   },
   networks: {
@@ -21,6 +22,10 @@ const config: HardhatUserConfig = {
       gas: 100_000_000,
       allowUnlimitedContractSize: true,
       blockGasLimit: 2_500_000_000,
+    },
+    anvil: {
+      url: "http://127.0.0.1:8545/",
+      launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
     },
     localhost: {
       url: "http://localhost:8545",
@@ -49,19 +54,25 @@ const config: HardhatUserConfig = {
       timeout: 500_000,
     },
     regtest: {
-      url: "https://l2-node.regtest.trustless.computer",
+      url: "https://eternal-ai.tc.l2aas.com/rpc",
       accounts: [
-        "", // private key
+        "0x5333efdeaa7e5ab71e95775c0b1d1a15db1585f961b224625805505127248ee3", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000,
-      // gas: 2100000,
-      // gasPrice: 8000000000,
+      gas: 200_000_000,
+      gasPrice: 1_000_000_000,
     },
   },
   namedAccounts: {
     deployer: 0,
+  },
+  paths: {
+    sources: './contracts',
+    tests: './tests',
+    cache: './cache',
+    artifacts: './artifacts',
   },
 };
 

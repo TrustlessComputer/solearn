@@ -3,6 +3,7 @@
   "devDependencies": {
     "@ericxstone/hardhat-blockscout-verify": "^1.0.2",
     "@ethersproject/experimental": "^5.7.0",
+    "@foundry-rs/hardhat-anvil": "^0.1.7",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@openzeppelin/contracts": "^4.8.3",
     "@openzeppelin/contracts-upgradeable": "^4.8.2",

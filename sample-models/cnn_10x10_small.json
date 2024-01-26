@@ -1,0 +1,85 @@
+{
+  "model_name": "cifar10",
+  "layers_config": {
+    "config": {
+      "layers": [
+        {
+          "class_name": "InputLayer",
+          "config": { "batch_input_shape": [null, 10, 10, 3] }
+        },
+        {
+          "class_name": "Rescaling",
+          "config": { "scale": 0.00784313725490196, "offset": -1 }
+        },
+        {
+          "class_name": "Conv2D",
+          "config": {
+            "filters": 4,
+            "kernel_size": [3, 3],
+            "strides": [1, 1],
+            "activation": "relu",
+            "padding": "same"
+          }
+        },
+        {
+          "class_name": "MaxPooling2D",
+          "config": {
+            "pool_size": [2, 2],
+            "strides": [2, 2],
+            "padding": "valid"
+          }
+        },
+        {
+          "class_name": "Conv2D",
+          "config": {
+            "filters": 5,
+            "kernel_size": [3, 3],
+            "strides": [1, 1],
+            "activation": "relu",
+            "padding": "same"
+          }
+        },
+        {
+          "class_name": "MaxPooling2D",
+          "config": {
+            "pool_size": [2, 2],
+            "strides": [2, 2],
+            "padding": "same"
+          }
+        },
+        {
+          "class_name": "Conv2D",
+          "config": {
+            "filters": 6,
+            "kernel_size": [3, 3],
+            "strides": [1, 1],
+            "activation": "relu",
+            "padding": "same"
+          }
+        },
+        {
+          "class_name": "MaxPooling2D",
+          "config": {
+            "pool_size": [2, 2],
+            "strides": [2, 2],
+            "padding": "same"
+          }
+        },
+        { "class_name": "Flatten" },
+        {
+          "class_name": "Dense",
+          "config": { "units": 4, "activation": "linear" }
+        }
+      ]
+    }
+  },
+  "weight_b64": "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",
+  "training_traits": {
+    "structure_gen": "Custom",
+    "n_layers": 3,
+    "max_nodes": 20,
+    "activation_func": "ReLU",
+    "epoch_num": 10
+  },
+  "classes_name": ["cryptoadz", "cryptopunks", "moonbirds", "nouns"]
+}
