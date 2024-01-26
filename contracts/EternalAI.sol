@@ -406,8 +406,7 @@ contract EternalAI is
             dim1 = ipd;
 
             // NOTE: there is only one layer type input
-            Info memory layerInfo = Info(LayerType.Input, 0);
-            models[modelId].layers.push(layerInfo);
+            models[modelId].layers.push(Info(LayerType.Input, 0));
         } else if (layerType == uint8(LayerType.MaxPooling2D)) {
             (Layers.MaxPooling2DLayer memory layer, uint[3] memory out_dim1) = Layers.makeMaxPooling2DLayer(slc, dim1);
             models[modelId].mp2.push(layer);

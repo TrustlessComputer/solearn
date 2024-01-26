@@ -61,13 +61,14 @@ library Tensor1DMethods {
 		} else {
 			revert InvalidActivationFunction();
 		}
-  	}
+	}
+	
 	function add(Tensors.Tensor1D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor1D memory) {
-    	return __apply_binary_op(a, b, Tensors.__add);
-    }
+		return __apply_binary_op(a, b, Tensors.__add);
+	}
 
-    function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor1D memory) {
-    	Tensors.Tensor1D memory res = zerosTensor(b.m);
+	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor1D memory) {
+		Tensors.Tensor1D memory res = zerosTensor(b.m);
 		for (uint j = 0; j < b.m; j++) {
 			for (uint k = 0; k < b.n; k++) {
 				res.mat[j] = res.mat[j] + a.mat[k] * b.mat[k][j];
@@ -86,7 +87,7 @@ library Tensor1DMethods {
 		return (ptr, idx);
 	}
 
-    function softmax(Tensors.Tensor1D memory a) internal pure returns (Tensors.Tensor1D memory) {
+	function softmax(Tensors.Tensor1D memory a) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = __apply_unary_op(a, Tensors.__exp);
 		SD59x18 sum_e = sd(0);
 		for (uint i = 0; i < res.n; i++) {
