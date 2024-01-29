@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 
 const ContractName = "EternalAI";
 const MaxWeightLen = 2000;
+const MaxLayerType = 8;
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -31,6 +32,10 @@ function getLayerType(name: string): number {
         layerType = 4;
     } else if (name === 'Conv2D') {
         layerType = 5;
+    } else if (name === 'Embedding') {
+        layerType = 6;
+    } else if (name === 'SimpleRNN') {
+        layerType = 7;
     }
     return layerType;
 }
@@ -55,6 +60,10 @@ function getLayerName(type: number): string {
         layerName = 'MaxPooling2D';
     } else if (type === 5) {
         layerName = 'Conv2D';
+    } else if (type === 6) {
+        layerName = 'Embedding';
+    } else if (type === 7) {
+        layerName = 'SimpleRNN';
     }
     return layerName;
 }
@@ -166,30 +175,36 @@ task("mint-model-id", "mint model id (and upload weights)")
             }
         }
 
-        let weightsDense: ethers.BigNumber[][] = [];
-        let weightsConv2D: ethers.BigNumber[][] = [];
-        let totDenseSize = 0;
-        let totConv2DSize = 0;
+        let weights: ethers.BigNumber[][][] = new Array<ethers.BigNumber[][]>(MaxLayerType);
+        let totSize: number[] = new Array<number>(MaxLayerType);
+
+        // let weightsDense: ethers.BigNumber[][] = [];
+        // let weightsConv2D: ethers.BigNumber[][] = [];
+        // let weightsEmbedding: ethers.BigNumber[][] = [];
+        // let weightsSimpleRNN: ethers.BigNumber[][] = [];
+        // let totDenseSize = 0;
+        // let totConv2DSize = 0;
+        // let totEmbeddingSize = 0;
+        // let totSimpleRNNSize = 0;
 
         let newLayerConfig = [];
         let input_units: any = 0;
         for (let i = 0; i < params.layers_config.config.layers.length; i++) {
             const layer = params.layers_config.config.layers[i];
             let result: String = "";
-            // class_name field to first byte: 0 = Dense, 1 = Flatten, 2 = Rescaling
+            
+            let layerType = getLayerType(layer.class_name);
             if (layer.class_name === 'Dense') {
-
-                let temp = ethers.BigNumber.from(layer.config.units).toHexString();
                 const output_units = layer.config.units;
 
                 let activationFn: number = getActivationType(layer.config.activation);
 
                 // reconstruct weights
                 let layerWeights = weightsFlat.splice(0, input_units * output_units + output_units)
-                weightsDense.push(layerWeights);
-                totDenseSize += layerWeights.length;
+                weights[layerType].push(layerWeights);
+                totSize[layerType] += layerWeights.length;
 
-                result = abic.encode(["uint8", "uint8", "uint256"], [0, activationFn, temp]);
+                result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(output_units)]);
                 input_units = output_units;
             } else if (layer.class_name === 'Flatten') {
                 result = abic.encode(["uint8"], [1]);
@@ -234,8 +249,8 @@ task("mint-model-id", "mint model id (and upload weights)")
                 // reconstruct weights
                 // Filter: (F_W, F_H, D, K)
                 let layerWeights = weightsFlat.splice(0, f_w * f_h * d * filters + filters)
-                weightsConv2D.push(layerWeights);
-                totConv2DSize += layerWeights.length;
+                weights[layerType].push(layerWeights);
+                totSize[layerType] += layerWeights.length;
 
                 result = abic.encode(["uint8", "uint8", "uint", "uint[2]", "uint[2]", "uint8"], [
                     5,
@@ -248,7 +263,29 @@ task("mint-model-id", "mint model id (and upload weights)")
 
                 const { W, H } = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
                 input_units = [W, H, filters];
-            }
+            } else if (layer.class_name === 'Embedding') {
+                let inputDim = layer.config.input_dim;
+                let outputDim = layer.config.output_dim;
+
+                // reconstruct weights
+                let layerWeights = weightsFlat.splice(0, inputDim * outputDim);
+                weights[layerType].push(layerWeights);
+                totSize[layerType] += layerWeights.length;
+
+                result = abic.encode(["uint8", "uint256", "uint256"], [0, ethers.BigNumber.from(inputDim), ethers.BigNumber.from(outputDim)]);
+                input_units = outputDim;
+            } else if (layer.class_name === 'SimpleRNN') {
+                const units = layer.config.units;
+                const activationFn: number = getActivationType(layer.config.activation);
+
+                // reconstruct weights
+                let layerWeights = weightsFlat.splice(0, input_units * units + units * units + units);
+                weights[layerType].push(layerWeights);
+                totSize[layerType] += layerWeights.length;
+
+                result = abic.encode(["uint8", "uint8", "uint256"], [0, activationFn, ethers.BigNumber.from(units)]);
+                input_units = units;
+            } 
             newLayerConfig.push(result);
         }
         params.layers_config = newLayerConfig.filter((x: any) => x !== null);
@@ -275,9 +312,12 @@ task("mint-model-id", "mint model id (and upload weights)")
                 return;
             }
         }
-
-        console.log("Weight dense size: ", totDenseSize);
-        console.log("Weight conv2d size: ", totConv2DSize);
+        
+        for(let i = 0; i < MaxLayerType; ++i) {
+            console.log("Weight dense size: ", totDenseSize);
+            console.log("Weight conv2d size: ", totConv2DSize);
+    
+        }
 
         console.log(`Set weights`);
         const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
@@ -296,11 +336,9 @@ task("mint-model-id", "mint model id (and upload weights)")
         for (let wi = 0; wi < weightsDense.length; wi++) {
             let currentWeights = weightsDense[wi];
             for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
-                console.log(temp.length);
                 const setWeightTx = await c.appendWeights(tokenId, temp, wi, 0);
                 await setWeightTx.wait(2);
-                console.log('append layer dense #', wi, '- tx', setWeightTx.hash);
-
+                console.log(`append layer dense #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
             }
             // const layerInfo = await c.getDenseLayer(tokenId, wi);
             // layerInfos.push(layerInfo);
@@ -308,10 +346,29 @@ task("mint-model-id", "mint model id (and upload weights)")
         for (let wi = 0; wi < weightsConv2D.length; wi++) {
             let currentWeights = weightsConv2D[wi];
             for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
-                console.log(temp.length);
                 const setWeightTx = await c.appendWeights(tokenId, temp, wi, 5);
                 await setWeightTx.wait(2);
-                console.log('append layer conv2D #', wi, '- tx', setWeightTx.hash);
+                console.log(`append layer conv2D #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
+            }
+            // const layerInfo = await c.getConv2DLayer(tokenId, wi);
+            // layerInfos.push(layerInfo);
+        }
+        for (let wi = 0; wi < weightsConv2D.length; wi++) {
+            let currentWeights = weightsConv2D[wi];
+            for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
+                const setWeightTx = await c.appendWeights(tokenId, temp, wi, 5);
+                await setWeightTx.wait(2);
+                console.log(`append layer conv2D #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
+            }
+            // const layerInfo = await c.getConv2DLayer(tokenId, wi);
+            // layerInfos.push(layerInfo);
+        }
+        for (let wi = 0; wi < weightsConv2D.length; wi++) {
+            let currentWeights = weightsConv2D[wi];
+            for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
+                const setWeightTx = await c.appendWeights(tokenId, temp, wi, 5);
+                await setWeightTx.wait(2);
+                console.log(`append layer conv2D #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
             }
             // const layerInfo = await c.getConv2DLayer(tokenId, wi);
             // layerInfos.push(layerInfo);

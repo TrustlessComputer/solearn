@@ -62,6 +62,26 @@ library Layers {
 		uint ptr;
 	}
 
+	struct EmbeddingLayer {
+		uint layerIndex;
+		Tensors.Tensor2D w;
+		uint inputDim;
+		uint outputDim;
+		uint ptrLayer;
+		uint ptr;
+	}
+
+	struct SimpleRNNLayer {
+		uint layerIndex;
+		uint units;
+		Tensors.ActivationFunc activation;
+		Tensors.Tensor2D wx;
+		Tensors.Tensor2D wh;
+		Tensors.Tensor1D b;
+		uint ptrLayer;
+		uint ptr;
+	}
+
 	function forward(FlattenLayer memory layer, SD59x18[][][] memory mat) internal pure returns (SD59x18[] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(mat);
 		return Tensor3DMethods.flat(xt.mat);
@@ -109,6 +129,20 @@ library Layers {
 		return zt.mat;
 	}
 
+	function forward(EmbeddingLayer memory layer, uint x) internal pure returns (SD59x18[] memory) {
+		return layer.w.mat[x];
+	}
+
+	function forward(SimpleRNNLayer memory layer, SD59x18[] memory x, SD59x18[] memory states) internal pure returns (SD59x18[] memory) {
+		Tensors.Tensor1D memory x_t = Tensor1DMethods.from(x);
+		Tensors.Tensor1D memory h_t = Tensor1DMethods.from(states);
+		Tensors.Tensor1D memory yx_t = Tensor1DMethods.matMul(x_t, layer.wx);
+		Tensors.Tensor1D memory yh_t = Tensor1DMethods.matMul(h_t, layer.wh);
+		Tensors.Tensor1D memory y_t = Tensor1DMethods.add(Tensor1DMethods.add(yx_t, yh_t), layer.b);
+		Tensors.Tensor1D memory z_t = Tensor1DMethods.activation(y_t, layer.activation);
+		return z_t.mat;
+	}
+
 	function appendWeights(DenseLayer storage layer, SD59x18[] memory x) internal {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
@@ -146,6 +180,56 @@ library Layers {
 			}
 		}
 		if (ptrLayer == 1) {
+			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
+			if (ptr == layer.b.count()) {
+				++ptrLayer;
+				ptr = 0;
+			}
+		}
+		if (idx < x.length) {
+			revert TooMuchData();
+		}
+		layer.ptrLayer = ptrLayer;
+		layer.ptr = ptr;
+	}
+
+	function appendWeights(EmbeddingLayer storage layer, SD59x18[] memory x) internal {
+		uint ptrLayer = layer.ptrLayer;
+		uint ptr = layer.ptr;
+		uint idx = 0;
+		if (ptrLayer == 0) {
+			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
+			if (ptr == layer.w.count()) {
+				++ptrLayer;
+				ptr = 0;
+			}
+		}
+		if (idx < x.length) {
+			revert TooMuchData();
+		}
+		layer.ptrLayer = ptrLayer;
+		layer.ptr = ptr;
+	}
+
+	function appendWeights(SimpleRNNLayer storage layer, SD59x18[] memory x) internal {
+		uint ptrLayer = layer.ptrLayer;
+		uint ptr = layer.ptr;
+		uint idx = 0;
+		if (ptrLayer == 0) {
+			(ptr, idx) = layer.wx.loadPartial(x, ptr, idx);
+			if (ptr == layer.wx.count()) {
+				++ptrLayer;
+				ptr = 0;
+			}
+		}
+		if (ptrLayer == 1) {
+			(ptr, idx) = layer.wh.loadPartial(x, ptr, idx);
+			if (ptr == layer.wh.count()) {
+				++ptrLayer;
+				ptr = 0;
+			}
+		}
+		if (ptrLayer == 2) {
 			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
 			if (ptr == layer.b.count()) {
 				++ptrLayer;
