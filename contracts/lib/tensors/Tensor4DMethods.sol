@@ -148,9 +148,9 @@ library Tensor4DMethods {
 		} else {
 			revert InvalidActivationFunction();
 		}
-  	}
+	}
 
-    function __apply_binary_op(
+	function __apply_binary_op(
 		Tensors.Tensor4D memory a,
 		Tensors.Tensor1D memory b,
 		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
@@ -168,7 +168,7 @@ library Tensor4DMethods {
 		return res;
 	}
 
-    function __apply_binary_op(
+	function __apply_binary_op(
 		Tensors.Tensor4D memory a,
 		Tensors.Tensor4D memory b,
 		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
@@ -186,21 +186,21 @@ library Tensor4DMethods {
 		return res;
 	}
 
-    function mul(Tensors.Tensor4D memory a, Tensors.Tensor4D memory b) internal pure returns (Tensors.Tensor4D memory) {
+	function mul(Tensors.Tensor4D memory a, Tensors.Tensor4D memory b) internal pure returns (Tensors.Tensor4D memory) {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 	
-    function mul(Tensors.Tensor4D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor4D memory) {
+	function mul(Tensors.Tensor4D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor4D memory) {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 	
-    function add(Tensors.Tensor4D memory a, Tensors.Tensor4D memory b) internal pure returns (Tensors.Tensor4D memory) {
-    	return __apply_binary_op(a, b, Tensors.__add);
-    }
+	function add(Tensors.Tensor4D memory a, Tensors.Tensor4D memory b) internal pure returns (Tensors.Tensor4D memory) {
+		return __apply_binary_op(a, b, Tensors.__add);
+	}
 
-    function add(Tensors.Tensor4D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor4D memory) {
-    	return __apply_binary_op(a, b, Tensors.__add);
-    }
+	function add(Tensors.Tensor4D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor4D memory) {
+		return __apply_binary_op(a, b, Tensors.__add);
+	}
 
 	function __cell_max(
 		Tensors.Tensor4D memory a,
@@ -302,7 +302,7 @@ library Tensor4DMethods {
 		}
 	}
 
-    function softmax(Tensors.Tensor4D memory a) internal pure returns (Tensors.Tensor4D memory) {
+	function softmax(Tensors.Tensor4D memory a) internal pure returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = __apply_unary_op(a, Tensors.__exp);
 		SD59x18 sum_e = sd(0);
 		for (uint i = 0; i < res.n; i++) {

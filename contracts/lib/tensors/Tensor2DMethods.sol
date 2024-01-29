@@ -107,9 +107,9 @@ library Tensor2DMethods {
 		} else {
 			revert InvalidActivationFunction();
 		}
-  	}
+	}
 
-    function __apply_binary_op(
+	function __apply_binary_op(
 		Tensors.Tensor2D memory a, 
 		Tensors.Tensor1D memory b, 
 		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
@@ -123,7 +123,7 @@ library Tensor2DMethods {
 		return res;
 	}
 
-    function __apply_binary_op(
+	function __apply_binary_op(
 		Tensors.Tensor2D memory a, 
 		Tensors.Tensor2D memory b, 
 		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
@@ -137,30 +137,30 @@ library Tensor2DMethods {
 		return res;
 	}
 
-    function mul(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor2D memory) {
+	function mul(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor2D memory) {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 	
-    function mul(Tensors.Tensor2D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor2D memory) {
+	function mul(Tensors.Tensor2D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor2D memory) {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 
-    function add(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor2D memory) {
-    	return __apply_binary_op(a, b, Tensors.__add);
-    }
+	function add(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor2D memory) {
+		return __apply_binary_op(a, b, Tensors.__add);
+	}
 
-    function add(Tensors.Tensor2D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor2D memory) {
-    	return __apply_binary_op(a, b, Tensors.__add);
-    }
+	function add(Tensors.Tensor2D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor2D memory) {
+		return __apply_binary_op(a, b, Tensors.__add);
+	}
 
-    function matMul(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor2D memory) {
-    	Tensors.Tensor2D memory res;
-    	res.n = a.n;
-    	res.m = b.m;
-    	res.mat = new SD59x18[][](res.n);
+	function matMul(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor2D memory) {
+		Tensors.Tensor2D memory res;
+		res.n = a.n;
+		res.m = b.m;
+		res.mat = new SD59x18[][](res.n);
 
-    	for (uint i = 0; i < res.n; i++) {
-    		res.mat[i] = new SD59x18[](res.m);
+		for (uint i = 0; i < res.n; i++) {
+			res.mat[i] = new SD59x18[](res.m);
 			for (uint j = 0; j < res.m; j++) {
 				for (uint k = 0; k < a.m; k++) {
 					res.mat[i][j] = res.mat[i][j] + a.mat[i][k].mul(b.mat[k][j]);
@@ -170,7 +170,7 @@ library Tensor2DMethods {
 		return res;
 	}
 
-    function softmax(Tensors.Tensor2D memory a) internal pure returns (Tensors.Tensor2D memory) {
+	function softmax(Tensors.Tensor2D memory a) internal pure returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = __apply_unary_op(a, Tensors.__exp);
 		SD59x18 sum_e = sd(0);
 		for (uint i = 0; i < res.n; i++) {

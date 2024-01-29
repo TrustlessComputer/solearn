@@ -126,7 +126,7 @@ library Tensor3DMethods {
 		}
   	}
 
-    function __apply_binary_op(
+	function __apply_binary_op(
 		Tensors.Tensor3D memory a, 
 		Tensors.Tensor1D memory b, 
 		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
@@ -142,7 +142,7 @@ library Tensor3DMethods {
 		return res;
 	}
 
-    function __apply_binary_op(
+	function __apply_binary_op(
 		Tensors.Tensor3D memory a, 
 		Tensors.Tensor3D memory b, 
 		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
@@ -158,21 +158,21 @@ library Tensor3DMethods {
 		return res;
 	}
 
-    function mul(Tensors.Tensor3D memory a, Tensors.Tensor3D memory b) internal pure returns (Tensors.Tensor3D memory) {
+	function mul(Tensors.Tensor3D memory a, Tensors.Tensor3D memory b) internal pure returns (Tensors.Tensor3D memory) {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 	
-    function mul(Tensors.Tensor3D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor3D memory) {
+	function mul(Tensors.Tensor3D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor3D memory) {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 	
-    function add(Tensors.Tensor3D memory a, Tensors.Tensor3D memory b) internal pure returns (Tensors.Tensor3D memory) {
-    	return __apply_binary_op(a, b, Tensors.__add);
-    }
+	function add(Tensors.Tensor3D memory a, Tensors.Tensor3D memory b) internal pure returns (Tensors.Tensor3D memory) {
+		return __apply_binary_op(a, b, Tensors.__add);
+	}
 
-    function add(Tensors.Tensor3D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor3D memory) {
-    	return __apply_binary_op(a, b, Tensors.__add);
-    }
+	function add(Tensors.Tensor3D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor3D memory) {
+		return __apply_binary_op(a, b, Tensors.__add);
+	}
 
 	function __cell_max(
 		Tensors.Tensor3D memory a,
@@ -268,7 +268,7 @@ library Tensor3DMethods {
 		}
 	}
 
-    function softmax(Tensors.Tensor3D memory a) internal pure returns (Tensors.Tensor3D memory) {
+	function softmax(Tensors.Tensor3D memory a) internal pure returns (Tensors.Tensor3D memory) {
 		Tensors.Tensor3D memory res = __apply_unary_op(a, Tensors.__exp);
 		SD59x18 sum_e = sd(0);
 		for (uint i = 0; i < res.n; i++) {
