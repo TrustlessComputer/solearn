@@ -6,6 +6,7 @@ npx hardhat mint-model-id --network regtest --model 'sample-models/cnn_10x10_sma
 npx hardhat mint-model-id --network regtest --model 'sample-models/cnn_10x10.json' --id '1' --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073'
 npx hardhat mint-model-id --network regtest --model 'sample-models/cnn_cifar_mini.json' --id '2' --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073'
 npx hardhat mint-model-id --network regtest --model 'sample-models/cnn_cifar_3conv.json' --id '3' --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073'
+npx hardhat mint-model-id --network regtest --model 'sample-models/10x10.json' --id '4' --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073'
 
 # call SC to evaluate image
 npx hardhat eval-img --network regtest --id '1' --offline true --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073' --img 'sample-images/10x10/cryptoadz/000.png'
@@ -13,7 +14,7 @@ npx hardhat eval-img --network regtest --id '0' --offline true --contract '0x5c4
 npx hardhat eval-img --network regtest --id '0' --offline true --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073' --img 'sample-images/10x10/moonbirds/000.png'
 npx hardhat eval-img --network regtest --id '0' --offline true --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073' --img 'sample-images/10x10/nouns/000.png'
 
-npx hardhat eval-img --network regtest --id '4' --offline false --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073' --img 'sample-images/cifar10/airplane/0000.jpg'
+npx hardhat eval-img --network regtest --id '3' --offline false --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073' --img 'sample-images/cifar10/airplane/0000.jpg'
 
 # get info model from sc
-npx hardhat get-model --network regtest --id '0' --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073'
+npx hardhat get-model --network regtest --id '3' --contract '0x5c43Bd02645e07220f11275Bf9C4abDf9c90c073'
