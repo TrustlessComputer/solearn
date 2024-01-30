@@ -13,12 +13,6 @@ const MaxLayerType = 8;
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
 function getLayerType(name: string): number {
-    // 0 - Dense
-    // 1 - Flatten
-    // 2 - Rescaling
-    // 3 - InputLayer
-    // 4 - MaxPooling2D
-    // 5 - Conv2D
     let layerType: number = -1;
     if (name === 'Dense') {
         layerType = 0;
@@ -41,12 +35,6 @@ function getLayerType(name: string): number {
 }
 
 function getLayerName(type: number): string {
-    // 0 - Dense
-    // 1 - Flatten
-    // 2 - Rescaling
-    // 3 - InputLayer
-    // 4 - MaxPooling2D
-    // 5 - Conv2D
     let layerName: string = "N/A";
     if (type === 0) {
         layerName = 'Dense';
@@ -69,12 +57,6 @@ function getLayerName(type: number): string {
 }
 
 function getActivationType(name: string): number {
-    // activation field to second byte:
-    // 0 - LeakyReLU,
-    // 1 - Linear,
-    // 2 - ReLU,
-    // 3 - Sigmoid,
-    // 4 - Tanh
     let activationFn: number = -1;
     if (name === 'leakyrelu') {
         activationFn = 0;
@@ -181,15 +163,6 @@ task("mint-model-id", "mint model id (and upload weights)")
             weights.push([]);
             totSize.push(0);
         }
-
-        // let weightsDense: ethers.BigNumber[][] = [];
-        // let weightsConv2D: ethers.BigNumber[][] = [];
-        // let weightsEmbedding: ethers.BigNumber[][] = [];
-        // let weightsSimpleRNN: ethers.BigNumber[][] = [];
-        // let totDenseSize = 0;
-        // let totConv2DSize = 0;
-        // let totEmbeddingSize = 0;
-        // let totSimpleRNNSize = 0;
 
         let newLayerConfig = [];
         let input_units: any = 0;
@@ -364,8 +337,6 @@ task("eval-img", "evaluate model for each layer")
             contractAddress = baseContract.address;
         }
 
-        // console.log(contractAddress);
-
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
 
@@ -391,24 +362,6 @@ task("eval-img", "evaluate model for each layer")
         let x1: ethers.BigNumber[][][] = pixelsToImage(pixels, w, h, 3);
         let x2: ethers.BigNumber[] = [];
         let classsNameRes = "";
-
-        // console.log("classsNameRes: ", classsNameRes);
-
-        // await measureTime(async () => {
-        //     return await c.testAdd(ethers.BigNumber.from(10800));
-        // });
-
-        // await measureTime(async () => {
-        //     return await c.testMul(ethers.BigNumber.from(10800));
-        // });
-
-        // await measureTime(async () => {
-        //     return await c.testAddInt256(ethers.BigNumber.from(10800));
-        // });
-
-        // await measureTime(async () => {
-        //     return await c.testForLoop(ethers.BigNumber.from(10800));
-        // });
 
         let startTime = new Date().getTime();
 
@@ -446,19 +399,9 @@ task("eval-img", "evaluate model for each layer")
                 }
             }    
         } else {
-            // const evPromise = c.once('Classified', (tokenId, classIndex, className, outputs) => {
-            //     console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
-            //     classsNameRes = className;
-            // });
-
             for (let i = 0; ; i = i + batchLayerNum) {
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
-                // const evPromise2 = c.once('Forwarded', (tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2) => {
-                // console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
-                // x1 = outputs1;
-                // x2 = outputs2;
-                // });
 
                 console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
                 if (x1.length > 0) {
