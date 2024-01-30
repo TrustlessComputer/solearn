@@ -172,43 +172,49 @@ task("mint-model-id", "mint model id (and upload weights)")
 
             if (layer.class_name === 'Dense') {
                 const output_units = layer.config.units;
-
+    
                 let activationFn: number = getActivationType(layer.config.activation);
-
+    
                 // reconstruct weights
                 let layerWeights = weightsFlat.splice(0, input_units * output_units + output_units)
                 weights[layerType].push(layerWeights);
                 totSize[layerType] += layerWeights.length;
-
+    
                 result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(output_units)]);
                 input_units = output_units;
             } else if (layer.class_name === 'Flatten') {
-                result = abic.encode(["uint8"], [1]);
+                result = abic.encode(["uint8"], [layerType]);
                 input_units = input_units[0] * input_units[1] * input_units[2];
             } else if (layer.class_name === 'Rescaling') {
                 const n1 = ethers.BigNumber.from(String(layer.config.scale * 1e18))
                 const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("1000000000000000000"));
-                result = abic.encode(["uint8", "int256", "int256"], [2, n1, n2]);
+                result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
             } else if (layer.class_name === 'InputLayer') {
-                const w = ethers.BigNumber.from(layer.config.batch_input_shape[1])
-                const h = ethers.BigNumber.from(layer.config.batch_input_shape[2])
-                const c = ethers.BigNumber.from(layer.config.batch_input_shape[3])
-                result = abic.encode(["uint8", "uint[3]"], [3, [w, h, c]]);
-                input_units = [w.toNumber(), h.toNumber(), c.toNumber()];
+                const dim = layer.config.batch_input_shape.slice(1);
+                if (dim.length == 1 && dim[0] == null) {
+                    result = abic.encode(["uint8", "uint8"], [layerType, 0]);
+                    input_units = 1;
+                } else if (dim.length == 3) {
+                    const w = ethers.BigNumber.from(dim[0]);
+                    const h = ethers.BigNumber.from(dim[1]);
+                    const c = ethers.BigNumber.from(dim[2]);
+                    result = abic.encode(["uint8", "uint8", "uint[3]"], [layerType, 1, [w, h, c]]);
+                    input_units = [w.toNumber(), h.toNumber(), c.toNumber()];
+                }
             } else if (layer.class_name === 'MaxPooling2D') {
                 const f_w = layer.config.pool_size[0];
                 const f_h = layer.config.pool_size[1];
                 const s_w = layer.config.strides[0];
                 const s_h = layer.config.strides[1];
                 const padding = layer.config.padding;
-
+    
                 result = abic.encode(["uint8", "uint[2]", "uint[2]", "uint8"], [
-                    4,
+                    layerType,
                     [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)],
                     [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
                     getPaddingType(padding),
                 ]);
-
+    
                 const { out } = getConvSize([input_units[0], input_units[1]], [f_w, f_h], [s_w, s_h], padding);
                 input_units = [out[0], out[1], input_units[2]];
             } else if (layer.class_name === 'Conv2D') {
@@ -219,47 +225,47 @@ task("mint-model-id", "mint model id (and upload weights)")
                 const s_h = layer.config.strides[1];
                 const padding = layer.config.padding;
                 const d = input_units[2];
-
+    
                 let activationFn: number = getActivationType(layer.config.activation);
-
+    
                 // reconstruct weights
                 // Filter: (F_W, F_H, D, K)
                 let layerWeights = weightsFlat.splice(0, f_w * f_h * d * filters + filters);
                 weights[layerType].push(layerWeights);
                 totSize[layerType] += layerWeights.length;
-
+    
                 result = abic.encode(["uint8", "uint8", "uint", "uint[2]", "uint[2]", "uint8"], [
-                    5,
+                    layerType,
                     activationFn,
                     ethers.BigNumber.from(filters),
                     [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)],
                     [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
                     getPaddingType(padding),
                 ]);
-
+    
                 const { out } = getConvSize([input_units[0], input_units[1]], [f_w, f_h], [s_w, s_h], padding);
                 input_units = [ out[0], out[1], filters];
             } else if (layer.class_name === 'Embedding') {
                 let inputDim = layer.config.input_dim;
                 let outputDim = layer.config.output_dim;
-
+    
                 // reconstruct weights
                 let layerWeights = weightsFlat.splice(0, inputDim * outputDim);
                 weights[layerType].push(layerWeights);
                 totSize[layerType] += layerWeights.length;
-
-                result = abic.encode(["uint8", "uint256", "uint256"], [0, ethers.BigNumber.from(inputDim), ethers.BigNumber.from(outputDim)]);
+    
+                result = abic.encode(["uint8", "uint256", "uint256"], [layerType, ethers.BigNumber.from(inputDim), ethers.BigNumber.from(outputDim)]);
                 input_units = outputDim;
             } else if (layer.class_name === 'SimpleRNN') {
                 const units = layer.config.units;
                 const activationFn: number = getActivationType(layer.config.activation);
-
+    
                 // reconstruct weights
                 let layerWeights = weightsFlat.splice(0, input_units * units + units * units + units);
                 weights[layerType].push(layerWeights);
                 totSize[layerType] += layerWeights.length;
-
-                result = abic.encode(["uint8", "uint8", "uint256"], [0, activationFn, ethers.BigNumber.from(units)]);
+    
+                result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(units)]);
                 input_units = units;
             } 
             newLayerConfig.push(result);
@@ -276,7 +282,7 @@ task("mint-model-id", "mint model id (and upload weights)")
         try {
             const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, { value: ethers.utils.parseEther("0.01") });
             await tx.wait();
-            console.log("Minted new EternalAI model");
+            console.log("Minted new EternalAI model, tx:", tx.hash);
         } catch (e) {
             const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
                 throw e;
@@ -315,8 +321,6 @@ task("mint-model-id", "mint model id (and upload weights)")
                 }
             }            
         }
-
-        console.log("Set weights done");
     });
 
 task("eval-img", "evaluate model for each layer")

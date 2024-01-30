@@ -64,9 +64,9 @@ library Layers {
 
 	struct EmbeddingLayer {
 		uint layerIndex;
-		Tensors.Tensor2D w;
 		uint inputDim;
 		uint outputDim;
+		Tensors.Tensor2D w;
 		uint ptrLayer;
 		uint ptr;
 	}
@@ -323,5 +323,39 @@ library Layers {
 			Tensors.PaddingType(padding)
 		);
 		out_dim = [out[0], out[1], filters];
+	}
+
+	function makeEmbeddingLayer(SingleLayerConfig memory slc) internal pure returns (EmbeddingLayer memory layer, uint256 out_dim) {
+		(, uint256 inputDim, uint256 outputDim) = abi.decode(
+			slc.conf,
+			(uint8, uint256, uint256)
+		);
+		layer = Layers.EmbeddingLayer(
+			slc.ind,
+			inputDim,
+			outputDim,
+			Tensor2DMethods.emptyTensor(inputDim, outputDim),
+			0,
+			0
+		);
+		out_dim = outputDim;
+	}
+
+	function makeSimpleRNNLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (SimpleRNNLayer memory layer, uint256 out_dim) {
+		(, uint8 actv, uint256 units) = abi.decode(
+			slc.conf,
+			(uint8, uint8, uint256)
+		);
+		layer = Layers.SimpleRNNLayer(
+			slc.ind,
+			units,
+			Tensors.ActivationFunc(actv),
+			Tensor2DMethods.emptyTensor(dim, units),
+			Tensor2DMethods.emptyTensor(units, units),
+			Tensor1DMethods.emptyTensor(units),
+			0,
+			0
+		);
+		out_dim = units;
 	}
 }

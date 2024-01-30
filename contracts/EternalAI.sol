@@ -31,6 +31,8 @@ contract EternalAI is
     using Layers for Layers.DenseLayer;
     using Layers for Layers.MaxPooling2DLayer;
     using Layers for Layers.Conv2DLayer;
+    using Layers for Layers.EmbeddingLayer;
+    using Layers for Layers.SimpleRNNLayer;
     using Tensor1DMethods for Tensors.Tensor1D;
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor3DMethods for Tensors.Tensor3D;
@@ -67,6 +69,8 @@ contract EternalAI is
         Layers.DenseLayer[] d;
         Layers.MaxPooling2DLayer[] mp2;
         Layers.Conv2DLayer[] c2;
+        Layers.EmbeddingLayer[] embedding;
+        Layers.SimpleRNNLayer[] simpleRNN;
         Info[] layers;
     }
 
@@ -81,7 +85,9 @@ contract EternalAI is
         Rescale,
         Input,
         MaxPooling2D,
-        Conv2D
+        Conv2D,
+        Embedding,
+        SimpleRNN
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -349,6 +355,8 @@ contract EternalAI is
             delete models[modelId].r;
             delete models[modelId].c2;
             delete models[modelId].mp2;
+            delete models[modelId].embedding;
+            delete models[modelId].simpleRNN;
             delete models[modelId].layers;
         }
 
@@ -365,6 +373,10 @@ contract EternalAI is
             models[modelId].d[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.Conv2D) {
             models[modelId].c2[layerInd].appendWeights(weights);
+        } else if (layerType == LayerType.Embedding) {
+            models[modelId].embedding[layerInd].appendWeights(weights);
+        } else if (layerType == LayerType.SimpleRNN) {
+            models[modelId].simpleRNN[layerInd].appendWeights(weights);
         }
     }
 
@@ -398,12 +410,17 @@ contract EternalAI is
             uint256 index = models[modelId].r.length - 1;
             models[modelId].layers.push(Info(LayerType.Rescale, index));
         } else if (layerType == uint8(LayerType.Input)) {
-            (, uint256[3] memory ipd) = abi.decode(
-                slc.conf,
-                (uint8, uint256[3])
-            );
-            models[modelId].inputDim = ipd;
-            dim1 = ipd;
+            (, uint8 inputType) = abi.decode(slc.conf, (uint8, uint8));
+            if (inputType == 0) {
+                dim2 = 1;
+            } else if (inputType == 1) {
+                (, , uint256[3] memory ipd) = abi.decode(
+                    slc.conf,
+                    (uint8, uint8, uint256[3])
+                );
+                models[modelId].inputDim = ipd;
+                dim1 = ipd;
+            }
 
             // NOTE: there is only one layer type input
             models[modelId].layers.push(Info(LayerType.Input, 0));
@@ -421,6 +438,20 @@ contract EternalAI is
 
             uint256 index = models[modelId].c2.length - 1;
             models[modelId].layers.push(Info(LayerType.Conv2D, index));
+        } else if (layerType == uint8(LayerType.Embedding)) {
+            (Layers.EmbeddingLayer memory layer, uint out_dim2) = Layers.makeEmbeddingLayer(slc);
+            models[modelId].embedding.push(layer);
+            dim2 = out_dim2;
+
+            uint256 index = models[modelId].embedding.length - 1;
+            models[modelId].layers.push(Info(LayerType.Embedding, index));
+        } else if (layerType == uint8(LayerType.SimpleRNN)) {
+            (Layers.SimpleRNNLayer memory layer, uint out_dim2) = Layers.makeSimpleRNNLayer(slc, dim2);
+            models[modelId].simpleRNN.push(layer);
+            dim2 = out_dim2;
+
+            uint256 index = models[modelId].simpleRNN.length - 1;
+            models[modelId].layers.push(Info(LayerType.SimpleRNN, index));
         }
         return (dim1, dim2);
     }
