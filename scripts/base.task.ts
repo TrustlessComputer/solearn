@@ -107,29 +107,27 @@ function pixelsToImage(pixels: ethers.BigNumber[], w: number, h: number, c: numb
 }
 
 function getConvSize(
-    w: number,
-    h: number,
-    f_w: number,
-    f_h: number,
-    s_w: number,
-    s_h: number,
+    dim: number[],
+    size: number[],
+    stride: number[],
     padding: string,
-) {
-    let W = 0, H = 0, L = 0, R = 0, T = 0, B = 0;
-
-    if (padding == "same") {
-        W = (w + s_w - 1) / s_w;
-        H = (h + s_h - 1) / s_h;
-        const pad_w = (w % s_w == 0) ? Math.max(f_w - s_w, 0) : Math.max(f_w - w % s_w, 0);
-        const pad_h = (h % s_h == 0) ? Math.max(f_h - s_h, 0) : Math.max(f_h - h % s_h, 0);
-        L = pad_w / 2; R = pad_w - L;
-        T = pad_h / 2; B = pad_h - T;
-    } else if (padding = "valid") {
-        W = (w - f_w) / s_w + 1;
-        H = (h - f_h) / s_h + 1;
+): { 
+    out: number[], 
+    pad: number[] 
+} {
+    const out = [], pad = [];
+    for(let i = 0; i < 2; ++i) {
+        if (padding == "same") {
+            out.push((dim[i] + stride[i] - 1) / stride[i]);
+            const total_pad = (dim[i] % stride[i] == 0) ? Math.max(size[i] - stride[i], 0) : Math.max(size[i] - dim[i] % stride[i], 0);
+            pad.push(total_pad / 2);
+        } else if (padding == "valid") {
+            // TODO: What if dim[i] < size[i]
+            out.push((dim[i] - size[i]) / stride[i] + 1);
+            pad.push(0);
+        }
     }
-
-    return { W, H, L, R, T, B };
+    return { out, pad };
 }
 
 task("mint-model-id", "mint model id (and upload weights)")
@@ -211,8 +209,8 @@ task("mint-model-id", "mint model id (and upload weights)")
                     getPaddingType(padding),
                 ]);
 
-                const { W, H } = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
-                input_units = [W, H, input_units[2]];
+                const { out } = getConvSize([input_units[0], input_units[1]], [f_w, f_h], [s_w, s_h], padding);
+                input_units = [out[0], out[1], input_units[2]];
             } else if (layer.class_name === 'Conv2D') {
                 const filters = layer.config.filters;
                 const f_w = layer.config.kernel_size[0];
@@ -239,8 +237,8 @@ task("mint-model-id", "mint model id (and upload weights)")
                     getPaddingType(padding),
                 ]);
 
-                const { W, H } = getConvSize(input_units[0], input_units[1], f_w, f_h, s_w, s_h, padding);
-                input_units = [W, H, filters];
+                const { out } = getConvSize([input_units[0], input_units[1]], [f_w, f_h], [s_w, s_h], padding);
+                input_units = [ out[0], out[1], filters];
             } else if (layer.class_name === 'Embedding') {
                 let inputDim = layer.config.input_dim;
                 let outputDim = layer.config.output_dim;
