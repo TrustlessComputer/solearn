@@ -212,7 +212,7 @@ contract EternalAI is
         string memory modelName,
         string[] memory classesName
     ) external payable {
-        if (msg.value < mintPrice) revert InsufficientMintPrice();
+        // if (msg.value < mintPrice) revert InsufficientMintPrice();
         _safeMint(to, modelId);
         _setTokenURI(modelId, uri);
         models[modelId].modelName = modelName;
@@ -298,7 +298,7 @@ contract EternalAI is
         SD59x18[][][] calldata x1,
         SD59x18[] calldata x2
     ) external payable {
-        if (msg.value < evalPrice) revert InsufficientEvalPrice();
+        // if (msg.value < evalPrice) revert InsufficientEvalPrice();
 
         if (toLayerIndex >= models[modelId].layers.length) {
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
@@ -330,10 +330,10 @@ contract EternalAI is
             emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);
         }
 
-        uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
-        uint256 royalty = msg.value - protocolFee;
-        (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
-        if (!success) revert TransferFailed();
+        // uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
+        // uint256 royalty = msg.value - protocolFee;
+        // (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
+        // if (!success) revert TransferFailed();
     }
 
     function setEternalAI(
