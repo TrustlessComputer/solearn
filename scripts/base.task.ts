@@ -175,8 +175,12 @@ task("mint-model-id", "mint model id (and upload weights)")
             }
         }
 
-        let weights: ethers.BigNumber[][][] = new Array<ethers.BigNumber[][]>(MaxLayerType);
-        let totSize: number[] = new Array<number>(MaxLayerType);
+        let weights: ethers.BigNumber[][][] = [];
+        let totSize: number[] = [];
+        for(let i = 0; i < MaxLayerType; ++i) {
+            weights.push([]);
+            totSize.push(0);
+        }
 
         // let weightsDense: ethers.BigNumber[][] = [];
         // let weightsConv2D: ethers.BigNumber[][] = [];
@@ -194,6 +198,7 @@ task("mint-model-id", "mint model id (and upload weights)")
             let result: String = "";
             
             let layerType = getLayerType(layer.class_name);
+
             if (layer.class_name === 'Dense') {
                 const output_units = layer.config.units;
 
@@ -248,7 +253,7 @@ task("mint-model-id", "mint model id (and upload weights)")
 
                 // reconstruct weights
                 // Filter: (F_W, F_H, D, K)
-                let layerWeights = weightsFlat.splice(0, f_w * f_h * d * filters + filters)
+                let layerWeights = weightsFlat.splice(0, f_w * f_h * d * filters + filters);
                 weights[layerType].push(layerWeights);
                 totSize[layerType] += layerWeights.length;
 
@@ -312,69 +317,34 @@ task("mint-model-id", "mint model id (and upload weights)")
                 return;
             }
         }
-        
-        for(let i = 0; i < MaxLayerType; ++i) {
-            console.log("Weight dense size: ", totDenseSize);
-            console.log("Weight conv2d size: ", totConv2DSize);
-    
-        }
 
-        console.log(`Set weights`);
-        const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
-            return _w.splice(0, maxlen);
-        }
-        const maxlen = taskArgs.maxlen;
-
-        const weightStr = JSON.stringify([weightsDense, weightsConv2D]);
-        console.log("Total weights len: ", weightStr.length);
+        console.log("Setting AI model");
 
         const setWeightTx = await c.setEternalAI(tokenId, params.layers_config);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
 
-        // const layerInfos = [];
-        for (let wi = 0; wi < weightsDense.length; wi++) {
-            let currentWeights = weightsDense[wi];
-            for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
-                const setWeightTx = await c.appendWeights(tokenId, temp, wi, 0);
-                await setWeightTx.wait(2);
-                console.log(`append layer dense #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
-            }
-            // const layerInfo = await c.getDenseLayer(tokenId, wi);
-            // layerInfos.push(layerInfo);
-        }
-        for (let wi = 0; wi < weightsConv2D.length; wi++) {
-            let currentWeights = weightsConv2D[wi];
-            for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
-                const setWeightTx = await c.appendWeights(tokenId, temp, wi, 5);
-                await setWeightTx.wait(2);
-                console.log(`append layer conv2D #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
-            }
-            // const layerInfo = await c.getConv2DLayer(tokenId, wi);
-            // layerInfos.push(layerInfo);
-        }
-        for (let wi = 0; wi < weightsConv2D.length; wi++) {
-            let currentWeights = weightsConv2D[wi];
-            for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
-                const setWeightTx = await c.appendWeights(tokenId, temp, wi, 5);
-                await setWeightTx.wait(2);
-                console.log(`append layer conv2D #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
-            }
-            // const layerInfo = await c.getConv2DLayer(tokenId, wi);
-            // layerInfos.push(layerInfo);
-        }
-        for (let wi = 0; wi < weightsConv2D.length; wi++) {
-            let currentWeights = weightsConv2D[wi];
-            for (let temp = truncateWeights(currentWeights, maxlen); temp.length > 0; temp = truncateWeights(currentWeights, maxlen)) {
-                const setWeightTx = await c.appendWeights(tokenId, temp, wi, 5);
-                await setWeightTx.wait(2);
-                console.log(`append layer conv2D #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
-            }
-            // const layerInfo = await c.getConv2DLayer(tokenId, wi);
-            // layerInfos.push(layerInfo);
+        const weightStr = JSON.stringify(weights);
+        console.log("Total weights len: ", weightStr.length);
+
+        console.log(`Set weights`);
+        const maxlen = taskArgs.maxlen;
+        const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
+            return _w.splice(0, maxlen);
         }
 
-        // fs.writeFileSync("tmp_model.json", JSON.stringify(layerInfos));
+        for(let i = 0; i < MaxLayerType; ++i) {
+            if (totSize[i] === 0) continue;
+            console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
+            for(let wi = 0; wi < weights[i].length; ++wi) {
+                for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
+                    const setWeightTx = await c.appendWeights(tokenId, temp, wi, i);
+                    await setWeightTx.wait(2);
+                    console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
+                }
+            }            
+        }
+
         console.log("Set weights done");
     });
 
