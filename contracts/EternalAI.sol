@@ -145,9 +145,13 @@ contract EternalAI is
         __ERC721_init("EternalAI", "EAI");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
-        mintPrice = 0.01 ether;
-        evalPrice = 0.0001 ether;
+        // NOTE: set fee = 0 for testnet
+        mintPrice = 0 ether;
+        evalPrice = 0 ether;
         protocolFeePercent = 50;
+        // mintPrice = 0.01 ether;
+        // evalPrice = 0.0001 ether;
+        // protocolFeePercent = 50;
         version = 1;
     }
 
@@ -225,7 +229,9 @@ contract EternalAI is
         string memory modelName,
         string[] memory classesName
     ) external payable {
+        // NOTE: TODO uncomment for mainnet
         // if (msg.value < mintPrice) revert InsufficientMintPrice();
+
         _safeMint(to, modelId);
         _setTokenURI(modelId, uri);
         models[modelId].modelName = modelName;
@@ -240,10 +246,7 @@ contract EternalAI is
         SD59x18[] memory x2,
         uint256 fromLayerIndex,
         uint256 toLayerIndex
-    ) public view returns (
-        SD59x18[][][] memory,
-        SD59x18[] memory
-    ) {
+    ) public view returns (SD59x18[][][] memory, SD59x18[] memory) {
         for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
             Info memory layerInfo = models[modelId].layers[i];
 
@@ -276,8 +279,12 @@ contract EternalAI is
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         SD59x18[][][] calldata x1,
-        SD59x18[] calldata x2 
-    ) public view returns (string memory, SD59x18[][][] memory, SD59x18[] memory) {
+        SD59x18[] calldata x2
+    )
+        public
+        view
+        returns (string memory, SD59x18[][][] memory, SD59x18[] memory)
+    {
         if (toLayerIndex >= models[modelId].layers.length) {
             toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
         }
@@ -311,6 +318,7 @@ contract EternalAI is
         SD59x18[][][] calldata x1,
         SD59x18[] calldata x2
     ) external payable {
+        // NOTE: TODO uncomment for mainnet
         // if (msg.value < evalPrice) revert InsufficientEvalPrice();
 
         if (toLayerIndex >= models[modelId].layers.length) {
@@ -343,6 +351,7 @@ contract EternalAI is
             emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);
         }
 
+        // NOTE: TODO uncomment for mainnet
         // uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
         // uint256 royalty = msg.value - protocolFee;
         // (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
@@ -402,7 +411,8 @@ contract EternalAI is
 
         // add more layers
         if (layerType == uint8(LayerType.Dense)) {
-            (Layers.DenseLayer memory layer, uint out_dim2, uint weights) = Layers.makeDenseLayer(slc, dim2);
+            (Layers.DenseLayer memory layer, uint out_dim2, uint weights) = Layers
+                .makeDenseLayer(slc, dim2);
             models[modelId].d.push(layer);
             models[modelId].requiredWeights += weights;
             dim2 = out_dim2;
@@ -410,14 +420,15 @@ contract EternalAI is
             uint256 index = models[modelId].d.length - 1;
             models[modelId].layers.push(Info(LayerType.Dense, index));
         } else if (layerType == uint8(LayerType.Flatten)) {
-            (Layers.FlattenLayer memory layer, uint out_dim2) = Layers.makeFlattenLayer(slc, dim1);
+            (Layers.FlattenLayer memory layer, uint out_dim2) = Layers
+                .makeFlattenLayer(slc, dim1);
             models[modelId].f.push(layer);
             dim2 = out_dim2;
 
             uint256 index = models[modelId].f.length - 1;
             models[modelId].layers.push(Info(LayerType.Flatten, index));
         } else if (layerType == uint8(LayerType.Rescale)) {
-            (Layers.RescaleLayer memory layer) = Layers.makeRescaleLayer(slc);
+            Layers.RescaleLayer memory layer = Layers.makeRescaleLayer(slc);
             models[modelId].r.push(layer);
 
             uint256 index = models[modelId].r.length - 1;
@@ -438,14 +449,18 @@ contract EternalAI is
             // NOTE: there is only one layer type input
             models[modelId].layers.push(Info(LayerType.Input, 0));
         } else if (layerType == uint8(LayerType.MaxPooling2D)) {
-            (Layers.MaxPooling2DLayer memory layer, uint[3] memory out_dim1) = Layers.makeMaxPooling2DLayer(slc, dim1);
+            (
+                Layers.MaxPooling2DLayer memory layer,
+                uint[3] memory out_dim1
+            ) = Layers.makeMaxPooling2DLayer(slc, dim1);
             models[modelId].mp2.push(layer);
             dim1 = out_dim1;
 
             uint256 index = models[modelId].mp2.length - 1;
             models[modelId].layers.push(Info(LayerType.MaxPooling2D, index));
         } else if (layerType == uint8(LayerType.Conv2D)) {
-            (Layers.Conv2DLayer memory layer, uint[3] memory out_dim1, uint weights) = Layers.makeConv2DLayer(slc, dim1);
+            (Layers.Conv2DLayer memory layer, uint[3] memory out_dim1, uint weights) = Layers
+                .makeConv2DLayer(slc, dim1);
             models[modelId].c2.push(layer);
             models[modelId].requiredWeights += weights;
             dim1 = out_dim1;
@@ -453,7 +468,8 @@ contract EternalAI is
             uint256 index = models[modelId].c2.length - 1;
             models[modelId].layers.push(Info(LayerType.Conv2D, index));
         } else if (layerType == uint8(LayerType.Embedding)) {
-            (Layers.EmbeddingLayer memory layer, uint out_dim2, uint weights) = Layers.makeEmbeddingLayer(slc);
+            (Layers.EmbeddingLayer memory layer, uint out_dim2, uint weights) = Layers
+                .makeEmbeddingLayer(slc);
             models[modelId].embedding.push(layer);
             models[modelId].requiredWeights += weights;
             dim2 = out_dim2;
@@ -461,7 +477,8 @@ contract EternalAI is
             uint256 index = models[modelId].embedding.length - 1;
             models[modelId].layers.push(Info(LayerType.Embedding, index));
         } else if (layerType == uint8(LayerType.SimpleRNN)) {
-            (Layers.SimpleRNNLayer memory layer, uint out_dim2, uint weights) = Layers.makeSimpleRNNLayer(slc, dim2);
+            (Layers.SimpleRNNLayer memory layer, uint out_dim2, uint weights) = Layers
+                .makeSimpleRNNLayer(slc, dim2);
             models[modelId].simpleRNN.push(layer);
             models[modelId].requiredWeights += weights;
             dim2 = out_dim2;

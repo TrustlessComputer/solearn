@@ -23,10 +23,10 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       blockGasLimit: 2_500_000_000,
     },
-    anvil: {
-      url: "http://127.0.0.1:8545/",
-      launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
-    },
+    // anvil: {
+    //   url: "http://127.0.0.1:8545/",
+    //   launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
+    // },
     localhost: {
       url: "http://localhost:8545",
       accounts: {
@@ -53,10 +53,19 @@ const config: HardhatUserConfig = {
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000,
     },
-    regtest: {
-      url: "https://l2-node.regtest.trustless.computer/",
+    aitest: {
+      url: "https://eternal-ai.tc.l2aas.com/rpc",
       accounts: [
-        "0x5333efdeaa7e5ab71e95775c0b1d1a15db1585f961b224625805505127248ee3", // private key
+        "", // private key
+      ],
+      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
+      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
+      timeout: 500_000,
+    },
+    regtest: {
+      url: "https://l2-node.regtest.trustless.computer",
+      accounts: [
+        "", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582

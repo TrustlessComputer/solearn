@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 
 
 const ContractName = "EternalAI";
-const MaxWeightLen = 1000;
+const MaxWeightLen = 500;
 const MaxLayerType = 8;
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
