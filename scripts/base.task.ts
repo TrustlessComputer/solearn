@@ -316,8 +316,14 @@ task("mint-model-id", "mint model id (and upload weights)")
             for(let wi = 0; wi < weights[i].length; ++wi) {
                 for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
                     const setWeightTx = await c.appendWeights(tokenId, temp, wi, i);
-                    await setWeightTx.wait(2);
+                    const receipt = await setWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
+                    const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
+                    if (deployedEvent != null) {
+                        const owner = deployedEvent.args?.owner;
+                        const tokenId = deployedEvent.args?.tokenId;
+                        console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+                    }
                 }
             }            
         }

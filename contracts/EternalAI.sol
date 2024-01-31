@@ -59,11 +59,19 @@ contract EternalAI is
         SD59x18[] outputs2
     );
 
+    event Deployed(
+        address indexed owner,
+        uint256 indexed tokenId
+    );
+
     struct Model {
         uint256[3] inputDim;
         string modelName;
         string[] classesName;
         uint256 numLayers;
+        Info[] layers;
+        uint256 requiredWeights;
+        uint256 appendedWeights;
         Layers.RescaleLayer[] r;
         Layers.FlattenLayer[] f;
         Layers.DenseLayer[] d;
@@ -71,7 +79,6 @@ contract EternalAI is
         Layers.Conv2DLayer[] c2;
         Layers.EmbeddingLayer[] embedding;
         Layers.SimpleRNNLayer[] simpleRNN;
-        Info[] layers;
     }
 
     struct Info {
@@ -369,14 +376,19 @@ contract EternalAI is
         uint256 layerInd,
         LayerType layerType
     ) external {
+        uint appendedWeights;
         if (layerType == LayerType.Dense) {
-            models[modelId].d[layerInd].appendWeights(weights);
+            appendedWeights = models[modelId].d[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.Conv2D) {
-            models[modelId].c2[layerInd].appendWeights(weights);
+            appendedWeights = models[modelId].c2[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.Embedding) {
-            models[modelId].embedding[layerInd].appendWeights(weights);
+            appendedWeights = models[modelId].embedding[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.SimpleRNN) {
-            models[modelId].simpleRNN[layerInd].appendWeights(weights);
+            appendedWeights = models[modelId].simpleRNN[layerInd].appendWeights(weights);
+        }
+        models[modelId].appendedWeights += appendedWeights;
+        if (models[modelId].appendedWeights == models[modelId].requiredWeights) {
+            emit Deployed(msg.sender, modelId);
         }
     }
 
@@ -390,8 +402,9 @@ contract EternalAI is
 
         // add more layers
         if (layerType == uint8(LayerType.Dense)) {
-            (Layers.DenseLayer memory layer, uint out_dim2) = Layers.makeDenseLayer(slc, dim2);
+            (Layers.DenseLayer memory layer, uint out_dim2, uint weights) = Layers.makeDenseLayer(slc, dim2);
             models[modelId].d.push(layer);
+            models[modelId].requiredWeights += weights;
             dim2 = out_dim2;
 
             uint256 index = models[modelId].d.length - 1;
@@ -432,22 +445,25 @@ contract EternalAI is
             uint256 index = models[modelId].mp2.length - 1;
             models[modelId].layers.push(Info(LayerType.MaxPooling2D, index));
         } else if (layerType == uint8(LayerType.Conv2D)) {
-            (Layers.Conv2DLayer memory layer, uint[3] memory out_dim1) = Layers.makeConv2DLayer(slc, dim1);
+            (Layers.Conv2DLayer memory layer, uint[3] memory out_dim1, uint weights) = Layers.makeConv2DLayer(slc, dim1);
             models[modelId].c2.push(layer);
+            models[modelId].requiredWeights += weights;
             dim1 = out_dim1;
 
             uint256 index = models[modelId].c2.length - 1;
             models[modelId].layers.push(Info(LayerType.Conv2D, index));
         } else if (layerType == uint8(LayerType.Embedding)) {
-            (Layers.EmbeddingLayer memory layer, uint out_dim2) = Layers.makeEmbeddingLayer(slc);
+            (Layers.EmbeddingLayer memory layer, uint out_dim2, uint weights) = Layers.makeEmbeddingLayer(slc);
             models[modelId].embedding.push(layer);
+            models[modelId].requiredWeights += weights;
             dim2 = out_dim2;
 
             uint256 index = models[modelId].embedding.length - 1;
             models[modelId].layers.push(Info(LayerType.Embedding, index));
         } else if (layerType == uint8(LayerType.SimpleRNN)) {
-            (Layers.SimpleRNNLayer memory layer, uint out_dim2) = Layers.makeSimpleRNNLayer(slc, dim2);
+            (Layers.SimpleRNNLayer memory layer, uint out_dim2, uint weights) = Layers.makeSimpleRNNLayer(slc, dim2);
             models[modelId].simpleRNN.push(layer);
+            models[modelId].requiredWeights += weights;
             dim2 = out_dim2;
 
             uint256 index = models[modelId].simpleRNN.length - 1;
@@ -461,6 +477,8 @@ contract EternalAI is
         bytes[] calldata layersConfig
     ) internal {
         models[modelId].numLayers = layersConfig.length;
+        models[modelId].requiredWeights = 0;
+        models[modelId].appendedWeights = 0;
         uint256[3] memory dim1;
         uint256 dim2;
         for (uint256 i = 0; i < layersConfig.length; i++) {

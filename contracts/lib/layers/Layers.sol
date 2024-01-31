@@ -114,7 +114,7 @@ library Layers {
 		return zt.mat;
 	}
 
-	function forward(MaxPooling2DLayer memory layer, SD59x18[][][] memory x) internal view returns (SD59x18[][][] memory) {
+	function forward(MaxPooling2DLayer memory layer, SD59x18[][][] memory x) internal pure returns (SD59x18[][][] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
 		Tensors.Tensor3D memory yt = xt.maxPooling2D(layer.stride, layer.size, layer.padding);
 		return yt.mat;
@@ -143,7 +143,7 @@ library Layers {
 		return z_t.mat;
 	}
 
-	function appendWeights(DenseLayer storage layer, SD59x18[] memory x) internal {
+	function appendWeights(DenseLayer storage layer, SD59x18[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
 		uint idx = 0;
@@ -166,9 +166,10 @@ library Layers {
 		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
+		return idx;
 	}
 
-	function appendWeights(Conv2DLayer storage layer, SD59x18[] memory x) internal {
+	function appendWeights(Conv2DLayer storage layer, SD59x18[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
 		uint idx = 0;
@@ -191,9 +192,10 @@ library Layers {
 		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
+		return idx;
 	}
 
-	function appendWeights(EmbeddingLayer storage layer, SD59x18[] memory x) internal {
+	function appendWeights(EmbeddingLayer storage layer, SD59x18[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
 		uint idx = 0;
@@ -209,9 +211,10 @@ library Layers {
 		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
+		return idx;
 	}
 
-	function appendWeights(SimpleRNNLayer storage layer, SD59x18[] memory x) internal {
+	function appendWeights(SimpleRNNLayer storage layer, SD59x18[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
 		uint idx = 0;
@@ -241,9 +244,10 @@ library Layers {
 		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
+		return idx;
 	}
 
-	function makeDenseLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (DenseLayer memory layer, uint256 out_dim) {
+	function makeDenseLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (DenseLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 d) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint256)
@@ -258,6 +262,7 @@ library Layers {
 			0
 		);
 		out_dim = d;
+		requiredWeights = layer.w.count() + layer.b.count();
 	}
 
 	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (FlattenLayer memory layer, uint256 out_dim) {
@@ -298,7 +303,7 @@ library Layers {
 		out_dim = [out[0], out[1], dim[2]];
 	}
 
-	function makeConv2DLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (Conv2DLayer memory layer, uint256[3] memory out_dim) {
+	function makeConv2DLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (Conv2DLayer memory layer, uint256[3] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 filters, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
 				slc.conf,
 				(uint8, uint8, uint256, uint256[2], uint256[2], uint8)
@@ -323,9 +328,10 @@ library Layers {
 			Tensors.PaddingType(padding)
 		);
 		out_dim = [out[0], out[1], filters];
+		requiredWeights = layer.w.count() + layer.b.count();
 	}
 
-	function makeEmbeddingLayer(SingleLayerConfig memory slc) internal pure returns (EmbeddingLayer memory layer, uint256 out_dim) {
+	function makeEmbeddingLayer(SingleLayerConfig memory slc) internal pure returns (EmbeddingLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
 		(, uint256 inputDim, uint256 outputDim) = abi.decode(
 			slc.conf,
 			(uint8, uint256, uint256)
@@ -339,9 +345,10 @@ library Layers {
 			0
 		);
 		out_dim = outputDim;
+		requiredWeights = layer.w.count();
 	}
 
-	function makeSimpleRNNLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (SimpleRNNLayer memory layer, uint256 out_dim) {
+	function makeSimpleRNNLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (SimpleRNNLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 units) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint256)
@@ -357,5 +364,6 @@ library Layers {
 			0
 		);
 		out_dim = units;
+		requiredWeights = layer.wx.count() + layer.wh.count() + layer.b.count();
 	}
 }
