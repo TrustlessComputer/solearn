@@ -148,10 +148,12 @@ library Layers {
 		uint ptr = layer.ptr;
 		uint idx = 0;
 		if (ptrLayer == 0) {
-			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
-			if (ptr == layer.w.count()) {
-				++ptrLayer;
-				ptr = 0;
+			uint m = layer.w.m;
+			uint cnt = layer.w.n * layer.w.m;
+			while (idx < x.length && ptr < cnt) {
+				layer.w.mat[ptr / m].push(x[idx]);
+				ptr++;
+				idx++;
 			}
 		}
 		if (ptrLayer == 1) {
@@ -161,9 +163,9 @@ library Layers {
 				ptr = 0;
 			}
 		}
-		if (idx < x.length) {
-			revert TooMuchData();
-		}
+		// if (idx < x.length) {
+		// 	revert TooMuchData();
+		// }
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
 		return idx;
