@@ -155,17 +155,26 @@ library Layers {
 				ptr++;
 				idx++;
 			}
-		}
-		if (ptrLayer == 1) {
-			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
-			if (ptr == layer.b.count()) {
+			if (ptr == cnt) {
 				++ptrLayer;
 				ptr = 0;
 			}
 		}
-		// if (idx < x.length) {
-		// 	revert TooMuchData();
-		// }
+		if (ptrLayer == 1) {
+			uint n = layer.b.n; 
+			while (idx < x.length && ptr < n) {
+				layer.b.mat.push(x[idx]);
+				ptr++;
+				idx++;
+			}
+			if (ptr == n) {
+				++ptrLayer;
+				ptr = 0;
+			}
+		}
+		if (idx < x.length) {
+			revert TooMuchData();
+		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
 		return idx;
