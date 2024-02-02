@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 
 
 const ContractName = "EternalAI";
-const MaxWeightLen = 500;
+const MaxWeightLen = 1000;
 const MaxLayerType = 8;
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
@@ -315,9 +315,9 @@ task("mint-model-id", "mint model id (and upload weights)")
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
             for(let wi = 0; wi < weights[i].length; ++wi) {
                 for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                    const setWeightTx = await c.appendWeights(tokenId, temp, wi, i);
-                    const receipt = await setWeightTx.wait(2);
-                    console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${setWeightTx.hash}`);
+                    const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i);
+                    const receipt = await appendWeightTx.wait(2);
+                    console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
                     const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
                     if (deployedEvent != null) {
                         const owner = deployedEvent.args?.owner;
