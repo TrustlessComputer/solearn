@@ -63,15 +63,15 @@ const config: HardhatUserConfig = {
       timeout: 500_000,
     },
     regtest: {
-      url: "https://l2-node.regtest.trustless.computer",
+      url: "https://testnet.eternalai.org/rpc",
       accounts: [
         "", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000,
-      gas: 27_000_000,
-      gasPrice: 1_000_000_000,
+      gas: 200_000_000,
+      gasPrice: 10_000,
     },
   },
   namedAccounts: {
