@@ -9,6 +9,15 @@ import { ethers } from "ethers";
 const ContractName = "EternalAI";
 const MaxWeightLen = 1000;
 const MaxLayerType = 8;
+const GasLimit = "290000000"; // 100 M
+const MaxFeePerGas = "10010";  // 1e-5 gwei
+const MaxPriorityFeePerGas = "10000";
+
+const gasConfig = {
+  gasLimit: GasLimit,
+  maxPriorityFeePerGas: MaxPriorityFeePerGas,
+  maxFeePerGas: MaxFeePerGas,
+};
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -280,7 +289,7 @@ task("mint-model-id", "mint model id (and upload weights)")
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         try {
-            const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, { value: ethers.utils.parseEther("0.01") });
+            const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, gasConfig);
             await tx.wait();
             console.log("Minted new EternalAI model, tx:", tx.hash);
         } catch (e) {
@@ -297,7 +306,7 @@ task("mint-model-id", "mint model id (and upload weights)")
 
         console.log("Setting AI model");
 
-        const setWeightTx = await c.setEternalAI(tokenId, params.layers_config);
+        const setWeightTx = await c.setEternalAI(tokenId, params.layers_config, gasConfig);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
 
@@ -315,7 +324,7 @@ task("mint-model-id", "mint model id (and upload weights)")
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
             for(let wi = 0; wi < weights[i].length; ++wi) {
                 for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                    const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i);
+                    const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
                     const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
@@ -387,7 +396,7 @@ task("eval-img", "evaluate model for each layer")
                     console.log(`x2: (${x2.length})`);
                     // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
                 }
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, { gasLimit: 1e9 });
+                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
 
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
@@ -420,7 +429,7 @@ task("eval-img", "evaluate model for each layer")
                 }
 
                 const tx: ethers.ContractTransaction = await measureTime(async () => {
-                    return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, { value: ethers.utils.parseEther("0.0001") });
+                    return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 });
 
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
