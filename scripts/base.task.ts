@@ -99,12 +99,12 @@ async function measureTime(f: any): Promise<any> {
     return ret
 }
 
-function pixelsToImage(pixels: ethers.BigNumber[], w: number, h: number, c: number): ethers.BigNumber[][][] {
+function pixelsToImage(pixels: ethers.BigNumber[], h: number, w: number, c: number): ethers.BigNumber[][][] {
     let ptr = 0;
     let img: ethers.BigNumber[][][] = [];
-    for(let i = 0; i < w; ++i) {
+    for(let i = 0; i < h; ++i) {
         img.push([]);
-        for(let j = 0; j < h; ++j) {
+        for(let j = 0; j < w; ++j) {
             img[i].push([]);
             for(let k = 0; k < c; ++k) {
                 img[i][j].push(pixels[ptr]);
@@ -204,11 +204,11 @@ task("mint-model-id", "mint model id (and upload weights)")
                     result = abic.encode(["uint8", "uint8"], [layerType, 0]);
                     input_units = 1;
                 } else if (dim.length == 3) {
-                    const w = ethers.BigNumber.from(dim[0]);
-                    const h = ethers.BigNumber.from(dim[1]);
+                    const h = ethers.BigNumber.from(dim[0]);
+                    const w = ethers.BigNumber.from(dim[1]);
                     const c = ethers.BigNumber.from(dim[2]);
-                    result = abic.encode(["uint8", "uint8", "uint[3]"], [layerType, 1, [w, h, c]]);
-                    input_units = [w.toNumber(), h.toNumber(), c.toNumber()];
+                    result = abic.encode(["uint8", "uint8", "uint[3]"], [layerType, 1, [h, w, c]]);
+                    input_units = [h.toNumber(), w.toNumber(), c.toNumber()];
                 }
             } else if (layer.class_name === 'MaxPooling2D') {
                 const f_w = layer.config.pool_size[0];
@@ -366,6 +366,11 @@ task("eval-img", "evaluate model for each layer")
         const metadata = await img.metadata(); 
         const w = metadata.width;
         const h = metadata.height;
+        if (!w || !h) {
+            console.log('width and height metadata not found');
+            return;
+        }
+
         const imgBuffer = await img.removeAlpha().resize(w, h).raw().toBuffer();
         const imgArray = [...imgBuffer];
         const pixels = imgArray.map((b: any) =>
@@ -375,8 +380,8 @@ task("eval-img", "evaluate model for each layer")
         let numLayers = model[3].length;
         let batchLayerNum = 1;
         let inputs = pixels;
-        let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(w), ethers.BigNumber.from(h), ethers.BigNumber.from(3)];
-        let x1: ethers.BigNumber[][][] = pixelsToImage(pixels, w, h, 3);
+        let dim: [ethers.BigNumber, ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(h), ethers.BigNumber.from(w), ethers.BigNumber.from(3)];
+        let x1: ethers.BigNumber[][][] = pixelsToImage(pixels, h, w, 3);
         let x2: ethers.BigNumber[] = [];
         let classsNameRes = "";
 
