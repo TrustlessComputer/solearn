@@ -261,7 +261,9 @@ contract EternalAI is
                 x1 = models[modelId].mp2[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Conv2D) {
                 x1 = models[modelId].c2[layerInfo.layerIndex].forward(x1);
-            }
+            } else if (layerInfo.layerType == LayerType.Embedding) {
+                x2 = models[modelId].embedding[layerInfo.layerIndex].forward(x3);
+            } else if (layerInfo.layerType == )
 
             // the last layer
             if (i == models[modelId].layers.length - 1) {
@@ -356,6 +358,51 @@ contract EternalAI is
         // uint256 royalty = msg.value - protocolFee;
         // (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
         // if (!success) revert TransferFailed();
+    }
+
+    function evaluateRNN(
+        uint256 modelId,
+        uint256 inputToken,
+    ) internal returns (uint256 outputToken) {
+        uint256 x1 = inputToken;
+        SD59x18[] x2 = inputToken;
+        SD59x18[] states = Tensor1DMethods.zerosTensor(models[modelId].simpleRNN[0].units);
+
+        uint nLayers = models[modelId].layers.length;
+
+        for (uint256 i = 0; i < nLayers; i++) {
+            Info memory layerInfo = models[modelId].layers[i];
+
+            // add more layers
+            if (layerInfo.layerType == LayerType.Embedding) {
+                x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
+            } else if (layerInfo.layerType == LayerType.Dense) {
+                x2 = models[modelId].embedding[layerInfo.layerIndex].forward(x1);
+            } else if (layerInfo.layerType == LayerType.SimpleRNN) {
+                x2 = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, states);
+                states = x2.cloneTensor();
+            }
+        }
+
+        Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
+        SD59x18[] memory result = xt.softmax().mat;
+
+        uint256 maxInd = 0;
+        for (uint256 i = 1; i < result.length; i++) {
+            if (result[i].gt(result[maxInd])) {
+                maxInd = i;
+            }
+        }
+
+        return maxInd;
+    } 
+
+    function evaluateRNN(
+        uint256 modelId,
+        string prompt,
+        uint256 toGenerate,
+    ) external {
+
     }
 
     function setEternalAI(

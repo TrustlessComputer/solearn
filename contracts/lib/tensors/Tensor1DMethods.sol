@@ -87,6 +87,12 @@ library Tensor1DMethods {
 		return (ptr, idx);
 	}
 
+	function cloneTensor(Tensors.Tensor1D memory ts) internal pure returns (Tensors.Tensor1D memory) {
+		Tensors.Tensor1D memory result;
+		load(result, ts.mat, ts.n);
+		return result;
+	}
+
 	function softmax(Tensors.Tensor1D memory a) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = __apply_unary_op(a, Tensors.__exp);
 		SD59x18 sum_e = sd(0);

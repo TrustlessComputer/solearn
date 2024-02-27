@@ -185,15 +185,28 @@ library Layers {
 		uint ptr = layer.ptr;
 		uint idx = 0;
 		if (ptrLayer == 0) {
-			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
-			if (ptr == layer.w.count()) {
+			uint m = layer.w.m;
+			uint p = layer.w.p;
+			uint q = layer.w.q;
+			uint cnt = layer.w.n * layer.w.m * layer.w.p * layer.w.q;
+			while (idx < x.length && ptr < cnt) {
+				layer.w.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p].push(x[idx]);
+				ptr++;
+				idx++;
+			}
+			if (ptr == cnt) {
 				++ptrLayer;
 				ptr = 0;
 			}
 		}
 		if (ptrLayer == 1) {
-			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
-			if (ptr == layer.b.count()) {
+			uint n = layer.b.n; 
+			while (idx < x.length && ptr < n) {
+				layer.b.mat.push(x[idx]);
+				ptr++;
+				idx++;
+			}
+			if (ptr == n) {
 				++ptrLayer;
 				ptr = 0;
 			}
@@ -211,8 +224,14 @@ library Layers {
 		uint ptr = layer.ptr;
 		uint idx = 0;
 		if (ptrLayer == 0) {
-			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
-			if (ptr == layer.w.count()) {
+			uint m = layer.w.m;
+			uint cnt = layer.w.n * layer.w.m;
+			while (idx < x.length && ptr < cnt) {
+				layer.w.mat[ptr / m].push(x[idx]);
+				ptr++;
+				idx++;
+			}
+			if (ptr == cnt) {
 				++ptrLayer;
 				ptr = 0;
 			}
@@ -230,22 +249,39 @@ library Layers {
 		uint ptr = layer.ptr;
 		uint idx = 0;
 		if (ptrLayer == 0) {
-			(ptr, idx) = layer.wx.loadPartial(x, ptr, idx);
-			if (ptr == layer.wx.count()) {
+			uint m = layer.wx.m;
+			uint cnt = layer.wx.n * layer.wx.m;
+			while (idx < x.length && ptr < cnt) {
+				layer.wx.mat[ptr / m].push(x[idx]);
+				ptr++;
+				idx++;
+			}
+			if (ptr == cnt) {
 				++ptrLayer;
 				ptr = 0;
 			}
 		}
 		if (ptrLayer == 1) {
-			(ptr, idx) = layer.wh.loadPartial(x, ptr, idx);
-			if (ptr == layer.wh.count()) {
+			uint m = layer.wh.m;
+			uint cnt = layer.wh.n * layer.wh.m;
+			while (idx < x.length && ptr < cnt) {
+				layer.wh.mat[ptr / m].push(x[idx]);
+				ptr++;
+				idx++;
+			}
+			if (ptr == cnt) {
 				++ptrLayer;
 				ptr = 0;
 			}
 		}
 		if (ptrLayer == 2) {
-			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
-			if (ptr == layer.b.count()) {
+			uint n = layer.b.n; 
+			while (idx < x.length && ptr < n) {
+				layer.b.mat.push(x[idx]);
+				ptr++;
+				idx++;
+			}
+			if (ptr == n) {
 				++ptrLayer;
 				ptr = 0;
 			}
