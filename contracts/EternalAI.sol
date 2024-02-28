@@ -14,11 +14,13 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URISto
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./lib/layers/Layers.sol";
+import "./lib/Utils.sol";
 
 error NotTokenOwner();
 error InsufficientMintPrice();
 error InsufficientEvalPrice();
 error TransferFailed();
+error UnknownTokenNotInVocabs();
 
 contract EternalAI is
     Initializable,
@@ -39,6 +41,7 @@ contract EternalAI is
     using Tensor4DMethods for Tensors.Tensor4D;
 
     mapping(uint256 => Model) public models;
+    mapping(uint256 => VocabInfo) public vocabInfos;
     uint256 public mintPrice;
     uint256 public evalPrice;
     uint8 protocolFeePercent;
@@ -78,7 +81,13 @@ contract EternalAI is
         Layers.MaxPooling2DLayer[] mp2;
         Layers.Conv2DLayer[] c2;
         Layers.EmbeddingLayer[] embedding;
-        Layers.SimpleRNNLayer[] simpleRNN;
+        Layers.SimpleRNNLayer[] simpleRNN;        
+    }
+
+    struct VocabInfo {
+        string[] vocabs;
+        mapping(bytes32 => uint256) hashToIndex;
+        uint unkIndex;
     }
 
     struct Info {
@@ -261,9 +270,7 @@ contract EternalAI is
                 x1 = models[modelId].mp2[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Conv2D) {
                 x1 = models[modelId].c2[layerInfo.layerIndex].forward(x1);
-            } else if (layerInfo.layerType == LayerType.Embedding) {
-                x2 = models[modelId].embedding[layerInfo.layerIndex].forward(x3);
-            } else if (layerInfo.layerType == )
+            }
 
             // the last layer
             if (i == models[modelId].layers.length - 1) {
@@ -360,48 +367,73 @@ contract EternalAI is
         // if (!success) revert TransferFailed();
     }
 
-    function evaluateRNN(
+    function feedRNN(
         uint256 modelId,
         uint256 inputToken,
-    ) internal returns (uint256 outputToken) {
+        SD59x18[] memory rnn_state
+    ) view internal returns (SD59x18[] memory nxt_state) {
         uint256 x1 = inputToken;
-        SD59x18[] x2 = inputToken;
-        SD59x18[] states = Tensor1DMethods.zerosTensor(models[modelId].simpleRNN[0].units);
+        SD59x18[] memory x2;
 
         uint nLayers = models[modelId].layers.length;
-
         for (uint256 i = 0; i < nLayers; i++) {
             Info memory layerInfo = models[modelId].layers[i];
 
             // add more layers
             if (layerInfo.layerType == LayerType.Embedding) {
-                x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
-            } else if (layerInfo.layerType == LayerType.Dense) {
                 x2 = models[modelId].embedding[layerInfo.layerIndex].forward(x1);
+            } else if (layerInfo.layerType == LayerType.Dense) {
+                x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
-                x2 = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, states);
-                states = x2.cloneTensor();
+                x2 = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
+                rnn_state = x2;
+            }
+        }
+
+        return rnn_state;
+    }
+
+    function evaluateRNN(
+        uint256 modelId,
+        uint256 inputToken,
+        SD59x18[] memory rnn_state,
+        uint256 seed
+    ) view internal returns (uint256 outputToken, SD59x18[] memory nxt_state) {
+        uint256 x1 = inputToken;
+        SD59x18[] memory x2;
+
+        uint nLayers = models[modelId].layers.length;
+        for (uint256 i = 0; i < nLayers; i++) {
+            Info memory layerInfo = models[modelId].layers[i];
+
+            // add more layers
+            if (layerInfo.layerType == LayerType.Embedding) {
+                x2 = models[modelId].embedding[layerInfo.layerIndex].forward(x1);
+            } else if (layerInfo.layerType == LayerType.Dense) {
+                x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
+            } else if (layerInfo.layerType == LayerType.SimpleRNN) {
+                x2 = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
+                rnn_state = Utils.clone(x2);
             }
         }
 
         Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
-        SD59x18[] memory result = xt.softmax().mat;
+        SD59x18[] memory probs = xt.softmax().mat;
+        outputToken = Utils.getWeightedRandom(probs, seed);
 
-        uint256 maxInd = 0;
-        for (uint256 i = 1; i < result.length; i++) {
-            if (result[i].gt(result[maxInd])) {
-                maxInd = i;
-            }
-        }
-
-        return maxInd;
+        return (outputToken, rnn_state);
     } 
 
-    function evaluateRNN(
+    function generateText(
         uint256 modelId,
-        string prompt,
-        uint256 toGenerate,
+        string[] memory prompt,
+        uint256 toGenerate
     ) external {
+        SD59x18[] memory states = Tensor1DMethods.zerosTensor(models[modelId].simpleRNN[0].units).mat;
+        for(uint256 i = 0; i < prompt.length; ++i) {
+            
+        }
+
 
     }
 
@@ -445,6 +477,22 @@ contract EternalAI is
         models[modelId].appendedWeights += appendedWeights;
         if (models[modelId].appendedWeights == models[modelId].requiredWeights) {
             emit Deployed(msg.sender, modelId);
+        }
+    }
+
+    function setVocabs(
+        uint256 modelId,
+        string[] memory vocabs,
+        string memory unkToken
+    ) external {
+        VocabInfo storage info = vocabInfos[modelId];
+        info.vocabs = vocabs;
+        for(uint256 i = 0; i < vocabs.length; ++i) {
+            info.hashToIndex[Utils.getHash(vocabs[i])] = i;
+        }        
+        info.unkIndex = info.hashToIndex[Utils.getHash(unkToken)];
+        if (!Utils.equals(vocabs[info.unkIndex], unkToken)) {
+            revert UnknownTokenNotInVocabs();
         }
     }
 

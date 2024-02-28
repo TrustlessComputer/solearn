@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-contract Utils {
+library Utils {
 	function zip(SD59x18[][] memory rows) public pure returns (SD59x18[][] memory) {
 		SD59x18[][] memory result = new SD59x18[][](rows[0].length);
 		for (uint i = 0; i < rows[0].length; i++) {
@@ -36,5 +36,23 @@ contract Utils {
 			result[2 * i + 1] = hexCh;
 		}
 		return string(result);
+	}
+
+	function getWeightedRandom(SD59x18[] memory probs, uint256 seed) public pure returns (uint256) {
+		uint256 res = 0;
+		for (uint256 i = 1; i < probs.length; i++) {
+			if (probs[i].gt(probs[res])) {
+				res = i;
+			}
+		}
+		return res;
+	}
+
+	function getHash(string memory s) public pure returns (bytes32) {
+		return keccak256(bytes(s));
+	}
+
+	function equals(string memory a, string memory b) public pure returns (bool) {
+		return getHash(a) == getHash(b);
 	}
 }

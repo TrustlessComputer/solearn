@@ -77,6 +77,14 @@ library Tensor1DMethods {
 		return res;
 	}
 
+	function load(Tensors.Tensor1D memory ts, SD59x18[] memory data, uint n) internal pure {
+		ts.n = n;
+		ts.mat = new SD59x18[](n);
+		for (uint i = 0; i < n; i++) {
+			ts.mat[i] = data[i];
+		}
+	}
+
 	function loadPartial(Tensors.Tensor1D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint n = ts.n; 
 		while (idx < data.length && ptr < n) {
