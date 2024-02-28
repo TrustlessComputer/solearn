@@ -5,6 +5,7 @@ npx hardhat deploy --tags 2 --network regtest
 
 npx hardhat mint-model-id --network regtest --model 'sample-models/10x10.json' --id '0' --contract '0x6dc2bB742561bB07eA8B22fA3C047F403b26456c' --maxlen 5000
 npx hardhat mint-model-id --network regtest --model 'sample-models/32x32_cifar.json' --id '1' --contract '0x6dc2bB742561bB07eA8B22fA3C047F403b26456c' --maxlen 10000
+npx hardhat mint-model-id --network regtest --model 'sample-models/24x24.json' --id '10' --contract '0x6dc2bB742561bB07eA8B22fA3C047F403b26456c' --maxlen 10000
 
 # npx hardhat mint-model-id --network regtest --model 'sample-models/cnn_10x10_small.json' --id '0' --contract '0x6dc2bB742561bB07eA8B22fA3C047F403b26456c'
 # npx hardhat mint-model-id --network regtest --model 'sample-models/cnn_10x10.json' --id '1' --contract '0x6dc2bB742561bB07eA8B22fA3C047F403b26456c'
