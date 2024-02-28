@@ -9,9 +9,12 @@ import { ethers } from "ethers";
 const ContractName = "EternalAI";
 const MaxWeightLen = 1000;
 const MaxLayerType = 8;
-const GasLimit = "290000000"; // 100 M
-const MaxFeePerGas = "10010";  // 1e-5 gwei
-const MaxPriorityFeePerGas = "10000";
+const GasLimit = "1000000000"; // 100 M
+const MaxFeePerGas = "1001000000";  // 1e-5 gwei
+const MaxPriorityFeePerGas = "1000000000";
+// const GasLimit = "290000000"; // 100 M
+// const MaxFeePerGas = "10010";  // 1e-5 gwei
+// const MaxPriorityFeePerGas = "10000";
 
 const gasConfig = {
   gasLimit: GasLimit,
@@ -362,21 +365,28 @@ task("eval-img", "evaluate model for each layer")
         // TODO: Get inputDim from EternalAI and use the width and height from inputDim instead
         // How to get input image size?
 
-        const img = sharp(imgRaw);
-        const metadata = await img.metadata(); 
-        const w = metadata.width;
-        const h = metadata.height;
-        if (!w || !h) {
-            console.log('width and height metadata not found');
-            return;
+        const model = await c.getInfo(tokenId);
+        const inputDim = model[0];
+        if (inputDim.length < 2) {
+            throw new Error("Invalid model input dim");
         }
+        const w = inputDim[0].toNumber();
+        const h = inputDim[1].toNumber();
+
+        const img = sharp(imgRaw);
+        // const metadata = await img.metadata(); 
+        // const w = metadata.width;
+        // const h = metadata.height;
+        // if (!w || !h) {
+        //     console.log('width and height metadata not found');
+        //     return;
+        // }
 
         const imgBuffer = await img.removeAlpha().resize(w, h).raw().toBuffer();
         const imgArray = [...imgBuffer];
         const pixels = imgArray.map((b: any) =>
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
 
-        const model = await c.getInfo(tokenId);
         let numLayers = model[3].length;
         let batchLayerNum = 1;
         let inputs = pixels;
@@ -401,8 +411,10 @@ task("eval-img", "evaluate model for each layer")
                     console.log(`x2: (${x2.length})`);
                     // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
                 }
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
+                const gas = await c.estimateGas.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                console.log("getBatchLayerNum estimate gas: ", gas);
 
+                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // });
