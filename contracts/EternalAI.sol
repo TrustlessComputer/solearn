@@ -507,4 +507,19 @@ contract EternalAI is
             );
         }
     }
+    
+	function testOperationTx(uint iteration) external {
+		uint ans = 1;
+		for(uint i = 0; i < iteration; ++i) {
+			ans = (ans * 13551166565 + 468431511513206) % 247897259743;
+		}
+	}
+	
+	function testOperation(uint iteration) external view returns (uint) {
+		uint ans = 1;
+		for(uint i = 0; i < iteration; ++i) {
+			ans = (ans * 13551166565 + 468431511513206) % 247897259743;
+		}
+		return ans;
+	}
 }

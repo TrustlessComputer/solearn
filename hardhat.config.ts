@@ -70,8 +70,20 @@ const config: HardhatUserConfig = {
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000,
-      gas: 200_000_000,
       gasPrice: 10_000,
+    },
+    regtest2: {
+      url: "https://eternal-ai2.tc.l2aas.com/rpc",
+      accounts: [
+        "", // private key
+      ],
+      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
+      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
+      timeout: 500_000,
+      gasPrice: 1_000_000_000,
+      blockGasLimit: 100_000_000_000,
+      allowUnlimitedContractSize: true,
+      loggingEnabled: true,
     },
   },
   namedAccounts: {

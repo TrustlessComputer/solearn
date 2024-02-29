@@ -9,12 +9,12 @@ import { ethers } from "ethers";
 const ContractName = "EternalAI";
 const MaxWeightLen = 1000;
 const MaxLayerType = 8;
-const GasLimit = "1000000000"; // 100 M
+// const GasLimit = "1000000000"; // 100 M
+// const MaxFeePerGas = "1001000000";  // 1e-5 gwei
+// const MaxPriorityFeePerGas = "1000000000";
+const GasLimit = "900000000"; // 10 B
 const MaxFeePerGas = "1001000000";  // 1e-5 gwei
 const MaxPriorityFeePerGas = "1000000000";
-// const GasLimit = "290000000"; // 100 M
-// const MaxFeePerGas = "10010";  // 1e-5 gwei
-// const MaxPriorityFeePerGas = "10000";
 
 const gasConfig = {
   gasLimit: GasLimit,
@@ -445,12 +445,17 @@ task("eval-img", "evaluate model for each layer")
                     console.log(`x2: (${x2.length})`);
                 }
 
+                // const gas = await c.estimateGas.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                // console.log(`Layer ${fromLayerIndex}-${toLayerIndex} estimate gas: `, gas);
+
                 const tx: ethers.ContractTransaction = await measureTime(async () => {
                     return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 });
 
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
                 const receipt = await tx.wait(1);
+
+                console.log(`Used gas: `, receipt.gasUsed);
 
                 const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
                 const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
@@ -460,7 +465,7 @@ task("eval-img", "evaluate model for each layer")
                     const toLayerIndex = forwardedEvent.args?.toLayerIndex;
                     const outputs1 = forwardedEvent.args?.outputs1;
                     const outputs2 = forwardedEvent.args?.outputs2;
-                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
+                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex });
                     x1 = outputs1;
                     x2 = outputs2;
                 } else if (classifiedEvent) {
@@ -468,7 +473,7 @@ task("eval-img", "evaluate model for each layer")
                     const classIndex = classifiedEvent.args?.classIndex;
                     const className = classifiedEvent.args?.className;
                     const outputs = classifiedEvent.args?.outputs;
-                    console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
+                    console.log('"Classified" event emitted', { tokenId, classIndex, className });
                     classsNameRes = className;
                 }
 
@@ -499,5 +504,40 @@ task("get-model", "get eternal AI model")
         const model = await c.getInfo(tokenId);
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
+        // console.log(JSON.stringify(model));
+    });
+
+
+task("test-iteration", "test gas limit")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments } = hre;
+        const [signer] = await ethers.getSigners();
+        let contractAddress = taskArgs.contract;
+        if (contractAddress === "") {
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
+        }
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        
+        let lo = 0, hi = 1_000_000, res = -1, gasLimit = -1;
+        while (lo <= hi) {
+            console.log(`[${lo}, ${hi}]`);
+            const mid = (lo + hi) >> 1;
+            try {
+                await c.testOperation(ethers.BigNumber.from(mid), gasConfig);
+                res = mid;
+                lo = mid + 1;
+                console.log(`Succeed`);
+                
+                gasLimit = (await c.estimateGas.testOperation(ethers.BigNumber.from(mid), gasConfig)).toNumber();
+                console.log(`Gas consumed for ${res} operation: ${gasLimit}`);
+            } catch {
+                hi = mid - 1;
+            }
+        }
+        console.log(res, gasLimit);
+
+        // fs.writeFileSync("baseDesc.json", JSON.stringify(model));
         // console.log(JSON.stringify(model));
     });
