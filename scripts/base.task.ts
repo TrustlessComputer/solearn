@@ -3,18 +3,18 @@ import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
 import sharp from 'sharp';
-import { ethers } from "ethers";
-
+import { ethers, utils } from "ethers";
+import path from 'path';
 
 const ContractName = "EternalAI";
 const MaxWeightLen = 1000;
 const MaxLayerType = 8;
-const GasLimit = "1000000000"; // 100 M
-const MaxFeePerGas = "1001000000";  // 1e-5 gwei
-const MaxPriorityFeePerGas = "1000000000";
-// const GasLimit = "290000000"; // 100 M
-// const MaxFeePerGas = "10010";  // 1e-5 gwei
-// const MaxPriorityFeePerGas = "10000";
+// const GasLimit = "1000000000"; // 100 M
+// const MaxFeePerGas = "1001000000";  // 1e-5 gwei
+// const MaxPriorityFeePerGas = "1000000000";
+const GasLimit = "290000000"; // 100 M
+const MaxFeePerGas = "10010";  // 1e-5 gwei
+const MaxPriorityFeePerGas = "10000";
 
 const gasConfig = {
   gasLimit: GasLimit,
@@ -140,6 +140,11 @@ function getConvSize(
         }
     }
     return { out, pad };
+}
+
+async function getModelDirents(folder: string): Promise<fs.Dirent[]> {
+    const dirs = await fs.promises.readdir(folder, { withFileTypes: true });
+    return dirs.filter(dirent => dirent.isFile() && path.extname(dirent.name) == ".json");
 }
 
 task("mint-model-id", "mint model id (and upload weights)")
@@ -341,6 +346,42 @@ task("mint-model-id", "mint model id (and upload weights)")
         }
     });
 
+task("mint-models", "mint multiple model in a folder (with their weights)")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("folder", "folder path", "", types.string)
+    .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        const folder = taskArgs.folder;
+        const modelDirents = await getModelDirents(folder);
+        
+        const models = modelDirents.map((dirent, index) => ({
+            name: path.basename(dirent.name, '.json'),
+            path: path.join(folder, dirent.name),
+            id: utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0")),
+        }));
+
+        const modelInfos = [{"name":"Alien","id":"0x2971776e597fcdf04b51943c02500a5f2c37d70474ce531f8106729ae1497509"},{"name":"Ape","id":"0x6b4d0f0900b58882d95a1a4bc916b532afafa19945ae76a61bc3b1256d600c31"},{"name":"Female","id":"0x451dcda49d1704e9d98da55a3f03ea76713231a47464e4a1545877246ab163ce"},{"name":"Male","id":"0xa965627403bfb51ef963344b4534986cd2731859dee5c9b7448dfea830db71fc"},{"name":"Zombie","id":"0xd7872a355fdd068abaed442af0ade744992f2eb128b9326bca012bdcd7018745"}];
+        for(const model of models) {
+            console.log("Minting model:", model.name);
+            await hre.run("mint-model-id", {
+                model: model.path, 
+                contract: taskArgs.contract,
+                id: model.id,
+                maxlen: taskArgs.maxlen,
+            });
+            modelInfos.push({
+                name: model.name,
+                id: model.id,
+            })
+        }
+
+        fs.writeFileSync("model_list.json", JSON.stringify(modelInfos));
+    });
+
 task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
@@ -411,10 +452,10 @@ task("eval-img", "evaluate model for each layer")
                     console.log(`x2: (${x2.length})`);
                     // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
                 }
-                const gas = await c.estimateGas.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
-                console.log("getBatchLayerNum estimate gas: ", gas);
+                // const gas = await c.estimateGas.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                // console.log("getBatchLayerNum estimate gas: ", gas);
 
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
+                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // });
@@ -503,3 +544,49 @@ task("get-model", "get eternal AI model")
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
         // console.log(JSON.stringify(model));
     });
+
+task("get-model-ids")
+    .addOptionalParam("folder", "folder path", "", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        const folder = taskArgs.folder;
+        const modelDirents = await getModelDirents(folder);
+        
+        const models = modelDirents.map((dirent, index) => ({
+            name: path.basename(dirent.name, '.json'),
+            id: ethers.BigNumber.from(utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0"))).toString(),
+        }));
+
+        fs.writeFileSync("model_list_2.json", JSON.stringify(models));
+    })
+
+task("check-models")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("folder", "folder path", "", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+        
+        const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
+
+        const folder = taskArgs.folder;
+        const modelDirents = await getModelDirents(folder);
+        
+        const models = modelDirents.map(dirent => ({
+            name: path.basename(dirent.name, '.json'),
+            id: utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0")),
+        }));
+
+        for(const model of models) {
+            const data = await c.getInfo(model.id);
+            if (!data[0][0].eq(ethers.BigNumber.from(24))) {
+                console.log(`Model ${model.name} at id ${model.id} not found`);
+            }
+        }
+
+        fs.writeFileSync("model_list_2.json", JSON.stringify(models));
+    })
