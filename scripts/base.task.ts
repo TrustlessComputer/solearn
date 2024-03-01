@@ -411,8 +411,8 @@ task("eval-img", "evaluate model for each layer")
                     console.log(`x2: (${x2.length})`);
                     // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
                 }
-                const gas = await c.estimateGas.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
-                console.log("getBatchLayerNum estimate gas: ", gas);
+                // const gas = await c.estimateGas.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                // console.log("getBatchLayerNum estimate gas: ", gas);
 
                 const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // const [className, r1, r2] = await measureTime(async () => {
@@ -484,7 +484,7 @@ task("eval-img", "evaluate model for each layer")
         }
 
         let endTime = new Date().getTime();
-        console.log("Time: ", (endTime - startTime) / (60 * 1000));
+        console.log("Time: ", (endTime - startTime) / (1000));
     });
 
 
