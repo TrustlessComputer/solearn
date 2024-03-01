@@ -452,6 +452,8 @@ task("eval-img", "evaluate model for each layer")
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
                 const receipt = await tx.wait(1);
 
+                console.log(`Used gas: `, receipt.gasUsed);
+
                 const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
                 const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
                 if (forwardedEvent) {
@@ -460,7 +462,7 @@ task("eval-img", "evaluate model for each layer")
                     const toLayerIndex = forwardedEvent.args?.toLayerIndex;
                     const outputs1 = forwardedEvent.args?.outputs1;
                     const outputs2 = forwardedEvent.args?.outputs2;
-                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
+                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex });
                     x1 = outputs1;
                     x2 = outputs2;
                 } else if (classifiedEvent) {
@@ -468,7 +470,7 @@ task("eval-img", "evaluate model for each layer")
                     const classIndex = classifiedEvent.args?.classIndex;
                     const className = classifiedEvent.args?.className;
                     const outputs = classifiedEvent.args?.outputs;
-                    console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
+                    console.log('"Classified" event emitted', { tokenId, classIndex, className });
                     classsNameRes = className;
                 }
 
