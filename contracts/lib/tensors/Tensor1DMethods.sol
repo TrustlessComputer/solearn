@@ -5,6 +5,8 @@ import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./Tensors.sol";
 
+error InvalidMatrixDimensions();
+
 library Tensor1DMethods {
 	function zerosTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
@@ -67,6 +69,20 @@ library Tensor1DMethods {
 		return __apply_binary_op(a, b, Tensors.__add);
 	}
 
+	function add(Tensors.Tensor1D memory a, SD59x18 num) internal pure returns (Tensors.Tensor1D memory) {
+		Tensors.Tensor1D memory res = zerosTensor(a.n);
+		for (uint i = 0; i < a.n; i++) {
+			res.mat[i] = a.mat[i] + num;
+		}
+		return res;
+	}
+
+
+	function mul(Tensors.Tensor1D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor1D memory) {
+		return __apply_binary_op(a, b, Tensors.__mul);
+	}
+
+
 	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(b.m);
 		for (uint j = 0; j < b.m; j++) {
@@ -76,6 +92,19 @@ library Tensor1DMethods {
 		}
 		return res;
 	}
+
+	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor1D memory b) internal pure returns (SD59x18) {
+		if (a.n != b.n) {
+			revert InvalidMatrixDimensions();
+		}
+
+		SD59x18 res;
+		for (uint i = 0; i < a.n; i++) {
+			res = res + a.mat[i] * b.mat[i];
+		}
+		return res;
+	}
+
 
 	function loadPartial(Tensors.Tensor1D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint n = ts.n; 
