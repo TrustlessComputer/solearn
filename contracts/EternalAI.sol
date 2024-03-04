@@ -13,6 +13,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "./thirdparty/solidity-stringutils/strings.sol";
 import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
 
@@ -39,6 +40,7 @@ contract EternalAI is
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor3DMethods for Tensors.Tensor3D;
     using Tensor4DMethods for Tensors.Tensor4D;
+    using Strings for *;
 
     mapping(uint256 => Model) public models;
     mapping(uint256 => VocabInfo) public vocabInfos;
@@ -371,7 +373,7 @@ contract EternalAI is
         uint256 modelId,
         uint256 inputToken,
         SD59x18[] memory rnn_state
-    ) view internal returns (SD59x18[] memory nxt_state) {
+    ) internal view returns (SD59x18[] memory nxt_state) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
@@ -398,7 +400,7 @@ contract EternalAI is
         uint256 inputToken,
         SD59x18[] memory rnn_state,
         uint256 seed
-    ) view internal returns (uint256 outputToken, SD59x18[] memory nxt_state) {
+    ) internal view returns (uint256 outputToken, SD59x18[] memory nxt_state) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
@@ -422,19 +424,59 @@ contract EternalAI is
         outputToken = Utils.getWeightedRandom(probs, seed);
 
         return (outputToken, rnn_state);
-    } 
+    }
+
+    function tokenize(uint256 modelId, string memory str) internal view returns (uint256[] memory) {
+        Strings.slice memory slice = str.toSlice();
+        uint256 len = slice.len();
+
+        VocabInfo storage info = vocabInfos[modelId];
+        
+        uint256[] memory idxs = new uint256[](len); 
+        for(uint256 i = 0; i < len; ++i) {
+            string memory token = slice.nextRune().toString();
+            bytes32 _hash = Utils.getHash(token);
+            uint256 idx = info.hashToIndex[_hash];
+            idxs[i] = (idx == 0) ? (info.unkIndex - 1) : (idx - 1);
+        }
+
+        return idxs;
+    }
+
+    function decodeTokens(uint256 modelId, uint256[] memory tokens) internal view returns (string memory output) {
+        VocabInfo storage info = vocabInfos[modelId];
+        output = "";
+        for(uint i = 0; i < tokens.length; ++i) {
+            string memory ch = info.vocabs[tokens[i]];
+            output = string.concat(output, ch);
+        }
+        return output;
+    }
 
     function generateText(
         uint256 modelId,
-        string[] memory prompt,
-        uint256 toGenerate
-    ) external {
+        string memory prompt,
+        uint256 toGenerate,
+        uint256 seed
+    ) external view returns (string memory) {
+        uint256[] memory tokens = tokenize(modelId, prompt); 
+
         SD59x18[] memory states = Tensor1DMethods.zerosTensor(models[modelId].simpleRNN[0].units).mat;
-        for(uint256 i = 0; i < prompt.length; ++i) {
-            
+        for(uint i = 0; i < tokens.length - 1; ++i) {
+            states = feedRNN(modelId, tokens[i], states);
         }
 
+        uint256 lastToken = tokens[tokens.length - 1];
+        uint256[] memory generatedTokens = new uint256[](toGenerate);
+        
+        for(uint i = 0; i < toGenerate; ++i) {
+            seed = uint256(keccak256(abi.encodePacked(seed)));
+            (lastToken, states) = evaluateRNN(modelId, lastToken, states, seed);
+            generatedTokens[i] = lastToken;
+        }
 
+        string memory generatedText = decodeTokens(modelId, generatedTokens);
+        return generatedText;
     }
 
     function setEternalAI(
@@ -488,10 +530,10 @@ contract EternalAI is
         VocabInfo storage info = vocabInfos[modelId];
         info.vocabs = vocabs;
         for(uint256 i = 0; i < vocabs.length; ++i) {
-            info.hashToIndex[Utils.getHash(vocabs[i])] = i;
+            info.hashToIndex[Utils.getHash(vocabs[i])] = i+1;
         }        
         info.unkIndex = info.hashToIndex[Utils.getHash(unkToken)];
-        if (!Utils.equals(vocabs[info.unkIndex], unkToken)) {
+        if (!Utils.equals(vocabs[info.unkIndex - 1], unkToken)) {
             revert UnknownTokenNotInVocabs();
         }
     }

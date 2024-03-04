@@ -3,11 +3,15 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-deploy";
 import './scripts/base.task';
 import "hardhat-tracer";
-// import "@foundry-rs/hardhat-anvil";
+import "@foundry-rs/hardhat-anvil";
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
-const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+const config = {
+  defaultNetwork: "anvil",
+  anvil: {
+    url: "http://127.0.0.1:8545/",
+    launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
+  },
   solidity: {
     compilers: [
       { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 2000 } } },
@@ -23,10 +27,6 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       blockGasLimit: 2_500_000_000,
     },
-    // anvil: {
-    //   url: "http://127.0.0.1:8545/",
-    //   launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
-    // },
     localhost: {
       url: "http://localhost:8545",
       accounts: {

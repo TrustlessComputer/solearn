@@ -9,12 +9,12 @@ import path from 'path';
 const ContractName = "EternalAI";
 const MaxWeightLen = 1000;
 const MaxLayerType = 8;
-// const GasLimit = "1000000000"; // 100 M
-// const MaxFeePerGas = "1001000000";  // 1e-5 gwei
-// const MaxPriorityFeePerGas = "1000000000";
-const GasLimit = "290000000"; // 100 M
-const MaxFeePerGas = "10010";  // 1e-5 gwei
-const MaxPriorityFeePerGas = "10000";
+const GasLimit = "100000000000"; // 100 B
+const MaxFeePerGas = "1001000000";  // 1e-5 gwei
+const MaxPriorityFeePerGas = "1000000000";
+// const GasLimit = "290000000"; // 100 M
+// const MaxFeePerGas = "10010";  // 1e-5 gwei
+// const MaxPriorityFeePerGas = "10000";
 
 const gasConfig = {
   gasLimit: GasLimit,
@@ -297,7 +297,8 @@ task("mint-model-id", "mint model id (and upload weights)")
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         try {
-            const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, gasConfig);
+            const classes_name = params.classes_name || [];
+            const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, classes_name, gasConfig);
             await tx.wait();
             console.log("Minted new EternalAI model, tx:", tx.hash);
         } catch (e) {
@@ -313,10 +314,17 @@ task("mint-model-id", "mint model id (and upload weights)")
         }
 
         console.log("Setting AI model");
-
         const setWeightTx = await c.setEternalAI(tokenId, params.layers_config, gasConfig);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
+
+        if (params.vocabulary) {
+            console.log("Setting vocabs");
+            const vocabs = params.vocabulary;
+            const setVocabTx = await c.setVocabs(tokenId, vocabs, "[UNK]");
+            await setVocabTx.wait();
+            console.log('tx', setVocabTx.hash);
+        }
 
         const weightStr = JSON.stringify(weights);
         console.log("Total weights len: ", weightStr.length);
@@ -525,6 +533,45 @@ task("eval-img", "evaluate model for each layer")
         console.log("Time: ", (endTime - startTime) / (60 * 1000));
     });
 
+
+task("generate-text", "generate text from RNN model")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("id", "token id of model", "1", types.string)
+    .addOptionalParam("prompt", "input prompt", "", types.string)
+    .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
+    .addOptionalParam("seed", "random seed", 123, types.int)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        let contractAddress = taskArgs.contract;
+        if (contractAddress === "") {
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
+        }
+
+        const prompt = taskArgs.prompt;
+        const seed = taskArgs.seed;
+        const toGenerate = taskArgs.togenerate;
+
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+
+        // const model = await c.getInfo(tokenId);
+
+        let startTime = new Date().getTime();
+
+        // const gas = await c.estimateGas.generateText(tokenId, prompt, toGenerate, seed, gasConfig);
+        // console.log("generateText estimate gas: ", gas);
+
+        const generatedText = await c.generateText(tokenId, prompt, toGenerate, seed, gasConfig);
+        console.log("Prompt + Generated text:");
+        console.log(prompt + generatedText);
+
+        let endTime = new Date().getTime();
+        console.log("Time: ", (endTime - startTime) / (1000));
+    });
 
 task("get-model", "get eternal AI model")
     .addOptionalParam("contract", "contract address", "", types.string)
