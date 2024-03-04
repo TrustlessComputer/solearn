@@ -33,7 +33,7 @@ const config: HardhatUserConfig = {
         mnemonic: localTestMnemonic,
         count: 10,
       },
-      timeout: 500_000,
+      timeout: 500_000_000,
       blockGasLimit: 2_500_000_000,
     },
     tcbtc: {
