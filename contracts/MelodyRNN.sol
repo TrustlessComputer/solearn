@@ -220,14 +220,9 @@ contract MelodyRNN is
             } else if (layerInfo.layerType == LayerType.Dense) {
                 x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
             } else if (layerInfo.layerType == LayerType.LSTM) {
-                (x2, states) = models[modelId].lstm[layerInfo.layerIndex].forward(x2, states);
-            }
-
-            // the last layer
-            if (i == models[modelId].layers.length - 1) {
-                Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
-                SD59x18[] memory result = xt.softmax().mat;
-                return (x1, result, states);
+                SD59x18[][] memory x2Ext;
+                (x2Ext, states) = models[modelId].lstm[layerInfo.layerIndex].forward(x2, states);
+                x2 = x2Ext[0];
             }
         }
 
@@ -258,8 +253,7 @@ contract MelodyRNN is
         );
 
         if (toLayerIndex == models[modelId].layers.length - 1) {
-            if (r2.length > 0) revert InvalidOutput();
-
+            if (r2.length != 1) revert InvalidOutput();
             return (r2[0], r1, r2);
         } else {
             return (sd(0), r1, r2);
@@ -293,13 +287,8 @@ contract MelodyRNN is
         uint appendedWeights;
         if (layerType == LayerType.Dense) {
             appendedWeights = models[modelId].d[layerInd].appendWeights(weights);
-            
-            console.log(weights.length);
         } else if (layerType == LayerType.LSTM) {
             appendedWeights = models[modelId].lstm[layerInd].appendWeights(weights);
-            
-            console.log(weights.length);
-
         }
         
         models[modelId].appendedWeights += appendedWeights;

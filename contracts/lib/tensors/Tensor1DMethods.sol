@@ -93,14 +93,14 @@ library Tensor1DMethods {
 		return res;
 	}
 
-	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor1D memory b) internal pure returns (SD59x18) {
+	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor1D memory b) internal view returns (Tensors.Tensor1D memory) {
 		if (a.n != b.n) {
 			revert InvalidMatrixDimensions();
 		}
 
-		SD59x18 res;
+		Tensors.Tensor1D memory res = zerosTensor(1);
 		for (uint i = 0; i < a.n; i++) {
-			res = res + a.mat[i] * b.mat[i];
+			res.mat[0] = res.mat[0] + a.mat[i] * b.mat[i];
 		}
 		return res;
 	}
