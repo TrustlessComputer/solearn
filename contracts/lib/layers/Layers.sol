@@ -87,15 +87,14 @@ library Layers {
 		Tensors.ActivationFunc activation;
 		Tensors.ActivationFunc recurrentActivation;
 		
-		Tensors.Tensor2D hiddenOutputWeights;
-		Tensors.Tensor1D recurrentKernel_i;
-		Tensors.Tensor1D recurrentKernel_f;
-		Tensors.Tensor1D recurrentKernel_c;
-		Tensors.Tensor1D recurrentKernel_o;
-		Tensors.Tensor2D kernel_i;
-		Tensors.Tensor2D kernel_f;
-		Tensors.Tensor2D kernel_c;
-		Tensors.Tensor2D kernel_o;
+		Tensors.Tensor1D kernel_i;
+		Tensors.Tensor1D kernel_f;
+		Tensors.Tensor1D kernel_c;
+		Tensors.Tensor1D kernel_o;
+		Tensors.Tensor2D recurrentKernel_i;
+		Tensors.Tensor2D recurrentKernel_f;
+		Tensors.Tensor2D recurrentKernel_c;
+		Tensors.Tensor2D recurrentKernel_o;
 		Tensors.Tensor1D bias_i;
 		Tensors.Tensor1D bias_f;
 		Tensors.Tensor1D bias_c;
@@ -104,79 +103,71 @@ library Layers {
 
 	struct LSTM {
 		uint layerIndex;
-		LSTMCell cell;
 		uint inputDim;
+		LSTMCell cell;
 	}
     function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal pure returns (SD59x18[] memory, SD59x18[] memory) {
-    	Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
-    	Tensors.Tensor1D memory c_tm1 = Tensor1DMethods.from(states[1]);
+    	SD59x18[] memory c;
+    	SD59x18[] memory o;
+    	{
+	    	if (states.length == 0) {
+				// make new
+				states = new SD59x18[][](2);
+				states[0] = new SD59x18[](layer.units);
+				states[1] = new SD59x18[](layer.units);
+			}
 
-		Tensors.Tensor1D memory inputs_i = Tensor1DMethods.from(x);
-		Tensors.Tensor1D memory inputs_f = Tensor1DMethods.from(x);
-		Tensors.Tensor1D memory inputs_c = Tensor1DMethods.from(x);
-		Tensors.Tensor1D memory inputs_o = Tensor1DMethods.from(x);
-		Tensors.Tensor2D memory k_i = layer.kernel_i;
-		Tensors.Tensor2D memory k_f = layer.kernel_f;
-		Tensors.Tensor2D memory k_c = layer.kernel_c;
-		Tensors.Tensor2D memory k_o = layer.kernel_f;
-		Tensors.Tensor1D memory x_i = Tensor1DMethods.matMul(inputs_i, k_i);
-		Tensors.Tensor1D memory x_f = Tensor1DMethods.matMul(inputs_f, k_f);
-		Tensors.Tensor1D memory x_c = Tensor1DMethods.matMul(inputs_c, k_c);
-		Tensors.Tensor1D memory x_o = Tensor1DMethods.matMul(inputs_o, k_o);
+	    	Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
+	    	Tensors.Tensor1D memory c_tm1 = Tensor1DMethods.from(states[1]);
 
-		Tensors.Tensor1D memory b_i = layer.bias_i;
-		Tensors.Tensor1D memory b_f = layer.bias_f;
-		Tensors.Tensor1D memory b_c = layer.bias_c;
-		Tensors.Tensor1D memory b_o = layer.bias_o;
-		x_i = Tensor1DMethods.add(x_i, b_i);
-		x_f = Tensor1DMethods.add(x_f, b_f);
-		x_c = Tensor1DMethods.add(x_c, b_c);
-		x_o = Tensor1DMethods.add(x_o, b_o);
+			Tensors.Tensor1D memory x_i = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_i);
+			Tensors.Tensor1D memory x_f = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_f);
+			Tensors.Tensor1D memory x_c = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_c);
+			Tensors.Tensor1D memory x_o = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_o);
 
-		Tensors.Tensor1D memory h_tm1_i = h_tm1;
-		Tensors.Tensor1D memory h_tm1_f = h_tm1;
-		Tensors.Tensor1D memory h_tm1_c = h_tm1;
-		Tensors.Tensor1D memory h_tm1_o = h_tm1;
-		SD59x18[][] memory xArr = new SD59x18[][](4);
-		xArr[0] = x_i.mat;
-		xArr[1] = x_f.mat;
-		xArr[2] = x_c.mat;
-		xArr[3] = x_o.mat;
+			x_i = Tensor1DMethods.add(x_i, layer.bias_i);
+			x_f = Tensor1DMethods.add(x_f, layer.bias_f);
+			x_c = Tensor1DMethods.add(x_c, layer.bias_c);
+			x_o = Tensor1DMethods.add(x_o, layer.bias_o);
 
-		SD59x18[][] memory h_tm1_mat = new SD59x18[][](4);
-		h_tm1_mat[0] = h_tm1_i.mat;
-		h_tm1_mat[1] = h_tm1_f.mat;
-		h_tm1_mat[2] = h_tm1_c.mat;
-		h_tm1_mat[3] = h_tm1_o.mat;
+			SD59x18[][] memory xArr = new SD59x18[][](4);
+			xArr[0] = x_i.mat;
+			xArr[1] = x_f.mat;
+			xArr[2] = x_c.mat;
+			xArr[3] = x_o.mat;
 
+			SD59x18[][] memory h_tm1_mat = new SD59x18[][](4);
+			h_tm1_mat[0] = h_tm1.mat;
+			h_tm1_mat[1] = h_tm1.mat;
+			h_tm1_mat[2] = h_tm1.mat;
+			h_tm1_mat[3] = h_tm1.mat;
 
-		(SD59x18[] memory c, SD59x18[] memory o) = _compute_carry_and_output(layer, xArr, h_tm1_mat, c_tm1.mat);
+			(c, o) = _compute_carry_and_output(layer, xArr, h_tm1_mat, c_tm1.mat);
+		}
 		SD59x18[] memory h = Tensor1DMethods.from(o).mul(Tensor1DMethods.from(c).activation(layer.activation)).mat;
 		return (h, c);
 
 	}
 	function _compute_carry_and_output(LSTMCell memory layer, SD59x18[][] memory x, SD59x18[][] memory h_tm1, SD59x18[] memory c_tm1) internal pure returns (SD59x18[] memory, SD59x18[] memory) {
-		SD59x18[] memory x_i = x[0];
-		SD59x18[] memory x_f = x[1];
-		SD59x18[] memory x_c = x[2];
-		SD59x18[] memory x_o = x[3];
-		SD59x18[] memory h_tm1_i = h_tm1[0];
-		SD59x18[] memory h_tm1_f = h_tm1[1];
-		SD59x18[] memory h_tm1_c = h_tm1[2];
-		SD59x18[] memory h_tm1_o = h_tm1[3];
-		Tensors.Tensor1D memory i = Tensor1DMethods.from(x_i).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1_i), layer.recurrentKernel_i)).activation(layer.recurrentActivation);
-		Tensors.Tensor1D memory f = Tensor1DMethods.from(x_f).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1_f), layer.recurrentKernel_f)).activation(layer.recurrentActivation);
-		SD59x18[] memory c = f.mul(Tensor1DMethods.from(c_tm1)).add(i.mul(Tensor1DMethods.from(x_c).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1_c), layer.recurrentKernel_c)).activation(layer.activation))).mat;
-		SD59x18[] memory o = Tensor1DMethods.from(x_o).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1_o), layer.recurrentKernel_o)).activation(layer.recurrentActivation).mat;
+		Tensors.Tensor1D memory i = Tensor1DMethods.from(x[0]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[0]), layer.recurrentKernel_i)).activation(layer.recurrentActivation);
+		Tensors.Tensor1D memory f = Tensor1DMethods.from(x[1]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[1]), layer.recurrentKernel_f)).activation(layer.recurrentActivation);
+		SD59x18[] memory c = f.mul(Tensor1DMethods.from(c_tm1)).add(i.mul(Tensor1DMethods.from(x[2]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[2]), layer.recurrentKernel_c)).activation(layer.activation))).mat;
+		SD59x18[] memory o = Tensor1DMethods.from(x[3]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[3]), layer.recurrentKernel_o)).activation(layer.recurrentActivation).mat;
 		
 		return (c, o);
 	}
-    function forward(LSTM memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal pure returns (SD59x18[] memory) {
+
+	// def call(self, sequences, initial_state=None, mask=None, training=False):
+    //     return super().call(
+    //         sequences, mask=mask, training=training, initial_state=initial_state
+    //     )
+    function forward(LSTM memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal pure returns (SD59x18[] memory, SD59x18[][] memory) {
 		// Tensors.Tensor2D memory xt = Tensor2DMethods.from(x);
 		(SD59x18[] memory h, SD59x18[] memory c) = forward(layer.cell, x, states);
-		Tensors.Tensor1D memory outputs = Tensor1DMethods.matMul(Tensor1DMethods.from(h), layer.cell.hiddenOutputWeights);
+		states[0] = h;
+		states[1] = c;
 		
-		return outputs.softmax().mat;
+		return (h, states);
 	}
 		
 	function forward(FlattenLayer memory layer, SD59x18[][][] memory mat) internal pure returns (SD59x18[] memory) {
@@ -277,6 +268,71 @@ library Layers {
 		return idx;
 	}
 
+	function appendWeights(LSTM storage layer, SD59x18[] memory x) internal returns (uint) {
+		// will overwrite the weights
+		uint currentWeight = 0;
+		for (uint i = 0; i < layer.cell.units; i++) {
+			layer.cell.kernel_i.mat[i] = x[currentWeight];
+			currentWeight++;
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			layer.cell.kernel_f.mat[i] = x[currentWeight];
+			currentWeight++;
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			layer.cell.kernel_c.mat[i] = x[currentWeight];
+			currentWeight++;
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			layer.cell.kernel_o.mat[i] = x[currentWeight];
+			currentWeight++;
+		}
+
+		for (uint i = 0; i < layer.cell.units; i++) {
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.recurrentKernel_i.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.recurrentKernel_f.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.recurrentKernel_c.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.recurrentKernel_o.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+		}
+		
+		for (uint i = 0; i < layer.cell.units; i++) {
+			layer.cell.bias_i.mat[i] = x[currentWeight];
+			currentWeight++;
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			layer.cell.bias_f.mat[i] = x[currentWeight];
+			currentWeight++;
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			layer.cell.bias_c.mat[i] = x[currentWeight];
+			currentWeight++;
+		}
+		for (uint i = 0; i < layer.cell.units; i++) {
+			layer.cell.bias_o.mat[i] = x[currentWeight];
+			currentWeight++;
+		}
+		return currentWeight;
+
+	}
+
 	function appendWeights(Conv2DLayer storage layer, SD59x18[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
@@ -371,6 +427,36 @@ library Layers {
 		);
 		out_dim = d;
 		requiredWeights = layer.w.count() + layer.b.count();
+	}
+
+	function makeLSTMLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (LSTM memory layer, uint256 out_dim) {
+		(, uint8 actv, uint8 ractv, uint256 numUnits) = abi.decode(
+			slc.conf,
+			(uint8, uint8, uint8, uint256)
+		);
+		layer = Layers.LSTM(
+			slc.ind,
+			dim,
+			Layers.LSTMCell(
+				numUnits,
+				Tensors.ActivationFunc(actv),
+				Tensors.ActivationFunc(ractv),
+				
+				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor2DMethods.zerosTensor(numUnits, numUnits),
+				Tensor2DMethods.zerosTensor(numUnits, numUnits),
+				Tensor2DMethods.zerosTensor(numUnits, numUnits),
+				Tensor2DMethods.zerosTensor(numUnits, numUnits),
+				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor1DMethods.zerosTensor(numUnits)
+			)
+		);
+		out_dim = numUnits;
 	}
 
 	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (FlattenLayer memory layer, uint256 out_dim) {
