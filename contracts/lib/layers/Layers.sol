@@ -103,10 +103,11 @@ library Layers {
 
 	struct LSTM {
 		uint layerIndex;
-		uint inputDim;
+		uint inputUnits;
 		LSTMCell cell;
 	}
-    function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal pure returns (SD59x18[] memory, SD59x18[] memory) {
+	
+    function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal view returns (SD59x18[] memory, SD59x18[] memory) {
     	SD59x18[] memory c;
     	SD59x18[] memory o;
     	{
@@ -157,17 +158,23 @@ library Layers {
 		return (c, o);
 	}
 
-	// def call(self, sequences, initial_state=None, mask=None, training=False):
-    //     return super().call(
-    //         sequences, mask=mask, training=training, initial_state=initial_state
-    //     )
-    function forward(LSTM memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal pure returns (SD59x18[] memory, SD59x18[][] memory) {
-		// Tensors.Tensor2D memory xt = Tensor2DMethods.from(x);
-		(SD59x18[] memory h, SD59x18[] memory c) = forward(layer.cell, x, states);
-		states[0] = h;
-		states[1] = c;
-		
-		return (h, states);
+
+    function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory) {
+		SD59x18[][] memory res = new SD59x18[][](1);
+		// TODO: check
+		SD59x18[] memory x = new SD59x18[](layer.cell.units);
+		for (uint i = 0; i < _x.length; i++) {
+			x[i] = _x[i];
+		}
+
+		SD59x18[][] memory newStates = new SD59x18[][](2);
+		for (uint i = 0; i < res.length; i++) {
+			(SD59x18[] memory h, SD59x18[] memory c) = forward(layer.cell, x, states);
+			newStates[0] = h;
+			newStates[1] = c;
+			res[i] = h;
+		}
+		return (res, newStates);
 	}
 		
 	function forward(FlattenLayer memory layer, SD59x18[][][] memory mat) internal pure returns (SD59x18[] memory) {
@@ -193,10 +200,21 @@ library Layers {
 		return y;
 	}
 
-	function forward(DenseLayer memory layer, SD59x18[] memory x) internal pure returns (SD59x18[] memory) {
+	function forward(DenseLayer memory layer, SD59x18[] memory x) internal view returns (SD59x18[] memory) {
 		Tensors.Tensor1D memory xt = Tensor1DMethods.from(x);
 		Tensors.Tensor2D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
+		
+		if (wt.m == 1 && bt.count() == 1) {
+			Tensors.Tensor1D memory wt1 = Tensor1DMethods.zerosTensor(wt.n);
+			for (uint i = 0; i < wt.n; i++) {
+				wt1.mat[i] = wt.mat[i][0];
+			}
+
+			Tensors.Tensor1D memory y = xt.matMul(wt1).add(bt);
+			Tensors.Tensor1D memory zt = y.activation(layer.activation);
+			return zt.mat;
+		}
 		Tensors.Tensor1D memory y = xt.matMul(wt).add(bt);
 		Tensors.Tensor1D memory zt = y.activation(layer.activation);
 		return zt.mat;
@@ -466,13 +484,13 @@ library Layers {
 	}
 
 	function makeLSTMLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (LSTM memory layer, uint256 out_dim) {
-		(, uint8 actv, uint8 ractv, uint256 numUnits) = abi.decode(
+		(, uint8 actv, uint8 ractv, uint256 numUnits, uint256 numInputs) = abi.decode(
 			slc.conf,
-			(uint8, uint8, uint8, uint256)
+			(uint8, uint8, uint8, uint256, uint256)
 		);
 		layer = Layers.LSTM(
 			slc.ind,
-			dim,
+			numInputs,
 			Layers.LSTMCell(
 				numUnits,
 				Tensors.ActivationFunc(actv),

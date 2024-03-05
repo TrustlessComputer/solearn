@@ -205,7 +205,9 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
                     const w = ethers.BigNumber.from(dim[1]);
                     const c = ethers.BigNumber.from(dim[2]);
                     result = abic.encode(["uint8", "uint8", "uint[3]"], [layerType, 1, [h, w, c]]);
-                    input_units = [h.toNumber(), w.toNumber(), c.toNumber()];
+                    input_units = w;
+                } else {
+                    input_units = dim[0]
                 }
             } else if (layer.class_name === 'MaxPooling2D') {
                 const f_w = layer.config.pool_size[0];
@@ -275,6 +277,7 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
                 input_units = units;
             } else if (layer.class_name === 'LSTM') {
                 const units = layer.config.units;
+                console.log("input units to LSTM: ", input_units);
                 const activationFn: number = getActivationType(layer.config.activation);
                 const recActivationFn: number = getActivationType(layer.config.recurrent_activation);
     
@@ -283,7 +286,7 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
                 weights[layerType].push(layerWeights);
                 totSize[layerType] += layerWeights.length;
     
-                result = abic.encode(["uint8", "uint8", "uint8", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units)]);
+                result = abic.encode(["uint8", "uint8", "uint8", "uint256", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units), ethers.BigNumber.from(input_units)]);
                 input_units = units;
             } else {
                 continue; // handle dropout etc
