@@ -36,6 +36,7 @@ contract EternalAI is
     using Layers for Layers.Conv2DLayer;
     using Layers for Layers.EmbeddingLayer;
     using Layers for Layers.SimpleRNNLayer;
+    using Layers for Layers.LSTM;
     using Tensor1DMethods for Tensors.Tensor1D;
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor3DMethods for Tensors.Tensor3D;
@@ -83,7 +84,8 @@ contract EternalAI is
         Layers.MaxPooling2DLayer[] mp2;
         Layers.Conv2DLayer[] c2;
         Layers.EmbeddingLayer[] embedding;
-        Layers.SimpleRNNLayer[] simpleRNN;        
+        Layers.SimpleRNNLayer[] simpleRNN;
+        Layers.LSTM[] lstm;       
     }
 
     struct VocabInfo {
@@ -105,7 +107,8 @@ contract EternalAI is
         MaxPooling2D,
         Conv2D,
         Embedding,
-        SimpleRNN
+        SimpleRNN,
+        LSTM
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -372,8 +375,8 @@ contract EternalAI is
     function feedRNN(
         uint256 modelId,
         uint256 inputToken,
-        SD59x18[] memory rnn_state
-    ) internal view returns (SD59x18[] memory nxt_state) {
+        SD59x18[][] memory rnn_state
+    ) internal view returns (SD59x18[][] memory nxt_state) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
@@ -387,8 +390,9 @@ contract EternalAI is
             } else if (layerInfo.layerType == LayerType.Dense) {
                 x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
-                x2 = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
-                rnn_state = x2;
+                (x2, rnn_state) = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
+            } else if (layerInfo.layerType == LayerType.LSTM) {
+                (x2, rnn_state) = models[modelId].lstm[layerInfo.layerIndex].forward(x2, rnn_state);
             }
         }
 
@@ -398,9 +402,9 @@ contract EternalAI is
     function evaluateRNN(
         uint256 modelId,
         uint256 inputToken,
-        SD59x18[] memory rnn_state,
+        SD59x18[][] memory rnn_state,
         uint256 seed
-    ) internal view returns (uint256 outputToken, SD59x18[] memory nxt_state) {
+    ) internal view returns (uint256 outputToken, SD59x18[][] memory nxt_state) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
@@ -414,8 +418,10 @@ contract EternalAI is
             } else if (layerInfo.layerType == LayerType.Dense) {
                 x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
-                x2 = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
-                rnn_state = Utils.clone(x2);
+                (x2, rnn_state) = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
+                // x2 = x2;
+            } else if (layerInfo.layerType == LayerType.LSTM) {
+                (x2, rnn_state) = models[modelId].lstm[layerInfo.layerIndex].forward(x2, rnn_state);
             }
         }
 
@@ -461,7 +467,13 @@ contract EternalAI is
     ) external view returns (string memory) {
         uint256[] memory tokens = tokenize(modelId, prompt); 
 
-        SD59x18[] memory states = Tensor1DMethods.zerosTensor(models[modelId].simpleRNN[0].units).mat;
+        SD59x18[][] memory states;
+        if (models[modelId].simpleRNN.length > 0) {
+            states = Tensor2DMethods.zerosTensor(1, models[modelId].simpleRNN[0].units).mat;
+        } else if (models[modelId].lstm.length > 0) {
+            states = Tensor2DMethods.zerosTensor(2, models[modelId].lstm[0].cell.units).mat;
+        }
+
         for(uint i = 0; i < tokens.length - 1; ++i) {
             states = feedRNN(modelId, tokens[i], states);
         }
@@ -494,6 +506,7 @@ contract EternalAI is
             delete models[modelId].mp2;
             delete models[modelId].embedding;
             delete models[modelId].simpleRNN;
+            delete models[modelId].lstm;
             delete models[modelId].layers;
         }
 
@@ -515,6 +528,8 @@ contract EternalAI is
             appendedWeights = models[modelId].embedding[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.SimpleRNN) {
             appendedWeights = models[modelId].simpleRNN[layerInd].appendWeights(weights);
+        } else if (layerType == LayerType.LSTM) {
+            appendedWeights = models[modelId].lstm[layerInd].appendWeights(weights);
         }
         models[modelId].appendedWeights += appendedWeights;
         if (models[modelId].appendedWeights == models[modelId].requiredWeights) {
@@ -622,6 +637,14 @@ contract EternalAI is
 
             uint256 index = models[modelId].simpleRNN.length - 1;
             models[modelId].layers.push(Info(LayerType.SimpleRNN, index));
+        } else if (layerType == uint8(LayerType.LSTM)) {
+            (Layers.LSTM memory layer, uint out_dim) = Layers
+                .makeLSTMLayer(slc, dim2);
+            models[modelId].lstm.push(layer);
+            dim2 = out_dim;
+
+            uint256 index = models[modelId].lstm.length - 1;
+            models[modelId].layers.push(Info(LayerType.LSTM, index));
         }
         return (dim1, dim2);
     }

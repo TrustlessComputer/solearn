@@ -221,14 +221,15 @@ library Layers {
 		return layer.w.mat[x];
 	}
 
-	function forward(SimpleRNNLayer memory layer, SD59x18[] memory x, SD59x18[] memory states) internal pure returns (SD59x18[] memory) {
+	function forward(SimpleRNNLayer memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal pure returns (SD59x18[] memory, SD59x18[][] memory) {
 		Tensors.Tensor1D memory x_t = Tensor1DMethods.from(x);
-		Tensors.Tensor1D memory h_t = Tensor1DMethods.from(states);
+		Tensors.Tensor1D memory h_t = Tensor1DMethods.from(states[0]);
 		Tensors.Tensor1D memory yx_t = Tensor1DMethods.matMul(x_t, layer.wx);
 		Tensors.Tensor1D memory yh_t = Tensor1DMethods.matMul(h_t, layer.wh);
 		Tensors.Tensor1D memory y_t = Tensor1DMethods.add(Tensor1DMethods.add(yx_t, yh_t), layer.b);
 		Tensors.Tensor1D memory z_t = Tensor1DMethods.activation(y_t, layer.activation);
-		return z_t.mat;
+		states[0] = z_t.mat;
+		return (states[0], states);
 	}
 
 	function appendWeights(DenseLayer storage layer, SD59x18[] memory x) internal returns (uint) {
@@ -330,7 +331,6 @@ library Layers {
 			currentWeight++;
 		}
 		return currentWeight;
-
 	}
 
 	function appendWeights(Conv2DLayer storage layer, SD59x18[] memory x) internal returns (uint) {

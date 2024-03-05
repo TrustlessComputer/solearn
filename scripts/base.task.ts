@@ -8,7 +8,7 @@ import path from 'path';
 
 const ContractName = "EternalAI";
 const MaxWeightLen = 1000;
-const MaxLayerType = 8;
+const MaxLayerType = 9;
 const GasLimit = "100000000000"; // 100 B
 const MaxFeePerGas = "1001000000";  // 1e-5 gwei
 const MaxPriorityFeePerGas = "1000000000";
@@ -42,6 +42,8 @@ function getLayerType(name: string): number {
         layerType = 6;
     } else if (name === 'SimpleRNN') {
         layerType = 7;
+    } else if (name === 'LSTM') {
+        layerType = 8;
     }
     return layerType;
 }
@@ -64,6 +66,8 @@ function getLayerName(type: number): string {
         layerName = 'Embedding';
     } else if (type === 7) {
         layerName = 'SimpleRNN';
+    } else if (type === 8) {
+        layerName = 'LSTM';
     }
     return layerName;
 }
@@ -284,8 +288,25 @@ task("mint-model-id", "mint model id (and upload weights)")
     
                 result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(units)]);
                 input_units = units;
-            } 
-            newLayerConfig.push(result);
+            } else if (layer.class_name === 'LSTM') {
+                const units = layer.config.units;
+                const activationFn: number = getActivationType(layer.config.activation);
+                const recActivationFn: number = getActivationType(layer.config.recurrent_activation);
+    
+                // reconstruct weights
+                let layerWeights = weightsFlat.splice(0, units * 4 + units * units * 4 + units * 4);
+                weights[layerType].push(layerWeights);
+                totSize[layerType] += layerWeights.length;
+    
+                result = abic.encode(["uint8", "uint8", "uint8", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units)]);
+                input_units = units;
+            } else {
+                continue; // handle dropout etc
+            }
+
+            if (result.length > 0) {
+                newLayerConfig.push(result);
+            }
         }
         params.layers_config = newLayerConfig.filter((x: any) => x !== null);
 
@@ -339,7 +360,9 @@ task("mint-model-id", "mint model id (and upload weights)")
             if (totSize[i] === 0) continue;
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
             for(let wi = 0; wi < weights[i].length; ++wi) {
-                for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
+                const len = (getLayerName(i) === 'LSTM') ? weights[i][wi].length : maxlen;
+                // const len = maxlen;
+                for (let temp = truncateWeights(weights[i][wi], len); temp.length > 0; temp = truncateWeights(weights[i][wi], len)) {
                     const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);

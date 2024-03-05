@@ -26,7 +26,7 @@ const config = {
       },
       gas: 100_000_000,
       allowUnlimitedContractSize: true,
-      blockGasLimit: 2_500_000_000,
+      blockGasLimit: 1_000_000_000_000,
     },
     localhost: {
       url: "http://localhost:8545",
