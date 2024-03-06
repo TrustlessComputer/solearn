@@ -377,22 +377,25 @@ contract EternalAI is
         uint256 inputToken,
         SD59x18[][] memory rnn_state
     ) internal view returns (SD59x18[][] memory nxt_state) {
+        Model storage model = models[modelId];
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
-        uint nLayers = models[modelId].layers.length;
+        uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
-            Info memory layerInfo = models[modelId].layers[i];
+            Info memory layerInfo = model.layers[i];
 
             // add more layers
             if (layerInfo.layerType == LayerType.Embedding) {
-                x2 = models[modelId].embedding[layerInfo.layerIndex].forward(x1);
+                x2 = model.embedding[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Dense) {
-                x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
+                x2 = model.d[layerInfo.layerIndex].forward(x2);
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
-                (x2, rnn_state) = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
+                (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
             } else if (layerInfo.layerType == LayerType.LSTM) {
-                (x2, rnn_state) = models[modelId].lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                SD59x18[][] memory x2Ext;
+                (x2Ext, rnn_state) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                x2 = x2Ext[0];
             }
         }
 
@@ -405,23 +408,25 @@ contract EternalAI is
         SD59x18[][] memory rnn_state,
         uint256 seed
     ) internal view returns (uint256 outputToken, SD59x18[][] memory nxt_state) {
+        Model storage model = models[modelId];
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
-        uint nLayers = models[modelId].layers.length;
+        uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
-            Info memory layerInfo = models[modelId].layers[i];
+            Info memory layerInfo = model.layers[i];
 
             // add more layers
             if (layerInfo.layerType == LayerType.Embedding) {
-                x2 = models[modelId].embedding[layerInfo.layerIndex].forward(x1);
+                x2 = model.embedding[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Dense) {
-                x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
+                x2 = model.d[layerInfo.layerIndex].forward(x2);
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
-                (x2, rnn_state) = models[modelId].simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
-                // x2 = x2;
+                (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
             } else if (layerInfo.layerType == LayerType.LSTM) {
-                (x2, rnn_state) = models[modelId].lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                SD59x18[][] memory x2Ext;
+                (x2Ext, rnn_state) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                x2 = x2Ext[0];
             }
         }
 
@@ -529,7 +534,7 @@ contract EternalAI is
         } else if (layerType == LayerType.SimpleRNN) {
             appendedWeights = models[modelId].simpleRNN[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.LSTM) {
-            appendedWeights = models[modelId].lstm[layerInd].appendWeights(weights);
+            appendedWeights = models[modelId].lstm[layerInd].appendWeightsPartial(weights);
         }
         models[modelId].appendedWeights += appendedWeights;
         if (models[modelId].appendedWeights == models[modelId].requiredWeights) {

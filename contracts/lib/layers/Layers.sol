@@ -87,10 +87,10 @@ library Layers {
 		Tensors.ActivationFunc activation;
 		Tensors.ActivationFunc recurrentActivation;
 		
-		Tensors.Tensor1D kernel_i;
-		Tensors.Tensor1D kernel_f;
-		Tensors.Tensor1D kernel_c;
-		Tensors.Tensor1D kernel_o;
+		Tensors.Tensor2D kernel_i;
+		Tensors.Tensor2D kernel_f;
+		Tensors.Tensor2D kernel_c;
+		Tensors.Tensor2D kernel_o;
 		Tensors.Tensor2D recurrentKernel_i;
 		Tensors.Tensor2D recurrentKernel_f;
 		Tensors.Tensor2D recurrentKernel_c;
@@ -105,6 +105,8 @@ library Layers {
 		uint layerIndex;
 		uint inputUnits;
 		LSTMCell cell;
+		uint ptr;
+		uint ptrLayer;
 	}
 	
     function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal view returns (SD59x18[] memory, SD59x18[] memory) {
@@ -121,10 +123,10 @@ library Layers {
 	    	Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
 	    	Tensors.Tensor1D memory c_tm1 = Tensor1DMethods.from(states[1]);
 
-			Tensors.Tensor1D memory x_i = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_i);
-			Tensors.Tensor1D memory x_f = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_f);
-			Tensors.Tensor1D memory x_c = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_c);
-			Tensors.Tensor1D memory x_o = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_o);
+			Tensors.Tensor1D memory x_i = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_i);
+			Tensors.Tensor1D memory x_f = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_f);
+			Tensors.Tensor1D memory x_c = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_c);
+			Tensors.Tensor1D memory x_o = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_o);
 
 			x_i = Tensor1DMethods.add(x_i, layer.bias_i);
 			x_f = Tensor1DMethods.add(x_f, layer.bias_f);
@@ -259,25 +261,17 @@ library Layers {
 			uint cnt = layer.w.n * layer.w.m;
 			while (idx < x.length && ptr < cnt) {
 				layer.w.mat[ptr / m].push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == cnt) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (ptrLayer == 1) {
 			uint n = layer.b.n; 
 			while (idx < x.length && ptr < n) {
 				layer.b.mat.push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == n) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == n) { ++ptrLayer; ptr = 0; }
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -290,21 +284,23 @@ library Layers {
 	function appendWeights(LSTM storage layer, SD59x18[] memory x) internal returns (uint) {
 		// will overwrite the weights
 		uint currentWeight = 0;
-		for (uint i = 0; i < layer.cell.units; i++) {
-			layer.cell.kernel_i.mat[i] = x[currentWeight];
-			currentWeight++;
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
-			layer.cell.kernel_f.mat[i] = x[currentWeight];
-			currentWeight++;
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
-			layer.cell.kernel_c.mat[i] = x[currentWeight];
-			currentWeight++;
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
-			layer.cell.kernel_o.mat[i] = x[currentWeight];
-			currentWeight++;
+		for (uint i = 0; i < layer.inputUnits; i++) {
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.kernel_i.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.kernel_f.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.kernel_c.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.kernel_o.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
 		}
 
 		for (uint i = 0; i < layer.cell.units; i++) {
@@ -312,20 +308,14 @@ library Layers {
 				layer.cell.recurrentKernel_i.mat[i][j] = x[currentWeight];
 				currentWeight++;
 			}
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
 			for (uint j = 0; j < layer.cell.units; j++) {
 				layer.cell.recurrentKernel_f.mat[i][j] = x[currentWeight];
 				currentWeight++;
 			}
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
 			for (uint j = 0; j < layer.cell.units; j++) {
 				layer.cell.recurrentKernel_c.mat[i][j] = x[currentWeight];
 				currentWeight++;
 			}
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
 			for (uint j = 0; j < layer.cell.units; j++) {
 				layer.cell.recurrentKernel_o.mat[i][j] = x[currentWeight];
 				currentWeight++;
@@ -351,6 +341,79 @@ library Layers {
 		return currentWeight;
 	}
 
+	function appendWeightsPartial(LSTM storage layer, SD59x18[] memory x) internal returns (uint) {
+		// can append weights to the end, at the cost of slightly higher gas
+		LSTMCell storage cell = layer.cell;
+		uint ptrLayer = layer.ptrLayer;
+		uint ptr = layer.ptr;
+		uint idx = 0;
+		// kernel
+		if (ptrLayer == 0) {
+			uint m = cell.kernel_i.m;
+			uint k = 4 * m;
+			uint cnt = cell.kernel_i.n * k;
+			while (idx < x.length && ptr < cnt) {
+				uint i = ptr / k;
+				uint part = (ptr % k) / m;
+				uint j = ptr % m;
+				if (part == 0) {
+					cell.kernel_i.mat[i][j] = x[idx];
+				} else if (part == 1) {
+					cell.kernel_c.mat[i][j] = x[idx];
+				} else if (part == 2) {
+					cell.kernel_f.mat[i][j] = x[idx];
+				} else { // if (part == 3) 
+					cell.kernel_o.mat[i][j] = x[idx];
+				}
+				ptr++; idx++;
+			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
+		}
+		// recurrentKernel
+		if (ptrLayer == 1) {
+			uint m = cell.recurrentKernel_i.m;
+			uint k = 4 * m;
+			uint cnt = cell.recurrentKernel_i.n * k;
+			while (idx < x.length && ptr < cnt) {
+				uint i = ptr / k;
+				uint part = (ptr % k) / m;
+				uint j = ptr % m;
+				if (part == 0) {
+					cell.recurrentKernel_i.mat[i][j] = x[idx];
+				} else if (part == 1) {
+					cell.recurrentKernel_c.mat[i][j] = x[idx];
+				} else if (part == 2) {
+					cell.recurrentKernel_f.mat[i][j] = x[idx];
+				} else { // if (part == 3) 
+					cell.recurrentKernel_o.mat[i][j] = x[idx];
+				}
+				ptr++; idx++;
+			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
+		}
+		// bias
+		if (ptrLayer == 2) {
+			uint n = cell.bias_i.n;
+			uint k = 4 * n;
+			while (idx < x.length && ptr < k) {
+				uint part = (ptr % k) / n;
+				uint i = ptr % n;
+				if (part == 0) {
+					cell.bias_i.mat[i] = x[idx];
+				} else if (part == 1) {
+					cell.bias_c.mat[i] = x[idx];
+				} else if (part == 2) {
+					cell.bias_f.mat[i] = x[idx];
+				} else { // if (part == 3) 
+					cell.bias_o.mat[i] = x[idx];
+				}
+				ptr++; idx++;
+			}
+			if (ptr == k) { ++ptrLayer; ptr = 0; }
+		}
+		return idx;
+	}
+
 	function appendWeights(Conv2DLayer storage layer, SD59x18[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
@@ -362,25 +425,17 @@ library Layers {
 			uint cnt = layer.w.n * layer.w.m * layer.w.p * layer.w.q;
 			while (idx < x.length && ptr < cnt) {
 				layer.w.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p].push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == cnt) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (ptrLayer == 1) {
 			uint n = layer.b.n; 
 			while (idx < x.length && ptr < n) {
 				layer.b.mat.push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == n) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == n) { ++ptrLayer; ptr = 0; }
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -399,13 +454,9 @@ library Layers {
 			uint cnt = layer.w.n * layer.w.m;
 			while (idx < x.length && ptr < cnt) {
 				layer.w.mat[ptr / m].push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == cnt) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -424,38 +475,26 @@ library Layers {
 			uint cnt = layer.wx.n * layer.wx.m;
 			while (idx < x.length && ptr < cnt) {
 				layer.wx.mat[ptr / m].push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == cnt) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (ptrLayer == 1) {
 			uint m = layer.wh.m;
 			uint cnt = layer.wh.n * layer.wh.m;
 			while (idx < x.length && ptr < cnt) {
 				layer.wh.mat[ptr / m].push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == cnt) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (ptrLayer == 2) {
 			uint n = layer.b.n; 
 			while (idx < x.length && ptr < n) {
 				layer.b.mat.push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == n) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == n) { ++ptrLayer; ptr = 0; }
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -496,10 +535,10 @@ library Layers {
 				Tensors.ActivationFunc(actv),
 				Tensors.ActivationFunc(ractv),
 				
-				Tensor1DMethods.zerosTensor(numUnits),
-				Tensor1DMethods.zerosTensor(numUnits),
-				Tensor1DMethods.zerosTensor(numUnits),
-				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor2DMethods.zerosTensor(numInputs, numUnits),
+				Tensor2DMethods.zerosTensor(numInputs, numUnits),
+				Tensor2DMethods.zerosTensor(numInputs, numUnits),
+				Tensor2DMethods.zerosTensor(numInputs, numUnits),
 				Tensor2DMethods.zerosTensor(numUnits, numUnits),
 				Tensor2DMethods.zerosTensor(numUnits, numUnits),
 				Tensor2DMethods.zerosTensor(numUnits, numUnits),
@@ -508,7 +547,9 @@ library Layers {
 				Tensor1DMethods.zerosTensor(numUnits),
 				Tensor1DMethods.zerosTensor(numUnits),
 				Tensor1DMethods.zerosTensor(numUnits)
-			)
+			),
+			0,
+			0
 		);
 		out_dim = numUnits;
 	}

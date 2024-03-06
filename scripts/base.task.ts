@@ -9,7 +9,7 @@ import path from 'path';
 const ContractName = "EternalAI";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
-const GasLimit = "100000000000"; // 100 B
+const GasLimit = "1000000000000"; // 100 B
 const MaxFeePerGas = "1001000000";  // 1e-5 gwei
 const MaxPriorityFeePerGas = "1000000000";
 // const GasLimit = "290000000"; // 100 M
@@ -290,15 +290,17 @@ task("mint-model-id", "mint model id (and upload weights)")
                 input_units = units;
             } else if (layer.class_name === 'LSTM') {
                 const units = layer.config.units;
+                console.log("input units to LSTM: ", input_units);
+                console.log("LSTM units:", units);
                 const activationFn: number = getActivationType(layer.config.activation);
                 const recActivationFn: number = getActivationType(layer.config.recurrent_activation);
     
                 // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, units * 4 + units * units * 4 + units * 4);
+                let layerWeights = weightsFlat.splice(0, input_units * units * 4 + units * units * 4 + units * 4);
                 weights[layerType].push(layerWeights);
                 totSize[layerType] += layerWeights.length;
     
-                result = abic.encode(["uint8", "uint8", "uint8", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units)]);
+                result = abic.encode(["uint8", "uint8", "uint8", "uint256", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units), ethers.BigNumber.from(input_units)]);
                 input_units = units;
             } else {
                 continue; // handle dropout etc
@@ -360,8 +362,8 @@ task("mint-model-id", "mint model id (and upload weights)")
             if (totSize[i] === 0) continue;
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
             for(let wi = 0; wi < weights[i].length; ++wi) {
-                const len = (getLayerName(i) === 'LSTM') ? weights[i][wi].length : maxlen;
-                // const len = maxlen;
+                // const len = (getLayerName(i) === 'LSTM') ? weights[i][wi].length : maxlen;
+                const len = maxlen;
                 for (let temp = truncateWeights(weights[i][wi], len); temp.length > 0; temp = truncateWeights(weights[i][wi], len)) {
                     const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
