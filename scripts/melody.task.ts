@@ -10,7 +10,7 @@ import { PromiseOrValue } from "../typechain-types/common";
 const ContractName = "MelodyRNN";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
-const gasConfig = { gasLimit: 1_000_000_000 };
+const gasConfig = { gasLimit: 10_000_000_000 };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -363,6 +363,7 @@ task("generate-melody", "evaluate model for each layer")
     .addOptionalParam("count", "number of notes to generate", 1, types.int)
     // .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const inputLen = 20;
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
         const signer = await ethers.getSigner(signerAddress);
@@ -378,32 +379,20 @@ task("generate-melody", "evaluate model for each layer")
 
         let startTime = new Date().getTime();
 
-        for (let i = 0; i < taskArgs.count; i++) {
-            // get a list of 20 random numbers in the range (0,127)
-            let x1: PromiseOrValue<ethers.BigNumberish>[][][] = [];
-            let rands = [];
-            for (let i = 0; i < 20; i++) {
-                rands.push(Math.floor(Math.random() * 128));
-            }
+        let tune = [];
+        let rands = [];
+        for (let i = 0; i < inputLen; i++) {
+            rands.push(Math.floor(Math.random() * 128));
+        }
 
-            let x2 = rands.map(n => ethers.BigNumber.from(String(Math.trunc(n * 1e18))));
+        let x2 = rands.map(n => ethers.BigNumber.from(String(Math.trunc(n * 1e18))));
 
-            const [res, r1, r2] = await c.evaluate(tokenId, 0, 10, x1, x2);
+        const res = await c.generateMelody(tokenId, taskArgs.count, x2);
+        console.log("result:", res)
+        // const tx = await c.generateMelodyTest(tokenId, taskArgs.count, x2, gasConfig);
+        // const rc = await tx.wait();
 
-            // const [className, r1, r2] = await measureTime(async () => {
-            //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
-            // });
-            x1 = r1;
-            x2 = r2;
-
-            console.log("result: ", res);
-
-
-            // if (toLayerIndex >= numLayers - 1) {
-            //     break;
-            // }
-        }    
-        
+        // console.log("result:", tx, rc)
 
         let endTime = new Date().getTime();
         console.log("Time: ", (endTime - startTime) / (60 * 1000));
