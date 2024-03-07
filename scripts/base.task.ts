@@ -375,7 +375,7 @@ task("mint-model-id", "mint model id (and upload weights)")
                         console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
                     }
                 }
-            }            
+            }
         }
     });
 
@@ -565,6 +565,7 @@ task("generate-text", "generate text from RNN model")
     .addOptionalParam("prompt", "input prompt", "", types.string)
     .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
     .addOptionalParam("seed", "random seed", 123, types.int)
+    .addOptionalParam("temperature", "randomness of the generation", 1.0, types.float)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -582,6 +583,7 @@ task("generate-text", "generate text from RNN model")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const temperature = ethers.BigNumber.from(taskArgs.temperature).mul(ethers.constants.WeiPerEther);
 
         // const model = await c.getInfo(tokenId);
 
@@ -590,7 +592,7 @@ task("generate-text", "generate text from RNN model")
         // const gas = await c.estimateGas.generateText(tokenId, prompt, toGenerate, seed, gasConfig);
         // console.log("generateText estimate gas: ", gas);
 
-        const generatedText = await c.generateText(tokenId, prompt, toGenerate, seed, gasConfig);
+        const generatedText = await c.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
         console.log("Prompt + Generated text:");
         console.log(prompt + generatedText);
 
@@ -615,6 +617,16 @@ task("get-model", "get eternal AI model")
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
         // console.log(JSON.stringify(model));
+
+        // const lstmInfo = await c.getLSTMLayer(tokenId, ethers.BigNumber.from(0));
+        // const lstmInfoDec = [
+        //     lstmInfo[0].toString(),
+        //     lstmInfo[1].toString(),
+        //     lstmInfo[2].map(numArr => numArr.map(num => num.toString())),
+        //     lstmInfo[3].map(numArr => numArr.map(num => num.toString())),
+        //     lstmInfo[4].map(num => num.toString()),
+        // ]
+        // fs.writeFileSync("lstmInfo.json", JSON.stringify(lstmInfoDec));
     });
 
 task("get-model-ids")

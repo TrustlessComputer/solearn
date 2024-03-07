@@ -236,6 +236,33 @@ contract EternalAI is
         b = layer.b.mat;
     }
 
+    function getLSTMLayer(
+        uint256 modelId,
+        uint256 layerIdx
+    )
+        public
+        view
+        returns (
+            uint256,
+            uint256,
+            SD59x18[][] memory,
+            SD59x18[][] memory,
+            SD59x18[] memory
+        )
+    {
+        Layers.LSTM memory layer = models[modelId].lstm[layerIdx];
+        Layers.LSTMCell memory cell = layer.cell;
+        uint256 inputUnits = layer.inputUnits;
+        uint256 units = cell.units;
+        return (
+            inputUnits,
+            units,
+            cell.kernel_f.mat,
+            cell.recurrentKernel_f.mat,
+            cell.bias_f.mat
+        );
+    }
+
     function safeMint(
         address to,
         uint256 modelId,
@@ -468,7 +495,8 @@ contract EternalAI is
         uint256 modelId,
         string memory prompt,
         uint256 toGenerate,
-        uint256 seed
+        uint256 seed,
+        SD59x18 temperature
     ) external view returns (string memory) {
         uint256[] memory tokens = tokenize(modelId, prompt); 
 

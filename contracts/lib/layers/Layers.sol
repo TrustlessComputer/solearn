@@ -359,9 +359,9 @@ library Layers {
 				if (part == 0) {
 					cell.kernel_i.mat[i][j] = x[idx];
 				} else if (part == 1) {
-					cell.kernel_c.mat[i][j] = x[idx];
-				} else if (part == 2) {
 					cell.kernel_f.mat[i][j] = x[idx];
+				} else if (part == 2) {
+					cell.kernel_c.mat[i][j] = x[idx];
 				} else { // if (part == 3) 
 					cell.kernel_o.mat[i][j] = x[idx];
 				}
@@ -381,9 +381,9 @@ library Layers {
 				if (part == 0) {
 					cell.recurrentKernel_i.mat[i][j] = x[idx];
 				} else if (part == 1) {
-					cell.recurrentKernel_c.mat[i][j] = x[idx];
-				} else if (part == 2) {
 					cell.recurrentKernel_f.mat[i][j] = x[idx];
+				} else if (part == 2) {
+					cell.recurrentKernel_c.mat[i][j] = x[idx];
 				} else { // if (part == 3) 
 					cell.recurrentKernel_o.mat[i][j] = x[idx];
 				}
@@ -401,9 +401,9 @@ library Layers {
 				if (part == 0) {
 					cell.bias_i.mat[i] = x[idx];
 				} else if (part == 1) {
-					cell.bias_c.mat[i] = x[idx];
-				} else if (part == 2) {
 					cell.bias_f.mat[i] = x[idx];
+				} else if (part == 2) {
+					cell.bias_c.mat[i] = x[idx];
 				} else { // if (part == 3) 
 					cell.bias_o.mat[i] = x[idx];
 				}
@@ -411,6 +411,8 @@ library Layers {
 			}
 			if (ptr == k) { ++ptrLayer; ptr = 0; }
 		}
+		layer.ptrLayer = ptrLayer;
+		layer.ptr = ptr;
 		return idx;
 	}
 
