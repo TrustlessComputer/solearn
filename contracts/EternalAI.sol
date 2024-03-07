@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 // import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 // import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "@openzeppelin/contracts/utils/Strings.sol";
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 // import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
@@ -421,7 +421,8 @@ contract EternalAI is
                 (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 SD59x18[][] memory x2Ext;
-                (x2Ext, rnn_state) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                uint256 gasUsed;
+                (x2Ext, rnn_state, gasUsed) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
                 x2 = x2Ext[0];
             }
         }
@@ -439,6 +440,8 @@ contract EternalAI is
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
+        uint256 gasUsed;
+
         uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
             Info memory layerInfo = model.layers[i];
@@ -452,10 +455,12 @@ contract EternalAI is
                 (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 SD59x18[][] memory x2Ext;
-                (x2Ext, rnn_state) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                (x2Ext, rnn_state, gasUsed) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
                 x2 = x2Ext[0];
             }
         }
+
+        console.log(gasUsed);
 
         Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
         SD59x18[] memory probs = xt.softmax().mat;
@@ -497,7 +502,7 @@ contract EternalAI is
         uint256 toGenerate,
         uint256 seed,
         SD59x18 temperature
-    ) external view returns (string memory) {
+    ) external returns (string memory) {
         uint256[] memory tokens = tokenize(modelId, prompt); 
 
         SD59x18[][] memory states;
@@ -516,7 +521,10 @@ contract EternalAI is
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
+            uint256 startGas = gasleft();
             (lastToken, states) = evaluateRNN(modelId, lastToken, states, seed);
+            uint256 gasUsed = startGas - gasleft();
+            console.log(i, gasUsed);
             generatedTokens[i] = lastToken;
         }
 

@@ -61,7 +61,7 @@ const config = {
     aitest: {
       url: "https://eternal-ai.tc.l2aas.com/rpc",
       accounts: [
-        "", // private key
+        "0x1fcf1c1972f7fa518773a61e07a2930e3831aece48cb52b866bef26371f8449e", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
@@ -70,7 +70,7 @@ const config = {
     regtest: {
       url: "https://testnet.eternalai.org/rpc",
       accounts: [
-        "", // private key
+        "0x1fcf1c1972f7fa518773a61e07a2930e3831aece48cb52b866bef26371f8449e", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
@@ -81,7 +81,7 @@ const config = {
     regtest2: {
       url: "https://eternal-ai2.tc.l2aas.com/rpc",
       accounts: [
-        "", // private key
+        "0x1fcf1c1972f7fa518773a61e07a2930e3831aece48cb52b866bef26371f8449e", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582

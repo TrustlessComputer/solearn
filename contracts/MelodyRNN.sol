@@ -221,7 +221,8 @@ contract MelodyRNN is
                 x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 SD59x18[][] memory x2Ext;
-                (x2Ext, states) = models[modelId].lstm[layerInfo.layerIndex].forward(x2, states);
+                // uint256 gasUsed;
+                // (x2Ext, states, gasUsed) = models[modelId].lstm[layerInfo.layerIndex].forward(x2, states);
                 x2 = x2Ext[0];
             }
         }

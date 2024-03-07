@@ -558,6 +558,38 @@ task("eval-img", "evaluate model for each layer")
         console.log("Time: ", (endTime - startTime) / (60 * 1000));
     });
 
+task("gas-generate-text", "estimate gas of generate-text")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("id", "token id of model", "1", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        let contractAddress = taskArgs.contract;
+        if (contractAddress === "") {
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
+        }
+
+        const prompt = "Q";
+        const seed = ethers.BigNumber.from(123);
+
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const temperature = ethers.BigNumber.from(1.0).mul(ethers.constants.WeiPerEther);
+
+        let startTime = new Date().getTime();
+
+        for(let i = 1; i <= 100; ++i) {
+            const toGenerate = ethers.BigNumber.from(i);
+            const gas = await c.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+            console.log(i, gas);
+        }
+
+        let endTime = new Date().getTime();
+        console.log("Time: ", (endTime - startTime) / (1000));
+    });
 
 task("generate-text", "generate text from RNN model")
     .addOptionalParam("contract", "contract address", "", types.string)
@@ -589,7 +621,7 @@ task("generate-text", "generate text from RNN model")
 
         let startTime = new Date().getTime();
 
-        // const gas = await c.estimateGas.generateText(tokenId, prompt, toGenerate, seed, gasConfig);
+        // const gas = await c.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
         // console.log("generateText estimate gas: ", gas);
 
         const generatedText = await c.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);

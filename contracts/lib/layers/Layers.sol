@@ -109,19 +109,19 @@ library Layers {
 		uint ptrLayer;
 	}
 	
-    function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal view returns (SD59x18[] memory, SD59x18[] memory) {
-    	SD59x18[] memory c;
-    	SD59x18[] memory o;
-    	{
-	    	if (states.length == 0) {
+	function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal view returns (SD59x18[] memory, SD59x18[] memory) {
+		SD59x18[] memory c;
+		SD59x18[] memory o;
+		{
+			if (states.length == 0) {
 				// make new
 				states = new SD59x18[][](2);
 				states[0] = new SD59x18[](layer.units);
 				states[1] = new SD59x18[](layer.units);
 			}
 
-	    	Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
-	    	Tensors.Tensor1D memory c_tm1 = Tensor1DMethods.from(states[1]);
+			Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
+			Tensors.Tensor1D memory c_tm1 = Tensor1DMethods.from(states[1]);
 
 			Tensors.Tensor1D memory x_i = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_i);
 			Tensors.Tensor1D memory x_f = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_f);
@@ -149,9 +149,9 @@ library Layers {
 		}
 		SD59x18[] memory h = Tensor1DMethods.from(o).mul(Tensor1DMethods.from(c).activation(layer.activation)).mat;
 		return (h, c);
-
 	}
-	function _compute_carry_and_output(LSTMCell memory layer, SD59x18[][] memory x, SD59x18[][] memory h_tm1, SD59x18[] memory c_tm1) internal pure returns (SD59x18[] memory, SD59x18[] memory) {
+
+	function _compute_carry_and_output(LSTMCell memory layer, SD59x18[][] memory x, SD59x18[][] memory h_tm1, SD59x18[] memory c_tm1) internal view returns (SD59x18[] memory, SD59x18[] memory) {
 		Tensors.Tensor1D memory i = Tensor1DMethods.from(x[0]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[0]), layer.recurrentKernel_i)).activation(layer.recurrentActivation);
 		Tensors.Tensor1D memory f = Tensor1DMethods.from(x[1]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[1]), layer.recurrentKernel_f)).activation(layer.recurrentActivation);
 		SD59x18[] memory c = f.mul(Tensor1DMethods.from(c_tm1)).add(i.mul(Tensor1DMethods.from(x[2]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[2]), layer.recurrentKernel_c)).activation(layer.activation))).mat;
@@ -160,14 +160,16 @@ library Layers {
 		return (c, o);
 	}
 
-
-    function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory) {
+	function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory, uint256) {
+		uint256 startGas = gasleft();
 		SD59x18[][] memory res = new SD59x18[][](1);
 		// TODO: check
 		SD59x18[] memory x = new SD59x18[](layer.cell.units);
 		for (uint i = 0; i < _x.length; i++) {
 			x[i] = _x[i];
 		}
+
+		uint256 gasUsed;
 
 		SD59x18[][] memory newStates = new SD59x18[][](2);
 		for (uint i = 0; i < res.length; i++) {
@@ -176,7 +178,9 @@ library Layers {
 			newStates[1] = c;
 			res[i] = h;
 		}
-		return (res, newStates);
+
+		gasUsed = startGas - gasleft();
+		return (res, newStates, gasUsed);
 	}
 		
 	function forward(FlattenLayer memory layer, SD59x18[][][] memory mat) internal pure returns (SD59x18[] memory) {
