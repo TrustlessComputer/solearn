@@ -111,20 +111,13 @@ library Layers {
     	SD59x18[] memory c;
     	SD59x18[] memory o;
     	{
-	    	if (states.length == 0) {
-				// make new
-				states = new SD59x18[][](2);
-				states[0] = new SD59x18[](layer.units);
-				states[1] = new SD59x18[](layer.units);
-			}
-
 	    	Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
 	    	Tensors.Tensor1D memory c_tm1 = Tensor1DMethods.from(states[1]);
 
-			Tensors.Tensor1D memory x_i = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_i);
-			Tensors.Tensor1D memory x_f = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_f);
-			Tensors.Tensor1D memory x_c = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_c);
-			Tensors.Tensor1D memory x_o = Tensor1DMethods.mul(Tensor1DMethods.from(x), layer.kernel_o);
+			Tensors.Tensor1D memory x_i = Tensor1DMethods.mul(layer.kernel_i, x[0]);
+			Tensors.Tensor1D memory x_f = Tensor1DMethods.mul(layer.kernel_f, x[0]);
+			Tensors.Tensor1D memory x_c = Tensor1DMethods.mul(layer.kernel_c, x[0]);
+			Tensors.Tensor1D memory x_o = Tensor1DMethods.mul(layer.kernel_o, x[0]);
 
 			x_i = Tensor1DMethods.add(x_i, layer.bias_i);
 			x_f = Tensor1DMethods.add(x_f, layer.bias_f);
@@ -146,9 +139,11 @@ library Layers {
 			(c, o) = _compute_carry_and_output(layer, xArr, h_tm1_mat, c_tm1.mat);
 		}
 		SD59x18[] memory h = Tensor1DMethods.from(o).mul(Tensor1DMethods.from(c).activation(layer.activation)).mat;
+
 		return (h, c);
 
 	}
+
 	function _compute_carry_and_output(LSTMCell memory layer, SD59x18[][] memory x, SD59x18[][] memory h_tm1, SD59x18[] memory c_tm1) internal pure returns (SD59x18[] memory, SD59x18[] memory) {
 		Tensors.Tensor1D memory i = Tensor1DMethods.from(x[0]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[0]), layer.recurrentKernel_i)).activation(layer.recurrentActivation);
 		Tensors.Tensor1D memory f = Tensor1DMethods.from(x[1]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[1]), layer.recurrentKernel_f)).activation(layer.recurrentActivation);
@@ -161,19 +156,23 @@ library Layers {
 
     function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory) {
 		SD59x18[][] memory res = new SD59x18[][](1);
-		// TODO: check
-		SD59x18[] memory x = new SD59x18[](layer.cell.units);
-		for (uint i = 0; i < _x.length; i++) {
-			x[i] = _x[i];
-		}
+		SD59x18[] memory x = new SD59x18[](1);
 
 		SD59x18[][] memory newStates = new SD59x18[][](2);
-		for (uint i = 0; i < res.length; i++) {
-			(SD59x18[] memory h, SD59x18[] memory c) = forward(layer.cell, x, states);
+		if (states.length >= 2) {
+			newStates[0] = states[0];
+			newStates[1] = states[1];
+		} else {
+			newStates[0] = new SD59x18[](layer.cell.units);
+			newStates[1] = new SD59x18[](layer.cell.units);
+		}
+		for (uint i = 0; i < _x.length; i++) {
+			x[0] = _x[i];
+			(SD59x18[] memory h, SD59x18[] memory c) = forward(layer.cell, x, newStates);
 			newStates[0] = h;
 			newStates[1] = c;
-			res[i] = h;
 		}
+		res[0] = newStates[0];
 		return (res, newStates);
 	}
 		
@@ -205,20 +204,22 @@ library Layers {
 		Tensors.Tensor2D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
 		
-		if (wt.m == 1 && bt.count() == 1) {
-			Tensors.Tensor1D memory wt1 = Tensor1DMethods.zerosTensor(wt.n);
-			for (uint i = 0; i < wt.n; i++) {
-				wt1.mat[i] = wt.mat[i][0];
-			}
-
-			Tensors.Tensor1D memory y = xt.matMul(wt1).add(bt);
-			Tensors.Tensor1D memory zt = y.activation(layer.activation);
-			return zt.mat;
-		}
 		Tensors.Tensor1D memory y = xt.matMul(wt).add(bt);
 		Tensors.Tensor1D memory zt = y.activation(layer.activation);
 		return zt.mat;
 	}
+
+	function forward(DenseLayer memory layer, SD59x18[][] memory x) internal view returns (SD59x18[][] memory) {
+		Tensors.Tensor2D memory xt = Tensor2DMethods.from(x);
+		Tensors.Tensor2D memory wt = layer.w;
+		Tensors.Tensor1D memory bt = layer.b;
+		Tensors.Tensor2D memory y = xt.matMul(wt).add(bt);
+		Tensors.Tensor2D memory zt = y.activation(layer.activation);
+
+		return zt.mat;
+	}
+
+
 
 	function forward(MaxPooling2DLayer memory layer, SD59x18[][][] memory x) internal pure returns (SD59x18[][][] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
@@ -311,20 +312,14 @@ library Layers {
 				layer.cell.recurrentKernel_i.mat[i][j] = x[currentWeight];
 				currentWeight++;
 			}
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
 			for (uint j = 0; j < layer.cell.units; j++) {
 				layer.cell.recurrentKernel_f.mat[i][j] = x[currentWeight];
 				currentWeight++;
 			}
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
 			for (uint j = 0; j < layer.cell.units; j++) {
 				layer.cell.recurrentKernel_c.mat[i][j] = x[currentWeight];
 				currentWeight++;
 			}
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
 			for (uint j = 0; j < layer.cell.units; j++) {
 				layer.cell.recurrentKernel_o.mat[i][j] = x[currentWeight];
 				currentWeight++;

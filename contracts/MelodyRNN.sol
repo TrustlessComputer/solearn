@@ -11,7 +11,11 @@ error InsufficientEvalPrice();
 error TransferFailed();
 error InvalidOutput();
 error InvalidInput();
+error IncorrectModelId();
 
+interface IModelReg is IERC721Upgradeable {
+    function modelAddr(uint256 tokenId) external view returns (address);
+}
 
 contract MelodyRNN is
     Initializable
@@ -29,15 +33,10 @@ contract MelodyRNN is
     using Tensor4DMethods for Tensors.Tensor4D;
 
     Model public model;
-    IERC721Upgradeable public modelRegistry;
+    IModelReg public modelRegistry;
     uint256 version;
 
-    event Classified(
-        uint256 indexed tokenId,
-        uint256 classIndex,
-        string className,
-        SD59x18[] outputs
-    );
+    event NewMelody(uint256 indexed tokenId, SD59x18[] melody);
 
     event Forwarded(
         uint256 indexed tokenId,
@@ -82,8 +81,9 @@ contract MelodyRNN is
         LSTM
     }
 
-    function initialize(string memory _modelName) public initializer {
+    function initialize(string memory _modelName, address _modelRegistry) public initializer {
         model.modelName = _modelName;
+        modelRegistry = IModelReg(_modelRegistry);        
         version = 1;
     }
 
@@ -132,9 +132,10 @@ contract MelodyRNN is
         uint256 modelId,
         SD59x18[][][] memory x1,
         SD59x18[] memory x2,
+        SD59x18[][] memory states,
         uint256 fromLayerIndex,
         uint256 toLayerIndex
-    ) public view returns (SD59x18[][][] memory, SD59x18[] memory, SD59x18[][] memory states) {
+    ) public view returns (SD59x18[][][] memory, SD59x18[] memory, SD59x18[][] memory) {
         if (toLayerIndex >= model.layers.length) {
             toLayerIndex = model.layers.length - 1; // update to the last layer
         }
@@ -151,7 +152,6 @@ contract MelodyRNN is
                 x2Ext = model.d[layerInfo.layerIndex].forward(x2Ext);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 Layers.LSTM memory lstm = model.lstm[layerInfo.layerIndex];
-                if (x2.length != lstm.inputUnits) revert InvalidInput();
                 (x2Ext, states) = lstm.forward(x2, states);
             }
         }
@@ -159,98 +159,105 @@ contract MelodyRNN is
         return (x1, x2Ext[0], states);
     }
 
-    function evaluate(
-        uint256 modelId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        SD59x18[][][] calldata x1,
-        SD59x18[] calldata x2
-    )
-        public
-        view
-        returns (SD59x18, SD59x18[][][] memory, SD59x18[] memory)
-    {
-        (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory states) = forward(
-            modelId,
-            x1,
-            x2,
-            fromLayerIndex,
-            toLayerIndex
-        );
+    // function evaluate(
+    //     uint256 modelId,
+    //     uint256 fromLayerIndex,
+    //     uint256 toLayerIndex,
+    //     SD59x18[][][] calldata x1,
+    //     SD59x18[] calldata x2,
+    //     SD59x18[][] memory states
+    // )
+    //     public
+    //     view
+    //     returns (SD59x18, SD59x18[][][] memory, SD59x18[] memory)
+    // {
+    //     SD59x18[][][] memory r1;
+    //     SD59x18[] memory r2;
+    //     (r1, r2, states) = forward(
+    //         modelId,
+    //         x1,
+    //         x2,
+    //         states,
+    //         fromLayerIndex,
+    //         toLayerIndex
+    //     );
 
-        if (toLayerIndex == model.layers.length - 1) {
-            if (r2.length != 1) revert InvalidOutput();
-            return (r2[0], r1, r2);
-        } else {
-            return (sd(0), r1, r2);
-        }
-    }
-
-    function generateMelody(
-        uint256 modelId,
-        uint256 noteCount,
-        SD59x18[] calldata x
-    ) public view returns (SD59x18[] memory) {
-        SD59x18[] memory currentInput = x;
-        SD59x18[][][] memory x1 = new SD59x18[][][](0);
-        SD59x18[] memory result = new SD59x18[](noteCount);
-        for (uint256 i=0; i<noteCount; i++) {
-            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory states) = forward(
-                modelId,
-                x1,
-                currentInput,
-                0,
-                100
-            );
-            for (uint256 j=0; j<x.length-1; j++) {
-                currentInput[j] = x[j+1];
-            }
-            currentInput[x.length-1] = r2[0];
-            result[i] = r2[0];
-        }
-
-        return result;
-    }
-
-    function classify(
-        uint256 tokenId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        SD59x18[][][] calldata x1,
-        SD59x18[] calldata x2
-    ) external {
-        uint256 modelId = tokenId;
-        (SD59x18 output, SD59x18[][][] memory outputs1, SD59x18[] memory outputs2) = evaluate(
-            modelId,
-            fromLayerIndex,
-            toLayerIndex,
-            x1,
-            x2
-        );
-    }
+    //     if (toLayerIndex == model.layers.length - 1) {
+    //         if (r2.length != 1) revert InvalidOutput();
+    //         return (r2[0], r1, r2);
+    //     } else {
+    //         return (sd(0), r1, r2);
+    //     }
+    // }
 
     function generateMelodyTest(
         uint256 modelId,
         uint256 noteCount,
         SD59x18[] calldata x
-    ) external {
+    ) public view returns (SD59x18[] memory, SD59x18[][] memory) {
         SD59x18[] memory currentInput = x;
         SD59x18[][][] memory x1 = new SD59x18[][][](0);
+        SD59x18[][] memory states = new SD59x18[][](0);
         SD59x18[] memory result = new SD59x18[](noteCount);
         for (uint256 i=0; i<noteCount; i++) {
-            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory states) = forward(
+            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory newStates) = forward(
                 modelId,
                 x1,
                 currentInput,
+                states,
                 0,
                 100
             );
-            for (uint256 j=0; j<x.length-1; j++) {
-                currentInput[j] = x[j+1];
-            }
-            currentInput[x.length-1] = r2[0];
+            states = newStates;
+            currentInput = new SD59x18[](1);
+            currentInput[0] = r2[0];
             result[i] = r2[0];
         }
+
+        return (result, states);
+    }
+
+    // function classify(
+    //     uint256 tokenId,
+    //     uint256 fromLayerIndex,
+    //     uint256 toLayerIndex,
+    //     SD59x18[][][] calldata x1,
+    //     SD59x18[] calldata x2
+    // ) external {
+    //     uint256 modelId = tokenId;
+    //     (SD59x18 output, SD59x18[][][] memory outputs1, SD59x18[] memory outputs2) = evaluate(
+    //         modelId,
+    //         fromLayerIndex,
+    //         toLayerIndex,
+    //         x1,
+    //         x2
+    //     );
+    // }
+
+    function generateMelody(
+        uint256 modelId,
+        uint256 noteCount,
+        SD59x18[] calldata x
+    ) external {
+        SD59x18[] memory currentInput = x;
+        SD59x18[][][] memory x1 = new SD59x18[][][](0);
+        SD59x18[][] memory states = new SD59x18[][](0);
+        SD59x18[] memory result = new SD59x18[](noteCount);
+        for (uint256 i=0; i<noteCount; i++) {
+            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory newStates) = forward(
+                modelId,
+                x1,
+                currentInput,
+                states,
+                0,
+                100
+            );
+            states = newStates;
+            currentInput = new SD59x18[](1);
+            currentInput[0] = r2[0];
+            result[i] = r2[0];
+        }
+        emit NewMelody(modelId, result);
     }
 
 
@@ -259,6 +266,7 @@ contract MelodyRNN is
         bytes[] calldata layers_config
     ) external {
         if (msg.sender != modelRegistry.ownerOf(modelId)) revert NotTokenOwner();
+        if (address(this) != modelRegistry.modelAddr(modelId)) revert IncorrectModelId();
 
         if (model.numLayers > 0) {
             model.numLayers = 0;
@@ -269,7 +277,7 @@ contract MelodyRNN is
             delete model.layers;
         }
 
-        loadModel(modelId, layers_config);
+        loadModel(layers_config);
     }
 
     function appendWeights(
@@ -292,7 +300,6 @@ contract MelodyRNN is
     }
 
     function makeLayer(
-        uint256 modelId,
         Layers.SingleLayerConfig memory slc,
         uint256[3] memory dim1,
         uint256 dim2
@@ -352,7 +359,6 @@ contract MelodyRNN is
     }
 
     function loadModel(
-        uint256 modelId,
         bytes[] calldata layersConfig
     ) internal {
         model.numLayers = layersConfig.length;
@@ -362,7 +368,6 @@ contract MelodyRNN is
         uint256 dim2;
         for (uint256 i = 0; i < layersConfig.length; i++) {
             (dim1, dim2) = makeLayer(
-                modelId,
                 Layers.SingleLayerConfig(layersConfig[i], i),
                 dim1,
                 dim2
