@@ -431,9 +431,8 @@ contract EternalAI is
     function evaluateRNN(
         Model memory model,
         uint256 inputToken,
-        SD59x18[][] memory rnn_state,
-        uint256 seed
-    ) internal view returns (uint256 outputToken, SD59x18[][] memory nxt_state) {
+        SD59x18[][] memory rnn_state
+    ) internal view returns (SD59x18[] memory, SD59x18[][] memory) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
@@ -455,11 +454,7 @@ contract EternalAI is
             }
         }
 
-        Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
-        SD59x18[] memory probs = xt.softmax().mat;
-        outputToken = Utils.getWeightedRandom(probs, seed);
-
-        return (outputToken, rnn_state);
+        return (x2, rnn_state);
     }
 
     function tokenize(uint256 modelId, string memory str) internal view returns (uint256[] memory) {
@@ -487,6 +482,24 @@ contract EternalAI is
             output = string.concat(output, ch);
         }
         return output;
+    }
+
+    function getToken(
+        uint256 modelId,
+        SD59x18[] memory x2,
+        SD59x18 temperature,
+        uint256 seed 
+    ) internal view returns (uint256) {
+        uint unkIndex = vocabInfos[modelId].unkIndex;
+        x2[unkIndex] = x2[unkIndex] - sd(10 * 1e18);
+        for(uint i = 0; i < x2.length; ++i) {
+            x2[i] = x2[i] / temperature;
+        }
+
+        Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
+        SD59x18[] memory probs = xt.softmax().mat;
+        uint256 outputToken = Utils.getWeightedRandom(probs, seed);
+        return outputToken;
     }
 
     function generateText(
@@ -517,7 +530,9 @@ contract EternalAI is
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            (lastToken, states) = evaluateRNN(model, lastToken, states, seed);
+            SD59x18[] memory x2;
+            (x2, states) = evaluateRNN(model, lastToken, states);
+            lastToken = getToken(modelId, x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
 

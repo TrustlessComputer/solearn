@@ -615,14 +615,9 @@ task("generate-text", "generate text from RNN model")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const temperature = ethers.BigNumber.from(taskArgs.temperature).mul(ethers.constants.WeiPerEther);
-
-        // const model = await c.getInfo(tokenId);
+        const temperature = ethers.BigNumber.from(taskArgs.temperature * 1000).mul(ethers.constants.WeiPerEther).div(1000);
 
         let startTime = new Date().getTime();
-
-        // const gas = await c.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
-        // console.log("generateText estimate gas: ", gas);
 
         const generatedText = await c.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
         console.log("Prompt + Generated text:");
