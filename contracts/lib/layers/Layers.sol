@@ -160,16 +160,13 @@ library Layers {
 		return (c, o);
 	}
 
-	function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory, uint256) {
-		uint256 startGas = gasleft();
+	function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory) {
 		SD59x18[][] memory res = new SD59x18[][](1);
 		// TODO: check
 		SD59x18[] memory x = new SD59x18[](layer.cell.units);
 		for (uint i = 0; i < _x.length; i++) {
 			x[i] = _x[i];
 		}
-
-		uint256 gasUsed;
 
 		SD59x18[][] memory newStates = new SD59x18[][](2);
 		for (uint i = 0; i < res.length; i++) {
@@ -179,8 +176,7 @@ library Layers {
 			res[i] = h;
 		}
 
-		gasUsed = startGas - gasleft();
-		return (res, newStates, gasUsed);
+		return (res, newStates);
 	}
 		
 	function forward(FlattenLayer memory layer, SD59x18[][][] memory mat) internal pure returns (SD59x18[] memory) {

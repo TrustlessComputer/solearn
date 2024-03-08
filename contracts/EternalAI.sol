@@ -400,11 +400,10 @@ contract EternalAI is
     }
 
     function feedRNN(
-        uint256 modelId,
+        Model memory model,
         uint256 inputToken,
         SD59x18[][] memory rnn_state
     ) internal view returns (SD59x18[][] memory nxt_state) {
-        Model storage model = models[modelId];
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
@@ -421,8 +420,7 @@ contract EternalAI is
                 (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 SD59x18[][] memory x2Ext;
-                uint256 gasUsed;
-                (x2Ext, rnn_state, gasUsed) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                (x2Ext, rnn_state) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
                 x2 = x2Ext[0];
             }
         }
@@ -431,16 +429,13 @@ contract EternalAI is
     }
 
     function evaluateRNN(
-        uint256 modelId,
+        Model memory model,
         uint256 inputToken,
         SD59x18[][] memory rnn_state,
         uint256 seed
     ) internal view returns (uint256 outputToken, SD59x18[][] memory nxt_state) {
-        Model storage model = models[modelId];
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
-
-        uint256 gasUsed;
 
         uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
@@ -455,12 +450,10 @@ contract EternalAI is
                 (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 SD59x18[][] memory x2Ext;
-                (x2Ext, rnn_state, gasUsed) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                (x2Ext, rnn_state) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
                 x2 = x2Ext[0];
             }
         }
-
-        console.log(gasUsed);
 
         Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
         SD59x18[] memory probs = xt.softmax().mat;
@@ -502,18 +495,21 @@ contract EternalAI is
         uint256 toGenerate,
         uint256 seed,
         SD59x18 temperature
-    ) external returns (string memory) {
+    ) external view returns (string memory) {
+        // uint256 startGas = gasleft();
+        Model memory model = models[modelId];
+
         uint256[] memory tokens = tokenize(modelId, prompt); 
 
         SD59x18[][] memory states;
-        if (models[modelId].simpleRNN.length > 0) {
-            states = Tensor2DMethods.zerosTensor(1, models[modelId].simpleRNN[0].units).mat;
-        } else if (models[modelId].lstm.length > 0) {
-            states = Tensor2DMethods.zerosTensor(2, models[modelId].lstm[0].cell.units).mat;
+        if (model.simpleRNN.length > 0) {
+            states = Tensor2DMethods.zerosTensor(1, model.simpleRNN[0].units).mat;
+        } else if (model.lstm.length > 0) {
+            states = Tensor2DMethods.zerosTensor(2, model.lstm[0].cell.units).mat;
         }
 
         for(uint i = 0; i < tokens.length - 1; ++i) {
-            states = feedRNN(modelId, tokens[i], states);
+            states = feedRNN(model, tokens[i], states);
         }
 
         uint256 lastToken = tokens[tokens.length - 1];
@@ -521,14 +517,13 @@ contract EternalAI is
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            uint256 startGas = gasleft();
-            (lastToken, states) = evaluateRNN(modelId, lastToken, states, seed);
-            uint256 gasUsed = startGas - gasleft();
-            console.log(i, gasUsed);
+            (lastToken, states) = evaluateRNN(model, lastToken, states, seed);
             generatedTokens[i] = lastToken;
         }
 
         string memory generatedText = decodeTokens(modelId, generatedTokens);
+        // uint gasUsed = startGas - gasleft();
+        // console.log(gasUsed);
         return generatedText;
     }
 
