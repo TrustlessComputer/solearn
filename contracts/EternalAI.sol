@@ -440,7 +440,7 @@ contract EternalAI is
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
-        uint256 gasUsed;
+        // uint256 gasUsed;
 
         uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
@@ -454,18 +454,18 @@ contract EternalAI is
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
                 (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
             } else if (layerInfo.layerType == LayerType.LSTM) {
-                SD59x18[][] memory x2Ext;
-                (x2Ext, rnn_state, gasUsed) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
-                x2 = x2Ext[0];
+                x2 = new SD59x18[](model.lstm[layerInfo.layerIndex].cell.units);
+                // SD59x18[][] memory x2Ext;
+                // (x2Ext, rnn_state, gasUsed) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                // x2 = x2Ext[0];
             }
         }
 
-        console.log(gasUsed);
+        // console.log(gasUsed);
 
         Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
         SD59x18[] memory probs = xt.softmax().mat;
         outputToken = Utils.getWeightedRandom(probs, seed);
-
         return (outputToken, rnn_state);
     }
 
@@ -502,7 +502,7 @@ contract EternalAI is
         uint256 toGenerate,
         uint256 seed,
         SD59x18 temperature
-    ) external returns (string memory) {
+    ) external view returns (string memory) {
         uint256[] memory tokens = tokenize(modelId, prompt); 
 
         SD59x18[][] memory states;
@@ -510,6 +510,10 @@ contract EternalAI is
             states = Tensor2DMethods.zerosTensor(1, models[modelId].simpleRNN[0].units).mat;
         } else if (models[modelId].lstm.length > 0) {
             states = Tensor2DMethods.zerosTensor(2, models[modelId].lstm[0].cell.units).mat;
+            for(uint i = 0; i < models[modelId].lstm[0].cell.units; ++i) {
+                states[0][i] = sd(1e17);
+                states[1][i] = sd(1e17);
+            }
         }
 
         for(uint i = 0; i < tokens.length - 1; ++i) {
@@ -707,5 +711,87 @@ contract EternalAI is
                 dim2
             );
         }
+    }
+
+    function testMemory1(uint n) public view returns (uint) {
+        uint[] memory a = new uint[](n);
+        for(uint i = 0; i < n; ++i) {
+            a[i] = i;
+        }
+        uint res = 1;
+        for(uint i = 0; i < n; ++i) {
+            res = (res * a[i]) % 41273812749;
+        }
+        return res;
+    }
+
+    function testMemoryCost1(uint iter, uint n) public returns (uint) {
+        uint res = 1;
+        for(uint i = 0; i < iter; ++i) {
+            uint startGas = gasleft();
+            res = (res * testMemory1(n)) % 14123213124123;
+            uint gasUsed = startGas - gasleft();
+            console.log(i, gasUsed);
+        }
+        return res;
+    }
+
+    function testMemoryInside2(uint[] memory a, uint n) public view returns (uint) {
+        uint res = 1;
+        for(uint i = 0; i < n; ++i) {
+            res = (res * a[i]) % 41273812749;
+        }
+        return res;
+    }
+    
+    function testMemory2(uint[] memory a, uint n) public view returns (uint) {
+        return testMemoryInside2(a, n) + 41123325;
+    }
+
+    function testMemoryCost2(uint iter, uint n) public returns (uint) {
+        uint[] memory a = new uint[](n);
+        for(uint i = 0; i < n; ++i) {
+            a[i] = i;
+        }
+
+        uint res = 1;
+        for(uint i = 0; i < iter; ++i) {
+            uint startGas = gasleft();
+            res = (res * testMemory2(a, n)) % 14123213124123;
+            uint gasUsed = startGas - gasleft();
+            console.log(i, gasUsed);
+        }
+        return res;
+    }
+
+    function testModel3(Model memory model) public view returns (uint) {
+        return model.numLayers;
+    }
+
+    function testMemoryCost3(uint modelId, uint iter) public returns (uint) {
+        uint res = 1;
+        for(uint i = 0; i < iter; ++i) {
+            uint startGas = gasleft();
+            res = (res * testModel3(models[modelId])) % 14123213124123;
+            uint gasUsed = startGas - gasleft();
+            console.log(i, gasUsed);
+        }
+        return res;
+    }
+
+    function testModel4(Model memory model) public view returns (uint) {
+        return model.numLayers;
+    }
+
+    function testMemoryCost4(uint modelId, uint iter) public returns (uint) {
+        Model memory model = models[modelId];
+        uint res = 1;
+        for(uint i = 0; i < iter; ++i) {
+            uint startGas = gasleft();
+            res = (res * testModel4(model)) % 14123213124123;
+            uint gasUsed = startGas - gasleft();
+            console.log(i, gasUsed);
+        }
+        return res;
     }
 }

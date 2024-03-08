@@ -706,3 +706,57 @@ task("check-models")
 
         fs.writeFileSync("model_list_2.json", JSON.stringify(models));
     })
+
+task("test-memory-1")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+        
+        const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+        
+        await c.testMemoryCost1(100, 10000);
+    })
+
+task("test-memory-2")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+        
+        const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+        
+        await c.testMemoryCost2(100, 10000);
+    })
+
+task("test-memory-3")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("id", "token id", "0", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+        
+        const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+        
+        await c.testMemoryCost3(tokenId, 100);
+    })
+
+task("test-memory-4")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("id", "token id", "0", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+        
+        const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+        
+        await c.testMemoryCost4(tokenId, 100);
+    })

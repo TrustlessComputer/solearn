@@ -27,7 +27,7 @@ npx hardhat eval-img --network anvil --id '0' --offline true --contract '0x9fE46
 
 npx hardhat generate-text --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --prompt $'ROMEO:' --togenerate 100
 npx hardhat generate-text --network anvil --id '2' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --prompt $'ROMEO:\nIs the day so young?' --togenerate 50
-npx hardhat generate-text --network anvil --id '2' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --prompt $'Q' --togenerate 50
+npx hardhat generate-text --network anvil --id '2' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --prompt $'Q' --togenerate 100
 
 npx hardhat generate-text --network anvil --id '3' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --prompt $'Q' --togenerate 100
 
@@ -35,6 +35,11 @@ npx hardhat gas-generate-text --network anvil --id '2' --contract '0x9fE46736679
 npx hardhat gas-generate-text --network anvil --id '3' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'
 
 npx hardhat test-iteration --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'
+
+npx hardhat test-memory-1 --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'
+npx hardhat test-memory-2 --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'
+npx hardhat test-memory-3 --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --id '2'
+npx hardhat test-memory-4 --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --id '2'
 
 # npx hardhat mint-model-id --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --model 'sample-models/cnn_cifar_mini.json'
 
