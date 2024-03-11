@@ -491,14 +491,19 @@ contract EternalAI is
         uint256 seed 
     ) internal view returns (uint256) {
         uint unkIndex = vocabInfos[modelId].unkIndex;
-        x2[unkIndex] = x2[unkIndex] - sd(10 * 1e18);
-        for(uint i = 0; i < x2.length; ++i) {
-            x2[i] = x2[i] / temperature;
+
+        SD59x18[] memory tmp = Utils.clone(x2);
+        // console.log(temperature.intoUint256());
+        // console.log(tmp[unkIndex].intoUint256());
+        tmp[unkIndex] = tmp[unkIndex] - sd(10 * 1e18);
+        for(uint i = 0; i < tmp.length; ++i) {
+            tmp[i] = tmp[i] / temperature;
         }
 
-        Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
+        Tensors.Tensor1D memory xt = Tensor1DMethods.from(tmp);
         SD59x18[] memory probs = xt.softmax().mat;
         uint256 outputToken = Utils.getWeightedRandom(probs, seed);
+        // console.log("Done generating");
         return outputToken;
     }
 
