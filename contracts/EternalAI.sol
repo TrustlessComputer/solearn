@@ -22,12 +22,14 @@ error InsufficientMintPrice();
 error InsufficientEvalPrice();
 error TransferFailed();
 error UnknownTokenNotInVocabs();
+error IncorrectModelId();
+
+interface IModelReg is IERC721Upgradeable {
+    function modelAddr(uint256 tokenId) external view returns (address);
+}
 
 contract EternalAI is
-    Initializable,
-    ERC721Upgradeable,
-    ERC721EnumerableUpgradeable,
-    ERC721URIStorageUpgradeable
+    Initializable
 {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
@@ -43,11 +45,9 @@ contract EternalAI is
     using Tensor4DMethods for Tensors.Tensor4D;
     using Strings for *;
 
-    mapping(uint256 => Model) public models;
-    mapping(uint256 => VocabInfo) public vocabInfos;
-    uint256 public mintPrice;
-    uint256 public evalPrice;
-    uint8 protocolFeePercent;
+    Model public model;
+    VocabInfo public vocabInfo;
+    IModelReg public modelRegistry;
     uint256 version;
 
     event Classified(
@@ -111,68 +111,17 @@ contract EternalAI is
         LSTM
     }
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
+    function initialize(string memory _modelName, string[] memory _classesName, address _modelRegistry) public initializer {
+        model.modelName = _modelName;
+        model.classesName = _classesName;
 
-    // The following functions are overrides required by Solidity.
-
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal override(ERC721Upgradeable, ERC721EnumerableUpgradeable) {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
-    }
-
-    function _burn(
-        uint256 tokenId
-    ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
-        super._burn(tokenId);
-    }
-
-    function tokenURI(
-        uint256 tokenId
-    )
-        public
-        view
-        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
-        returns (string memory)
-    {
-        return super.tokenURI(tokenId);
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    )
-        public
-        view
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
-    }
-
-    function initialize() public initializer {
-        __ERC721_init("EternalAI", "EAI");
-        __ERC721Enumerable_init();
-        __ERC721URIStorage_init();
-        // NOTE: set fee = 0 for testnet
-        mintPrice = 0 ether;
-        evalPrice = 0 ether;
-        protocolFeePercent = 50;
-        // mintPrice = 0.01 ether;
-        // evalPrice = 0.0001 ether;
-        // protocolFeePercent = 50;
+        modelRegistry = IModelReg(_modelRegistry);      
         version = 1;
     }
 
     function afterUpgrade() public {}
 
     function getInfo(
-        uint256 modelId
     )
         public
         view
@@ -183,12 +132,11 @@ contract EternalAI is
             Info[] memory
         )
     {
-        Model storage m = models[modelId];
         return (
-            models[modelId].inputDim,
-            models[modelId].modelName,
-            models[modelId].classesName,
-            m.layers
+            model.inputDim,
+            model.modelName,
+            model.classesName,
+            model.layers
         );
     }
 
@@ -205,7 +153,7 @@ contract EternalAI is
             SD59x18[] memory b
         )
     {
-        Layers.DenseLayer memory layer = models[modelId].d[layerIdx];
+        Layers.DenseLayer memory layer = model.d[layerIdx];
         dim_in = layer.w.n;
         dim_out = layer.w.m;
         w = layer.w.mat;
@@ -227,7 +175,7 @@ contract EternalAI is
             SD59x18[] memory b
         )
     {
-        Layers.Conv2DLayer memory layer = models[modelId].c2[layerIdx];
+        Layers.Conv2DLayer memory layer = model.c2[layerIdx];
         n = layer.w.n;
         m = layer.w.m;
         p = layer.w.p;
@@ -250,7 +198,7 @@ contract EternalAI is
             SD59x18[] memory
         )
     {
-        Layers.LSTM memory layer = models[modelId].lstm[layerIdx];
+        Layers.LSTM memory layer = model.lstm[layerIdx];
         Layers.LSTMCell memory cell = layer.cell;
         uint256 inputUnits = layer.inputUnits;
         uint256 units = cell.units;
@@ -263,24 +211,6 @@ contract EternalAI is
         );
     }
 
-    function safeMint(
-        address to,
-        uint256 modelId,
-        string memory uri,
-        string memory modelName,
-        string[] memory classesName
-    ) external payable {
-        // NOTE: TODO uncomment for mainnet
-        // if (msg.value < mintPrice) revert InsufficientMintPrice();
-
-        _safeMint(to, modelId);
-        _setTokenURI(modelId, uri);
-        models[modelId].modelName = modelName;
-        for (uint256 i = 0; i < classesName.length; i++) {
-            models[modelId].classesName.push(classesName[i]);
-        }
-    }
-
     function forward(
         uint256 modelId,
         SD59x18[][][] memory x1,
@@ -289,23 +219,23 @@ contract EternalAI is
         uint256 toLayerIndex
     ) public view returns (SD59x18[][][] memory, SD59x18[] memory) {
         for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
-            Info memory layerInfo = models[modelId].layers[i];
+            Info memory layerInfo = model.layers[i];
 
             // add more layers
             if (layerInfo.layerType == LayerType.Rescale) {
-                x1 = models[modelId].r[layerInfo.layerIndex].forward(x1);
+                x1 = model.r[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Flatten) {
-                x2 = models[modelId].f[layerInfo.layerIndex].forward(x1);
+                x2 = model.f[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Dense) {
-                x2 = models[modelId].d[layerInfo.layerIndex].forward(x2);
+                x2 = model.d[layerInfo.layerIndex].forward(x2);
             } else if (layerInfo.layerType == LayerType.MaxPooling2D) {
-                x1 = models[modelId].mp2[layerInfo.layerIndex].forward(x1);
+                x1 = model.mp2[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == LayerType.Conv2D) {
-                x1 = models[modelId].c2[layerInfo.layerIndex].forward(x1);
+                x1 = model.c2[layerInfo.layerIndex].forward(x1);
             }
 
             // the last layer
-            if (i == models[modelId].layers.length - 1) {
+            if (i == model.layers.length - 1) {
                 Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
                 SD59x18[] memory result = xt.softmax().mat;
                 return (x1, result);
@@ -326,8 +256,8 @@ contract EternalAI is
         view
         returns (string memory, SD59x18[][][] memory, SD59x18[] memory)
     {
-        if (toLayerIndex >= models[modelId].layers.length) {
-            toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
+        if (toLayerIndex >= model.layers.length) {
+            toLayerIndex = model.layers.length - 1; // update to the last layer
         }
 
         (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
@@ -338,7 +268,7 @@ contract EternalAI is
             toLayerIndex
         );
 
-        if (toLayerIndex == models[modelId].layers.length - 1) {
+        if (toLayerIndex == model.layers.length - 1) {
             uint256 maxInd = 0;
             for (uint256 i = 1; i < r2.length; i++) {
                 if (r2[i].gt(r2[maxInd])) {
@@ -346,7 +276,7 @@ contract EternalAI is
                 }
             }
 
-            return (models[modelId].classesName[maxInd], r1, r2);
+            return (model.classesName[maxInd], r1, r2);
         } else {
             return ("", r1, r2);
         }
@@ -362,8 +292,8 @@ contract EternalAI is
         // NOTE: TODO uncomment for mainnet
         // if (msg.value < evalPrice) revert InsufficientEvalPrice();
 
-        if (toLayerIndex >= models[modelId].layers.length) {
-            toLayerIndex = models[modelId].layers.length - 1; // update to the last layer
+        if (toLayerIndex >= model.layers.length) {
+            toLayerIndex = model.layers.length - 1; // update to the last layer
         }
 
         (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
@@ -374,7 +304,7 @@ contract EternalAI is
             toLayerIndex
         );
 
-        if (toLayerIndex == models[modelId].layers.length - 1) {
+        if (toLayerIndex == model.layers.length - 1) {
             uint256 maxInd = 0;
             for (uint256 i = 1; i < r2.length; i++) {
                 if (r2[i].gt(r2[maxInd])) {
@@ -385,7 +315,7 @@ contract EternalAI is
             emit Classified(
                 modelId,
                 maxInd,
-                models[modelId].classesName[maxInd],
+                model.classesName[maxInd],
                 r2
             );
         } else {
@@ -400,7 +330,7 @@ contract EternalAI is
     }
 
     function feedRNN(
-        Model memory model,
+        // Model memory model,
         uint256 inputToken,
         SD59x18[][] memory rnn_state
     ) internal view returns (SD59x18[][] memory nxt_state) {
@@ -429,7 +359,7 @@ contract EternalAI is
     }
 
     function evaluateRNN(
-        Model memory model,
+        // Model memory model,
         uint256 inputToken,
         SD59x18[][] memory rnn_state
     ) internal view returns (SD59x18[] memory, SD59x18[][] memory) {
@@ -457,11 +387,11 @@ contract EternalAI is
         return (x2, rnn_state);
     }
 
-    function tokenize(uint256 modelId, string memory str) internal view returns (uint256[] memory) {
+    function tokenize(string memory str) internal view returns (uint256[] memory) {
         Strings.slice memory slice = str.toSlice();
         uint256 len = slice.len();
 
-        VocabInfo storage info = vocabInfos[modelId];
+        VocabInfo storage info = vocabInfo;
         
         uint256[] memory idxs = new uint256[](len); 
         for(uint256 i = 0; i < len; ++i) {
@@ -474,8 +404,8 @@ contract EternalAI is
         return idxs;
     }
 
-    function decodeTokens(uint256 modelId, uint256[] memory tokens) internal view returns (string memory output) {
-        VocabInfo storage info = vocabInfos[modelId];
+    function decodeTokens(uint256[] memory tokens) internal view returns (string memory output) {
+        VocabInfo storage info = vocabInfo;
         output = "";
         for(uint i = 0; i < tokens.length; ++i) {
             string memory ch = info.vocabs[tokens[i]];
@@ -485,12 +415,11 @@ contract EternalAI is
     }
 
     function getToken(
-        uint256 modelId,
         SD59x18[] memory x2,
         SD59x18 temperature,
         uint256 seed 
     ) internal view returns (uint256) {
-        uint unkIndex = vocabInfos[modelId].unkIndex;
+        uint unkIndex = vocabInfo.unkIndex;
         x2[unkIndex] = x2[unkIndex] - sd(10 * 1e18);
         for(uint i = 0; i < x2.length; ++i) {
             x2[i] = x2[i] / temperature;
@@ -503,16 +432,15 @@ contract EternalAI is
     }
 
     function generateText(
-        uint256 modelId,
         string memory prompt,
         uint256 toGenerate,
         uint256 seed,
         SD59x18 temperature
     ) external view returns (string memory) {
         // uint256 startGas = gasleft();
-        Model memory model = models[modelId];
+        // Model memory model = model;
 
-        uint256[] memory tokens = tokenize(modelId, prompt); 
+        uint256[] memory tokens = tokenize(prompt); 
 
         SD59x18[][] memory states;
         if (model.simpleRNN.length > 0) {
@@ -522,7 +450,7 @@ contract EternalAI is
         }
 
         for(uint i = 0; i < tokens.length - 1; ++i) {
-            states = feedRNN(model, tokens[i], states);
+            states = feedRNN(tokens[i], states);
         }
 
         uint256 lastToken = tokens[tokens.length - 1];
@@ -531,12 +459,12 @@ contract EternalAI is
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
             SD59x18[] memory x2;
-            (x2, states) = evaluateRNN(model, lastToken, states);
-            lastToken = getToken(modelId, x2, temperature, seed);
+            (x2, states) = evaluateRNN(lastToken, states);
+            lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
 
-        string memory generatedText = decodeTokens(modelId, generatedTokens);
+        string memory generatedText = decodeTokens(generatedTokens);
         // uint gasUsed = startGas - gasleft();
         // console.log(gasUsed);
         return generatedText;
@@ -546,22 +474,23 @@ contract EternalAI is
         uint256 modelId,
         bytes[] calldata layers_config
     ) external {
-        if (msg.sender != ownerOf(modelId)) revert NotTokenOwner();
+        if (msg.sender != modelRegistry.ownerOf(modelId)) revert NotTokenOwner();
+        if (address(this) != modelRegistry.modelAddr(modelId)) revert IncorrectModelId();
 
-        if (models[modelId].numLayers > 0) {
-            models[modelId].numLayers = 0;
-            delete models[modelId].d;
-            delete models[modelId].f;
-            delete models[modelId].r;
-            delete models[modelId].c2;
-            delete models[modelId].mp2;
-            delete models[modelId].embedding;
-            delete models[modelId].simpleRNN;
-            delete models[modelId].lstm;
-            delete models[modelId].layers;
+        if (model.numLayers > 0) {
+            model.numLayers = 0;
+            delete model.d;
+            delete model.f;
+            delete model.r;
+            delete model.c2;
+            delete model.mp2;
+            delete model.embedding;
+            delete model.simpleRNN;
+            delete model.lstm;
+            delete model.layers;
         }
 
-        loadEternalAI(modelId, layers_config);
+        loadEternalAI(layers_config);
     }
 
     function appendWeights(
@@ -572,18 +501,18 @@ contract EternalAI is
     ) external {
         uint appendedWeights;
         if (layerType == LayerType.Dense) {
-            appendedWeights = models[modelId].d[layerInd].appendWeights(weights);
+            appendedWeights = model.d[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.Conv2D) {
-            appendedWeights = models[modelId].c2[layerInd].appendWeights(weights);
+            appendedWeights = model.c2[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.Embedding) {
-            appendedWeights = models[modelId].embedding[layerInd].appendWeights(weights);
+            appendedWeights = model.embedding[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.SimpleRNN) {
-            appendedWeights = models[modelId].simpleRNN[layerInd].appendWeights(weights);
+            appendedWeights = model.simpleRNN[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.LSTM) {
-            appendedWeights = models[modelId].lstm[layerInd].appendWeightsPartial(weights);
+            appendedWeights = model.lstm[layerInd].appendWeightsPartial(weights);
         }
-        models[modelId].appendedWeights += appendedWeights;
-        if (models[modelId].appendedWeights == models[modelId].requiredWeights) {
+        model.appendedWeights += appendedWeights;
+        if (model.appendedWeights == model.requiredWeights) {
             emit Deployed(msg.sender, modelId);
         }
     }
@@ -593,7 +522,7 @@ contract EternalAI is
         string[] memory vocabs,
         string memory unkToken
     ) external {
-        VocabInfo storage info = vocabInfos[modelId];
+        VocabInfo storage info = vocabInfo;
         info.vocabs = vocabs;
         for(uint256 i = 0; i < vocabs.length; ++i) {
             info.hashToIndex[Utils.getHash(vocabs[i])] = i+1;
@@ -605,7 +534,6 @@ contract EternalAI is
     }
 
     function makeLayer(
-        uint256 modelId,
         Layers.SingleLayerConfig memory slc,
         uint256[3] memory dim1,
         uint256 dim2
@@ -616,26 +544,26 @@ contract EternalAI is
         if (layerType == uint8(LayerType.Dense)) {
             (Layers.DenseLayer memory layer, uint out_dim2, uint weights) = Layers
                 .makeDenseLayer(slc, dim2);
-            models[modelId].d.push(layer);
-            models[modelId].requiredWeights += weights;
+            model.d.push(layer);
+            model.requiredWeights += weights;
             dim2 = out_dim2;
 
-            uint256 index = models[modelId].d.length - 1;
-            models[modelId].layers.push(Info(LayerType.Dense, index));
+            uint256 index = model.d.length - 1;
+            model.layers.push(Info(LayerType.Dense, index));
         } else if (layerType == uint8(LayerType.Flatten)) {
             (Layers.FlattenLayer memory layer, uint out_dim2) = Layers
                 .makeFlattenLayer(slc, dim1);
-            models[modelId].f.push(layer);
+            model.f.push(layer);
             dim2 = out_dim2;
 
-            uint256 index = models[modelId].f.length - 1;
-            models[modelId].layers.push(Info(LayerType.Flatten, index));
+            uint256 index = model.f.length - 1;
+            model.layers.push(Info(LayerType.Flatten, index));
         } else if (layerType == uint8(LayerType.Rescale)) {
             Layers.RescaleLayer memory layer = Layers.makeRescaleLayer(slc);
-            models[modelId].r.push(layer);
+            model.r.push(layer);
 
-            uint256 index = models[modelId].r.length - 1;
-            models[modelId].layers.push(Info(LayerType.Rescale, index));
+            uint256 index = model.r.length - 1;
+            model.layers.push(Info(LayerType.Rescale, index));
         } else if (layerType == uint8(LayerType.Input)) {
             (, uint8 inputType) = abi.decode(slc.conf, (uint8, uint8));
             if (inputType == 0) {
@@ -645,73 +573,71 @@ contract EternalAI is
                     slc.conf,
                     (uint8, uint8, uint256[3])
                 );
-                models[modelId].inputDim = ipd;
+                model.inputDim = ipd;
                 dim1 = ipd;
             }
 
             // NOTE: there is only one layer type input
-            models[modelId].layers.push(Info(LayerType.Input, 0));
+            model.layers.push(Info(LayerType.Input, 0));
         } else if (layerType == uint8(LayerType.MaxPooling2D)) {
             (
                 Layers.MaxPooling2DLayer memory layer,
                 uint[3] memory out_dim1
             ) = Layers.makeMaxPooling2DLayer(slc, dim1);
-            models[modelId].mp2.push(layer);
+            model.mp2.push(layer);
             dim1 = out_dim1;
 
-            uint256 index = models[modelId].mp2.length - 1;
-            models[modelId].layers.push(Info(LayerType.MaxPooling2D, index));
+            uint256 index = model.mp2.length - 1;
+            model.layers.push(Info(LayerType.MaxPooling2D, index));
         } else if (layerType == uint8(LayerType.Conv2D)) {
             (Layers.Conv2DLayer memory layer, uint[3] memory out_dim1, uint weights) = Layers
                 .makeConv2DLayer(slc, dim1);
-            models[modelId].c2.push(layer);
-            models[modelId].requiredWeights += weights;
+            model.c2.push(layer);
+            model.requiredWeights += weights;
             dim1 = out_dim1;
 
-            uint256 index = models[modelId].c2.length - 1;
-            models[modelId].layers.push(Info(LayerType.Conv2D, index));
+            uint256 index = model.c2.length - 1;
+            model.layers.push(Info(LayerType.Conv2D, index));
         } else if (layerType == uint8(LayerType.Embedding)) {
             (Layers.EmbeddingLayer memory layer, uint out_dim2, uint weights) = Layers
                 .makeEmbeddingLayer(slc);
-            models[modelId].embedding.push(layer);
-            models[modelId].requiredWeights += weights;
+            model.embedding.push(layer);
+            model.requiredWeights += weights;
             dim2 = out_dim2;
 
-            uint256 index = models[modelId].embedding.length - 1;
-            models[modelId].layers.push(Info(LayerType.Embedding, index));
+            uint256 index = model.embedding.length - 1;
+            model.layers.push(Info(LayerType.Embedding, index));
         } else if (layerType == uint8(LayerType.SimpleRNN)) {
             (Layers.SimpleRNNLayer memory layer, uint out_dim2, uint weights) = Layers
                 .makeSimpleRNNLayer(slc, dim2);
-            models[modelId].simpleRNN.push(layer);
-            models[modelId].requiredWeights += weights;
+            model.simpleRNN.push(layer);
+            model.requiredWeights += weights;
             dim2 = out_dim2;
 
-            uint256 index = models[modelId].simpleRNN.length - 1;
-            models[modelId].layers.push(Info(LayerType.SimpleRNN, index));
+            uint256 index = model.simpleRNN.length - 1;
+            model.layers.push(Info(LayerType.SimpleRNN, index));
         } else if (layerType == uint8(LayerType.LSTM)) {
             (Layers.LSTM memory layer, uint out_dim) = Layers
                 .makeLSTMLayer(slc, dim2);
-            models[modelId].lstm.push(layer);
+            model.lstm.push(layer);
             dim2 = out_dim;
 
-            uint256 index = models[modelId].lstm.length - 1;
-            models[modelId].layers.push(Info(LayerType.LSTM, index));
+            uint256 index = model.lstm.length - 1;
+            model.layers.push(Info(LayerType.LSTM, index));
         }
         return (dim1, dim2);
     }
 
     function loadEternalAI(
-        uint256 modelId,
         bytes[] calldata layersConfig
     ) internal {
-        models[modelId].numLayers = layersConfig.length;
-        models[modelId].requiredWeights = 0;
-        models[modelId].appendedWeights = 0;
+        model.numLayers = layersConfig.length;
+        model.requiredWeights = 0;
+        model.appendedWeights = 0;
         uint256[3] memory dim1;
         uint256 dim2;
         for (uint256 i = 0; i < layersConfig.length; i++) {
             (dim1, dim2) = makeLayer(
-                modelId,
                 Layers.SingleLayerConfig(layersConfig[i], i),
                 dim1,
                 dim2
