@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import { ethers, utils } from "ethers";
 import path from 'path';
 
-const ContractName = "EternalAI";
+const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const GasLimit = "1000000000000"; // 100 B
@@ -433,13 +433,15 @@ task("eval-img", "evaluate model for each layer")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
         const imgRaw = fs.readFileSync(taskArgs.img);
         console.log("imgRaw: ", imgRaw);
         // TODO: Get inputDim from EternalAI and use the width and height from inputDim instead
         // How to get input image size?
 
-        const model = await c.getInfo(tokenId);
+        const model = await modelContract.getInfo();
         const inputDim = model[0];
         if (inputDim.length < 2) {
             throw new Error("Invalid model input dim");
@@ -488,7 +490,7 @@ task("eval-img", "evaluate model for each layer")
                 // const gas = await c.estimateGas.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 // console.log("getBatchLayerNum estimate gas: ", gas);
 
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                const [className, r1, r2] = await modelContract.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // });
@@ -520,7 +522,7 @@ task("eval-img", "evaluate model for each layer")
                 }
 
                 const tx: ethers.ContractTransaction = await measureTime(async () => {
-                    return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                    return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 });
 
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
@@ -576,6 +578,9 @@ task("gas-generate-text", "estimate gas of generate-text")
         const seed = ethers.BigNumber.from(123);
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const modelAddress = await c.modelAddr(ethers.BigNumber.from(taskArgs.id));
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const temperature = ethers.BigNumber.from(1.0).mul(ethers.constants.WeiPerEther);
 
@@ -583,7 +588,7 @@ task("gas-generate-text", "estimate gas of generate-text")
 
         for(let i = 1; i <= 100; ++i) {
             const toGenerate = ethers.BigNumber.from(i);
-            const gas = await c.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+            const gas = await modelContract.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
             console.log(i, gas);
         }
 
@@ -615,11 +620,13 @@ task("generate-text", "generate text from RNN model")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
         const temperature = ethers.BigNumber.from(taskArgs.temperature * 1000).mul(ethers.constants.WeiPerEther).div(1000);
 
         let startTime = new Date().getTime();
 
-        const generatedText = await c.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+        const generatedText = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
         console.log("Prompt + Generated text:");
         console.log(prompt + generatedText);
 
@@ -640,7 +647,9 @@ task("get-model", "get eternal AI model")
         }
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const model = await c.getInfo(tokenId);
+        const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        const model = await modelContract.getInfo();
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
         // console.log(JSON.stringify(model));
@@ -683,7 +692,8 @@ task("check-models")
         const signer = await ethers.getSigner(signerAddress);
         
         const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
-
+        const modelAddress = await c.modelAddr(ethers.BigNumber.from(1));
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
         const folder = taskArgs.folder;
         const modelDirents = await getModelDirents(folder);
         
@@ -693,7 +703,7 @@ task("check-models")
         }));
 
         for(const model of models) {
-            const data = await c.getInfo(model.id);
+            const data = await modelContract.getInfo();
             if (!data[0][0].eq(ethers.BigNumber.from(24))) {
                 console.log(`Model ${model.name} at id ${model.id} not found`);
             }
