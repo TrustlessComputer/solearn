@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 // import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 // import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "@openzeppelin/contracts/utils/Strings.sol";
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 // import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
@@ -493,9 +493,7 @@ contract EternalAI is
         uint unkIndex = vocabInfos[modelId].unkIndex;
 
         SD59x18[] memory tmp = Utils.clone(x2);
-        // console.log(temperature.intoUint256());
-        // console.log(tmp[unkIndex].intoUint256());
-        tmp[unkIndex] = tmp[unkIndex] - sd(10 * 1e18);
+        tmp[unkIndex] = tmp[unkIndex] - sd(1e18 * 1e18);
         for(uint i = 0; i < tmp.length; ++i) {
             tmp[i] = tmp[i] / temperature;
         }
@@ -503,7 +501,6 @@ contract EternalAI is
         Tensors.Tensor1D memory xt = Tensor1DMethods.from(tmp);
         SD59x18[] memory probs = xt.softmax().mat;
         uint256 outputToken = Utils.getWeightedRandom(probs, seed);
-        // console.log("Done generating");
         return outputToken;
     }
 
@@ -514,7 +511,6 @@ contract EternalAI is
         uint256 seed,
         SD59x18 temperature
     ) external view returns (string memory) {
-        // uint256 startGas = gasleft();
         Model memory model = models[modelId];
 
         uint256[] memory tokens = tokenize(modelId, prompt); 
@@ -542,8 +538,6 @@ contract EternalAI is
         }
 
         string memory generatedText = decodeTokens(modelId, generatedTokens);
-        // uint gasUsed = startGas - gasleft();
-        // console.log(gasUsed);
         return generatedText;
     }
 
