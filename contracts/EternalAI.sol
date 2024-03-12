@@ -490,7 +490,7 @@ contract EternalAI is
         SD59x18 temperature,
         uint256 seed 
     ) internal view returns (uint256) {
-        uint unkIndex = vocabInfos[modelId].unkIndex;
+        uint unkIndex = vocabInfos[modelId].unkIndex - 1;
 
         SD59x18[] memory tmp = Utils.clone(x2);
         tmp[unkIndex] = tmp[unkIndex] - sd(1e18 * 1e18);
