@@ -31,9 +31,11 @@ contract MelodyRNN is
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor3DMethods for Tensors.Tensor3D;
     using Tensor4DMethods for Tensors.Tensor4D;
+    SD59x18 public immutable samplingTemperature;
 
     Model public model;
     IModelReg public modelRegistry;
+
     uint256 version;
 
     event NewMelody(uint256 indexed tokenId, SD59x18[] melody);
@@ -80,6 +82,12 @@ contract MelodyRNN is
         SimpleRNN,
         LSTM
     }
+
+    constructor() {
+        samplingTemperature = sd(5e17);
+    }
+
+
 
     function initialize(string memory _modelName, address _modelRegistry) public initializer {
         model.modelName = _modelName;
@@ -155,8 +163,9 @@ contract MelodyRNN is
                 (x2Ext, states) = lstm.forward(x2, states);
             }
         }
+        Tensors.Tensor1D memory x2Tensor = Tensor1DMethods.from(x2Ext[0]).softmax();
 
-        return (x1, x2Ext[0], states);
+        return (x1, x2Tensor.mat, states);
     }
 
     // function evaluate(
@@ -190,11 +199,39 @@ contract MelodyRNN is
     //     }
     // }
 
+    function sampleWithTemperature(SD59x18[] memory probabilities, SD59x18 temperature, int256 seed) public pure returns (uint256) {
+        uint256 n = probabilities.length;
+        SD59x18[] memory p = new SD59x18[](n);
+        SD59x18 sumNewProbs;
+        for (uint256 i=0; i<n; i++) {
+            p[i] = probabilities[i].log2() / temperature;
+            p[i] = p[i].exp2();
+            sumNewProbs = sumNewProbs + p[i];
+        }
+        for (uint256 i=0; i<n; i++) {
+            p[i] = p[i] / sumNewProbs;
+        }
+        // sample
+        SD59x18 r = sd(seed % 1e18);
+        uint256 choice = 0;
+        for (uint256 i=0; i<n; i++) {
+            r = r - p[i];
+            if (r.unwrap() < 0) {
+                choice = i;
+                break;
+            }
+        }
+
+        return choice;
+    }
+
     function generateMelodyTest(
         uint256 modelId,
         uint256 noteCount,
         SD59x18[] calldata x
     ) public view returns (SD59x18[] memory, SD59x18[][] memory) {
+        int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
+
         SD59x18[] memory currentInput = x;
         SD59x18[][][] memory x1 = new SD59x18[][][](0);
         SD59x18[][] memory states = new SD59x18[][](0);
@@ -211,7 +248,8 @@ contract MelodyRNN is
             states = newStates;
             currentInput = new SD59x18[](1);
             currentInput[0] = r2[0];
-            result[i] = r2[0];
+            result[i] = sd(int256(sampleWithTemperature(r2, samplingTemperature, seed)) * 1e18);
+            seed = int256(uint256(keccak256(abi.encodePacked(seed))));
         }
 
         return (result, states);
@@ -239,6 +277,9 @@ contract MelodyRNN is
         uint256 noteCount,
         SD59x18[] calldata x
     ) external {
+        bytes32 initialSeedH = keccak256(abi.encodePacked(x));
+        int256 seed = int256(uint256(initialSeedH));
+
         SD59x18[] memory currentInput = x;
         SD59x18[][][] memory x1 = new SD59x18[][][](0);
         SD59x18[][] memory states = new SD59x18[][](0);
@@ -255,8 +296,10 @@ contract MelodyRNN is
             states = newStates;
             currentInput = new SD59x18[](1);
             currentInput[0] = r2[0];
-            result[i] = r2[0];
+            result[i] = sd(int256(sampleWithTemperature(r2, samplingTemperature, seed)) * 1e18);
+            seed = int256(uint256(keccak256(abi.encodePacked(seed))));
         }
+
         emit NewMelody(modelId, result);
     }
 
