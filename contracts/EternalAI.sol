@@ -70,6 +70,11 @@ contract EternalAI is
         uint256 indexed tokenId
     );
 
+    event TextGenerated(
+        uint256 indexed tokenId,
+        string result
+    );
+
     struct Model {
         uint256[3] inputDim;
         string modelName;
@@ -329,37 +334,8 @@ contract EternalAI is
         // if (!success) revert TransferFailed();
     }
 
-    function feedRNN(
-        // Model memory model,
-        uint256 inputToken,
-        SD59x18[][] memory rnn_state
-    ) internal view returns (SD59x18[][] memory nxt_state) {
-        uint256 x1 = inputToken;
-        SD59x18[] memory x2;
-
-        uint nLayers = model.layers.length;
-        for (uint256 i = 0; i < nLayers; i++) {
-            Info memory layerInfo = model.layers[i];
-
-            // add more layers
-            if (layerInfo.layerType == LayerType.Embedding) {
-                x2 = model.embedding[layerInfo.layerIndex].forward(x1);
-            } else if (layerInfo.layerType == LayerType.Dense) {
-                x2 = model.d[layerInfo.layerIndex].forward(x2);
-            } else if (layerInfo.layerType == LayerType.SimpleRNN) {
-                (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
-            } else if (layerInfo.layerType == LayerType.LSTM) {
-                SD59x18[][] memory x2Ext;
-                (x2Ext, rnn_state) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
-                x2 = x2Ext[0];
-            }
-        }
-
-        return rnn_state;
-    }
-
     function evaluateRNN(
-        // Model memory model,
+        Model memory model,
         uint256 inputToken,
         SD59x18[][] memory rnn_state
     ) internal view returns (SD59x18[] memory, SD59x18[][] memory) {
@@ -434,11 +410,12 @@ contract EternalAI is
     }
 
     function generateText(
+        uint modelId,
         string memory prompt,
         uint256 toGenerate,
         uint256 seed,
         SD59x18 temperature
-    ) external view returns (string memory) {
+    ) external {
         Model memory model = model;
 
         uint256[] memory tokens = tokenize(prompt); 
@@ -450,8 +427,9 @@ contract EternalAI is
             states = Tensor2DMethods.zerosTensor(2, model.lstm[0].cell.units).mat;
         }
 
+        SD59x18[] memory x2;
         for(uint i = 0; i < tokens.length - 1; ++i) {
-            states = feedRNN(tokens[i], states);
+            (x2, states) = evaluateRNN(model, tokens[i], states);
         }
 
         uint256 lastToken = tokens[tokens.length - 1];
@@ -459,14 +437,13 @@ contract EternalAI is
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            SD59x18[] memory x2;
-            (x2, states) = evaluateRNN(lastToken, states);
+            (x2, states) = evaluateRNN(model, lastToken, states);
             lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
 
         string memory generatedText = decodeTokens(generatedTokens);
-        return generatedText;
+        emit TextGenerated(modelId, generatedText); 
     }
 
     function setEternalAI(

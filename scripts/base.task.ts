@@ -626,9 +626,16 @@ task("generate-text", "generate text from RNN model")
 
         let startTime = new Date().getTime();
 
-        const generatedText = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
-        console.log("Prompt + Generated text:");
-        console.log(prompt + generatedText);
+        const tx = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+        const rc = await tx.wait();
+
+        const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
+        if (textGeneratedEvent) {
+            const text = textGeneratedEvent.args?.result;
+            console.log("-------------- Prompt + Generated text --------------");
+            console.log(prompt + text);
+            console.log("-----------------------------------------------------");
+        }
 
         let endTime = new Date().getTime();
         console.log("Time: ", (endTime - startTime) / (1000));
