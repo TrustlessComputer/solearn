@@ -31,7 +31,7 @@ contract MelodyRNN is
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor3DMethods for Tensors.Tensor3D;
     using Tensor4DMethods for Tensors.Tensor4D;
-    SD59x18 public immutable samplingTemperature;
+    int256 constant VOCAB_SIZE = 130;
 
     Model public model;
     IModelReg public modelRegistry;
@@ -82,11 +82,6 @@ contract MelodyRNN is
         SimpleRNN,
         LSTM
     }
-
-    constructor() {
-        samplingTemperature = sd(5e17);
-    }
-
 
 
     function initialize(string memory _modelName, address _modelRegistry) public initializer {
@@ -199,7 +194,7 @@ contract MelodyRNN is
     //     }
     // }
 
-    function sampleWithTemperature(SD59x18[] memory probabilities, SD59x18 temperature, int256 seed) public pure returns (uint256) {
+    function sampleWithTemperature(SD59x18[] memory probabilities, int256 seed) public pure returns (uint256) {
         uint256 n = probabilities.length;
         SD59x18[] memory p = new SD59x18[](n);
         SD59x18 sumNewProbs;
@@ -234,6 +229,10 @@ contract MelodyRNN is
         int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
 
         SD59x18[] memory currentInput = x;
+        for (uint256 i=0; i<currentInput.length; i++) {
+            currentInput[i] = currentInput[i] / sd(VOCAB_SIZE * 1e18);
+        }
+
         SD59x18[][][] memory x1 = new SD59x18[][][](0);
         SD59x18[][] memory states = new SD59x18[][](0);
         SD59x18[] memory result = new SD59x18[](noteCount);
@@ -249,7 +248,7 @@ contract MelodyRNN is
             states = newStates;
             currentInput = new SD59x18[](1);
             currentInput[0] = r2[0];
-            result[i] = sd(int256(sampleWithTemperature(r2, samplingTemperature, seed)) * 1e18);
+            result[i] = sd(int256(sampleWithTemperature(r2, seed)) * 1e18);
             seed = int256(uint256(keccak256(abi.encodePacked(seed))));
         }
 
@@ -278,10 +277,13 @@ contract MelodyRNN is
         uint256 noteCount,
         SD59x18[] calldata x
     ) external {
-        bytes32 initialSeedH = keccak256(abi.encodePacked(x));
-        int256 seed = int256(uint256(initialSeedH));
+        int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
 
         SD59x18[] memory currentInput = x;
+        for (uint256 i=0; i<currentInput.length; i++) {
+            currentInput[i] = currentInput[i] / sd(VOCAB_SIZE * 1e18);
+        }
+
         SD59x18[][][] memory x1 = new SD59x18[][][](0);
         SD59x18[][] memory states = new SD59x18[][](0);
         SD59x18[] memory result = new SD59x18[](noteCount);
@@ -297,7 +299,7 @@ contract MelodyRNN is
             states = newStates;
             currentInput = new SD59x18[](1);
             currentInput[0] = r2[0];
-            result[i] = sd(int256(sampleWithTemperature(r2, samplingTemperature, seed)) * 1e18);
+            result[i] = sd(int256(sampleWithTemperature(r2, seed)) * 1e18);
             seed = int256(uint256(keccak256(abi.encodePacked(seed))));
         }
 
@@ -390,9 +392,10 @@ contract MelodyRNN is
             // NOTE: there is only one layer type input
             model.layers.push(Info(LayerType.Input, 0));
         } else if (layerType == uint8(LayerType.LSTM)) {
-            (Layers.LSTM memory layer, uint out_dim) = Layers
+            (Layers.LSTM memory layer, uint256 out_dim, uint256 rw) = Layers
                 .makeLSTMLayer(slc, dim2);
             model.lstm.push(layer);
+            model.requiredWeights += rw;
             dim1 = dim1;
             dim2 = out_dim;
 

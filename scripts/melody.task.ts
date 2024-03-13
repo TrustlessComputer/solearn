@@ -392,22 +392,21 @@ task("generate-melody", "evaluate model for each layer")
 
         let rands = [];
         for (let i = 0; i < inputLen; i++) {
-            rands.push(Math.floor(Math.random() * 128));
+            rands.push(Math.floor(Math.random() * 130)); // integers ranged [0,129]
         }
 
         let x2 = rands.map(n => ethers.BigNumber.from(String(Math.trunc(n * 1e18))));
         // console.log("x2:", x2);
 
-        // const [res, states] = await mldy.generateMelodyTest(tokenId, taskArgs.count, x2);
-        // // console.log("states:", states);
-        // let tune = res.map(num => Number(num.div(BigNumber.from("1000000000000000000"))));
-        // console.log("result:", tune);
+        
 
         let melody: any[] = [];
         for (let i = 0; i < taskArgs.count; i++) {
-            const tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
+            let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
             const rc = await tx.wait();
             console.log("result:", rc);
+            // const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
+
             // get event NewMelody
             const newMelody = rc.events?.find(event => event.event === 'NewMelody');
             if (newMelody != null) {
@@ -415,6 +414,8 @@ task("generate-melody", "evaluate model for each layer")
                 const notes = res.map((num: ethers.BigNumber) => Number(num.div(BigNumber.from("1000000000000000000"))))
                 x2 = x2.concat(res).slice(stepLen);
                 melody = melody.concat(notes);
+                // sleep for 1s
+                await new Promise(r => setTimeout(r, 1000));
             }
         }
         console.log("generated melody:", melody);
@@ -438,6 +439,7 @@ task("get-melody-model", "get eternal AI model")
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const modelAddress = await c.modelAddr(tokenId);
+        console.log("Reading MelodyRNN model at address", modelAddress);
         const mldy = new ethers.Contract(modelAddress, MelodyRNNArtifact.abi, signer);
         const model = await mldy.getInfo(tokenId);
 
