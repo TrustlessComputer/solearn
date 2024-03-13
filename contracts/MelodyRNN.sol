@@ -204,15 +204,16 @@ contract MelodyRNN is
         SD59x18[] memory p = new SD59x18[](n);
         SD59x18 sumNewProbs;
         for (uint256 i=0; i<n; i++) {
-            p[i] = probabilities[i].log2() / temperature;
-            p[i] = p[i].exp2();
+            // p[i] = probabilities[i].ln() / temperature;
+            // p[i] = p[i].exp();
+            p[i] = probabilities[i];
             sumNewProbs = sumNewProbs + p[i];
         }
         for (uint256 i=0; i<n; i++) {
             p[i] = p[i] / sumNewProbs;
         }
         // sample
-        SD59x18 r = sd(seed % 1e18);
+        SD59x18 r = sd(seed % 1e18).abs();
         uint256 choice = 0;
         for (uint256 i=0; i<n; i++) {
             r = r - p[i];
