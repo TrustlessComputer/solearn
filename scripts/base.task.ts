@@ -5,8 +5,11 @@ import fs from 'fs';
 import sharp from 'sharp';
 import { ethers, utils } from "ethers";
 import path from 'path';
+import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
+import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
+import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 
-const ContractName = "EternalAI";
+const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const GasLimit = "1000000000000"; // 100 B
@@ -311,40 +314,46 @@ task("mint-model-id", "mint model id (and upload weights)")
             }
         }
         params.layers_config = newLayerConfig.filter((x: any) => x !== null);
+        params.classes_name =  params.classes_name || [];
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
             const baseContract = await deployments.get(ContractName);
             contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
+        // deploy a MelodyRNN contract
+        const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
+        const mldyImpl = await EaiFac.deploy();
+        const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+        const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, contractAddress]);
+        const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+        const eai = EaiFac.attach(mldyProxy.address);
+        console.log("Deployed EternalAI contract: ", eai.address);
+        
         try {
-            const classes_name = params.classes_name || [];
-            const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, classes_name, gasConfig);
+            const tx = await c.safeMint(taskArgs.to || signer.address, tokenId, taskArgs.uri, eai.address, gasConfig);
             await tx.wait();
             console.log("Minted new EternalAI model, tx:", tx.hash);
         } catch (e) {
             const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
                 throw e;
             });
-            if (ethers.utils.getAddress(ownerAddress) === ethers.utils.getAddress(signer.address)) {
-                console.log("Using existing EternalAI model #" + tokenId.toString());
-            } else {
-                console.log("EternalAI #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
-                return;
-            }
+
+            console.log("Model #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
+            return;
         }
 
         console.log("Setting AI model");
-        const setWeightTx = await c.setEternalAI(tokenId, params.layers_config, gasConfig);
+        const setWeightTx = await eai.setEternalAI(tokenId, params.layers_config, gasConfig);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
 
         if (params.vocabulary) {
             console.log("Setting vocabs");
             const vocabs = params.vocabulary;
-            const setVocabTx = await c.setVocabs(tokenId, vocabs, "[UNK]");
+            const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]");
             await setVocabTx.wait();
             console.log('tx', setVocabTx.hash);
         }
@@ -358,14 +367,14 @@ task("mint-model-id", "mint model id (and upload weights)")
             return _w.splice(0, maxlen);
         }
 
-        for(let i = 0; i < MaxLayerType; ++i) {
+        for (let i = 0; i < MaxLayerType; ++i) {
             if (totSize[i] === 0) continue;
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
-            for(let wi = 0; wi < weights[i].length; ++wi) {
-                // const len = (getLayerName(i) === 'LSTM') ? weights[i][wi].length : maxlen;
-                const len = maxlen;
-                for (let temp = truncateWeights(weights[i][wi], len); temp.length > 0; temp = truncateWeights(weights[i][wi], len)) {
-                    const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i, gasConfig);
+
+            for (let wi = 0; wi < weights[i].length; ++wi) {
+                for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
+                    
+                    const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
                     const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
@@ -433,13 +442,15 @@ task("eval-img", "evaluate model for each layer")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
         const imgRaw = fs.readFileSync(taskArgs.img);
         console.log("imgRaw: ", imgRaw);
         // TODO: Get inputDim from EternalAI and use the width and height from inputDim instead
         // How to get input image size?
 
-        const model = await c.getInfo(tokenId);
+        const model = await modelContract.getInfo();
         const inputDim = model[0];
         if (inputDim.length < 2) {
             throw new Error("Invalid model input dim");
@@ -488,7 +499,7 @@ task("eval-img", "evaluate model for each layer")
                 // const gas = await c.estimateGas.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 // console.log("getBatchLayerNum estimate gas: ", gas);
 
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                const [className, r1, r2] = await modelContract.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 // const [className, r1, r2] = await measureTime(async () => {
                 //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
                 // });
@@ -520,7 +531,7 @@ task("eval-img", "evaluate model for each layer")
                 }
 
                 const tx: ethers.ContractTransaction = await measureTime(async () => {
-                    return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                    return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
                 });
 
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
@@ -576,6 +587,9 @@ task("gas-generate-text", "estimate gas of generate-text")
         const seed = ethers.BigNumber.from(123);
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const modelAddress = await c.modelAddr(ethers.BigNumber.from(taskArgs.id));
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const temperature = ethers.BigNumber.from(1.0).mul(ethers.constants.WeiPerEther);
 
@@ -583,7 +597,7 @@ task("gas-generate-text", "estimate gas of generate-text")
 
         for(let i = 1; i <= 100; ++i) {
             const toGenerate = ethers.BigNumber.from(i);
-            const gas = await c.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+            const gas = await modelContract.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
             console.log(i, gas);
         }
 
@@ -615,13 +629,22 @@ task("generate-text", "generate text from RNN model")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
         const temperature = ethers.BigNumber.from(taskArgs.temperature * 1000).mul(ethers.constants.WeiPerEther).div(1000);
 
         let startTime = new Date().getTime();
 
-        const generatedText = await c.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
-        console.log("Prompt + Generated text:");
-        console.log(prompt + generatedText);
+        const tx = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+        const rc = await tx.wait();
+
+        const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
+        if (textGeneratedEvent) {
+            const text = textGeneratedEvent.args?.result;
+            console.log("-------------- Prompt + Generated text --------------");
+            console.log(prompt + text);
+            console.log("-----------------------------------------------------");
+        }
 
         let endTime = new Date().getTime();
         console.log("Time: ", (endTime - startTime) / (1000));
@@ -640,7 +663,9 @@ task("get-model", "get eternal AI model")
         }
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const model = await c.getInfo(tokenId);
+        const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        const model = await modelContract.getInfo();
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
         // console.log(JSON.stringify(model));
@@ -683,7 +708,8 @@ task("check-models")
         const signer = await ethers.getSigner(signerAddress);
         
         const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
-
+        const modelAddress = await c.modelAddr(ethers.BigNumber.from(1));
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
         const folder = taskArgs.folder;
         const modelDirents = await getModelDirents(folder);
         
@@ -693,7 +719,7 @@ task("check-models")
         }));
 
         for(const model of models) {
-            const data = await c.getInfo(model.id);
+            const data = await modelContract.getInfo();
             if (!data[0][0].eq(ethers.BigNumber.from(24))) {
                 console.log(`Model ${model.name} at id ${model.id} not found`);
             }

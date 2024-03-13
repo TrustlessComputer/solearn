@@ -60,10 +60,18 @@ library Tensors {
 	}
 
 	function __sigmoid(SD59x18 x) internal pure returns (SD59x18) {
+		// Exp will fail if input is greater than 133
+		if (x.lt(sd(-133 * 1e18))) {
+			x = sd(-133 * 1e18);
+		}
 		return sd(1e18).div(sd(1e18) + sd(-x.unwrap()).exp());
 	}
 
 	function __tanh(SD59x18 x) internal pure returns (SD59x18) {
+		// Exp will fail if input is greater than 133
+		if (x.gt(sd(66 * 1e18))) {
+			x = sd(66 * 1e18);
+		}
 		SD59x18 t = sd(2e18).mul(x).exp();
 		return (t - sd(1e18)).div(t + sd(1e18));
 	}
