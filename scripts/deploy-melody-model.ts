@@ -10,7 +10,7 @@ dotenv.config();
 const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
-const gasConfig = { gasLimit: 300_000_000 };
+const gasConfig = { gasLimit: 10_000_000_000 };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -114,7 +114,7 @@ function getConvSize(
 }
 
 async function main() {
-    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, TOKENID, MODEL_OWNER } = process.env;
+    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, TOKENID, MODEL_OWNER, CHUNK_LEN } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
     }
@@ -321,7 +321,7 @@ async function main() {
     console.log("Total weights len: ", weightStr.length);
 
     console.log(`Set weights`);
-    const maxlen = 1000; // do not chunk the weights
+    const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
     const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
         return _w.splice(0, maxlen);
     }
