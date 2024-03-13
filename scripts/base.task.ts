@@ -314,6 +314,7 @@ task("mint-model-id", "mint model id (and upload weights)")
             }
         }
         params.layers_config = newLayerConfig.filter((x: any) => x !== null);
+        params.classes_name =  params.classes_name || [];
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
@@ -329,10 +330,10 @@ task("mint-model-id", "mint model id (and upload weights)")
         const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, contractAddress]);
         const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
         const eai = EaiFac.attach(mldyProxy.address);
-        console.log("Deployed MelodyRNN contract: ", eai.address);
+        console.log("Deployed EternalAI contract: ", eai.address);
         
         try {
-            const tx = await c.safeMint(taskArgs.to || signer.address, tokenId, taskArgs.uri, eai.address);
+            const tx = await c.safeMint(taskArgs.to || signer.address, tokenId, taskArgs.uri, eai.address, gasConfig);
             await tx.wait();
             console.log("Minted new EternalAI model, tx:", tx.hash);
         } catch (e) {
