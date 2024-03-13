@@ -5,6 +5,9 @@ import fs from 'fs';
 import sharp from 'sharp';
 import { ethers, utils } from "ethers";
 import path from 'path';
+import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
+import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
+import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 
 const ContractName = "Models";
 const MaxWeightLen = 1000;
@@ -317,34 +320,39 @@ task("mint-model-id", "mint model id (and upload weights)")
             const baseContract = await deployments.get(ContractName);
             contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
+        // deploy a MelodyRNN contract
+        const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
+        const mldyImpl = await EaiFac.deploy();
+        const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+        const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, contractAddress]);
+        const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+        const eai = EaiFac.attach(mldyProxy.address);
+        console.log("Deployed MelodyRNN contract: ", eai.address);
+        
         try {
-            const classes_name = params.classes_name || [];
-            const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, classes_name, gasConfig);
+            const tx = await c.safeMint(taskArgs.to || signer.address, tokenId, taskArgs.uri, eai.address);
             await tx.wait();
             console.log("Minted new EternalAI model, tx:", tx.hash);
         } catch (e) {
             const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
                 throw e;
             });
-            if (ethers.utils.getAddress(ownerAddress) === ethers.utils.getAddress(signer.address)) {
-                console.log("Using existing EternalAI model #" + tokenId.toString());
-            } else {
-                console.log("EternalAI #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
-                return;
-            }
+
+            console.log("Model #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
+            return;
         }
 
         console.log("Setting AI model");
-        const setWeightTx = await c.setEternalAI(tokenId, params.layers_config, gasConfig);
+        const setWeightTx = await eai.setEternalAI(tokenId, params.layers_config, gasConfig);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
 
         if (params.vocabulary) {
             console.log("Setting vocabs");
             const vocabs = params.vocabulary;
-            const setVocabTx = await c.setVocabs(tokenId, vocabs, "[UNK]");
+            const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]");
             await setVocabTx.wait();
             console.log('tx', setVocabTx.hash);
         }
@@ -358,14 +366,14 @@ task("mint-model-id", "mint model id (and upload weights)")
             return _w.splice(0, maxlen);
         }
 
-        for(let i = 0; i < MaxLayerType; ++i) {
+        for (let i = 0; i < MaxLayerType; ++i) {
             if (totSize[i] === 0) continue;
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
-            for(let wi = 0; wi < weights[i].length; ++wi) {
-                // const len = (getLayerName(i) === 'LSTM') ? weights[i][wi].length : maxlen;
-                const len = maxlen;
-                for (let temp = truncateWeights(weights[i][wi], len); temp.length > 0; temp = truncateWeights(weights[i][wi], len)) {
-                    const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i, gasConfig);
+
+            for (let wi = 0; wi < weights[i].length; ++wi) {
+                for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
+                    
+                    const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
                     const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
