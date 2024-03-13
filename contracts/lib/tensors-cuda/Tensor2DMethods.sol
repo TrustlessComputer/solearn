@@ -154,12 +154,12 @@ library Tensor2DMethods {
 		return __apply_binary_op(a, b, Tensors.__add);
 	}
 
-	function matMul(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor2D memory) {
+	function matMul(Tensors.Tensor2D memory a, Tensors.Tensor2D memory b) internal returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res;
 		res.n = a.n;
 		res.m = b.m;
 
-		res.mat = CUDA.gemm(a.mat,b.mat,6,32,32);
+		res.mat = CUDA.gemmSD59x18(a.mat,b.mat,6,32,32);
 
 		return res;
 	}

@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URISto
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./thirdparty/solidity-stringutils/strings.sol";
-import "./lib/layers/Layers.sol";
+import "./lib/layers-cuda/Layers.sol";
 import "./lib/Utils.sol";
 
 error NotTokenOwner();
@@ -222,7 +222,7 @@ contract EternalAI is
         SD59x18[] memory x2,
         uint256 fromLayerIndex,
         uint256 toLayerIndex
-    ) public view returns (SD59x18[][][] memory, SD59x18[] memory) {
+    ) public returns (SD59x18[][][] memory, SD59x18[] memory) {
         for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
             Info memory layerInfo = model.layers[i];
 
@@ -248,43 +248,6 @@ contract EternalAI is
         }
 
         return (x1, x2);
-    }
-
-    function evaluate(
-        uint256 modelId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        SD59x18[][][] calldata x1,
-        SD59x18[] calldata x2
-    )
-        public
-        view
-        returns (string memory, SD59x18[][][] memory, SD59x18[] memory)
-    {
-        if (toLayerIndex >= model.layers.length) {
-            toLayerIndex = model.layers.length - 1; // update to the last layer
-        }
-
-        (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
-            modelId,
-            x1,
-            x2,
-            fromLayerIndex,
-            toLayerIndex
-        );
-
-        if (toLayerIndex == model.layers.length - 1) {
-            uint256 maxInd = 0;
-            for (uint256 i = 1; i < r2.length; i++) {
-                if (r2[i].gt(r2[maxInd])) {
-                    maxInd = i;
-                }
-            }
-
-            return (model.classesName[maxInd], r1, r2);
-        } else {
-            return ("", r1, r2);
-        }
     }
 
     function classify(
@@ -338,7 +301,7 @@ contract EternalAI is
         Model memory model,
         uint256 inputToken,
         SD59x18[][] memory rnn_state
-    ) internal view returns (SD59x18[] memory, SD59x18[][] memory) {
+    ) internal returns (SD59x18[] memory, SD59x18[][] memory) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 

@@ -85,11 +85,10 @@ library Tensor1DMethods {
 
 
 	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal returns (Tensors.Tensor1D memory) {
-		Tensors.Tensor1D memory res = zerosTensor(b.m);
-		
-		res.mat = CUDA.gemm(a.mat,b.mat,6,32,32);
-
-		return res;
+		SD59x18[][] memory a_mat = new SD59x18[][](1);
+		a_mat[0] = a.mat;
+		SD59x18[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,6,32,32);
+		return from(res[0]);
 	}
 
 	function load(Tensors.Tensor1D memory ts, SD59x18[] memory data, uint n) internal pure {

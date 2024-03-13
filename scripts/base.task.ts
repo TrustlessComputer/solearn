@@ -12,7 +12,7 @@ import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
-const GasLimit = "1000000000000"; // 100 B
+const GasLimit = "10000000000"; // 100 B
 const MaxFeePerGas = "1001000000";  // 1e-5 gwei
 const MaxPriorityFeePerGas = "1000000000";
 // const GasLimit = "290000000"; // 100 M
@@ -428,7 +428,6 @@ task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
-    .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -482,86 +481,49 @@ task("eval-img", "evaluate model for each layer")
 
         let startTime = new Date().getTime();
 
-        if (taskArgs.offline) {
-            for (let i = 0; ; i = i + batchLayerNum) {
-                const fromLayerIndex = i;
-                const toLayerIndex = i + batchLayerNum - 1;
+        for (let i = 0; ; i = i + batchLayerNum) {
+            const fromLayerIndex = i;
+            const toLayerIndex = i + batchLayerNum - 1;
 
-                console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
-                if (x1.length > 0) {
-                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
-                    // fs.writeFileSync(`x1_${i}.json`, JSON.stringify(x1));
-                }
-                if (x2.length > 0) {
-                    console.log(`x2: (${x2.length})`);
-                    // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
-                }
-                // const gas = await c.estimateGas.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
-                // console.log("getBatchLayerNum estimate gas: ", gas);
+            console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
+            if (x1.length > 0) {
+                console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
+            }
+            if (x2.length > 0) {
+                console.log(`x2: (${x2.length})`);
+            }
 
-                const [className, r1, r2] = await modelContract.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
-                // const [className, r1, r2] = await measureTime(async () => {
-                //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
-                // });
-                x1 = r1;
-                x2 = r2;
+            const tx: ethers.ContractTransaction = await measureTime(async () => {
+                return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+            });
+
+            console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
+            const receipt = await tx.wait(1);
+
+            console.log(`Used gas: `, receipt.gasUsed);
+
+            const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
+            const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
+            if (forwardedEvent) {
+                const tokenId = forwardedEvent.args?.tokenId;
+                const fromLayerIndex = forwardedEvent.args?.fromLayerIndex;
+                const toLayerIndex = forwardedEvent.args?.toLayerIndex;
+                const outputs1 = forwardedEvent.args?.outputs1;
+                const outputs2 = forwardedEvent.args?.outputs2;
+                console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex });
+                x1 = outputs1;
+                x2 = outputs2;
+            } else if (classifiedEvent) {
+                const tokenId = classifiedEvent.args?.tokenId;
+                const classIndex = classifiedEvent.args?.classIndex;
+                const className = classifiedEvent.args?.className;
+                const outputs = classifiedEvent.args?.outputs;
+                console.log('"Classified" event emitted', { tokenId, classIndex, className });
                 classsNameRes = className;
+            }
 
-                if (className != "") {
-                    console.log("result: ", className);
-                }
-
-                // console.log("result:", output, className);
-
-                if (toLayerIndex >= numLayers - 1) {
-                    break;
-                }
-            }    
-        } else {
-            for (let i = 0; ; i = i + batchLayerNum) {
-                const fromLayerIndex = i;
-                const toLayerIndex = i + batchLayerNum - 1;
-
-                console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
-                if (x1.length > 0) {
-                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
-                }
-                if (x2.length > 0) {
-                    console.log(`x2: (${x2.length})`);
-                }
-
-                const tx: ethers.ContractTransaction = await measureTime(async () => {
-                    return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
-                });
-
-                console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
-                const receipt = await tx.wait(1);
-
-                console.log(`Used gas: `, receipt.gasUsed);
-
-                const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
-                const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
-                if (forwardedEvent) {
-                    const tokenId = forwardedEvent.args?.tokenId;
-                    const fromLayerIndex = forwardedEvent.args?.fromLayerIndex;
-                    const toLayerIndex = forwardedEvent.args?.toLayerIndex;
-                    const outputs1 = forwardedEvent.args?.outputs1;
-                    const outputs2 = forwardedEvent.args?.outputs2;
-                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex });
-                    x1 = outputs1;
-                    x2 = outputs2;
-                } else if (classifiedEvent) {
-                    const tokenId = classifiedEvent.args?.tokenId;
-                    const classIndex = classifiedEvent.args?.classIndex;
-                    const className = classifiedEvent.args?.className;
-                    const outputs = classifiedEvent.args?.outputs;
-                    console.log('"Classified" event emitted', { tokenId, classIndex, className });
-                    classsNameRes = className;
-                }
-
-                if (toLayerIndex >= numLayers - 1) {
-                    break;
-                }
+            if (toLayerIndex >= numLayers - 1) {
+                break;
             }
         }
 
@@ -645,6 +607,7 @@ task("generate-text", "generate text from RNN model")
             console.log(prompt + text);
             console.log("-----------------------------------------------------");
         }
+        console.log(`Used gas: `, rc.gasUsed);
 
         let endTime = new Date().getTime();
         console.log("Time: ", (endTime - startTime) / (1000));
