@@ -89,6 +89,17 @@ const config = {
       gasPrice: 1_000_000_000,
       blockGasLimit: 100_000_000_000,
     },
+    cudatest: {
+      url: "http://34.143.155.8:8545",
+      accounts: [
+        "", // private key
+      ],
+      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
+      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
+      timeout: 500_000,
+      gasPrice: 1_000_000_000,
+      blockGasLimit: 100_000_000_000,
+    },
   },
   namedAccounts: {
     deployer: 0,

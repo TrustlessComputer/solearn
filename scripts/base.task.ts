@@ -158,6 +158,7 @@ task("mint-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id", "0", types.string)
+    .addOptionalParam("to", "new model owner address", "", types.string)
     .addOptionalParam("uri", "token URI", "", types.string)
     .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
@@ -323,15 +324,20 @@ task("mint-model-id", "mint model id (and upload weights)")
         }
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
-        // deploy a MelodyRNN contract
+        // deploy a EternalAI contract
+        console.log("Deploying EAI Implement contract");
         const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
-        const mldyImpl = await EaiFac.deploy();
+        const eaiImpl = await EaiFac.deploy();
+        await eaiImpl.deployTransaction.wait();
         const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+        console.log("Deploying EAI Proxy contract");
         const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, contractAddress]);
-        const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
-        const eai = EaiFac.attach(mldyProxy.address);
+        const eaiProxy = await ProxyFac.deploy(eaiImpl.address, signer.address, initData);
+        await eaiProxy.deployTransaction.wait();
+        const eai = EaiFac.attach(eaiProxy.address);
+
         console.log("Deployed EternalAI contract: ", eai.address);
-        
+
         try {
             const tx = await c.safeMint(taskArgs.to || signer.address, tokenId, taskArgs.uri, eai.address, gasConfig);
             await tx.wait();
