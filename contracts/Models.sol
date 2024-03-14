@@ -4,24 +4,33 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 error InsufficientMintPrice();
 
+interface IModels {
+    function setModelId(uint256 _modelId) external;
+}
+
 contract Models is Initializable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
-    ERC721URIStorageUpgradeable {
+    ERC721URIStorageUpgradeable,
+    IERC2981Upgradeable {
     uint256 public mintPrice;
     uint256 public evalPrice;
-    uint8 protocolFeePercent;
+    uint8 protocolFeePercent; // deprecated
     mapping(uint256 => address) public modelAddr;
+    address public royaltyReceiver;
+    uint256 public nextModelId;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
+
+    receive() external payable {}
 
     // The following functions are overrides required by Solidity.
 
@@ -51,39 +60,51 @@ contract Models is Initializable,
         return super.tokenURI(tokenId);
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    )
-        public
-        view
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Upgradeable, ERC721EnumerableUpgradeable, IERC165Upgradeable) returns (bool) {
+        return
+        interfaceId == type(IERC2981Upgradeable).interfaceId ||
+        super.supportsInterface(interfaceId);
     }
 
-    function initialize() public initializer {
+    function initialize(uint256 _mintPrice, uint256 _evalPrice, address _royaltyReceiver) public initializer {
         __ERC721_init("Models", "MDL");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
-        mintPrice = 0 ether;
-        evalPrice = 0 ether;
-        protocolFeePercent = 50;
-        // mintPrice = 0.01 ether;
-        // evalPrice = 0.0001 ether;
-        // protocolFeePercent = 50;
+        
+        mintPrice = _mintPrice;
+        evalPrice = _evalPrice;
+        royaltyReceiver = _royaltyReceiver;
+        nextModelId = 1; 
     }
+
+    // function afterUpgrade(uint256 _mintPrice, uint256 _evalPrice, address _royaltyReceiver, uint256 _nextModelId) public {
+    //     mintPrice = _mintPrice;
+    //     evalPrice = _evalPrice;
+    //     royaltyReceiver = _royaltyReceiver;
+    //     nextModelId = _nextModelId;
+    // }
+
 
     function safeMint(
         address to,
-        uint256 modelId,
         string memory uri,
         address _modelAddr
     ) external payable {
         if (msg.value < mintPrice) revert InsufficientMintPrice();
-
+        uint256 modelId = nextModelId;
         _safeMint(to, modelId);
         _setTokenURI(modelId, uri);
         modelAddr[modelId] = _modelAddr;
+        nextModelId++;
+        IModels(_modelAddr).setModelId(modelId);
+    }
+
+    /* @dev EIP2981 royalties implementation. 
+    // EIP2981 standard royalties return.
+    */
+    function royaltyInfo(uint256 _tokenId, uint256 _salePrice) external view virtual override
+    returns (address receiver, uint256 royaltyAmount) {
+        receiver = royaltyReceiver;
+        royaltyAmount = mintPrice * 200 / 10000; // 2% of the mint price
     }
 }

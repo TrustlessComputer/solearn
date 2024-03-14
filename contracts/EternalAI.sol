@@ -23,13 +23,17 @@ error InsufficientEvalPrice();
 error TransferFailed();
 error UnknownTokenNotInVocabs();
 error IncorrectModelId();
+error NotModelRegistry();
 
 interface IModelReg is IERC721Upgradeable {
     function modelAddr(uint256 tokenId) external view returns (address);
+    function evalPrice() external view returns (uint256);
+    function royaltyReceiver() external view returns (address);
 }
 
 contract EternalAI is
-    Initializable
+    Initializable,
+    OwnableUpgradeable
 {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
@@ -48,6 +52,7 @@ contract EternalAI is
     Model public model;
     VocabInfo public vocabInfo;
     IModelReg public modelRegistry;
+    uint256 public modelId;
     uint256 version;
 
     event Classified(
@@ -111,7 +116,22 @@ contract EternalAI is
         LSTM
     }
 
+    modifier onlyOwnerOrOperator() {
+        if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
+            revert NotTokenOwner();
+        }
+        _;
+    }
+
+    modifier onlyMintedModel() {
+        if (modelId == 0) {
+            revert IncorrectModelId();
+        }
+        _;
+    }
+
     function initialize(string memory _modelName, string[] memory _classesName, address _modelRegistry) public initializer {
+        __Ownable_init();
         model.modelName = _modelName;
         model.classesName = _classesName;
 
@@ -141,7 +161,6 @@ contract EternalAI is
     }
 
     function getDenseLayer(
-        uint256 modelId,
         uint256 layerIdx
     )
         public
@@ -161,7 +180,6 @@ contract EternalAI is
     }
 
     function getConv2DLayer(
-        uint256 modelId,
         uint256 layerIdx
     )
         public
@@ -185,7 +203,6 @@ contract EternalAI is
     }
 
     function getLSTMLayer(
-        uint256 modelId,
         uint256 layerIdx
     )
         public
@@ -212,7 +229,6 @@ contract EternalAI is
     }
 
     function forward(
-        uint256 modelId,
         SD59x18[][][] memory x1,
         SD59x18[] memory x2,
         uint256 fromLayerIndex,
@@ -246,7 +262,6 @@ contract EternalAI is
     }
 
     function evaluate(
-        uint256 modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         SD59x18[][][] calldata x1,
@@ -254,6 +269,7 @@ contract EternalAI is
     )
         public
         view
+        onlyMintedModel
         returns (string memory, SD59x18[][][] memory, SD59x18[] memory)
     {
         if (toLayerIndex >= model.layers.length) {
@@ -261,7 +277,6 @@ contract EternalAI is
         }
 
         (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
-            modelId,
             x1,
             x2,
             fromLayerIndex,
@@ -283,21 +298,21 @@ contract EternalAI is
     }
 
     function classify(
-        uint256 modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         SD59x18[][][] calldata x1,
         SD59x18[] calldata x2
-    ) external payable {
-        // NOTE: TODO uncomment for mainnet
-        // if (msg.value < evalPrice) revert InsufficientEvalPrice();
+    ) external payable onlyMintedModel {
+        if (msg.value < modelRegistry.evalPrice()) revert InsufficientEvalPrice();
+        (bool success, ) = modelRegistry.royaltyReceiver().call{value: msg.value}("");
+        if (!success) revert TransferFailed();
+
 
         if (toLayerIndex >= model.layers.length) {
             toLayerIndex = model.layers.length - 1; // update to the last layer
         }
 
         (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
-            modelId,
             x1,
             x2,
             fromLayerIndex,
@@ -436,7 +451,7 @@ contract EternalAI is
         uint256 toGenerate,
         uint256 seed,
         SD59x18 temperature
-    ) external view returns (string memory) {
+    ) external view onlyMintedModel returns (string memory) {
         // uint256 startGas = gasleft();
         // Model memory model = model;
 
@@ -471,11 +486,8 @@ contract EternalAI is
     }
 
     function setEternalAI(
-        uint256 modelId,
         bytes[] calldata layers_config
-    ) external {
-        if (msg.sender != modelRegistry.ownerOf(modelId)) revert NotTokenOwner();
-        if (address(this) != modelRegistry.modelAddr(modelId)) revert IncorrectModelId();
+    ) external onlyOwnerOrOperator {
 
         if (model.numLayers > 0) {
             model.numLayers = 0;
@@ -493,12 +505,25 @@ contract EternalAI is
         loadEternalAI(layers_config);
     }
 
+    function setModelId(uint256 _modelId) external {
+        if (msg.sender != address(modelRegistry)) {
+            revert NotModelRegistry();
+        }
+        if (modelId > 0 || modelRegistry.modelAddr(_modelId) != address(this)) {
+            revert IncorrectModelId();
+        }
+
+        modelId = _modelId;
+        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
+            emit Deployed(msg.sender, modelId);
+        }
+    }
+
     function appendWeights(
-        uint256 modelId,
         SD59x18[] memory weights,
         uint256 layerInd,
         LayerType layerType
-    ) external {
+    ) external onlyOwnerOrOperator {
         uint appendedWeights;
         if (layerType == LayerType.Dense) {
             appendedWeights = model.d[layerInd].appendWeights(weights);
@@ -512,16 +537,15 @@ contract EternalAI is
             appendedWeights = model.lstm[layerInd].appendWeightsPartial(weights);
         }
         model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights) {
+        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
             emit Deployed(msg.sender, modelId);
         }
     }
 
     function setVocabs(
-        uint256 modelId,
         string[] memory vocabs,
         string memory unkToken
-    ) external {
+    ) external onlyOwnerOrOperator {
         VocabInfo storage info = vocabInfo;
         info.vocabs = vocabs;
         for(uint256 i = 0; i < vocabs.length; ++i) {
