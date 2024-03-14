@@ -11,6 +11,8 @@ const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const gasConfig = { gasLimit: 10_000_000_000 };
+const mintPrice = ethers.utils.parseEther('0.1');
+const mintConfig = { value: mintPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -114,7 +116,7 @@ function getConvSize(
 }
 
 async function main() {
-    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, TOKENID, MODEL_OWNER, CHUNK_LEN } = process.env;
+    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, CHUNK_LEN } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
     }
@@ -126,9 +128,6 @@ async function main() {
     }
     if (!MODELS_NFT_CONTRACT || !ethers.utils.isAddress(MODELS_NFT_CONTRACT)) {
         throw new Error("MODELS_NFT_CONTRACT is not set or invalid");
-    }
-    if (!TOKENID) {
-        throw new Error("TOKENID is not set");
     }
     if (!MODEL_OWNER || !ethers.utils.isAddress(MODEL_OWNER)) {
         throw new Error("MODEL_OWNER is not set");
@@ -286,7 +285,6 @@ async function main() {
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
 
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
-    const tokenId = ethers.BigNumber.from(TOKENID);
     const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
     // deploy a MelodyRNN contract
     const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
@@ -296,24 +294,9 @@ async function main() {
     const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
     const mldy = MelodyFac.attach(mldyProxy.address);
     console.log("Deployed MelodyRNN contract: ", mldy.address);
-        
-    const modelUri = ""; // unused
-    try {
-        const tx = await c.safeMint(MODEL_OWNER || signer.address, tokenId, modelUri, mldy.address);
-        await tx.wait();
-
-        console.log("Minted new MelodyRNN model, tx:", tx.hash);
-    } catch (e) {
-        const ownerAddress = await c.ownerOf(tokenId).catch((_: any) => {
-            throw e;
-        });
-
-        console.log("Model #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
-        return;
-    }
 
     console.log("Setting AI model");
-    const setWeightTx = await mldy.setModel(tokenId, params.layers_config, gasConfig);
+    const setWeightTx = await mldy.setModel(params.layers_config, gasConfig);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 
@@ -326,6 +309,15 @@ async function main() {
         return _w.splice(0, maxlen);
     }
 
+    const checkForDeployedModel = (receipt: { events: any[]; }) => {
+        const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
+        if (deployedEvent != null) {
+            const owner = deployedEvent.args?.owner;
+            const tokenId = deployedEvent.args?.tokenId;
+            console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+        }
+    }
+
     for (let i = 0; i < MaxLayerType; ++i) {
         if (totSize[i] === 0) continue;
         console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
@@ -333,17 +325,31 @@ async function main() {
         for (let wi = 0; wi < weights[i].length; ++wi) {
             for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
                     
-                const appendWeightTx = await mldy.appendWeights(tokenId, temp, wi, i, gasConfig);
+                const appendWeightTx = await mldy.appendWeights(temp, wi, i, gasConfig);
                 const receipt = await appendWeightTx.wait(2);
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
-                if (deployedEvent != null) {
-                    const owner = deployedEvent.args?.owner;
-                    const tokenId = deployedEvent.args?.tokenId;
-                    console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-                }
+                checkForDeployedModel(receipt);
             }
         }            
+    }
+
+    const modelUri = "";
+    try {
+        const tx = await c.safeMint(MODEL_OWNER || signer.address, modelUri, mldy.address, mintConfig);
+        const rc = await tx.wait();
+        // listen for Transfer event
+        const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
+        if (transferEvent != null) {
+            const from = transferEvent.args?.from;
+            const to = transferEvent.args?.to;
+            const tokenId = transferEvent.args?.tokenId;
+            console.log("tx:", tx.hash);
+            console.log(`Minted new MelodyRNN model, to=${to}, tokenId=${tokenId}`);
+        }
+        checkForDeployedModel(rc);
+    } catch (e) {
+        console.error("Error minting model: ", e);
+        throw e;
     }
 }
 

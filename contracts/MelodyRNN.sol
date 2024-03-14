@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./lib/layers/Layers.sol";
 import "hardhat/console.sol";
 
@@ -12,13 +13,17 @@ error TransferFailed();
 error InvalidOutput();
 error InvalidInput();
 error IncorrectModelId();
+error NotModelRegistry();
 
 interface IModelReg is IERC721Upgradeable {
     function modelAddr(uint256 tokenId) external view returns (address);
+    function evalPrice() external view returns (uint256);
+    function royaltyReceiver() external view returns (address);
 }
 
 contract MelodyRNN is
-    Initializable
+    Initializable,
+    OwnableUpgradeable
 {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
@@ -35,6 +40,7 @@ contract MelodyRNN is
 
     Model public model;
     IModelReg public modelRegistry;
+    uint256 public modelId;
 
     uint256 version;
 
@@ -83,8 +89,23 @@ contract MelodyRNN is
         LSTM
     }
 
+    modifier onlyOwnerOrOperator() {
+        if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
+            revert NotTokenOwner();
+        }
+        _;
+    }
+
+    modifier onlyMintedModel() {
+        if (modelId == 0) {
+            revert IncorrectModelId();
+        }
+        _;
+    }
+
 
     function initialize(string memory _modelName, address _modelRegistry) public initializer {
+        __Ownable_init();
         model.modelName = _modelName;
         modelRegistry = IModelReg(_modelRegistry);        
         version = 1;
@@ -93,7 +114,6 @@ contract MelodyRNN is
     function afterUpgrade() public {}
 
     function getInfo(
-        uint256 modelId
     )
         public
         view
@@ -112,7 +132,6 @@ contract MelodyRNN is
     }
 
     function getDenseLayer(
-        uint256 modelId,
         uint256 layerIdx
     )
         public
@@ -132,7 +151,6 @@ contract MelodyRNN is
     }
 
     function forward(
-        uint256 modelId,
         SD59x18[][][] memory x1,
         SD59x18[] memory x2,
         SD59x18[][] memory states,
@@ -222,10 +240,12 @@ contract MelodyRNN is
     }
 
     function generateMelodyTest(
-        uint256 modelId,
+        uint256 _modelId,
         uint256 noteCount,
         SD59x18[] calldata x
-    ) public view returns (SD59x18[] memory, SD59x18[][] memory) {
+    ) public view onlyMintedModel returns (SD59x18[] memory, SD59x18[][] memory) {
+        if (_modelId != modelId) revert IncorrectModelId();
+
         int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
 
         SD59x18[] memory currentInput = x;
@@ -238,7 +258,6 @@ contract MelodyRNN is
         SD59x18[] memory result = new SD59x18[](noteCount);
         for (uint256 i=0; i<noteCount; i++) {
             (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory newStates) = forward(
-                modelId,
                 x1,
                 currentInput,
                 states,
@@ -273,10 +292,11 @@ contract MelodyRNN is
     // }
 
     function generateMelody(
-        uint256 modelId,
+        uint256 _modelId,
         uint256 noteCount,
         SD59x18[] calldata x
-    ) external {
+    ) external onlyMintedModel {
+        if (_modelId != modelId) revert IncorrectModelId();
         int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
 
         SD59x18[] memory currentInput = x;
@@ -289,7 +309,6 @@ contract MelodyRNN is
         SD59x18[] memory result = new SD59x18[](noteCount);
         for (uint256 i=0; i<noteCount; i++) {
             (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory newStates) = forward(
-                modelId,
                 x1,
                 currentInput,
                 states,
@@ -308,11 +327,8 @@ contract MelodyRNN is
 
 
     function setModel(
-        uint256 modelId,
         bytes[] calldata layers_config
-    ) external {
-        if (msg.sender != modelRegistry.ownerOf(modelId)) revert NotTokenOwner();
-        if (address(this) != modelRegistry.modelAddr(modelId)) revert IncorrectModelId();
+    ) external onlyOwnerOrOperator {
 
         if (model.numLayers > 0) {
             model.numLayers = 0;
@@ -327,11 +343,10 @@ contract MelodyRNN is
     }
 
     function appendWeights(
-        uint256 modelId,
         SD59x18[] memory weights,
         uint256 layerInd,
         LayerType layerType
-    ) external {
+    ) external onlyOwnerOrOperator {
         uint appendedWeights;
         if (layerType == LayerType.Dense) {
             appendedWeights = model.d[layerInd].appendWeights(weights);
@@ -340,7 +355,7 @@ contract MelodyRNN is
         }
         
         model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights) {
+        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
             emit Deployed(msg.sender, modelId);
         }
     }
@@ -419,6 +434,20 @@ contract MelodyRNN is
                 dim1,
                 dim2
             );
+        }
+    }
+
+    function setModelId(uint256 _modelId) external {
+        if (msg.sender != address(modelRegistry)) {
+            revert NotModelRegistry();
+        }
+        if (modelId > 0 || modelRegistry.modelAddr(_modelId) != address(this)) {
+            revert IncorrectModelId();
+        }
+
+        modelId = _modelId;
+        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
+            emit Deployed(msg.sender, modelId);
         }
     }
 }

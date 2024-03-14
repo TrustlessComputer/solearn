@@ -12,6 +12,8 @@ const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const gasConfig = { gasLimit: 10_000_000_000 };
+const mintPrice = ethers.utils.parseEther('0.1');
+const mintConfig = { value: mintPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -141,7 +143,7 @@ function getConvSize(
 task("mint-melody-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)
     .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
-    .addOptionalParam("id", "token id", "0", types.string)
+    // .addOptionalParam("id", "token id", "0", types.string)
     .addOptionalParam("to", "new model owner address", "", types.string)
     .addOptionalParam("uri", "token URI", "", types.string)
     .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
@@ -305,7 +307,6 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
             const baseContract = await deployments.get(ContractName);
             contractAddress = baseContract.address;
         }
-        const tokenId = ethers.BigNumber.from(taskArgs.id);
         const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
         // deploy a MelodyRNN contract
         const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
@@ -315,23 +316,9 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
         const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
         const mldy = MelodyFac.attach(mldyProxy.address);
         console.log("Deployed MelodyRNN contract: ", mldy.address);
-        
-        try {
-            const tx = await c.safeMint(taskArgs.to || signer.address, tokenId, taskArgs.uri, mldy.address);
-            await tx.wait();
-
-            console.log("Minted new MelodyRNN model, tx:", tx.hash);
-        } catch (e) {
-            const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
-                throw e;
-            });
-
-            console.log("Model #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
-            return;
-        }
 
         console.log("Setting AI model");
-        const setWeightTx = await mldy.setModel(tokenId, params.layers_config, gasConfig);
+        const setWeightTx = await mldy.setModel(params.layers_config, gasConfig);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
 
@@ -344,6 +331,15 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
             return _w.splice(0, maxlen);
         }
 
+        const checkForDeployedModel = (receipt: { events: any[]; }) => {
+            const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
+            if (deployedEvent != null) {
+                const owner = deployedEvent.args?.owner;
+                const tokenId = deployedEvent.args?.tokenId;
+                console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+            }
+        }
+
         for (let i = 0; i < MaxLayerType; ++i) {
             if (totSize[i] === 0) continue;
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
@@ -351,17 +347,31 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
             for (let wi = 0; wi < weights[i].length; ++wi) {
                 for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
                     
-                    const appendWeightTx = await mldy.appendWeights(tokenId, temp, wi, i, gasConfig);
+                    const appendWeightTx = await mldy.appendWeights(temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                    const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
-                    if (deployedEvent != null) {
-                        const owner = deployedEvent.args?.owner;
-                        const tokenId = deployedEvent.args?.tokenId;
-                        console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-                    }
+                    checkForDeployedModel(receipt);
                 }
             }            
+        }
+
+        const modelUri = "";
+        try {
+            const tx = await c.safeMint(taskArgs.to || signer.address, modelUri, mldy.address, mintConfig);
+            const rc = await tx.wait();
+            // listen for Transfer event
+            const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
+            if (transferEvent != null) {
+                const from = transferEvent.args?.from;
+                const to = transferEvent.args?.to;
+                const tokenId = transferEvent.args?.tokenId;
+                console.log("tx:", tx.hash);
+                console.log(`Minted new MelodyRNN model, to=${to}, tokenId=${tokenId}`);
+            }
+            checkForDeployedModel(rc);
+        } catch (e) {
+            console.error("Error minting model: ", e);
+            throw e;
         }
     });
 
@@ -402,21 +412,33 @@ task("generate-melody", "evaluate model for each layer")
 
         let melody: any[] = [];
         for (let i = 0; i < taskArgs.count; i++) {
-            let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
-            const rc = await tx.wait();
-            console.log("result:", rc);
-            // const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
+            // let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
+            // const rc = await tx.wait();
+            // console.log("result:", rc);
+            const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
 
             // get event NewMelody
-            const newMelody = rc.events?.find(event => event.event === 'NewMelody');
-            if (newMelody != null) {
-                const res = newMelody.args?.melody;
+            // const newMelody = rc.events?.find(event => event.event === 'NewMelody');
+            // if (newMelody != null) {
+                // const res = newMelody.args?.melody;
                 const notes = res.map((num: ethers.BigNumber) => Number(num.div(BigNumber.from("1000000000000000000"))))
+                // // prevent repetition at the end
+                // const last = x2.slice(melody.length-stepLen);
+                // let repeated = false;
+                // for (let i = 0; i < last.length; i++) {
+                //     if (last[i].eq(res[i])) {
+                //         repeated = true;
+                //         break;
+                //     }
+                // }
+                // if (repeated) { 
+                //     res[res.length - 1] = ethers.BigNumber.from(String(Math.trunc(Math.floor(Math.random() * 128) * 1e18)));
+                // }
                 x2 = x2.concat(res).slice(stepLen);
                 melody = melody.concat(notes);
                 // sleep for 1s
                 await new Promise(r => setTimeout(r, 1000));
-            }
+            // }
         }
         console.log("generated melody:", melody);
 
