@@ -449,7 +449,7 @@ contract EternalAI is
 
         SD59x18[] memory x2;
         for(uint i = 0; i < tokens.length - 1; ++i) {
-            (x2, states) = evaluateRNN(model, tokens[i], states);
+            (x2, states) = evaluateRNN(tokens[i], states);
         }
 
         uint256 lastToken = tokens[tokens.length - 1];
@@ -457,7 +457,7 @@ contract EternalAI is
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            (x2, states) = evaluateRNN(model, lastToken, states);
+            (x2, states) = evaluateRNN(lastToken, states);
             lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
@@ -486,7 +486,7 @@ contract EternalAI is
 
         SD59x18[] memory x2;
         for(uint i = 0; i < tokens.length - 1; ++i) {
-            (x2, states) = evaluateRNN(model, tokens[i], states);
+            (x2, states) = evaluateRNN(tokens[i], states);
         }
 
         uint256 lastToken = tokens[tokens.length - 1];
@@ -494,7 +494,7 @@ contract EternalAI is
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            (x2, states) = evaluateRNN(model, lastToken, states);
+            (x2, states) = evaluateRNN(lastToken, states);
             lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
