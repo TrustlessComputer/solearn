@@ -35,4 +35,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.tags = ['2', 'EternalAI'];
+func.skip = async () => true;
 export default func;

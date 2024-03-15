@@ -35,4 +35,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.tags = ['3', 'MelodyRNN'];
+func.skip = async () => true;
 export default func;
