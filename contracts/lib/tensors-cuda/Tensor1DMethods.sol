@@ -9,6 +9,7 @@ import "../libCuda.sol";
 error InvalidMatrixDimensions();
 
 library Tensor1DMethods {
+	event TestMatMul(SD59x18[][] data);
 	function zerosTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
 		ts.mat = new SD59x18[](n);
@@ -17,7 +18,7 @@ library Tensor1DMethods {
 	function emptyTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
 	}
-	
+
 	function from(SD59x18[] memory mat) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = mat.length;
 		ts.mat = mat;
@@ -26,7 +27,7 @@ library Tensor1DMethods {
 	function count(Tensors.Tensor1D memory ts) internal pure returns (uint) {
 		return ts.n;
 	}
-	
+
 	function __apply_unary_op(
 		Tensors.Tensor1D memory a,
 		function(SD59x18) internal pure returns (SD59x18) op
@@ -39,8 +40,8 @@ library Tensor1DMethods {
 	}
 
 	function __apply_binary_op(
-		Tensors.Tensor1D memory a, 
-		Tensors.Tensor1D memory b, 
+		Tensors.Tensor1D memory a,
+		Tensors.Tensor1D memory b,
 		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
 	) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
@@ -49,7 +50,7 @@ library Tensor1DMethods {
 		}
 		return res;
 	}
-    
+
 	function activation(Tensors.Tensor1D memory a, Tensors.ActivationFunc actv) internal pure returns (Tensors.Tensor1D memory) {
 		if (actv == Tensors.ActivationFunc.LeakyReLU) {
 			return __apply_unary_op(a, Tensors.__leaky_relu);
@@ -65,7 +66,7 @@ library Tensor1DMethods {
 			revert InvalidActivationFunction();
 		}
 	}
-	
+
 	function add(Tensors.Tensor1D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor1D memory) {
 		return __apply_binary_op(a, b, Tensors.__add);
 	}
@@ -88,6 +89,7 @@ library Tensor1DMethods {
 		SD59x18[][] memory a_mat = new SD59x18[][](1);
 		a_mat[0] = a.mat;
 		SD59x18[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,6,32,32);
+		emit TestMatMul(res);
 		return from(res[0]);
 	}
 
@@ -113,7 +115,7 @@ library Tensor1DMethods {
 
 
 	function loadPartial(Tensors.Tensor1D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
-		uint n = ts.n; 
+		uint n = ts.n;
 		while (idx < data.length && ptr < n) {
 			ts.mat.push(data[idx]);
 			ptr++;
