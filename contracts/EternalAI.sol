@@ -409,6 +409,43 @@ contract EternalAI is
         return outputToken;
     }
 
+    function generateTextNoTx(
+        uint modelId,
+        string memory prompt,
+        uint256 toGenerate,
+        uint256 seed,
+        SD59x18 temperature
+    ) external view returns (string memory) {
+        Model memory model = model;
+
+        uint256[] memory tokens = tokenize(prompt); 
+
+        SD59x18[][] memory states;
+        if (model.simpleRNN.length > 0) {
+            states = Tensor2DMethods.zerosTensor(1, model.simpleRNN[0].units).mat;
+        } else if (model.lstm.length > 0) {
+            states = Tensor2DMethods.zerosTensor(2, model.lstm[0].cell.units).mat;
+        }
+
+        SD59x18[] memory x2;
+        for(uint i = 0; i < tokens.length - 1; ++i) {
+            (x2, states) = evaluateRNN(model, tokens[i], states);
+        }
+
+        uint256 lastToken = tokens[tokens.length - 1];
+        uint256[] memory generatedTokens = new uint256[](toGenerate);
+        
+        for(uint i = 0; i < toGenerate; ++i) {
+            seed = uint256(keccak256(abi.encodePacked(seed)));
+            (x2, states) = evaluateRNN(model, lastToken, states);
+            lastToken = getToken(x2, temperature, seed);
+            generatedTokens[i] = lastToken;
+        }
+
+        string memory generatedText = decodeTokens(generatedTokens);
+        return generatedText; 
+    }
+
     function generateText(
         uint modelId,
         string memory prompt,
