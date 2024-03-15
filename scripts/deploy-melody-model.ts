@@ -116,7 +116,7 @@ function getConvSize(
 }
 
 async function main() {
-    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, CHUNK_LEN } = process.env;
+    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, TOKENID, MODEL_OWNER, CHUNK_LEN } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
     }
@@ -128,6 +128,9 @@ async function main() {
     }
     if (!MODELS_NFT_CONTRACT || !ethers.utils.isAddress(MODELS_NFT_CONTRACT)) {
         throw new Error("MODELS_NFT_CONTRACT is not set or invalid");
+    }
+    if (!TOKENID) {
+        throw new Error("TOKENID is not set");
     }
     if (!MODEL_OWNER || !ethers.utils.isAddress(MODEL_OWNER)) {
         throw new Error("MODEL_OWNER is not set");
@@ -335,7 +338,7 @@ async function main() {
 
     const modelUri = "";
     try {
-        const tx = await c.safeMint(MODEL_OWNER || signer.address, modelUri, mldy.address, mintConfig);
+        const tx = await c.safeMint(ethers.BigNumber.from(TOKENID), MODEL_OWNER || signer.address, modelUri, mldy.address, {...mintConfig, ...gasConfig });
         const rc = await tx.wait();
         // listen for Transfer event
         const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');

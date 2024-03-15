@@ -143,7 +143,7 @@ function getConvSize(
 task("mint-melody-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)
     .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
-    // .addOptionalParam("id", "token id", "0", types.string)
+    .addOptionalParam("id", "token id", "0", types.string)
     .addOptionalParam("to", "new model owner address", "", types.string)
     .addOptionalParam("uri", "token URI", "", types.string)
     .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
@@ -357,7 +357,7 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
 
         const modelUri = "";
         try {
-            const tx = await c.safeMint(taskArgs.to || signer.address, modelUri, mldy.address, mintConfig);
+            const tx = await c.safeMint(ethers.BigNumber.from(taskArgs.id), taskArgs.to || signer.address, modelUri, mldy.address, mintConfig);
             const rc = await tx.wait();
             // listen for Transfer event
             const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
