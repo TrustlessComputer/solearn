@@ -460,8 +460,8 @@ task("eval-img", "evaluate model for each layer")
         if (inputDim.length < 2) {
             throw new Error("Invalid model input dim");
         }
-        const w = inputDim[0].toNumber();
-        const h = inputDim[1].toNumber();
+        const h = inputDim[0].toNumber();
+        const w = inputDim[1].toNumber();
 
         const img = sharp(imgRaw);
         // const metadata = await img.metadata(); 
