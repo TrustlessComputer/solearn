@@ -70,7 +70,7 @@ function getActivationType(name: string): number {
     let activationFn: number = -1;
     if (name === 'leakyrelu') {
         activationFn = 0;
-    } else if (name === 'linear') {
+    } else if (name === 'linear' || name === 'softmax') {
         activationFn = 1;
     } else if (name === 'relu') {
         activationFn = 2;
