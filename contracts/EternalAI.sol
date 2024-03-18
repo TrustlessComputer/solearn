@@ -11,8 +11,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./thirdparty/solidity-stringutils/strings.sol";
 import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
@@ -31,10 +30,7 @@ interface IModelReg is IERC721Upgradeable {
     function royaltyReceiver() external view returns (address);
 }
 
-contract EternalAI is
-    Initializable,
-    OwnableUpgradeable
-{
+contract EternalAI is Ownable {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
@@ -135,8 +131,7 @@ contract EternalAI is
         _;
     }
 
-    function initialize(string memory _modelName, string[] memory _classesName, address _modelRegistry) public initializer {
-        __Ownable_init();
+    constructor(string memory _modelName, string[] memory _classesName, address _modelRegistry) Ownable() {
         model.modelName = _modelName;
         model.classesName = _classesName;
 
@@ -144,7 +139,16 @@ contract EternalAI is
         version = 1;
     }
 
-    function afterUpgrade() public {}
+
+
+    // function initialize(string memory _modelName, string[] memory _classesName, address _modelRegistry) public initializer {
+    //     __Ownable_init();
+    //     model.modelName = _modelName;
+    //     model.classesName = _classesName;
+
+    //     modelRegistry = IModelReg(_modelRegistry);      
+    //     version = 1;
+    // }
 
     function getInfo(
     )

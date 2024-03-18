@@ -294,11 +294,11 @@ async function main() {
     const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
     // deploy a EternalAI contract
     const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
-    const mldyImpl = await EaiFac.deploy();
-    const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
-    const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
-    const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
-    const eai = EaiFac.attach(mldyProxy.address);
+    const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name, nftContractAddress);
+    // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+    // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
+    // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+    const eai = EaiFac.attach(eaiImpl.address);
     console.log("Deployed EternalAI contract: ", eai.address);
         
     const modelUri = ""; // unused
