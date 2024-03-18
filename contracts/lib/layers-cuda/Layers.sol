@@ -13,6 +13,9 @@ import "hardhat/console.sol";
 error TooMuchData();
 
 library Layers {
+	event TestRNNOutput(SD59x18[] data);
+	event TestDense(SD59x18[] x, SD59x18[] w, SD59x18 tmp, SD59x18 b, SD59x18 y, SD59x18 res);
+
 	using Tensor1DMethods for Tensors.Tensor1D;
 	using Tensor2DMethods for Tensors.Tensor2D;
 	using Tensor3DMethods for Tensors.Tensor3D;
@@ -217,8 +220,14 @@ library Layers {
 			Tensors.Tensor1D memory zt = y.activation(layer.activation);
 			return zt.mat;
 		}
-		Tensors.Tensor1D memory y = xt.matMul(wt).add(bt);
+		Tensors.Tensor1D memory tmp = xt.matMul(wt);
+		SD59x18[] memory w_col = new SD59x18[](wt.n);
+		for(uint i = 0; i < wt.n; ++i) {
+			w_col[i] = wt.mat[i][34];
+		}
+		Tensors.Tensor1D memory y = tmp.add(bt);
 		Tensors.Tensor1D memory zt = y.activation(layer.activation);
+		emit TestDense(xt.mat, w_col, tmp.mat[34], bt.mat[34], y.mat[34], zt.mat[34]);
 		return zt.mat;
 	}
 
@@ -248,6 +257,7 @@ library Layers {
 		Tensors.Tensor1D memory yh_t = Tensor1DMethods.matMul(h_t, layer.wh);
 		Tensors.Tensor1D memory y_t = Tensor1DMethods.add(Tensor1DMethods.add(yx_t, yh_t), layer.b);
 		Tensors.Tensor1D memory z_t = Tensor1DMethods.activation(y_t, layer.activation);
+		emit TestRNNOutput(z_t.mat);
 		states[0] = z_t.mat;
 		return (states[0], states);
 	}

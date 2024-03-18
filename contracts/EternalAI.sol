@@ -31,6 +31,12 @@ interface IModelReg is IERC721Upgradeable {
 contract EternalAI is
     Initializable
 {
+    event TestMatMul(SD59x18[][] data);
+    event TestEntropy(SD59x18[] data);
+    event TestProbs(SD59x18[] data);
+    event TestRNNOutput(SD59x18[] data);
+	event TestDense(SD59x18[] x, SD59x18[] w, SD59x18 tmp, SD59x18 b, SD59x18 y, SD59x18 res);
+
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
@@ -357,7 +363,7 @@ contract EternalAI is
         SD59x18[] memory x2,
         SD59x18 temperature,
         uint256 seed 
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         uint unkIndex = vocabInfo.unkIndex - 1;
 
         SD59x18[] memory tmp = Utils.clone(x2);
@@ -365,9 +371,12 @@ contract EternalAI is
         for(uint i = 0; i < tmp.length; ++i) {
             tmp[i] = tmp[i] / temperature;
         }
+        emit TestEntropy(tmp);
 
         Tensors.Tensor1D memory xt = Tensor1DMethods.from(tmp);
         SD59x18[] memory probs = xt.softmax().mat;
+        emit TestProbs(probs);
+
         uint256 outputToken = Utils.getWeightedRandom(probs, seed);
         return outputToken;
     }
@@ -583,4 +592,11 @@ contract EternalAI is
             );
         }
     }
+
+    // function testMatmul(
+    //     SD59x18[][] mat1,
+    //     SD59x18[][] mat2
+    // ) external {
+    //     SD59x18[][]
+    // }
 }

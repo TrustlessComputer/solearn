@@ -13,6 +13,9 @@ import "hardhat/console.sol";
 error TooMuchData();
 
 library Layers {
+	event TestRNNOutput(SD59x18[] data);
+	event TestDense(SD59x18[] x, SD59x18[] w, SD59x18 tmp, SD59x18 b, SD59x18 y, SD59x18 res);
+
 	using Tensor1DMethods for Tensors.Tensor1D;
 	using Tensor2DMethods for Tensors.Tensor2D;
 	using Tensor3DMethods for Tensors.Tensor3D;
@@ -109,7 +112,7 @@ library Layers {
 		uint ptrLayer;
 	}
 	
-	function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal view returns (SD59x18[] memory, SD59x18[] memory) {
+	function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal returns (SD59x18[] memory, SD59x18[] memory) {
 		SD59x18[] memory c;
 		SD59x18[] memory o;
 		{
@@ -151,7 +154,7 @@ library Layers {
 		return (h, c);
 	}
 
-	function _compute_carry_and_output(LSTMCell memory layer, SD59x18[][] memory x, SD59x18[][] memory h_tm1, SD59x18[] memory c_tm1) internal view returns (SD59x18[] memory, SD59x18[] memory) {
+	function _compute_carry_and_output(LSTMCell memory layer, SD59x18[][] memory x, SD59x18[][] memory h_tm1, SD59x18[] memory c_tm1) internal returns (SD59x18[] memory, SD59x18[] memory) {
 		Tensors.Tensor1D memory i = Tensor1DMethods.from(x[0]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[0]), layer.recurrentKernel_i)).activation(layer.recurrentActivation);
 		Tensors.Tensor1D memory f = Tensor1DMethods.from(x[1]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[1]), layer.recurrentKernel_f)).activation(layer.recurrentActivation);
 		SD59x18[] memory c = f.mul(Tensor1DMethods.from(c_tm1)).add(i.mul(Tensor1DMethods.from(x[2]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[2]), layer.recurrentKernel_c)).activation(layer.activation))).mat;
@@ -160,7 +163,7 @@ library Layers {
 		return (c, o);
 	}
 
-	function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory) {
+	function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal returns (SD59x18[][] memory, SD59x18[][] memory) {
 		SD59x18[][] memory res = new SD59x18[][](1);
 		// TODO: check
 		SD59x18[] memory x = new SD59x18[](layer.cell.units);
@@ -202,7 +205,7 @@ library Layers {
 		return y;
 	}
 
-	function forward(DenseLayer memory layer, SD59x18[] memory x) internal view returns (SD59x18[] memory) {
+	function forward(DenseLayer memory layer, SD59x18[] memory x) internal returns (SD59x18[] memory) {
 		Tensors.Tensor1D memory xt = Tensor1DMethods.from(x);
 		Tensors.Tensor2D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
@@ -217,8 +220,14 @@ library Layers {
 			Tensors.Tensor1D memory zt = y.activation(layer.activation);
 			return zt.mat;
 		}
-		Tensors.Tensor1D memory y = xt.matMul(wt).add(bt);
+		Tensors.Tensor1D memory tmp = xt.matMul(wt);
+		SD59x18[] memory w_col = new SD59x18[](wt.n);
+		for(uint i = 0; i < wt.n; ++i) {
+			w_col[i] = wt.mat[i][34];
+		}
+		Tensors.Tensor1D memory y = tmp.add(bt);
 		Tensors.Tensor1D memory zt = y.activation(layer.activation);
+		emit TestDense(xt.mat, w_col, tmp.mat[34], bt.mat[34], y.mat[34], zt.mat[34]);
 		return zt.mat;
 	}
 
@@ -241,13 +250,14 @@ library Layers {
 		return layer.w.mat[x];
 	}
 
-	function forward(SimpleRNNLayer memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal pure returns (SD59x18[] memory, SD59x18[][] memory) {
+	function forward(SimpleRNNLayer memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal returns (SD59x18[] memory, SD59x18[][] memory) {
 		Tensors.Tensor1D memory x_t = Tensor1DMethods.from(x);
 		Tensors.Tensor1D memory h_t = Tensor1DMethods.from(states[0]);
 		Tensors.Tensor1D memory yx_t = Tensor1DMethods.matMul(x_t, layer.wx);
 		Tensors.Tensor1D memory yh_t = Tensor1DMethods.matMul(h_t, layer.wh);
 		Tensors.Tensor1D memory y_t = Tensor1DMethods.add(Tensor1DMethods.add(yx_t, yh_t), layer.b);
 		Tensors.Tensor1D memory z_t = Tensor1DMethods.activation(y_t, layer.activation);
+		emit TestRNNOutput(z_t.mat);
 		states[0] = z_t.mat;
 		return (states[0], states);
 	}

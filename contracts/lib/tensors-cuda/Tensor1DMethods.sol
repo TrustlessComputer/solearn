@@ -86,9 +86,20 @@ library Tensor1DMethods {
 
 
 	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal returns (Tensors.Tensor1D memory) {
+		// for(uint i = 0; i < a.n; ++i) {
+		// 	a.mat[i] = a.mat[i] * sd(1e16);
+		// }
+		// for(uint i = 0; i < b.n; ++i) {
+		// 	for(uint j = 0; j < b.m; ++j) {
+		// 		b.mat[i][j] = b.mat[i][j] * sd(1e16);
+		// 	}
+		// }
 		SD59x18[][] memory a_mat = new SD59x18[][](1);
 		a_mat[0] = a.mat;
 		SD59x18[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,6,32,32);
+		// for(uint j = 0; j < b.m; ++j) {
+		// 	res[0][j] = res[0][j] * sd(1e22);
+		// }
 		emit TestMatMul(res);
 		return from(res[0]);
 	}

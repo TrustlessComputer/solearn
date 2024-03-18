@@ -8,6 +8,7 @@ import "./Tensors.sol";
 error InvalidMatrixDimensions();
 
 library Tensor1DMethods {
+	event TestMatMul(SD59x18[][] data);
 	function zerosTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
 		ts.mat = new SD59x18[](n);
@@ -83,13 +84,16 @@ library Tensor1DMethods {
 	}
 
 
-	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal pure returns (Tensors.Tensor1D memory) {
+	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(b.m);
 		for (uint j = 0; j < b.m; j++) {
 			for (uint k = 0; k < b.n; k++) {
 				res.mat[j] = res.mat[j] + a.mat[k] * b.mat[k][j];
 			}
 		}
+		SD59x18[][] memory tmp = new SD59x18[][](1);
+		tmp[0] = res.mat;
+		emit TestMatMul(tmp); 
 		return res;
 	}
 

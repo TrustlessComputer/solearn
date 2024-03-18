@@ -12,7 +12,7 @@ import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
-const GasLimit = "10000000000"; // 100 B
+const GasLimit = "90000000000"; // 100 B
 const MaxFeePerGas = "1001000000";  // 1e-5 gwei
 const MaxPriorityFeePerGas = "1000000000";
 // const GasLimit = "290000000"; // 100 M
@@ -26,6 +26,10 @@ const gasConfig = {
 };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
+
+function recursiveToString(arr: any): any {
+    return arr.map((val: any) => Array.isArray(val) ? recursiveToString(val) : val.toString());
+}
 
 function getLayerType(name: string): number {
     let layerType: number = -1;
@@ -580,6 +584,7 @@ task("generate-text", "generate text from RNN model")
     .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
     .addOptionalParam("seed", "random seed", 123, types.int)
     .addOptionalParam("temperature", "randomness of the generation", 1.0, types.float)
+    .addOptionalParam("cuda", "1 if the model use cuda, 0 otherwise", 1, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -614,6 +619,29 @@ task("generate-text", "generate text from RNN model")
             console.log("-----------------------------------------------------");
         }
         console.log(`Used gas: `, rc.gasUsed);
+
+        const testRNNOutputEvents = rc.events?.filter(event => event.event === 'TestRNNOutput').map(event => event.args.data).map(arr => recursiveToString(arr));
+        const testEntropyEvents = rc.events?.filter(event => event.event === 'TestEntropy').map(event => event.args.data).map(arr => recursiveToString(arr));
+        const testProbsEvents = rc.events?.filter(event => event.event === 'TestProbs').map(event => event.args.data).map(arr => recursiveToString(arr));
+        const testDenseEvents = rc.events?.filter(event => event.event === 'TestDense').map(event => [event.args.x, event.args.w, event.args.tmp, event.args.b, event.args.y, event.args.res]).map(arr => recursiveToString(arr));
+
+        const testMatmulEvents = rc.events?.filter(event => event.event === 'TestMatMul');
+        const testMatmulData = testMatmulEvents.map(event => event.args.data);
+        const testMatmulDec = testMatmulData.map(mat => mat.map(arr => recursiveToString(arr)));
+
+        if (taskArgs.cuda === 1) {
+            fs.writeFileSync("cuda_RNNOutput.json", JSON.stringify(testRNNOutputEvents));
+            fs.writeFileSync("cuda_Entropy.json", JSON.stringify(testEntropyEvents));
+            fs.writeFileSync("cuda_Probs.json", JSON.stringify(testProbsEvents));
+            fs.writeFileSync("cuda_Dense.json", JSON.stringify(testDenseEvents));
+            fs.writeFileSync("cuda_events.json", JSON.stringify(testMatmulDec));    
+        } else {
+            fs.writeFileSync("no_cuda_RNNOutput.json", JSON.stringify(testRNNOutputEvents));
+            fs.writeFileSync("no_cuda_Entropy.json", JSON.stringify(testEntropyEvents));
+            fs.writeFileSync("no_cuda_Probs.json", JSON.stringify(testProbsEvents));
+            fs.writeFileSync("no_cuda_Dense.json", JSON.stringify(testDenseEvents));
+            fs.writeFileSync("no_cuda_events.json", JSON.stringify(testMatmulDec));    
+        }
 
         let endTime = new Date().getTime();
         console.log("Time: ", (endTime - startTime) / (1000));
@@ -696,3 +724,6 @@ task("check-models")
 
         fs.writeFileSync("model_list_2.json", JSON.stringify(models));
     })
+
+// task("check-matmul")
+//     .addOptionalParam("")
