@@ -2,8 +2,8 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+// import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./lib/layers/Layers.sol";
 import "hardhat/console.sol";
 
@@ -21,10 +21,7 @@ interface IModelReg is IERC721Upgradeable {
     function royaltyReceiver() external view returns (address);
 }
 
-contract MelodyRNN is
-    Initializable,
-    OwnableUpgradeable
-{
+contract MelodyRNN is Ownable {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
@@ -103,15 +100,22 @@ contract MelodyRNN is
         _;
     }
 
-
-    function initialize(string memory _modelName, address _modelRegistry) public initializer {
-        __Ownable_init();
+    constructor(string memory _modelName, address _modelRegistry) Ownable() {
         model.modelName = _modelName;
         modelRegistry = IModelReg(_modelRegistry);        
         version = 1;
     }
 
-    function afterUpgrade() public {}
+
+
+    // function initialize(string memory _modelName, address _modelRegistry) public initializer {
+    //     __Ownable_init();
+    //     model.modelName = _modelName;
+    //     modelRegistry = IModelReg(_modelRegistry);        
+    //     version = 1;
+    // }
+
+    // function afterUpgrade() public {}
 
     function getInfo(
     )

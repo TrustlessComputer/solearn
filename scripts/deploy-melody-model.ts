@@ -291,11 +291,12 @@ async function main() {
     const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
     // deploy a MelodyRNN contract
     const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
-    const mldyImpl = await MelodyFac.deploy();
-    const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
-    const initData = MelodyFac.interface.encodeFunctionData("initialize", [params.model_name, nftContractAddress]);
-    const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
-    const mldy = MelodyFac.attach(mldyProxy.address);
+    const mldyImpl = await MelodyFac.deploy(params.model_name, nftContractAddress);
+    // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+    // const initData = MelodyFac.interface.encodeFunctionData("initialize", [params.model_name, nftContractAddress]);
+    // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+    // const mldy = MelodyFac.attach(mldyProxy.address);
+    const mldy = MelodyFac.attach(mldyImpl.address);
     console.log("Deployed MelodyRNN contract: ", mldy.address);
 
     console.log("Setting AI model");
@@ -329,7 +330,7 @@ async function main() {
             for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
                     
                 const appendWeightTx = await mldy.appendWeights(temp, wi, i, gasConfig);
-                const receipt = await appendWeightTx.wait(2);
+                const receipt = await appendWeightTx.wait();
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
                 checkForDeployedModel(receipt);
             }
