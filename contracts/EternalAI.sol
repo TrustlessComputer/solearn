@@ -73,7 +73,9 @@ contract EternalAI is Ownable {
 
     event TextGenerated(
         uint256 indexed tokenId,
-        string result
+        string result,
+        SD59x18[][] states,
+        uint256 seed
     );
 
     struct Model {
@@ -433,27 +435,28 @@ contract EternalAI is Ownable {
         return outputToken;
     }
 
-    function generateTextNoTx(
-        uint _modelId,
+    function generateTextHelper(
         string memory prompt,
         uint256 toGenerate,
-        uint256 seed,
-        SD59x18 temperature
-    ) external view onlyMintedModel returns (string memory) {
+        SD59x18[][] memory states,
+        uint256 seed
+    ) internal view returns (string memory, SD59x18[][] memory, uint256) {
+        SD59x18 temperature = sd(7e17);
+
         Model memory model = model;
 
         uint256[] memory tokens = tokenize(prompt); 
 
-        SD59x18[][] memory states;
-        if (model.simpleRNN.length > 0) {
-            states = Tensor2DMethods.zerosTensor(1, model.simpleRNN[0].units).mat;
-        } else if (model.lstm.length > 0) {
-            states = Tensor2DMethods.zerosTensor(2, model.lstm[0].cell.units).mat;
-        }
-
         SD59x18[] memory x2;
-        for(uint i = 0; i < tokens.length - 1; ++i) {
-            (x2, states) = evaluateRNN(tokens[i], states);
+        if (states.length == 0) {
+            if (model.simpleRNN.length > 0) {
+                states = Tensor2DMethods.zerosTensor(1, model.simpleRNN[0].units).mat;
+            } else if (model.lstm.length > 0) {
+                states = Tensor2DMethods.zerosTensor(2, model.lstm[0].cell.units).mat;
+            }
+            for(uint i = 0; i < tokens.length - 1; ++i) {
+                (x2, states) = evaluateRNN(tokens[i], states);
+            }
         }
 
         uint256 lastToken = tokens[tokens.length - 1];
@@ -465,46 +468,30 @@ contract EternalAI is Ownable {
             lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
-
         string memory generatedText = decodeTokens(generatedTokens);
-        return generatedText; 
+        return (generatedText, states, seed); 
+    } 
+
+    function generateTextNoTx(
+        uint _modelId,
+        string memory prompt,
+        uint256 toGenerate,
+        SD59x18[][] memory states,
+        uint256 seed
+    ) external view onlyMintedModel returns (string memory, SD59x18[][] memory, uint256) {
+        return generateTextHelper(prompt, toGenerate, states, seed); 
     }
 
     function generateText(
         uint _modelId,
         string memory prompt,
         uint256 toGenerate,
-        uint256 seed,
-        SD59x18 temperature
+        SD59x18[][] memory states,
+        uint256 seed
     ) external onlyMintedModel {
-        Model memory model = model;
-
-        uint256[] memory tokens = tokenize(prompt); 
-
-        SD59x18[][] memory states;
-        if (model.simpleRNN.length > 0) {
-            states = Tensor2DMethods.zerosTensor(1, model.simpleRNN[0].units).mat;
-        } else if (model.lstm.length > 0) {
-            states = Tensor2DMethods.zerosTensor(2, model.lstm[0].cell.units).mat;
-        }
-
-        SD59x18[] memory x2;
-        for(uint i = 0; i < tokens.length - 1; ++i) {
-            (x2, states) = evaluateRNN(tokens[i], states);
-        }
-
-        uint256 lastToken = tokens[tokens.length - 1];
-        uint256[] memory generatedTokens = new uint256[](toGenerate);
-        
-        for(uint i = 0; i < toGenerate; ++i) {
-            seed = uint256(keccak256(abi.encodePacked(seed)));
-            (x2, states) = evaluateRNN(lastToken, states);
-            lastToken = getToken(x2, temperature, seed);
-            generatedTokens[i] = lastToken;
-        }
-
-        string memory generatedText = decodeTokens(generatedTokens);
-        emit TextGenerated(modelId, generatedText); 
+        string memory generatedText;
+        (generatedText, states, seed) = generateTextHelper(prompt, toGenerate, states, seed);
+        emit TextGenerated(modelId, generatedText, states, seed); 
     }
 
     function setEternalAI(

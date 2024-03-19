@@ -13,7 +13,7 @@ const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 
-const GasLimit = "10000000000"; // 100 B
+const GasLimit = "90000000000"; // 100 B
 const MaxFeePerGas = "1001000000";  // 1e-5 gwei
 const MaxPriorityFeePerGas = "1000000000";
 // const GasLimit = "290000000"; // 100 M
@@ -584,8 +584,7 @@ task("generate-text", "generate text from RNN model")
     .addOptionalParam("id", "token id of model", "1", types.string)
     .addOptionalParam("prompt", "input prompt", "", types.string)
     .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
-    .addOptionalParam("seed", "random seed", 123, types.int)
-    .addOptionalParam("temperature", "randomness of the generation", 1.0, types.float)
+    .addOptionalParam("generatepertx", "number of characters to generate per tx", -1, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -597,29 +596,44 @@ task("generate-text", "generate text from RNN model")
             contractAddress = baseContract.address;
         }
 
-        const prompt = taskArgs.prompt;
-        const seed = taskArgs.seed;
+        let prompt = taskArgs.prompt;
         const toGenerate = taskArgs.togenerate;
+        const generatePerTx = (taskArgs.generatepertx == -1) ? toGenerate : taskArgs.generatepertx;
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const modelAddress = await c.modelAddr(tokenId);
         const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
-        const temperature = ethers.BigNumber.from(taskArgs.temperature * 1000).mul(ethers.constants.WeiPerEther).div(1000);
 
         let startTime = new Date().getTime();
+        let result = "";
+        let seed = ethers.BigNumber.from("123");
+        let text;
 
-        const tx = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
-        const rc = await tx.wait();
-
-        const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
-        if (textGeneratedEvent) {
-            const text = textGeneratedEvent.args?.result;
-            console.log("-------------- Prompt + Generated text --------------");
-            console.log(prompt + text);
-            console.log("-----------------------------------------------------");
+        let states: ethers.BigNumber[][] = [];
+        for(let i = 0; i < toGenerate; i += generatePerTx) {
+            const generate = Math.min(toGenerate - i, generatePerTx);
+            console.log(`Generating characters ${i+1}-${i+generate}`);
+            [text, states, seed] = await modelContract.generateTextNoTx(tokenId, prompt, generate, states, seed, gasConfig);
+            result += text;
+            prompt = text.slice(text.length - 1)   
         }
-        console.log(`Used gas: `, rc.gasUsed);
+
+        console.log("-------------- Prompt + Generated text --------------");
+        console.log(taskArgs.prompt + result);
+        console.log("-----------------------------------------------------");
+
+        // const tx = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+        // const rc = await tx.wait();
+
+        // const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
+        // if (textGeneratedEvent) {
+        //     const text = textGeneratedEvent.args?.result;
+        //     console.log("-------------- Prompt + Generated text --------------");
+        //     console.log(prompt + text);
+        //     console.log("-----------------------------------------------------");
+        // }
+        // console.log(`Used gas: `, rc.gasUsed);
 
         let endTime = new Date().getTime();
         console.log("Time: ", (endTime - startTime) / (1000));
