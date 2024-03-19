@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {SD59x18, sd} from "@prb/math/src/SD59x18.sol";
+import {Utils} from "./Utils.sol";
 
 library CUDA {
     address constant CUDA_ADD = 0x0000000000000000000000000000000000000021;
@@ -95,8 +96,11 @@ library CUDA {
     function gemmSD59x18(SD59x18[][] memory mat1, SD59x18[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (SD59x18[][] memory result) {
-        (, bytes memory matData) = CUDA_GEMM.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
-        (result) = abi.decode(matData, (SD59x18[][]));
+        bytes8[][] memory buffer1 = Utils.fixedPointMatrixToFloatPointMatrix(mat1);
+        bytes8[][] memory buffer2 = Utils.fixedPointMatrixToFloatPointMatrix(mat2);
+        (, bytes memory matData) = CUDA_GEMM.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, buffer1, buffer2));
+        (bytes8[][] memory bufferResult) = abi.decode(matData, (bytes8[][]));
+        result = Utils.floatPointMatrixToFixedPointMatrix(bufferResult);
     }
 
     function abs(int[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal

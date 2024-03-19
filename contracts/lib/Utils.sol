@@ -113,4 +113,32 @@ library Utils {
 			return bytes8(uint64(mantissa | (exponent << 52) | (isNegative << 63)));
 		}
 	}
+
+	function floatPointToFixedPoint(bytes8 floatPoint) internal pure returns (SD59x18) {
+		return sd(0); // TODO
+	}
+
+	function fixedPointMatrixToFloatPointMatrix(SD59x18[][] memory mat) internal pure returns (bytes8[][] memory) {
+		uint n = mat.length;
+		uint m = mat[0].length;
+		bytes8[][] memory buffer = new bytes8[][](n);
+		for(uint i = 0; i < n; ++i) {
+			for(uint j = 0; j < m; ++j) {
+				buffer[i][j] = fixedPointToFloatPoint(mat[i][j]);				
+			}
+		}
+		return buffer;		
+	}
+
+	function floatPointMatrixToFixedPointMatrix(bytes8[][] memory mat) internal pure returns (SD59x18[][] memory) {
+		uint n = mat.length;
+		uint m = mat[0].length;
+		SD59x18[][] memory buffer = new SD59x18[][](n);
+		for(uint i = 0; i < n; ++i) {
+			for(uint j = 0; j < m; ++j) {
+				buffer[i][j] = floatPointToFixedPoint(mat[i][j]);				
+			}
+		}
+		return buffer;
+	}
 }

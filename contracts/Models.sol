@@ -56,7 +56,7 @@ contract Models is Initializable,
     )
         public
         view
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable, ERC721URIStorageUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
