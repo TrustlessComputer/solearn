@@ -4,12 +4,11 @@ import "hardhat-deploy";
 import './scripts/base.task';
 import './scripts/melody.task';
 import "hardhat-tracer";
-import "@foundry-rs/hardhat-anvil";
 import 'dotenv/config'
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config = {
-  defaultNetwork: "anvil",
+  defaultNetwork: "hardhat",
   anvil: {
     url: "http://127.0.0.1:8545/",
     launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
@@ -110,6 +109,14 @@ const config = {
     tests: './tests',
     cache: './cache',
     artifacts: './artifacts',
+  },
+  mocha: {
+    timeout: 2000000,
+    color: true,
+    reporter: 'mocha-multi-reporters',
+    reporterOptions: {
+      configFile: './mocha-report.json',
+    },
   },
 };
 

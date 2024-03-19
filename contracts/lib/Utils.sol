@@ -61,4 +61,56 @@ library Utils {
 	function equals(string memory a, string memory b) internal pure returns (bool) {
 		return getHash(a) == getHash(b);
 	}
+
+	function getBinaryDigits(int256 x) internal pure returns (uint256) {
+		uint256 count;
+		while (x > 0) {
+			++count;
+			x >>= 1;
+		}
+		return count;
+	}
+
+	function fixedPointToFloatPoint(SD59x18 fixedPoint) internal pure returns (bytes8) {
+		int256 value = fixedPoint.intoInt256();
+		unchecked {
+			if (value == 0) {
+				return 0;
+			}
+
+			if (value == type(int256).min) {
+				return bytes8(uint64(14978972360634269696));
+			}
+
+			uint256 isNegative;
+			if (value < 0) {
+				isNegative = 1;
+				value = -value;
+			}
+
+			uint256 exponent = 0;
+			uint256 mantissa = 0;
+			if (value >= 1e18) {
+				exponent = getBinaryDigits(value / 1e18) - 1;
+				value >>= exponent;
+				exponent += 1023;
+			} else {
+				exponent = getBinaryDigits(1e18 / value);
+				value <<= exponent;
+				exponent = exponent ^ 1023;
+			}
+
+			value -= 1e18;
+			for (uint256 i = 0; i < 52; ++i) {
+				value <<= 1;
+				mantissa <<= 1;
+				if (value >= 1e18) {
+					mantissa |= 1;
+					value -= 1e18;
+				}
+			}
+
+			return bytes8(uint64(mantissa | (exponent << 52) | (isNegative << 63)));
+		}
+	}
 }
