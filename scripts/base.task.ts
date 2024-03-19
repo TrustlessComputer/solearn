@@ -12,18 +12,21 @@ import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
+
 const GasLimit = "10000000000"; // 100 B
 const MaxFeePerGas = "1001000000";  // 1e-5 gwei
 const MaxPriorityFeePerGas = "1000000000";
 // const GasLimit = "290000000"; // 100 M
 // const MaxFeePerGas = "10010";  // 1e-5 gwei
 // const MaxPriorityFeePerGas = "10000";
-
 const gasConfig = {
-  gasLimit: GasLimit,
-  maxPriorityFeePerGas: MaxPriorityFeePerGas,
-  maxFeePerGas: MaxFeePerGas,
+    gasLimit: GasLimit,
+    maxPriorityFeePerGas: MaxPriorityFeePerGas,
+    maxFeePerGas: MaxFeePerGas,
 };
+    
+const mintPrice = ethers.utils.parseEther('0.1');
+const mintConfig = { value: mintPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -159,7 +162,6 @@ task("mint-model-id", "mint model id (and upload weights)")
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id", "0", types.string)
     .addOptionalParam("to", "new model owner address", "", types.string)
-    .addOptionalParam("uri", "token URI", "", types.string)
     .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
@@ -325,31 +327,13 @@ task("mint-model-id", "mint model id (and upload weights)")
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
         // deploy a EternalAI contract
-        console.log("Deploying EAI Implement contract");
         const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
-        const eaiImpl = await EaiFac.deploy();
-        await eaiImpl.deployTransaction.wait();
-        const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
-        console.log("Deploying EAI Proxy contract");
-        const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, contractAddress]);
-        const eaiProxy = await ProxyFac.deploy(eaiImpl.address, signer.address, initData);
-        await eaiProxy.deployTransaction.wait();
-        const eai = EaiFac.attach(eaiProxy.address);
-
+        const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name, contractAddress);
+        // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+        // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
+        // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+        const eai = EaiFac.attach(eaiImpl.address);
         console.log("Deployed EternalAI contract: ", eai.address);
-
-        try {
-            const tx = await c.safeMint(taskArgs.to || signer.address, tokenId, taskArgs.uri, eai.address, gasConfig);
-            await tx.wait();
-            console.log("Minted new EternalAI model, tx:", tx.hash);
-        } catch (e) {
-            const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
-                throw e;
-            });
-
-            console.log("Model #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
-            return;
-        }
 
         console.log("Setting AI model");
         const setWeightTx = await eai.setEternalAI(tokenId, params.layers_config, gasConfig);
@@ -372,6 +356,14 @@ task("mint-model-id", "mint model id (and upload weights)")
         const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
             return _w.splice(0, maxlen);
         }
+        const checkForDeployedModel = (receipt: { events: any[]; }) => {
+            const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
+            if (deployedEvent != null) {
+                const owner = deployedEvent.args?.owner;
+                const tokenId = deployedEvent.args?.tokenId;
+                console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+            }
+        }
 
         for (let i = 0; i < MaxLayerType; ++i) {
             if (totSize[i] === 0) continue;
@@ -379,18 +371,32 @@ task("mint-model-id", "mint model id (and upload weights)")
 
             for (let wi = 0; wi < weights[i].length; ++wi) {
                 for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                    
+                        
                     const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                    const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
-                    if (deployedEvent != null) {
-                        const owner = deployedEvent.args?.owner;
-                        const tokenId = deployedEvent.args?.tokenId;
-                        console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-                    }
+                    
+                    checkForDeployedModel(receipt);
                 }
+            }            
+        }
+        
+        try {
+            const tx = await c.safeMint(tokenId, taskArgs.to || signer.address, "", eai.address, {...mintConfig, gasLimit: 1_000_000 });
+            const rc = await tx.wait();
+            // listen for Transfer event
+            const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
+            if (transferEvent != null) {
+                const from = transferEvent.args?.from;
+                const to = transferEvent.args?.to;
+                const tokenId = transferEvent.args?.tokenId;
+                console.log("tx:", tx.hash);
+                console.log(`Minted new EternalAI model, to=${to}, tokenId=${tokenId}`);
             }
+            checkForDeployedModel(rc);
+        } catch (e) {
+            console.error("Error minting model: ", e);
+            throw e;
         }
     });
 
