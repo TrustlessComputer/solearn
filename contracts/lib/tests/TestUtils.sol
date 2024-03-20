@@ -6,7 +6,11 @@ import { sd } from "@prb/math/src/SD59x18.sol";
 import { Utils } from "../Utils.sol";
 
 contract TestUtils {
-    function fixedPointToFloatPoint(int256 x) external pure returns (bytes8) {
-        return Utils.fixedPointToFloatPoint(sd(x));
+    function fixedPointNumberToFloatPointNumber(int256 x) external pure returns (bytes8) {
+        return Utils.fixedPointNumberToFloatPointNumber(sd(x));
+    }
+
+    function floatPointNumberToFixedPointNumber(bytes8 floatPoint) external pure returns (int256) {
+        return Utils.floatPointNumberToFixedPointNumber(floatPoint).intoInt256();
     }
 }

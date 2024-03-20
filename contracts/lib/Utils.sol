@@ -71,7 +71,7 @@ library Utils {
 		return count;
 	}
 
-	function fixedPointToFloatPoint(SD59x18 fixedPoint) internal pure returns (bytes8) {
+	function fixedPointNumberToFloatPointNumber(SD59x18 fixedPoint) internal pure returns (bytes8) {
 		int256 value = fixedPoint.intoInt256();
 		unchecked {
 			if (value == 0) {
@@ -114,29 +114,65 @@ library Utils {
 		}
 	}
 
-	function floatPointToFixedPoint(bytes8 floatPoint) internal pure returns (SD59x18) {
-		return sd(0); // TODO
-	}
-
 	function fixedPointMatrixToFloatPointMatrix(SD59x18[][] memory mat) internal pure returns (bytes8[][] memory) {
 		uint n = mat.length;
 		uint m = mat[0].length;
 		bytes8[][] memory buffer = new bytes8[][](n);
-		for(uint i = 0; i < n; ++i) {
-			for(uint j = 0; j < m; ++j) {
-				buffer[i][j] = fixedPointToFloatPoint(mat[i][j]);				
+		unchecked {
+			for(uint i = 0; i < n; ++i) {
+				for(uint j = 0; j < m; ++j) {
+					buffer[i][j] = fixedPointNumberToFloatPointNumber(mat[i][j]);
+				}
 			}
 		}
-		return buffer;		
+		return buffer;
+	}
+
+	function _shift_fixed_one(int256 i) private pure returns (int256) {
+		return i >= 0
+			? int256(1e18) << uint256(i)
+			: i > -63 ?
+				int256(1e18) >> uint256(-i) : int256(0);
+	}
+
+	function floatPointNumberToFixedPointNumber(bytes8 floatPoint) internal pure returns (SD59x18) {
+		uint64 value = uint64(floatPoint);
+		if (value == 0) {
+			return sd(0);
+		}
+
+		if (value == 14978972360634269696) {
+			return sd(type(int256).min);
+		}
+
+		bool isNegative = (value >> 63) == 1;
+
+		int256 exponent = int256(uint256((value >> 52) & 2047)) - 1023;
+		if (exponent > 128) {
+			revert('Out of bounds');
+		}
+
+		uint256 mantissa = value & 4503599627370495;
+
+		int256 fixedValue = _shift_fixed_one(exponent);
+		for (uint256 i = 0; i < 52; ++i) {
+			if ((mantissa >> (51 - i)) & 1 == 1) {
+				fixedValue += _shift_fixed_one(exponent - int256(i) - 1);
+			}
+		}
+
+		return sd(isNegative ? -fixedValue : fixedValue);
 	}
 
 	function floatPointMatrixToFixedPointMatrix(bytes8[][] memory mat) internal pure returns (SD59x18[][] memory) {
 		uint n = mat.length;
 		uint m = mat[0].length;
 		SD59x18[][] memory buffer = new SD59x18[][](n);
-		for(uint i = 0; i < n; ++i) {
-			for(uint j = 0; j < m; ++j) {
-				buffer[i][j] = floatPointToFixedPoint(mat[i][j]);				
+		unchecked {
+			for(uint i = 0; i < n; ++i) {
+				for(uint j = 0; j < m; ++j) {
+					buffer[i][j] = floatPointNumberToFixedPointNumber(mat[i][j]);
+				}
 			}
 		}
 		return buffer;
