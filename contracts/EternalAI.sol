@@ -74,7 +74,7 @@ contract EternalAI is Ownable {
     event TextGenerated(
         uint256 indexed tokenId,
         string result,
-        SD59x18[][] states,
+        SD59x18[][][] states,
         uint256 seed
     );
 
@@ -363,25 +363,26 @@ contract EternalAI is Ownable {
     function evaluateRNN(
         // Model memory model,
         uint256 inputToken,
-        SD59x18[][] memory rnn_state
-    ) internal view returns (SD59x18[] memory, SD59x18[][] memory) {
+        SD59x18[][][] memory rnn_state
+    ) internal view returns (SD59x18[] memory, SD59x18[][][] memory) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
         uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
             Info memory layerInfo = model.layers[i];
+            uint idx = layerInfo.layerIndex;
 
             // add more layers
             if (layerInfo.layerType == LayerType.Embedding) {
-                x2 = model.embedding[layerInfo.layerIndex].forward(x1);
+                x2 = model.embedding[idx].forward(x1);
             } else if (layerInfo.layerType == LayerType.Dense) {
-                x2 = model.d[layerInfo.layerIndex].forward(x2);
+                x2 = model.d[idx].forward(x2);
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
-                (x2, rnn_state) = model.simpleRNN[layerInfo.layerIndex].forward(x2, rnn_state);
+                (x2, rnn_state[idx]) = model.simpleRNN[idx].forward(x2, rnn_state[idx]);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 SD59x18[][] memory x2Ext;
-                (x2Ext, rnn_state) = model.lstm[layerInfo.layerIndex].forward(x2, rnn_state);
+                (x2Ext, rnn_state[idx]) = model.lstm[idx].forward(x2, rnn_state[idx]);
                 x2 = x2Ext[0];
             }
         }
@@ -438,9 +439,9 @@ contract EternalAI is Ownable {
     function generateTextHelper(
         string memory prompt,
         uint256 toGenerate,
-        SD59x18[][] memory states,
+        SD59x18[][][] memory states,
         uint256 seed
-    ) internal view returns (string memory, SD59x18[][] memory, uint256) {
+    ) internal view returns (string memory, SD59x18[][][] memory, uint256) {
         SD59x18 temperature = sd(7e17);
 
         Model memory model = model;
@@ -450,9 +451,9 @@ contract EternalAI is Ownable {
         SD59x18[] memory x2;
         if (states.length == 0) {
             if (model.simpleRNN.length > 0) {
-                states = Tensor2DMethods.zerosTensor(1, model.simpleRNN[0].units).mat;
+                states = Tensor3DMethods.zerosTensor(model.simpleRNN.length, 1, model.simpleRNN[0].units).mat;
             } else if (model.lstm.length > 0) {
-                states = Tensor2DMethods.zerosTensor(2, model.lstm[0].cell.units).mat;
+                states = Tensor3DMethods.zerosTensor(model.lstm.length, 2, model.lstm[0].cell.units).mat;
             }
             for(uint i = 0; i < tokens.length - 1; ++i) {
                 (x2, states) = evaluateRNN(tokens[i], states);
@@ -476,9 +477,9 @@ contract EternalAI is Ownable {
         uint _modelId,
         string memory prompt,
         uint256 toGenerate,
-        SD59x18[][] memory states,
+        SD59x18[][][] memory states,
         uint256 seed
-    ) external view onlyMintedModel returns (string memory, SD59x18[][] memory, uint256) {
+    ) external view onlyMintedModel returns (string memory, SD59x18[][][] memory, uint256) {
         return generateTextHelper(prompt, toGenerate, states, seed); 
     }
 
@@ -486,7 +487,7 @@ contract EternalAI is Ownable {
         uint _modelId,
         string memory prompt,
         uint256 toGenerate,
-        SD59x18[][] memory states,
+        SD59x18[][][] memory states,
         uint256 seed
     ) external onlyMintedModel {
         string memory generatedText;

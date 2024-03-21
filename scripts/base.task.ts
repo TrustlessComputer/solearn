@@ -5,6 +5,7 @@ import fs from 'fs';
 import sharp from 'sharp';
 import { ethers, utils } from "ethers";
 import path from 'path';
+import levenshtein from 'js-levenshtein';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
 import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
 import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
@@ -155,6 +156,52 @@ function getConvSize(
 async function getModelDirents(folder: string): Promise<fs.Dirent[]> {
     const dirs = await fs.promises.readdir(folder, { withFileTypes: true });
     return dirs.filter(dirent => dirent.isFile() && path.extname(dirent.name) == ".json");
+}
+
+function fuzzyMatch(word: string, dict: string[]): string {
+    let bestCand = "", bestDist = -1;
+    for(let cand of dict) {
+        const dist = levenshtein(word, cand);
+        if (bestCand === "" || dist < bestDist) {
+            bestCand = cand;
+            bestDist = dist;
+        }
+    }
+    return bestCand;
+}
+
+function tokenizeWordOnly(text: string): string[] {
+    const tokens: string[] = [];
+    let word = "";
+    for(let c of text) {
+        if (c === '\'' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+            word += c;
+        } else {
+            if (word !== "") {
+                tokens.push(word);
+                word = "";
+            }
+        }
+    }
+    return tokens;
+}
+
+function replaceMatchedWords(text: string, words: string[], matchedWords: string[]): string {
+    let result = "";
+    for(let i = 0; i < words.length; ++i) {
+        let pos = text.search(words[i]);
+        text.substring(0, pos);
+        result += text + matchedWords[i];
+        text = text.slice(pos + words[i].length);
+    }
+    return result;
+}
+
+function postprocessText(text: string, dict: string[]): string {
+    const words = tokenizeWordOnly(text);
+    const matchedWords = words.map(word => fuzzyMatch(word, dict));
+    const replacedText = replaceMatchedWords(text, words, matchedWords);
+    return replacedText;
 }
 
 task("mint-model-id", "mint model id (and upload weights)")
@@ -585,6 +632,7 @@ task("generate-text", "generate text from RNN model")
     .addOptionalParam("prompt", "input prompt", "", types.string)
     .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
     .addOptionalParam("generatepertx", "number of characters to generate per tx", -1, types.int)
+    .addOptionalParam("dictionary", "dictionary for fuzzy match post processing", "", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -621,7 +669,14 @@ task("generate-text", "generate text from RNN model")
 
         console.log("-------------- Prompt + Generated text --------------");
         console.log(taskArgs.prompt + result);
-        console.log("-----------------------------------------------------");
+        console.log("----------------------------------------------------");
+
+        if (taskArgs.dictionary) {            
+            const dict: string[] = JSON.parse(fs.readFileSync(taskArgs.model, 'utf-8'));
+            console.log("-------------  Prompt + Postprocessed text ----------");
+            console.log(taskArgs.prompt + postprocessText(result, dict));
+            console.log("----------------------------------------------------");    
+        }
 
         // const tx = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
         // const rc = await tx.wait();
