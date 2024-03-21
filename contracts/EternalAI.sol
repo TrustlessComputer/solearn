@@ -55,7 +55,8 @@ contract EternalAI is Ownable {
         uint256 indexed tokenId,
         uint256 classIndex,
         string className,
-        SD59x18[] outputs
+        SD59x18[] outputs,
+        SD59x18 confidence
     );
 
     event Forwarded(
@@ -285,7 +286,7 @@ contract EternalAI is Ownable {
         public
         view
         onlyMintedModel
-        returns (string memory, SD59x18[][][] memory, SD59x18[] memory)
+        returns (string memory, SD59x18[][][] memory, SD59x18[] memory, SD59x18)
     {
         if (toLayerIndex >= model.layers.length) {
             toLayerIndex = model.layers.length - 1; // update to the last layer
@@ -306,9 +307,9 @@ contract EternalAI is Ownable {
                 }
             }
 
-            return (model.classesName[maxInd], r1, r2);
+            return (model.classesName[maxInd], r1, r2, r2[maxInd]);
         } else {
-            return ("", r1, r2);
+            return ("", r1, r2, sd(0));
         }
     }
 
@@ -347,7 +348,8 @@ contract EternalAI is Ownable {
                 modelId,
                 maxInd,
                 model.classesName[maxInd],
-                r2
+                r2,
+                r2[maxInd]
             );
         } else {
             emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);

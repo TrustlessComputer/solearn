@@ -537,6 +537,7 @@ task("eval-img", "evaluate model for each layer")
         let x1: ethers.BigNumber[][][] = pixelsToImage(pixels, h, w, 3);
         let x2: ethers.BigNumber[] = [];
         let classsNameRes = "";
+        let confidence = ethers.BigNumber.from("0");
 
         let startTime = new Date().getTime();
 
@@ -577,7 +578,7 @@ task("eval-img", "evaluate model for each layer")
                 const classIndex = classifiedEvent.args?.classIndex;
                 const className = classifiedEvent.args?.className;
                 const outputs = classifiedEvent.args?.outputs;
-                console.log('"Classified" event emitted', { tokenId, classIndex, className });
+                console.log('"Classified" event emitted', { tokenId, classIndex, className, confidence });
                 classsNameRes = className;
             }
 
