@@ -190,8 +190,7 @@ function replaceMatchedWords(text: string, words: string[], matchedWords: string
     let result = "";
     for(let i = 0; i < words.length; ++i) {
         let pos = text.search(words[i]);
-        text.substring(0, pos);
-        result += text + matchedWords[i];
+        result += text.substring(0, pos) + matchedWords[i];
         text = text.slice(pos + words[i].length);
     }
     return result;
@@ -659,6 +658,15 @@ task("generate-text", "generate text from RNN model")
         let seed = ethers.BigNumber.from("123");
         let text;
 
+//         result = `
+// No, sir, I will not?
+
+// CATESBY:
+// Ay, and you thought
+// I think it on the duke stink in my staying like to the humoulches with gentlemen o' the contract in her,
+// And say one that had woney to his parts.
+// `
+
         let states: ethers.BigNumber[][] = [];
         for(let i = 0; i < toGenerate; i += generatePerTx) {
             const generate = Math.min(toGenerate - i, generatePerTx);
@@ -670,14 +678,12 @@ task("generate-text", "generate text from RNN model")
 
         console.log("-------------- Prompt + Generated text --------------");
         console.log(taskArgs.prompt + result);
-        console.log("----------------------------------------------------");
-
         if (taskArgs.dictionary) {            
-            const dict: string[] = JSON.parse(fs.readFileSync(taskArgs.model, 'utf-8'));
-            console.log("-------------  Prompt + Postprocessed text ----------");
+            const dict: string[] = JSON.parse(fs.readFileSync(taskArgs.dictionary, 'utf-8'));
+            console.log("------------  Prompt + Postprocessed text ----------");
             console.log(taskArgs.prompt + postprocessText(result, dict));
-            console.log("----------------------------------------------------");    
         }
+        console.log("----------------------------------------------------");
 
         // const tx = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
         // const rc = await tx.wait();
