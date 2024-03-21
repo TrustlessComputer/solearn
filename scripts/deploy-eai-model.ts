@@ -116,7 +116,7 @@ function getConvSize(
 }
 
 async function main() {
-    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, TOKENID, MODEL_OWNER } = process.env;
+    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
     }
@@ -129,10 +129,6 @@ async function main() {
     if (!MODELS_NFT_CONTRACT || !ethers.utils.isAddress(MODELS_NFT_CONTRACT)) {
         throw new Error("MODELS_NFT_CONTRACT is not set or invalid");
     }
-    if (!TOKENID) {
-        throw new Error("TOKENID is not set");
-    }
-
     if (!MODEL_OWNER || !ethers.utils.isAddress(MODEL_OWNER)) {
         throw new Error("MODEL_OWNER is not set");
     }
@@ -289,27 +285,28 @@ async function main() {
     }
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
 
+    let tokenId = ethers.BigNumber.from(0); // placeholder
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
     const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
     // deploy a EternalAI contract
     const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
-    const mldyImpl = await EaiFac.deploy();
-    const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
-    const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
-    const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
-    const eai = EaiFac.attach(mldyProxy.address);
+    const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name, nftContractAddress);
+    // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+    // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
+    // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+    const eai = EaiFac.attach(eaiImpl.address);
     console.log("Deployed EternalAI contract: ", eai.address);
         
     const modelUri = ""; // unused
     console.log("Setting AI model");
-    const setWeightTx = await eai.setEternalAI(params.layers_config, gasConfig);
+    const setWeightTx = await eai.setEternalAI(tokenId, params.layers_config, gasConfig);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 
     if (params.vocabulary) {
         console.log("Setting vocabs");
         const vocabs = params.vocabulary;
-        const setVocabTx = await eai.setVocabs(vocabs, "[UNK]");
+        const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]");
         await setVocabTx.wait();
         console.log('tx', setVocabTx.hash);
     }
@@ -338,7 +335,7 @@ async function main() {
         for (let wi = 0; wi < weights[i].length; ++wi) {
             for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
                     
-                const appendWeightTx = await eai.appendWeights(temp, wi, i, gasConfig);
+                const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
                 const receipt = await appendWeightTx.wait(2);
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
                 
@@ -348,7 +345,7 @@ async function main() {
     }
 
     try {
-        const tx = await c.safeMint(ethers.BigNumber.from(TOKENID), MODEL_OWNER || signer.address, modelUri, eai.address, mintConfig);
+        const tx = await c.safeMint(MODEL_OWNER || signer.address, modelUri, eai.address, {...mintConfig, gasLimit: 1_000_000 });
         const rc = await tx.wait();
         // listen for Transfer event
         const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');

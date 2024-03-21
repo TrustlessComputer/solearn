@@ -23,7 +23,7 @@ contract Models is Initializable,
     uint8 protocolFeePercent; // deprecated
     mapping(uint256 => address) public modelAddr;
     address public royaltyReceiver;
-    uint256 public nextModelId; // deprecated
+    uint256 public nextModelId;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -74,19 +74,31 @@ contract Models is Initializable,
         mintPrice = _mintPrice;
         evalPrice = _evalPrice;
         royaltyReceiver = _royaltyReceiver;
+        nextModelId = 1; 
+    }
+
+    function afterUpgrade(uint256 _mintPrice, uint256 _evalPrice, address _royaltyReceiver, uint256 _nextModelId) public {
+        mintPrice = _mintPrice;
+        evalPrice = _evalPrice;
+        royaltyReceiver = _royaltyReceiver;
+        nextModelId = _nextModelId;
     }
 
 
     function safeMint(
-        uint256 modelId,
         address to,
         string memory uri,
         address _modelAddr
     ) external payable {
         if (msg.value < mintPrice) revert InsufficientMintPrice();
+        while (modelAddr[nextModelId] != address(0)) {
+            nextModelId++;
+        }
+        uint256 modelId = nextModelId;
         _safeMint(to, modelId);
         _setTokenURI(modelId, uri);
         modelAddr[modelId] = _modelAddr;
+        nextModelId++;
         IModels(_modelAddr).setModelId(modelId);
     }
 
