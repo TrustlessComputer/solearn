@@ -360,7 +360,7 @@ contract MelodyRNN is Ownable {
         
         model.appendedWeights += appendedWeights;
         if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(msg.sender, modelId);
+            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
         }
     }
 
@@ -451,7 +451,7 @@ contract MelodyRNN is Ownable {
 
         modelId = _modelId;
         if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(msg.sender, modelId);
+            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
         }
     }
 }
