@@ -209,7 +209,6 @@ function postprocessText(text: string, dict: string[]): string {
 task("mint-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id", "0", types.string)
     .addOptionalParam("to", "new model owner address", "", types.string)
     .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
@@ -431,7 +430,7 @@ task("mint-model-id", "mint model id (and upload weights)")
         }
         
         try {
-            const tx = await c.safeMint(tokenId, taskArgs.to || signer.address, "", eai.address, {...mintConfig, gasLimit: 1_000_000 });
+            const tx = await c.safeMint(taskArgs.to || signer.address, "", eai.address, {...mintConfig, gasLimit: 1_000_000 });
             const rc = await tx.wait();
             // listen for Transfer event
             const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
@@ -466,7 +465,6 @@ task("mint-models", "mint multiple model in a folder (with their weights)")
         const models = modelDirents.map((dirent, index) => ({
             name: path.basename(dirent.name, '.json'),
             path: path.join(folder, dirent.name),
-            id: ethers.BigNumber.from(index + 100).toString(),
         }));
 
         const modelInfos = [];
@@ -475,13 +473,15 @@ task("mint-models", "mint multiple model in a folder (with their weights)")
             await hre.run("mint-model-id", {
                 model: model.path, 
                 contract: taskArgs.contract,
-                id: model.id,
                 maxlen: taskArgs.maxlen,
             });
             const address: string = JSON.parse(fs.readFileSync("model_address.json", 'utf-8'));
+            const c = await ethers.getContractAt(ContractName, address, signer);
+            const modelId = await c.modelId();
+        
             modelInfos.push({
                 name: model.name,
-                id: model.id,
+                id: modelId,
                 contractAddress: address,
             })
             fs.writeFileSync("model_list.json", JSON.stringify(modelInfos));
