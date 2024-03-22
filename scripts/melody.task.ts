@@ -450,7 +450,7 @@ task("generate-melody", "evaluate model for each layer")
         console.log("generated melody:", melody);
 
         let endTime = new Date().getTime();
-        console.log("Time: ", (endTime - startTime) / (60 * 1000));
+        console.log("Time: ", (endTime - startTime) / 1000);
     });
 
 

@@ -372,7 +372,7 @@ contract MelodyRNN is Ownable {
         if (layerType == LayerType.Dense) {
             appendedWeights = model.d[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.LSTM) {
-            appendedWeights = model.lstm[layerInd].appendWeights(weights);
+            appendedWeights = model.lstm[layerInd].appendWeightsPartial(weights);
         }
         
         model.appendedWeights += appendedWeights;
