@@ -17,6 +17,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const royaltyReceiver = deployer;
     const nextModelId = 1000;
 
+    if (network.name === 'hardhat' || network.name === 'localhost') {
+        await network.provider.send("evm_setIntervalMining", [3000]);
+    }
+    
     await deploy('Models', {
         from: deployer,
         proxy: {

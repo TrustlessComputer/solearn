@@ -29,6 +29,9 @@ const gasConfig = {
 const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
 
+const evalPrice = ethers.utils.parseEther('0.01');
+const evalConfig = { value: evalPrice };
+
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
 function getLayerType(name: string): number {
@@ -444,6 +447,8 @@ task("mint-model-id", "mint model id (and upload weights)")
             console.error("Error minting model: ", e);
             throw e;
         }
+
+        fs.writeFileSync("model_address.json", JSON.stringify(eai.address));
     });
 
 task("mint-models", "mint multiple model in a folder (with their weights)")
@@ -461,10 +466,10 @@ task("mint-models", "mint multiple model in a folder (with their weights)")
         const models = modelDirents.map((dirent, index) => ({
             name: path.basename(dirent.name, '.json'),
             path: path.join(folder, dirent.name),
-            id: utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0")),
+            id: ethers.BigNumber.from(index + 100).toString(),
         }));
 
-        const modelInfos = [{"name":"Alien","id":"0x2971776e597fcdf04b51943c02500a5f2c37d70474ce531f8106729ae1497509"},{"name":"Ape","id":"0x6b4d0f0900b58882d95a1a4bc916b532afafa19945ae76a61bc3b1256d600c31"},{"name":"Female","id":"0x451dcda49d1704e9d98da55a3f03ea76713231a47464e4a1545877246ab163ce"},{"name":"Male","id":"0xa965627403bfb51ef963344b4534986cd2731859dee5c9b7448dfea830db71fc"},{"name":"Zombie","id":"0xd7872a355fdd068abaed442af0ade744992f2eb128b9326bca012bdcd7018745"}];
+        const modelInfos = [];
         for(const model of models) {
             console.log("Minting model:", model.name);
             await hre.run("mint-model-id", {
@@ -473,19 +478,22 @@ task("mint-models", "mint multiple model in a folder (with their weights)")
                 id: model.id,
                 maxlen: taskArgs.maxlen,
             });
+            const address: string = JSON.parse(fs.readFileSync("model_address.json", 'utf-8'));
             modelInfos.push({
                 name: model.name,
                 id: model.id,
+                contractAddress: address,
             })
+            fs.writeFileSync("model_list.json", JSON.stringify(modelInfos));
         }
 
-        fs.writeFileSync("model_list.json", JSON.stringify(modelInfos));
     });
 
 task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
+    .addOptionalParam("offline", "whether to create tx or not", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -499,8 +507,8 @@ task("eval-img", "evaluate model for each layer")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await c.modelAddr(tokenId);
-        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        // const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(contractAddress, EternalAIArtifact.abi, signer);
 
         const imgRaw = fs.readFileSync(taskArgs.img);
         console.log("imgRaw: ", imgRaw);
@@ -540,50 +548,78 @@ task("eval-img", "evaluate model for each layer")
 
         let startTime = new Date().getTime();
 
-        for (let i = 0; ; i = i + batchLayerNum) {
-            const fromLayerIndex = i;
-            const toLayerIndex = i + batchLayerNum - 1;
+        if (taskArgs.offline) {
+            for (let i = 0; ; i = i + batchLayerNum) {
+                const fromLayerIndex = i;
+                const toLayerIndex = i + batchLayerNum - 1;
+    
+                console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
+                if (x1.length > 0) {
+                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
+                }
+                if (x2.length > 0) {
+                    console.log(`x2: (${x2.length})`);
+                }
+                    
+                [classsNameRes, x1, x2, confidence] = await modelContract.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...gasConfig });
+                if (classsNameRes !== "") {
+                    console.log("Class name:", classsNameRes);                    
+                    console.log("Confidence:", confidence);
+                    console.log(x2);
+                    // console.log("Confidence:", confidence.div(1e14).toNumber() / 100.0);
+                }
 
-            console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
-            if (x1.length > 0) {
-                console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
+                if (toLayerIndex >= numLayers - 1) {
+                    break;
+                }
             }
-            if (x2.length > 0) {
-                console.log(`x2: (${x2.length})`);
-            }
-
-            const tx: ethers.ContractTransaction = await measureTime(async () => {
-                return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
-            });
-
-            console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
-            const receipt = await tx.wait(1);
-
-            console.log(`Used gas: `, receipt.gasUsed);
-
-            const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
-            const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
-            if (forwardedEvent) {
-                const tokenId = forwardedEvent.args?.tokenId;
-                const fromLayerIndex = forwardedEvent.args?.fromLayerIndex;
-                const toLayerIndex = forwardedEvent.args?.toLayerIndex;
-                const outputs1 = forwardedEvent.args?.outputs1;
-                const outputs2 = forwardedEvent.args?.outputs2;
-                console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex });
-                x1 = outputs1;
-                x2 = outputs2;
-            } else if (classifiedEvent) {
-                const tokenId = classifiedEvent.args?.tokenId;
-                const classIndex = classifiedEvent.args?.classIndex;
-                const className = classifiedEvent.args?.className;
-                const outputs = classifiedEvent.args?.outputs;
-                console.log('"Classified" event emitted', { tokenId, classIndex, className, confidence });
-                classsNameRes = className;
-            }
-
-            if (toLayerIndex >= numLayers - 1) {
-                break;
-            }
+        } else {
+            for (let i = 0; ; i = i + batchLayerNum) {
+                const fromLayerIndex = i;
+                const toLayerIndex = i + batchLayerNum - 1;
+    
+                console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
+                if (x1.length > 0) {
+                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
+                }
+                if (x2.length > 0) {
+                    console.log(`x2: (${x2.length})`);
+                }
+    
+                const tx: ethers.ContractTransaction = await measureTime(async () => {
+                    return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig, ...gasConfig });
+                });
+    
+                console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
+                const receipt = await tx.wait(1);
+    
+                console.log(`Used gas: `, receipt.gasUsed);
+    
+                const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
+                const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
+                if (forwardedEvent) {
+                    const tokenId = forwardedEvent.args?.tokenId;
+                    const fromLayerIndex = forwardedEvent.args?.fromLayerIndex;
+                    const toLayerIndex = forwardedEvent.args?.toLayerIndex;
+                    const outputs1 = forwardedEvent.args?.outputs1;
+                    const outputs2 = forwardedEvent.args?.outputs2;
+                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs2 });
+                    x1 = outputs1;
+                    x2 = outputs2;
+                } else if (classifiedEvent) {
+                    const tokenId = classifiedEvent.args?.tokenId;
+                    const classIndex = classifiedEvent.args?.classIndex;
+                    const className = classifiedEvent.args?.className;
+                    const outputs = classifiedEvent.args?.outputs;
+                    const confidence = classifiedEvent.args?.confidence;
+                    console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs, confidence });
+                    classsNameRes = className;
+                }
+    
+                if (toLayerIndex >= numLayers - 1) {
+                    break;
+                }
+            }                
         }
 
         let endTime = new Date().getTime();
@@ -714,8 +750,10 @@ task("get-model", "get eternal AI model")
         }
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await c.modelAddr(tokenId);
-        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        // console.log(contractAddress, tokenId);
+        // const modelAddress = await c.modelAddr(tokenId);
+        // console.log(modelAddress);
+        const modelContract = new ethers.Contract(contractAddress, EternalAIArtifact.abi, signer);
         const model = await modelContract.getInfo();
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));

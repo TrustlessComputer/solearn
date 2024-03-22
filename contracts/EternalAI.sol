@@ -551,8 +551,8 @@ contract EternalAI is Ownable {
             appendedWeights = model.lstm[layerInd].appendWeightsPartial(weights);
         }
         model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(msg.sender, modelId);
+        if (model.appendedWeights == model.requiredWeights && _modelId > 0) {
+            emit Deployed(msg.sender, _modelId);
         }
     }
 
