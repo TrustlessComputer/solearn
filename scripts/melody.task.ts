@@ -310,17 +310,26 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
         const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
         // deploy a MelodyRNN contract
         const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
-        const mldyImpl = await MelodyFac.deploy();
-        const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
-        const initData = MelodyFac.interface.encodeFunctionData("initialize", [params.model_name, contractAddress]);
-        const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
-        const mldy = MelodyFac.attach(mldyProxy.address);
+        const mldyImpl = await MelodyFac.deploy(params.model_name, contractAddress);
+        // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+        // const initData = MelodyFac.interface.encodeFunctionData("initialize", [params.model_name, contractAddress]);
+        // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+        // const mldy = MelodyFac.attach(mldyProxy.address);
+        const mldy = MelodyFac.attach(mldyImpl.address);
         console.log("Deployed MelodyRNN contract: ", mldy.address);
 
         console.log("Setting AI model");
         const setWeightTx = await mldy.setModel(params.layers_config, gasConfig);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
+
+        if (params.vocabulary) {
+            console.log("Setting vocabs");
+            const vocabs = params.vocabulary;
+            const setVocabTx = await mldy.setVocabs(vocabs);
+            await setVocabTx.wait();
+            console.log('tx', setVocabTx.hash);
+        }
 
         const weightStr = JSON.stringify(weights);
         console.log("Total weights len: ", weightStr.length);
@@ -357,7 +366,7 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
 
         const modelUri = "";
         try {
-            const tx = await c.safeMint(ethers.BigNumber.from(taskArgs.id), taskArgs.to || signer.address, modelUri, mldy.address, mintConfig);
+            const tx = await c.safeMint(taskArgs.to || signer.address, modelUri, mldy.address, mintConfig);
             const rc = await tx.wait();
             // listen for Transfer event
             const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
@@ -407,9 +416,7 @@ task("generate-melody", "evaluate model for each layer")
 
         let x2 = rands.map(n => ethers.BigNumber.from(String(Math.trunc(n * 1e18))));
         // console.log("x2:", x2);
-
         
-
         let melody: any[] = [];
         for (let i = 0; i < taskArgs.count; i++) {
             // let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);

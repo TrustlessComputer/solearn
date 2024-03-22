@@ -301,6 +301,14 @@ async function main() {
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 
+    if (params.vocabulary) {
+        console.log("Setting vocabs");
+        const vocabs = params.vocabulary;
+        const setVocabTx = await mldy.setVocabs(vocabs);
+        await setVocabTx.wait();
+        console.log('tx', setVocabTx.hash);
+    }
+    
     const weightStr = JSON.stringify(weights);
     console.log("Total weights len: ", weightStr.length);
 

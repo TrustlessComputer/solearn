@@ -40,6 +40,7 @@ contract MelodyRNN is Ownable {
     uint256 public modelId;
 
     uint256 version;
+    VocabInfo public vocabInfo;
 
     event NewMelody(uint256 indexed tokenId, SD59x18[] melody);
 
@@ -72,6 +73,11 @@ contract MelodyRNN is Ownable {
     struct Info {
         LayerType layerType;
         uint256 layerIndex;
+    }
+    
+    struct VocabInfo {
+        bool hasVocab;
+        uint256[] vocabs;
     }
 
     enum LayerType {
@@ -216,6 +222,15 @@ contract MelodyRNN is Ownable {
     //     }
     // }
 
+    function decodeTokens(SD59x18[] memory tokens) internal view returns (SD59x18[] memory) {
+        VocabInfo storage info = vocabInfo;
+        for(uint i = 0; i < tokens.length; ++i) {
+            uint256 id = tokens[i].intoUint256() / 1e18;
+            tokens[i] = sd(int256(info.vocabs[id] * 1e18));
+        }
+        return tokens;
+    }
+
     function sampleWithTemperature(SD59x18[] memory probabilities, int256 seed) public pure returns (uint256) {
         uint256 n = probabilities.length;
         SD59x18[] memory p = new SD59x18[](n);
@@ -255,7 +270,7 @@ contract MelodyRNN is Ownable {
         SD59x18[] memory currentInput = x;
         for (uint256 i=0; i<currentInput.length; i++) {
             currentInput[i] = currentInput[i] / sd(VOCAB_SIZE * 1e18);
-        }
+        }        
 
         SD59x18[][][] memory x1 = new SD59x18[][][](0);
         SD59x18[][] memory states = new SD59x18[][](0);
@@ -274,7 +289,9 @@ contract MelodyRNN is Ownable {
             result[i] = sd(int256(sampleWithTemperature(r2, seed)) * 1e18);
             seed = int256(uint256(keccak256(abi.encodePacked(seed))));
         }
-
+        if (vocabInfo.hasVocab) {
+            result = decodeTokens(result);
+        }
         return (result, states);
     }
 
@@ -362,6 +379,14 @@ contract MelodyRNN is Ownable {
         if (model.appendedWeights == model.requiredWeights && modelId > 0) {
             emit Deployed(msg.sender, modelId);
         }
+    }
+    
+    function setVocabs(
+        uint256[] memory vocabs
+    ) external onlyOwnerOrOperator {
+        VocabInfo storage info = vocabInfo;
+        info.vocabs = vocabs;
+        info.hasVocab = true;
     }
 
     function makeLayer(
