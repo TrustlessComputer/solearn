@@ -163,10 +163,10 @@ contract MelodyRNN is Ownable {
     function forward(
         SD59x18[][][] memory x1,
         SD59x18[] memory x2,
-        SD59x18[][] memory states,
+        SD59x18[][][] memory states,
         uint256 fromLayerIndex,
         uint256 toLayerIndex
-    ) public view returns (SD59x18[][][] memory, SD59x18[] memory, SD59x18[][] memory) {
+    ) public view returns (SD59x18[][][] memory, SD59x18[] memory, SD59x18[][][] memory) {
         if (toLayerIndex >= model.layers.length) {
             toLayerIndex = model.layers.length - 1; // update to the last layer
         }
@@ -183,7 +183,7 @@ contract MelodyRNN is Ownable {
                 x2Ext = model.d[layerInfo.layerIndex].forward(x2Ext);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 Layers.LSTM memory lstm = model.lstm[layerInfo.layerIndex];
-                (x2Ext, states) = lstm.forward(x2, states);
+                (x2Ext, states[layerInfo.layerIndex]) = lstm.forward(x2, states[layerInfo.layerIndex]);
             }
         }
         Tensors.Tensor1D memory x2Tensor = Tensor1DMethods.from(x2Ext[0]).softmax();
@@ -262,7 +262,7 @@ contract MelodyRNN is Ownable {
         uint256 _modelId,
         uint256 noteCount,
         SD59x18[] calldata x
-    ) public view onlyMintedModel returns (SD59x18[] memory, SD59x18[][] memory) {
+    ) public view onlyMintedModel returns (SD59x18[] memory, SD59x18[][][] memory) {
         if (_modelId != modelId) revert IncorrectModelId();
 
         int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
@@ -273,10 +273,10 @@ contract MelodyRNN is Ownable {
         }        
 
         SD59x18[][][] memory x1 = new SD59x18[][][](0);
-        SD59x18[][] memory states = new SD59x18[][](0);
+        SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
         SD59x18[] memory result = new SD59x18[](noteCount);
         for (uint256 i=0; i<noteCount; i++) {
-            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory newStates) = forward(
+            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][][] memory newStates) = forward(
                 x1,
                 currentInput,
                 states,
@@ -326,10 +326,10 @@ contract MelodyRNN is Ownable {
         }
 
         SD59x18[][][] memory x1 = new SD59x18[][][](0);
-        SD59x18[][] memory states = new SD59x18[][](0);
+        SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
         SD59x18[] memory result = new SD59x18[](noteCount);
         for (uint256 i=0; i<noteCount; i++) {
-            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][] memory newStates) = forward(
+            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][][] memory newStates) = forward(
                 x1,
                 currentInput,
                 states,

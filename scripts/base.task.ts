@@ -3,21 +3,34 @@ import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
 import sharp from 'sharp';
-import { ethers } from "ethers";
+import { ethers, utils } from "ethers";
+import path from 'path';
+import levenshtein from 'js-levenshtein';
+import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
+import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
+import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 
-
-const ContractName = "EternalAI";
+const ContractName = "Models";
 const MaxWeightLen = 1000;
-const MaxLayerType = 8;
-const GasLimit = "290000000"; // 100 M
-const MaxFeePerGas = "10010";  // 1e-5 gwei
-const MaxPriorityFeePerGas = "10000";
+const MaxLayerType = 9;
 
+const GasLimit = "90000000000"; // 100 B
+const MaxFeePerGas = "1001000000";  // 1e-5 gwei
+const MaxPriorityFeePerGas = "1000000000";
+// const GasLimit = "290000000"; // 100 M
+// const MaxFeePerGas = "10010";  // 1e-5 gwei
+// const MaxPriorityFeePerGas = "10000";
 const gasConfig = {
-  gasLimit: GasLimit,
-  maxPriorityFeePerGas: MaxPriorityFeePerGas,
-  maxFeePerGas: MaxFeePerGas,
+    gasLimit: GasLimit,
+    maxPriorityFeePerGas: MaxPriorityFeePerGas,
+    maxFeePerGas: MaxFeePerGas,
 };
+    
+const mintPrice = ethers.utils.parseEther('0.1');
+const mintConfig = { value: mintPrice };
+
+const evalPrice = ethers.utils.parseEther('0.01');
+const evalConfig = { value: evalPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -39,6 +52,8 @@ function getLayerType(name: string): number {
         layerType = 6;
     } else if (name === 'SimpleRNN') {
         layerType = 7;
+    } else if (name === 'LSTM') {
+        layerType = 8;
     }
     return layerType;
 }
@@ -61,6 +76,8 @@ function getLayerName(type: number): string {
         layerName = 'Embedding';
     } else if (type === 7) {
         layerName = 'SimpleRNN';
+    } else if (type === 8) {
+        layerName = 'LSTM';
     }
     return layerName;
 }
@@ -139,11 +156,60 @@ function getConvSize(
     return { out, pad };
 }
 
+async function getModelDirents(folder: string): Promise<fs.Dirent[]> {
+    const dirs = await fs.promises.readdir(folder, { withFileTypes: true });
+    return dirs.filter(dirent => dirent.isFile() && path.extname(dirent.name) == ".json");
+}
+
+function fuzzyMatch(word: string, dict: string[]): string {
+    let bestCand = "", bestDist = -1;
+    for(let cand of dict) {
+        const dist = levenshtein(word, cand);
+        if (bestCand === "" || dist < bestDist) {
+            bestCand = cand;
+            bestDist = dist;
+        }
+    }
+    return bestCand;
+}
+
+function tokenizeWordOnly(text: string): string[] {
+    const tokens: string[] = [];
+    let word = "";
+    for(let c of text) {
+        if (c === '\'' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+            word += c;
+        } else {
+            if (word !== "") {
+                tokens.push(word);
+                word = "";
+            }
+        }
+    }
+    return tokens;
+}
+
+function replaceMatchedWords(text: string, words: string[], matchedWords: string[]): string {
+    let result = "";
+    for(let i = 0; i < words.length; ++i) {
+        let pos = text.search(words[i]);
+        result += text.substring(0, pos) + matchedWords[i];
+        text = text.slice(pos + words[i].length);
+    }
+    return result;
+}
+
+function postprocessText(text: string, dict: string[]): string {
+    const words = tokenizeWordOnly(text);
+    const matchedWords = words.map(word => fuzzyMatch(word, dict));
+    const replacedText = replaceMatchedWords(text, words, matchedWords);
+    return replacedText;
+}
+
 task("mint-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id", "0", types.string)
-    .addOptionalParam("uri", "token URI", "", types.string)
+    .addOptionalParam("to", "new model owner address", "", types.string)
     .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
@@ -276,39 +342,59 @@ task("mint-model-id", "mint model id (and upload weights)")
     
                 result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(units)]);
                 input_units = units;
-            } 
-            newLayerConfig.push(result);
+            } else if (layer.class_name === 'LSTM') {
+                const units = layer.config.units;
+                console.log("input units to LSTM: ", input_units);
+                console.log("LSTM units:", units);
+                const activationFn: number = getActivationType(layer.config.activation);
+                const recActivationFn: number = getActivationType(layer.config.recurrent_activation);
+    
+                // reconstruct weights
+                let layerWeights = weightsFlat.splice(0, input_units * units * 4 + units * units * 4 + units * 4);
+                weights[layerType].push(layerWeights);
+                totSize[layerType] += layerWeights.length;
+    
+                result = abic.encode(["uint8", "uint8", "uint8", "uint256", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units), ethers.BigNumber.from(input_units)]);
+                input_units = units;
+            } else {
+                continue; // handle dropout etc
+            }
+
+            if (result.length > 0) {
+                newLayerConfig.push(result);
+            }
         }
         params.layers_config = newLayerConfig.filter((x: any) => x !== null);
+        params.classes_name =  params.classes_name || [];
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
             const baseContract = await deployments.get(ContractName);
             contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        try {
-            const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name, params.classes_name, gasConfig);
-            await tx.wait();
-            console.log("Minted new EternalAI model, tx:", tx.hash);
-        } catch (e) {
-            const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
-                throw e;
-            });
-            if (ethers.utils.getAddress(ownerAddress) === ethers.utils.getAddress(signer.address)) {
-                console.log("Using existing EternalAI model #" + tokenId.toString());
-            } else {
-                console.log("EternalAI #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
-                return;
-            }
-        }
+        const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
+        // deploy a EternalAI contract
+        const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
+        const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name, contractAddress);
+        // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+        // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
+        // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+        const eai = EaiFac.attach(eaiImpl.address);
+        console.log("Deployed EternalAI contract: ", eai.address);
 
         console.log("Setting AI model");
-
-        const setWeightTx = await c.setEternalAI(tokenId, params.layers_config, gasConfig);
+        const setWeightTx = await eai.setEternalAI(tokenId, params.layers_config, gasConfig);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
+
+        if (params.vocabulary) {
+            console.log("Setting vocabs");
+            const vocabs = params.vocabulary;
+            const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]");
+            await setVocabTx.wait();
+            console.log('tx', setVocabTx.hash);
+        }
 
         const weightStr = JSON.stringify(weights);
         console.log("Total weights len: ", weightStr.length);
@@ -318,31 +404,96 @@ task("mint-model-id", "mint model id (and upload weights)")
         const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
             return _w.splice(0, maxlen);
         }
+        const checkForDeployedModel = (receipt: { events: any[]; }) => {
+            const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
+            if (deployedEvent != null) {
+                const owner = deployedEvent.args?.owner;
+                const tokenId = deployedEvent.args?.tokenId;
+                console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+            }
+        }
 
-        for(let i = 0; i < MaxLayerType; ++i) {
+        for (let i = 0; i < MaxLayerType; ++i) {
             if (totSize[i] === 0) continue;
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
-            for(let wi = 0; wi < weights[i].length; ++wi) {
+
+            for (let wi = 0; wi < weights[i].length; ++wi) {
                 for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                    const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i, gasConfig);
+                        
+                    const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                    const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
-                    if (deployedEvent != null) {
-                        const owner = deployedEvent.args?.owner;
-                        const tokenId = deployedEvent.args?.tokenId;
-                        console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-                    }
+                    
+                    checkForDeployedModel(receipt);
                 }
             }            
         }
+        
+        try {
+            const tx = await c.safeMint(taskArgs.to || signer.address, "", eai.address, {...mintConfig, gasLimit: 1_000_000 });
+            const rc = await tx.wait();
+            // listen for Transfer event
+            const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
+            if (transferEvent != null) {
+                const from = transferEvent.args?.from;
+                const to = transferEvent.args?.to;
+                const tokenId = transferEvent.args?.tokenId;
+                console.log("tx:", tx.hash);
+                console.log(`Minted new EternalAI model, to=${to}, tokenId=${tokenId}`);
+            }
+            checkForDeployedModel(rc);
+        } catch (e) {
+            console.error("Error minting model: ", e);
+            throw e;
+        }
+
+        fs.writeFileSync("model_address.json", JSON.stringify(eai.address));
+    });
+
+task("mint-models", "mint multiple model in a folder (with their weights)")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("folder", "folder path", "", types.string)
+    .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        const folder = taskArgs.folder;
+        const modelDirents = await getModelDirents(folder);
+        
+        const models = modelDirents.map((dirent, index) => ({
+            name: path.basename(dirent.name, '.json'),
+            path: path.join(folder, dirent.name),
+        }));
+
+        const modelInfos = [];
+        for(const model of models) {
+            console.log("Minting model:", model.name);
+            await hre.run("mint-model-id", {
+                model: model.path, 
+                contract: taskArgs.contract,
+                maxlen: taskArgs.maxlen,
+            });
+            const address: string = JSON.parse(fs.readFileSync("model_address.json", 'utf-8'));
+            const c = await ethers.getContractAt(ContractName, address, signer);
+            const modelId = await c.modelId();
+        
+            modelInfos.push({
+                name: model.name,
+                id: modelId,
+                contractAddress: address,
+            })
+            fs.writeFileSync("model_list.json", JSON.stringify(modelInfos));
+        }
+
     });
 
 task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
-    .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
+    .addOptionalParam("offline", "whether to create tx or not", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -356,27 +507,36 @@ task("eval-img", "evaluate model for each layer")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        // const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(contractAddress, EternalAIArtifact.abi, signer);
 
         const imgRaw = fs.readFileSync(taskArgs.img);
         console.log("imgRaw: ", imgRaw);
         // TODO: Get inputDim from EternalAI and use the width and height from inputDim instead
         // How to get input image size?
 
-        const img = sharp(imgRaw);
-        const metadata = await img.metadata(); 
-        const w = metadata.width;
-        const h = metadata.height;
-        if (!w || !h) {
-            console.log('width and height metadata not found');
-            return;
+        const model = await modelContract.getInfo();
+        const inputDim = model[0];
+        if (inputDim.length < 2) {
+            throw new Error("Invalid model input dim");
         }
+        const h = inputDim[0].toNumber();
+        const w = inputDim[1].toNumber();
+
+        const img = sharp(imgRaw);
+        // const metadata = await img.metadata(); 
+        // const w = metadata.width;
+        // const h = metadata.height;
+        // if (!w || !h) {
+        //     console.log('width and height metadata not found');
+        //     return;
+        // }
 
         const imgBuffer = await img.removeAlpha().resize(w, h).raw().toBuffer();
         const imgArray = [...imgBuffer];
         const pixels = imgArray.map((b: any) =>
             ethers.BigNumber.from(b).mul(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(18))));
 
-        const model = await c.getInfo(tokenId);
         let numLayers = model[3].length;
         let batchLayerNum = 1;
         let inputs = pixels;
@@ -384,6 +544,7 @@ task("eval-img", "evaluate model for each layer")
         let x1: ethers.BigNumber[][][] = pixelsToImage(pixels, h, w, 3);
         let x2: ethers.BigNumber[] = [];
         let classsNameRes = "";
+        let confidence = ethers.BigNumber.from("0");
 
         let startTime = new Date().getTime();
 
@@ -391,40 +552,32 @@ task("eval-img", "evaluate model for each layer")
             for (let i = 0; ; i = i + batchLayerNum) {
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
-
+    
                 console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
                 if (x1.length > 0) {
                     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
-                    // fs.writeFileSync(`x1_${i}.json`, JSON.stringify(x1));
                 }
                 if (x2.length > 0) {
                     console.log(`x2: (${x2.length})`);
-                    // fs.writeFileSync(`x2_${i}.json`, JSON.stringify(x2));
                 }
-                const [className, r1, r2] = await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
-
-                // const [className, r1, r2] = await measureTime(async () => {
-                //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
-                // });
-                x1 = r1;
-                x2 = r2;
-                classsNameRes = className;
-
-                if (className != "") {
-                    console.log("result: ", className);
+                    
+                [classsNameRes, x1, x2, confidence] = await modelContract.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...gasConfig });
+                if (classsNameRes !== "") {
+                    console.log("Class name:", classsNameRes);                    
+                    console.log("Confidence:", confidence);
+                    console.log(x2);
+                    // console.log("Confidence:", confidence.div(1e14).toNumber() / 100.0);
                 }
-
-                // console.log("result:", output, className);
 
                 if (toLayerIndex >= numLayers - 1) {
                     break;
                 }
-            }    
+            }
         } else {
             for (let i = 0; ; i = i + batchLayerNum) {
                 const fromLayerIndex = i;
                 const toLayerIndex = i + batchLayerNum - 1;
-
+    
                 console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
                 if (x1.length > 0) {
                     console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
@@ -432,14 +585,16 @@ task("eval-img", "evaluate model for each layer")
                 if (x2.length > 0) {
                     console.log(`x2: (${x2.length})`);
                 }
-
+    
                 const tx: ethers.ContractTransaction = await measureTime(async () => {
-                    return await c.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, gasConfig);
+                    return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig, ...gasConfig });
                 });
-
+    
                 console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
                 const receipt = await tx.wait(1);
-
+    
+                console.log(`Used gas: `, receipt.gasUsed);
+    
                 const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
                 const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
                 if (forwardedEvent) {
@@ -448,7 +603,7 @@ task("eval-img", "evaluate model for each layer")
                     const toLayerIndex = forwardedEvent.args?.toLayerIndex;
                     const outputs1 = forwardedEvent.args?.outputs1;
                     const outputs2 = forwardedEvent.args?.outputs2;
-                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs1, outputs2 });
+                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs2 });
                     x1 = outputs1;
                     x2 = outputs2;
                 } else if (classifiedEvent) {
@@ -456,20 +611,131 @@ task("eval-img", "evaluate model for each layer")
                     const classIndex = classifiedEvent.args?.classIndex;
                     const className = classifiedEvent.args?.className;
                     const outputs = classifiedEvent.args?.outputs;
-                    console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs });
+                    const confidence = classifiedEvent.args?.confidence;
+                    console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs, confidence });
                     classsNameRes = className;
                 }
-
+    
                 if (toLayerIndex >= numLayers - 1) {
                     break;
                 }
-            }
+            }                
         }
 
         let endTime = new Date().getTime();
         console.log("Time: ", (endTime - startTime) / (60 * 1000));
     });
 
+task("gas-generate-text", "estimate gas of generate-text")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("id", "token id of model", "1", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        let contractAddress = taskArgs.contract;
+        if (contractAddress === "") {
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
+        }
+
+        const prompt = "Q";
+        const seed = ethers.BigNumber.from(123);
+
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const modelAddress = await c.modelAddr(ethers.BigNumber.from(taskArgs.id));
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const temperature = ethers.BigNumber.from(1.0).mul(ethers.constants.WeiPerEther);
+
+        let startTime = new Date().getTime();
+
+        for(let i = 1; i <= 100; ++i) {
+            const toGenerate = ethers.BigNumber.from(i);
+            const gas = await modelContract.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+            console.log(i, gas);
+        }
+
+        let endTime = new Date().getTime();
+        console.log("Time: ", (endTime - startTime) / (1000));
+    });
+
+task("generate-text", "generate text from RNN model")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("id", "token id of model", "1", types.string)
+    .addOptionalParam("prompt", "input prompt", "", types.string)
+    .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
+    .addOptionalParam("generatepertx", "number of characters to generate per tx", -1, types.int)
+    .addOptionalParam("dictionary", "dictionary for fuzzy match post processing", "", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        let contractAddress = taskArgs.contract;
+        if (contractAddress === "") {
+            const baseContract = await deployments.get(ContractName);
+            contractAddress = baseContract.address;
+        }
+
+        let prompt = taskArgs.prompt;
+        const toGenerate = taskArgs.togenerate;
+        const generatePerTx = (taskArgs.generatepertx == -1) ? toGenerate : taskArgs.generatepertx;
+
+        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+
+        let startTime = new Date().getTime();
+        let result = "";
+        let seed = ethers.BigNumber.from("123");
+        let text;
+
+//         result = `
+// No, sir, I will not?
+
+// CATESBY:
+// Ay, and you thought
+// I think it on the duke stink in my staying like to the humoulches with gentlemen o' the contract in her,
+// And say one that had woney to his parts.
+// `
+
+        let states: ethers.BigNumber[][] = [];
+        for(let i = 0; i < toGenerate; i += generatePerTx) {
+            const generate = Math.min(toGenerate - i, generatePerTx);
+            console.log(`Generating characters ${i+1}-${i+generate}`);
+            [text, states, seed] = await modelContract.generateTextNoTx(tokenId, prompt, generate, states, seed, gasConfig);
+            result += text;
+            prompt = text.slice(text.length - 1)   
+        }
+
+        console.log("-------------- Prompt + Generated text --------------");
+        console.log(taskArgs.prompt + result);
+        if (taskArgs.dictionary) {            
+            const dict: string[] = JSON.parse(fs.readFileSync(taskArgs.dictionary, 'utf-8'));
+            console.log("------------  Prompt + Postprocessed text ----------");
+            console.log(taskArgs.prompt + postprocessText(result, dict));
+        }
+        console.log("----------------------------------------------------");
+
+        // const tx = await modelContract.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
+        // const rc = await tx.wait();
+
+        // const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
+        // if (textGeneratedEvent) {
+        //     const text = textGeneratedEvent.args?.result;
+        //     console.log("-------------- Prompt + Generated text --------------");
+        //     console.log(prompt + text);
+        //     console.log("-----------------------------------------------------");
+        // }
+        // console.log(`Used gas: `, rc.gasUsed);
+
+        let endTime = new Date().getTime();
+        console.log("Time: ", (endTime - startTime) / (1000));
+    });
 
 task("get-model", "get eternal AI model")
     .addOptionalParam("contract", "contract address", "", types.string)
@@ -484,8 +750,69 @@ task("get-model", "get eternal AI model")
         }
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const model = await c.getInfo(tokenId);
+        // console.log(contractAddress, tokenId);
+        // const modelAddress = await c.modelAddr(tokenId);
+        // console.log(modelAddress);
+        const modelContract = new ethers.Contract(contractAddress, EternalAIArtifact.abi, signer);
+        const model = await modelContract.getInfo();
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
         // console.log(JSON.stringify(model));
+
+        // const lstmInfo = await c.getLSTMLayer(tokenId, ethers.BigNumber.from(0));
+        // const lstmInfoDec = [
+        //     lstmInfo[0].toString(),
+        //     lstmInfo[1].toString(),
+        //     lstmInfo[2].map(numArr => numArr.map(num => num.toString())),
+        //     lstmInfo[3].map(numArr => numArr.map(num => num.toString())),
+        //     lstmInfo[4].map(num => num.toString()),
+        // ]
+        // fs.writeFileSync("lstmInfo.json", JSON.stringify(lstmInfoDec));
     });
+
+task("get-model-ids")
+    .addOptionalParam("folder", "folder path", "", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+
+        const folder = taskArgs.folder;
+        const modelDirents = await getModelDirents(folder);
+        
+        const models = modelDirents.map((dirent, index) => ({
+            name: path.basename(dirent.name, '.json'),
+            id: ethers.BigNumber.from(utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0"))).toString(),
+        }));
+
+        fs.writeFileSync("model_list_2.json", JSON.stringify(models));
+    })
+
+task("check-models")
+    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("folder", "folder path", "", types.string)
+    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const { ethers, deployments, getNamedAccounts } = hre;
+        const { deployer: signerAddress } = await getNamedAccounts();
+        const signer = await ethers.getSigner(signerAddress);
+        
+        const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
+        const modelAddress = await c.modelAddr(ethers.BigNumber.from(1));
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        const folder = taskArgs.folder;
+        const modelDirents = await getModelDirents(folder);
+        
+        const models = modelDirents.map(dirent => ({
+            name: path.basename(dirent.name, '.json'),
+            id: utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0")),
+        }));
+
+        for(const model of models) {
+            const data = await modelContract.getInfo();
+            if (!data[0][0].eq(ethers.BigNumber.from(24))) {
+                console.log(`Model ${model.name} at id ${model.id} not found`);
+            }
+        }
+
+        fs.writeFileSync("model_list_2.json", JSON.stringify(models));
+    })

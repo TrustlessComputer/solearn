@@ -15,5 +15,8 @@
     "hardhat-tracer": "^2.2.2",
     "sharp": "^0.32.0",
     "solmate": "^6.7.0"
+  },
+  "dependencies": {
+    "js-levenshtein": "^1.1.6"
   }
 }

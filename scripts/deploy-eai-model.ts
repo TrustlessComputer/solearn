@@ -116,7 +116,7 @@ function getConvSize(
 }
 
 async function main() {
-    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER } = process.env;
+    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, CHUNK_LEN } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
     }
@@ -315,7 +315,7 @@ async function main() {
     console.log("Total weights len: ", weightStr.length);
 
     console.log(`Set weights`);
-    const maxlen = 1000; // do not chunk the weights
+    const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
     const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
         return _w.splice(0, maxlen);
     }

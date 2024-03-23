@@ -11,23 +11,26 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./thirdparty/solidity-stringutils/strings.sol";
 import "./lib/layers/Layers.sol";
+import "./lib/Utils.sol";
 
 error NotTokenOwner();
 error InsufficientMintPrice();
 error InsufficientEvalPrice();
 error TransferFailed();
+error UnknownTokenNotInVocabs();
 error IncorrectModelId();
+error NotModelRegistry();
 
 interface IModelReg is IERC721Upgradeable {
     function modelAddr(uint256 tokenId) external view returns (address);
+    function evalPrice() external view returns (uint256);
+    function royaltyReceiver() external view returns (address);
 }
 
-contract EternalAI is
-    Initializable
-{
+contract EternalAI is Ownable {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
@@ -35,20 +38,25 @@ contract EternalAI is
     using Layers for Layers.Conv2DLayer;
     using Layers for Layers.EmbeddingLayer;
     using Layers for Layers.SimpleRNNLayer;
+    using Layers for Layers.LSTM;
     using Tensor1DMethods for Tensors.Tensor1D;
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor3DMethods for Tensors.Tensor3D;
     using Tensor4DMethods for Tensors.Tensor4D;
+    using Strings for *;
 
     Model public model;
+    VocabInfo public vocabInfo;
     IModelReg public modelRegistry;
+    uint256 public modelId;
     uint256 version;
 
     event Classified(
         uint256 indexed tokenId,
         uint256 classIndex,
         string className,
-        SD59x18[] outputs
+        SD59x18[] outputs,
+        SD59x18 confidence
     );
 
     event Forwarded(
@@ -62,6 +70,13 @@ contract EternalAI is
     event Deployed(
         address indexed owner,
         uint256 indexed tokenId
+    );
+
+    event TextGenerated(
+        uint256 indexed tokenId,
+        string result,
+        SD59x18[][][] states,
+        uint256 seed
     );
 
     struct Model {
@@ -79,6 +94,13 @@ contract EternalAI is
         Layers.Conv2DLayer[] c2;
         Layers.EmbeddingLayer[] embedding;
         Layers.SimpleRNNLayer[] simpleRNN;
+        Layers.LSTM[] lstm;       
+    }
+
+    struct VocabInfo {
+        string[] vocabs;
+        mapping(bytes32 => uint256) hashToIndex;
+        uint unkIndex;
     }
 
     struct Info {
@@ -94,19 +116,44 @@ contract EternalAI is
         MaxPooling2D,
         Conv2D,
         Embedding,
-        SimpleRNN
+        SimpleRNN,
+        LSTM
     }
 
-    function initialize(string memory _modelName, address _modelRegistry) public initializer {
+    modifier onlyOwnerOrOperator() {
+        if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
+            revert NotTokenOwner();
+        }
+        _;
+    }
+
+    modifier onlyMintedModel() {
+        if (modelId == 0) {
+            revert IncorrectModelId();
+        }
+        _;
+    }
+
+    constructor(string memory _modelName, string[] memory _classesName, address _modelRegistry) Ownable() {
         model.modelName = _modelName;
+        model.classesName = _classesName;
+
         modelRegistry = IModelReg(_modelRegistry);      
         version = 1;
     }
 
-    function afterUpgrade() public {}
+
+
+    // function initialize(string memory _modelName, string[] memory _classesName, address _modelRegistry) public initializer {
+    //     __Ownable_init();
+    //     model.modelName = _modelName;
+    //     model.classesName = _classesName;
+
+    //     modelRegistry = IModelReg(_modelRegistry);      
+    //     version = 1;
+    // }
 
     function getInfo(
-        uint256 modelId
     )
         public
         view
@@ -117,17 +164,16 @@ contract EternalAI is
             Info[] memory
         )
     {
-        Model storage m = model;
         return (
             model.inputDim,
             model.modelName,
             model.classesName,
-            m.layers
+            model.layers
         );
     }
 
     function getDenseLayer(
-        uint256 modelId,
+        uint256 _modelId,
         uint256 layerIdx
     )
         public
@@ -147,7 +193,7 @@ contract EternalAI is
     }
 
     function getConv2DLayer(
-        uint256 modelId,
+        uint256 _modelId,
         uint256 layerIdx
     )
         public
@@ -170,8 +216,34 @@ contract EternalAI is
         b = layer.b.mat;
     }
 
+    function getLSTMLayer(
+        uint256 _modelId,
+        uint256 layerIdx
+    )
+        public
+        view
+        returns (
+            uint256,
+            uint256,
+            SD59x18[][] memory,
+            SD59x18[][] memory,
+            SD59x18[] memory
+        )
+    {
+        Layers.LSTM memory layer = model.lstm[layerIdx];
+        Layers.LSTMCell memory cell = layer.cell;
+        uint256 inputUnits = layer.inputUnits;
+        uint256 units = cell.units;
+        return (
+            inputUnits,
+            units,
+            cell.kernel_f.mat,
+            cell.recurrentKernel_f.mat,
+            cell.bias_f.mat
+        );
+    }
+
     function forward(
-        uint256 modelId,
         SD59x18[][][] memory x1,
         SD59x18[] memory x2,
         uint256 fromLayerIndex,
@@ -205,7 +277,7 @@ contract EternalAI is
     }
 
     function evaluate(
-        uint256 modelId,
+        uint256 _modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         SD59x18[][][] calldata x1,
@@ -213,14 +285,14 @@ contract EternalAI is
     )
         public
         view
-        returns (string memory, SD59x18[][][] memory, SD59x18[] memory)
+        onlyMintedModel
+        returns (string memory, SD59x18[][][] memory, SD59x18[] memory, SD59x18)
     {
         if (toLayerIndex >= model.layers.length) {
             toLayerIndex = model.layers.length - 1; // update to the last layer
         }
 
         (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
-            modelId,
             x1,
             x2,
             fromLayerIndex,
@@ -235,28 +307,29 @@ contract EternalAI is
                 }
             }
 
-            return (model.classesName[maxInd], r1, r2);
+            return (model.classesName[maxInd], r1, r2, r2[maxInd]);
         } else {
-            return ("", r1, r2);
+            return ("", r1, r2, sd(0));
         }
     }
 
     function classify(
-        uint256 modelId,
+        uint256 _modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         SD59x18[][][] calldata x1,
         SD59x18[] calldata x2
-    ) external payable {
-        // NOTE: TODO uncomment for mainnet
-        // if (msg.value < evalPrice) revert InsufficientEvalPrice();
+    ) external payable onlyMintedModel {
+        if (msg.value < modelRegistry.evalPrice()) revert InsufficientEvalPrice();
+        (bool success, ) = modelRegistry.royaltyReceiver().call{value: msg.value}("");
+        if (!success) revert TransferFailed();
+
 
         if (toLayerIndex >= model.layers.length) {
             toLayerIndex = model.layers.length - 1; // update to the last layer
         }
 
         (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
-            modelId,
             x1,
             x2,
             fromLayerIndex,
@@ -275,7 +348,8 @@ contract EternalAI is
                 modelId,
                 maxInd,
                 model.classesName[maxInd],
-                r2
+                r2,
+                r2[maxInd]
             );
         } else {
             emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);
@@ -288,12 +362,145 @@ contract EternalAI is
         // if (!success) revert TransferFailed();
     }
 
+    function evaluateRNN(
+        // Model memory model,
+        uint256 inputToken,
+        SD59x18[][][] memory rnn_state
+    ) internal view returns (SD59x18[] memory, SD59x18[][][] memory) {
+        uint256 x1 = inputToken;
+        SD59x18[] memory x2;
+
+        uint nLayers = model.layers.length;
+        for (uint256 i = 0; i < nLayers; i++) {
+            Info memory layerInfo = model.layers[i];
+            uint idx = layerInfo.layerIndex;
+
+            // add more layers
+            if (layerInfo.layerType == LayerType.Embedding) {
+                x2 = model.embedding[idx].forward(x1);
+            } else if (layerInfo.layerType == LayerType.Dense) {
+                x2 = model.d[idx].forward(x2);
+            } else if (layerInfo.layerType == LayerType.SimpleRNN) {
+                (x2, rnn_state[idx]) = model.simpleRNN[idx].forward(x2, rnn_state[idx]);
+            } else if (layerInfo.layerType == LayerType.LSTM) {
+                SD59x18[][] memory x2Ext;
+                (x2Ext, rnn_state[idx]) = model.lstm[idx].forward(x2, rnn_state[idx]);
+                x2 = x2Ext[0];
+            }
+        }
+
+        return (x2, rnn_state);
+    }
+
+    function tokenize(string memory str) internal view returns (uint256[] memory) {
+        Strings.slice memory slice = str.toSlice();
+        uint256 len = slice.len();
+
+        VocabInfo storage info = vocabInfo;
+        
+        uint256[] memory idxs = new uint256[](len); 
+        for(uint256 i = 0; i < len; ++i) {
+            string memory token = slice.nextRune().toString();
+            bytes32 _hash = Utils.getHash(token);
+            uint256 idx = info.hashToIndex[_hash];
+            idxs[i] = (idx == 0) ? (info.unkIndex - 1) : (idx - 1);
+        }
+
+        return idxs;
+    }
+
+    function decodeTokens(uint256[] memory tokens) internal view returns (string memory output) {
+        VocabInfo storage info = vocabInfo;
+        output = "";
+        for(uint i = 0; i < tokens.length; ++i) {
+            string memory ch = info.vocabs[tokens[i]];
+            output = string.concat(output, ch);
+        }
+        return output;
+    }
+
+    function getToken(
+        SD59x18[] memory x2,
+        SD59x18 temperature,
+        uint256 seed 
+    ) internal view returns (uint256) {
+        uint unkIndex = vocabInfo.unkIndex - 1;
+
+        SD59x18[] memory tmp = Utils.clone(x2);
+        tmp[unkIndex] = tmp[unkIndex] - sd(1e18 * 1e18);
+        for(uint i = 0; i < tmp.length; ++i) {
+            tmp[i] = tmp[i] / temperature;
+        }
+
+        Tensors.Tensor1D memory xt = Tensor1DMethods.from(tmp);
+        SD59x18[] memory probs = xt.softmax().mat;
+        uint256 outputToken = Utils.getWeightedRandom(probs, seed);
+        return outputToken;
+    }
+
+    function generateTextHelper(
+        string memory prompt,
+        uint256 toGenerate,
+        SD59x18[][][] memory states,
+        uint256 seed
+    ) internal view returns (string memory, SD59x18[][][] memory, uint256) {
+        SD59x18 temperature = sd(7e17);
+
+        Model memory model = model;
+
+        uint256[] memory tokens = tokenize(prompt); 
+
+        SD59x18[] memory x2;
+        if (states.length == 0) {
+            if (model.simpleRNN.length > 0) {
+                states = Tensor3DMethods.zerosTensor(model.simpleRNN.length, 1, model.simpleRNN[0].units).mat;
+            } else if (model.lstm.length > 0) {
+                states = Tensor3DMethods.zerosTensor(model.lstm.length, 2, model.lstm[0].cell.units).mat;
+            }
+            for(uint i = 0; i < tokens.length - 1; ++i) {
+                (x2, states) = evaluateRNN(tokens[i], states);
+            }
+        }
+
+        uint256 lastToken = tokens[tokens.length - 1];
+        uint256[] memory generatedTokens = new uint256[](toGenerate);
+        
+        for(uint i = 0; i < toGenerate; ++i) {
+            seed = uint256(keccak256(abi.encodePacked(seed)));
+            (x2, states) = evaluateRNN(lastToken, states);
+            lastToken = getToken(x2, temperature, seed);
+            generatedTokens[i] = lastToken;
+        }
+        string memory generatedText = decodeTokens(generatedTokens);
+        return (generatedText, states, seed); 
+    } 
+
+    function generateTextNoTx(
+        uint _modelId,
+        string memory prompt,
+        uint256 toGenerate,
+        SD59x18[][][] memory states,
+        uint256 seed
+    ) external view onlyMintedModel returns (string memory, SD59x18[][][] memory, uint256) {
+        return generateTextHelper(prompt, toGenerate, states, seed); 
+    }
+
+    function generateText(
+        uint _modelId,
+        string memory prompt,
+        uint256 toGenerate,
+        SD59x18[][][] memory states,
+        uint256 seed
+    ) external onlyMintedModel {
+        string memory generatedText;
+        (generatedText, states, seed) = generateTextHelper(prompt, toGenerate, states, seed);
+        emit TextGenerated(modelId, generatedText, states, seed); 
+    }
+
     function setEternalAI(
-        uint256 modelId,
+        uint256 _modelId,
         bytes[] calldata layers_config
-    ) external {
-        if (msg.sender != modelRegistry.ownerOf(modelId)) revert NotTokenOwner();
-        if (address(this) != modelRegistry.modelAddr(modelId)) revert IncorrectModelId();
+    ) external onlyOwnerOrOperator {
 
         if (model.numLayers > 0) {
             model.numLayers = 0;
@@ -304,18 +511,33 @@ contract EternalAI is
             delete model.mp2;
             delete model.embedding;
             delete model.simpleRNN;
+            delete model.lstm;
             delete model.layers;
         }
 
         loadEternalAI(layers_config);
     }
 
+    function setModelId(uint256 _modelId) external {
+        if (msg.sender != address(modelRegistry)) {
+            revert NotModelRegistry();
+        }
+        if (modelId > 0 || modelRegistry.modelAddr(_modelId) != address(this)) {
+            revert IncorrectModelId();
+        }
+
+        modelId = _modelId;
+        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
+            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
+        }
+    }
+
     function appendWeights(
-        uint256 modelId,
+        uint256 _modelId,
         SD59x18[] memory weights,
         uint256 layerInd,
         LayerType layerType
-    ) external {
+    ) external onlyOwnerOrOperator {
         uint appendedWeights;
         if (layerType == LayerType.Dense) {
             appendedWeights = model.d[layerInd].appendWeights(weights);
@@ -325,10 +547,28 @@ contract EternalAI is
             appendedWeights = model.embedding[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.SimpleRNN) {
             appendedWeights = model.simpleRNN[layerInd].appendWeights(weights);
+        } else if (layerType == LayerType.LSTM) {
+            appendedWeights = model.lstm[layerInd].appendWeightsPartial(weights);
         }
         model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights) {
-            emit Deployed(msg.sender, modelId);
+        if (model.appendedWeights == model.requiredWeights && _modelId > 0) {
+            emit Deployed(modelRegistry.ownerOf(modelId), _modelId);
+        }
+    }
+
+    function setVocabs(
+        uint256 _modelId,
+        string[] memory vocabs,
+        string memory unkToken
+    ) external onlyOwnerOrOperator {
+        VocabInfo storage info = vocabInfo;
+        info.vocabs = vocabs;
+        for(uint256 i = 0; i < vocabs.length; ++i) {
+            info.hashToIndex[Utils.getHash(vocabs[i])] = i+1;
+        }        
+        info.unkIndex = info.hashToIndex[Utils.getHash(unkToken)];
+        if (!Utils.equals(vocabs[info.unkIndex - 1], unkToken)) {
+            revert UnknownTokenNotInVocabs();
         }
     }
 
@@ -415,6 +655,15 @@ contract EternalAI is
 
             uint256 index = model.simpleRNN.length - 1;
             model.layers.push(Info(LayerType.SimpleRNN, index));
+        } else if (layerType == uint8(LayerType.LSTM)) {
+            (Layers.LSTM memory layer, uint out_dim, uint weights) = Layers
+                .makeLSTMLayer(slc, dim2);
+            model.lstm.push(layer);
+            model.requiredWeights += weights;
+            dim2 = out_dim;
+
+            uint256 index = model.lstm.length - 1;
+            model.layers.push(Info(LayerType.LSTM, index));
         }
         return (dim1, dim2);
     }

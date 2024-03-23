@@ -87,10 +87,10 @@ library Layers {
 		Tensors.ActivationFunc activation;
 		Tensors.ActivationFunc recurrentActivation;
 		
-		Tensors.Tensor1D kernel_i;
-		Tensors.Tensor1D kernel_f;
-		Tensors.Tensor1D kernel_c;
-		Tensors.Tensor1D kernel_o;
+		Tensors.Tensor2D kernel_i;
+		Tensors.Tensor2D kernel_f;
+		Tensors.Tensor2D kernel_c;
+		Tensors.Tensor2D kernel_o;
 		Tensors.Tensor2D recurrentKernel_i;
 		Tensors.Tensor2D recurrentKernel_f;
 		Tensors.Tensor2D recurrentKernel_c;
@@ -109,17 +109,24 @@ library Layers {
 		uint ptrLayer;
 	}
 	
-    function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal view returns (SD59x18[] memory, SD59x18[] memory) {
-    	SD59x18[] memory c;
-    	SD59x18[] memory o;
-    	{
-	    	Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
-	    	Tensors.Tensor1D memory c_tm1 = Tensor1DMethods.from(states[1]);
+	function forward(LSTMCell memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal view returns (SD59x18[] memory, SD59x18[] memory) {
+		SD59x18[] memory c;
+		SD59x18[] memory o;
+		{
+			if (states.length == 0) {
+				// make new
+				states = new SD59x18[][](2);
+				states[0] = new SD59x18[](layer.units);
+				states[1] = new SD59x18[](layer.units);
+			}
 
-			Tensors.Tensor1D memory x_i = Tensor1DMethods.mul(layer.kernel_i, x[0]);
-			Tensors.Tensor1D memory x_f = Tensor1DMethods.mul(layer.kernel_f, x[0]);
-			Tensors.Tensor1D memory x_c = Tensor1DMethods.mul(layer.kernel_c, x[0]);
-			Tensors.Tensor1D memory x_o = Tensor1DMethods.mul(layer.kernel_o, x[0]);
+			Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
+			Tensors.Tensor1D memory c_tm1 = Tensor1DMethods.from(states[1]);
+
+			Tensors.Tensor1D memory x_i = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_i);
+			Tensors.Tensor1D memory x_f = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_f);
+			Tensors.Tensor1D memory x_c = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_c);
+			Tensors.Tensor1D memory x_o = Tensor1DMethods.matMul(Tensor1DMethods.from(x), layer.kernel_o);
 
 			x_i = Tensor1DMethods.add(x_i, layer.bias_i);
 			x_f = Tensor1DMethods.add(x_f, layer.bias_f);
@@ -141,12 +148,10 @@ library Layers {
 			(c, o) = _compute_carry_and_output(layer, xArr, h_tm1_mat, c_tm1.mat);
 		}
 		SD59x18[] memory h = Tensor1DMethods.from(o).mul(Tensor1DMethods.from(c).activation(layer.activation)).mat;
-
 		return (h, c);
-
 	}
 
-	function _compute_carry_and_output(LSTMCell memory layer, SD59x18[][] memory x, SD59x18[][] memory h_tm1, SD59x18[] memory c_tm1) internal pure returns (SD59x18[] memory, SD59x18[] memory) {
+	function _compute_carry_and_output(LSTMCell memory layer, SD59x18[][] memory x, SD59x18[][] memory h_tm1, SD59x18[] memory c_tm1) internal view returns (SD59x18[] memory, SD59x18[] memory) {
 		Tensors.Tensor1D memory i = Tensor1DMethods.from(x[0]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[0]), layer.recurrentKernel_i)).activation(layer.recurrentActivation);
 		Tensors.Tensor1D memory f = Tensor1DMethods.from(x[1]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[1]), layer.recurrentKernel_f)).activation(layer.recurrentActivation);
 		SD59x18[] memory c = f.mul(Tensor1DMethods.from(c_tm1)).add(i.mul(Tensor1DMethods.from(x[2]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[2]), layer.recurrentKernel_c)).activation(layer.activation))).mat;
@@ -155,26 +160,22 @@ library Layers {
 		return (c, o);
 	}
 
-
-    function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory) {
+	function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory) {
 		SD59x18[][] memory res = new SD59x18[][](1);
-		SD59x18[] memory x = new SD59x18[](1);
+		// TODO: check
+		SD59x18[] memory x = new SD59x18[](layer.cell.units);
+		for (uint i = 0; i < _x.length; i++) {
+			x[i] = _x[i];
+		}
 
 		SD59x18[][] memory newStates = new SD59x18[][](2);
-		if (states.length >= 2) {
-			newStates[0] = states[0];
-			newStates[1] = states[1];
-		} else {
-			newStates[0] = new SD59x18[](layer.cell.units);
-			newStates[1] = new SD59x18[](layer.cell.units);
-		}
-		for (uint i = 0; i < _x.length; i++) {
-			x[0] = _x[i];
-			(SD59x18[] memory h, SD59x18[] memory c) = forward(layer.cell, x, newStates);
+		for (uint i = 0; i < res.length; i++) {
+			(SD59x18[] memory h, SD59x18[] memory c) = forward(layer.cell, x, states);
 			newStates[0] = h;
 			newStates[1] = c;
+			res[i] = h;
 		}
-		res[0] = newStates[0];
+
 		return (res, newStates);
 	}
 		
@@ -206,6 +207,16 @@ library Layers {
 		Tensors.Tensor2D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
 		
+		if (wt.m == 1 && bt.count() == 1) {
+			Tensors.Tensor1D memory wt1 = Tensor1DMethods.zerosTensor(wt.n);
+			for (uint i = 0; i < wt.n; i++) {
+				wt1.mat[i] = wt.mat[i][0];
+			}
+
+			Tensors.Tensor1D memory y = xt.matMul(wt1).add(bt);
+			Tensors.Tensor1D memory zt = y.activation(layer.activation);
+			return zt.mat;
+		}
 		Tensors.Tensor1D memory y = xt.matMul(wt).add(bt);
 		Tensors.Tensor1D memory zt = y.activation(layer.activation);
 		return zt.mat;
@@ -220,8 +231,6 @@ library Layers {
 
 		return zt.mat;
 	}
-
-
 
 	function forward(MaxPooling2DLayer memory layer, SD59x18[][][] memory x) internal pure returns (SD59x18[][][] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
@@ -242,14 +251,15 @@ library Layers {
 		return layer.w.mat[x];
 	}
 
-	function forward(SimpleRNNLayer memory layer, SD59x18[] memory x, SD59x18[] memory states) internal pure returns (SD59x18[] memory) {
+	function forward(SimpleRNNLayer memory layer, SD59x18[] memory x, SD59x18[][] memory states) internal pure returns (SD59x18[] memory, SD59x18[][] memory) {
 		Tensors.Tensor1D memory x_t = Tensor1DMethods.from(x);
-		Tensors.Tensor1D memory h_t = Tensor1DMethods.from(states);
+		Tensors.Tensor1D memory h_t = Tensor1DMethods.from(states[0]);
 		Tensors.Tensor1D memory yx_t = Tensor1DMethods.matMul(x_t, layer.wx);
 		Tensors.Tensor1D memory yh_t = Tensor1DMethods.matMul(h_t, layer.wh);
 		Tensors.Tensor1D memory y_t = Tensor1DMethods.add(Tensor1DMethods.add(yx_t, yh_t), layer.b);
 		Tensors.Tensor1D memory z_t = Tensor1DMethods.activation(y_t, layer.activation);
-		return z_t.mat;
+		states[0] = z_t.mat;
+		return (states[0], states);
 	}
 
 	function appendWeights(DenseLayer storage layer, SD59x18[] memory x) internal returns (uint) {
@@ -261,25 +271,17 @@ library Layers {
 			uint cnt = layer.w.n * layer.w.m;
 			while (idx < x.length && ptr < cnt) {
 				layer.w.mat[ptr / m].push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == cnt) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (ptrLayer == 1) {
 			uint n = layer.b.n; 
 			while (idx < x.length && ptr < n) {
 				layer.b.mat.push(x[idx]);
-				ptr++;
-				idx++;
+				ptr++; idx++;
 			}
-			if (ptr == n) {
-				++ptrLayer;
-				ptr = 0;
-			}
+			if (ptr == n) { ++ptrLayer; ptr = 0; }
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -292,21 +294,23 @@ library Layers {
 	function appendWeights(LSTM storage layer, SD59x18[] memory x) internal returns (uint) {
 		// will overwrite the weights
 		uint currentWeight = 0;
-		for (uint i = 0; i < layer.cell.units; i++) {
-			layer.cell.kernel_i.mat[i] = x[currentWeight];
-			currentWeight++;
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
-			layer.cell.kernel_f.mat[i] = x[currentWeight];
-			currentWeight++;
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
-			layer.cell.kernel_c.mat[i] = x[currentWeight];
-			currentWeight++;
-		}
-		for (uint i = 0; i < layer.cell.units; i++) {
-			layer.cell.kernel_o.mat[i] = x[currentWeight];
-			currentWeight++;
+		for (uint i = 0; i < layer.inputUnits; i++) {
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.kernel_i.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.kernel_f.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.kernel_c.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
+			for (uint j = 0; j < layer.cell.units; j++) {
+				layer.cell.kernel_o.mat[i][j] = x[currentWeight];
+				currentWeight++;
+			}
 		}
 
 		for (uint i = 0; i < layer.cell.units; i++) {
@@ -345,7 +349,6 @@ library Layers {
 			currentWeight++;
 		}
 		return currentWeight;
-
 	}
 
 	function appendWeightsPartial(LSTM storage layer, SD59x18[] memory x) internal returns (uint) {
@@ -356,23 +359,25 @@ library Layers {
 		uint idx = 0;
 		// kernel
 		if (ptrLayer == 0) {
-			uint n = cell.kernel_i.n;
-			uint k = 4 * n;
-			while (idx < x.length && ptr < k) {
-				uint part = (ptr % k) / n;
-				uint i = ptr % n;
+			uint m = cell.kernel_i.m;
+			uint k = 4 * m;
+			uint cnt = cell.kernel_i.n * k;
+			while (idx < x.length && ptr < cnt) {
+				uint i = ptr / k;
+				uint part = (ptr % k) / m;
+				uint j = ptr % m;
 				if (part == 0) {
-					cell.kernel_i.mat[i] = x[idx];
+					cell.kernel_i.mat[i][j] = x[idx];
 				} else if (part == 1) {
-					cell.kernel_f.mat[i] = x[idx];
+					cell.kernel_f.mat[i][j] = x[idx];
 				} else if (part == 2) {
-					cell.kernel_c.mat[i] = x[idx];
+					cell.kernel_c.mat[i][j] = x[idx];
 				} else { // if (part == 3) 
-					cell.kernel_o.mat[i] = x[idx];
+					cell.kernel_o.mat[i][j] = x[idx];
 				}
 				ptr++; idx++;
 			}
-			if (ptr == k) { ++ptrLayer; ptr = 0; }
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		// recurrentKernel
 		if (ptrLayer == 1) {
@@ -426,18 +431,23 @@ library Layers {
 		uint ptr = layer.ptr;
 		uint idx = 0;
 		if (ptrLayer == 0) {
-			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
-			if (ptr == layer.w.count()) {
-				++ptrLayer;
-				ptr = 0;
+			uint m = layer.w.m;
+			uint p = layer.w.p;
+			uint q = layer.w.q;
+			uint cnt = layer.w.n * layer.w.m * layer.w.p * layer.w.q;
+			while (idx < x.length && ptr < cnt) {
+				layer.w.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p].push(x[idx]);
+				ptr++; idx++;
 			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (ptrLayer == 1) {
-			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
-			if (ptr == layer.b.count()) {
-				++ptrLayer;
-				ptr = 0;
+			uint n = layer.b.n; 
+			while (idx < x.length && ptr < n) {
+				layer.b.mat.push(x[idx]);
+				ptr++; idx++;
 			}
+			if (ptr == n) { ++ptrLayer; ptr = 0; }
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -452,11 +462,13 @@ library Layers {
 		uint ptr = layer.ptr;
 		uint idx = 0;
 		if (ptrLayer == 0) {
-			(ptr, idx) = layer.w.loadPartial(x, ptr, idx);
-			if (ptr == layer.w.count()) {
-				++ptrLayer;
-				ptr = 0;
+			uint m = layer.w.m;
+			uint cnt = layer.w.n * layer.w.m;
+			while (idx < x.length && ptr < cnt) {
+				layer.w.mat[ptr / m].push(x[idx]);
+				ptr++; idx++;
 			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -471,25 +483,30 @@ library Layers {
 		uint ptr = layer.ptr;
 		uint idx = 0;
 		if (ptrLayer == 0) {
-			(ptr, idx) = layer.wx.loadPartial(x, ptr, idx);
-			if (ptr == layer.wx.count()) {
-				++ptrLayer;
-				ptr = 0;
+			uint m = layer.wx.m;
+			uint cnt = layer.wx.n * layer.wx.m;
+			while (idx < x.length && ptr < cnt) {
+				layer.wx.mat[ptr / m].push(x[idx]);
+				ptr++; idx++;
 			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (ptrLayer == 1) {
-			(ptr, idx) = layer.wh.loadPartial(x, ptr, idx);
-			if (ptr == layer.wh.count()) {
-				++ptrLayer;
-				ptr = 0;
+			uint m = layer.wh.m;
+			uint cnt = layer.wh.n * layer.wh.m;
+			while (idx < x.length && ptr < cnt) {
+				layer.wh.mat[ptr / m].push(x[idx]);
+				ptr++; idx++;
 			}
+			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
 		if (ptrLayer == 2) {
-			(ptr, idx) = layer.b.loadPartial(x, ptr, idx);
-			if (ptr == layer.b.count()) {
-				++ptrLayer;
-				ptr = 0;
+			uint n = layer.b.n; 
+			while (idx < x.length && ptr < n) {
+				layer.b.mat.push(x[idx]);
+				ptr++; idx++;
 			}
+			if (ptr == n) { ++ptrLayer; ptr = 0; }
 		}
 		if (idx < x.length) {
 			revert TooMuchData();
@@ -530,10 +547,10 @@ library Layers {
 				Tensors.ActivationFunc(actv),
 				Tensors.ActivationFunc(ractv),
 				
-				Tensor1DMethods.zerosTensor(numUnits),
-				Tensor1DMethods.zerosTensor(numUnits),
-				Tensor1DMethods.zerosTensor(numUnits),
-				Tensor1DMethods.zerosTensor(numUnits),
+				Tensor2DMethods.zerosTensor(numInputs, numUnits),
+				Tensor2DMethods.zerosTensor(numInputs, numUnits),
+				Tensor2DMethods.zerosTensor(numInputs, numUnits),
+				Tensor2DMethods.zerosTensor(numInputs, numUnits),
 				Tensor2DMethods.zerosTensor(numUnits, numUnits),
 				Tensor2DMethods.zerosTensor(numUnits, numUnits),
 				Tensor2DMethods.zerosTensor(numUnits, numUnits),
@@ -547,7 +564,7 @@ library Layers {
 			0
 		);
 		out_dim = numUnits;
-		requiredWeights = 8 * numUnits + 4 * numUnits * numUnits;
+		requiredWeights = 4 * numInputs * numUnits + 4 * numUnits * numUnits + 4 * numUnits;
 	}
 
 	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (FlattenLayer memory layer, uint256 out_dim) {
