@@ -27,7 +27,7 @@ const config: HardhatUserConfig = {
       },
       gas: 100_000_000,
       allowUnlimitedContractSize: true,
-      blockGasLimit: 2_500_000_000,
+      blockGasLimit: 100_000_000_000,
     },
     // anvil: {
     //   url: "http://127.0.0.1:8545/",

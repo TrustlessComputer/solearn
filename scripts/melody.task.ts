@@ -201,7 +201,7 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
                 result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
             } else if (layer.class_name === 'InputLayer') {
                 const dim = layer.config.batch_input_shape.slice(1);
-                if (dim.length == 1 && dim[0] == null) {
+                if (dim.length == 1 || dim.length == 2) {
                     result = abic.encode(["uint8", "uint8"], [layerType, 0]);
                     input_units = 1;
                 } else if (dim.length == 3) {
