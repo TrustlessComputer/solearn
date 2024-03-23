@@ -304,7 +304,7 @@ async function main() {
     if (params.vocabulary) {
         console.log("Setting vocabs");
         const vocabs = params.vocabulary;
-        const setVocabTx = await mldy.setVocabs(vocabs);
+        const setVocabTx = await mldy.setVocabs(vocabs, gasConfig);
         await setVocabTx.wait();
         console.log('tx', setVocabTx.hash);
     }

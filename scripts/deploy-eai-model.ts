@@ -306,7 +306,7 @@ async function main() {
     if (params.vocabulary) {
         console.log("Setting vocabs");
         const vocabs = params.vocabulary;
-        const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]");
+        const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]", gasConfig);
         await setVocabTx.wait();
         console.log('tx', setVocabTx.hash);
     }
