@@ -68,6 +68,7 @@ contract MelodyRNN is Ownable {
         Layers.FlattenLayer[] f;
         Layers.DenseLayer[] d;
         Layers.LSTM[] lstm;
+        Layers.EmbeddingLayer[] embedding;
     }
 
     struct Info {
@@ -161,26 +162,22 @@ contract MelodyRNN is Ownable {
     }
 
     function forward(
-        SD59x18[][][] memory x1,
-        SD59x18[] memory x2,
+        uint256 input,
         SD59x18[][][] memory states,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex
-    ) public view returns (SD59x18[][][] memory, SD59x18[] memory, SD59x18[][][] memory) {
-        if (toLayerIndex >= model.layers.length) {
-            toLayerIndex = model.layers.length - 1; // update to the last layer
-        }
+        bool isGenerating
+    ) public view returns (SD59x18[] memory, SD59x18[][][] memory) {
+        SD59x18[] memory x2;
         SD59x18[][] memory x2Ext;
-        for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
+        for (uint256 i = 0; i < model.layers.length; i++) {
             Info memory layerInfo = model.layers[i];
 
             // add more layers
-            if (layerInfo.layerType == LayerType.Rescale) {
-                x1 = model.r[layerInfo.layerIndex].forward(x1);
-            } else if (layerInfo.layerType == LayerType.Flatten) {
-                x2 = model.f[layerInfo.layerIndex].forward(x1);
+            if (layerInfo.layerType == LayerType.Embedding) {
+                x2 = model.embedding[layerInfo.layerIndex].forward(input);
             } else if (layerInfo.layerType == LayerType.Dense) {
-                x2Ext = model.d[layerInfo.layerIndex].forward(x2Ext);
+                if (i < model.layers.length - 1 || isGenerating) {
+                    x2Ext = model.d[layerInfo.layerIndex].forward(x2Ext);
+                }                
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 Layers.LSTM memory lstm = model.lstm[layerInfo.layerIndex];
                 (x2Ext, states[layerInfo.layerIndex]) = lstm.forward(x2, states[layerInfo.layerIndex]);
@@ -188,7 +185,7 @@ contract MelodyRNN is Ownable {
         }
         Tensors.Tensor1D memory x2Tensor = Tensor1DMethods.from(x2Ext[0]).softmax();
 
-        return (x1, x2Tensor.mat, states);
+        return (x2Tensor.mat, states);
     }
 
     // function evaluate(
@@ -267,30 +264,23 @@ contract MelodyRNN is Ownable {
 
         int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
 
-        SD59x18[] memory currentInput = x;
-        for (uint256 i=0; i<currentInput.length; i++) {
-            currentInput[i] = currentInput[i] / sd(VOCAB_SIZE * 1e18);
-        }        
-
-        SD59x18[][][] memory x1 = new SD59x18[][][](0);
+        SD59x18[] memory r2;
         SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
-        SD59x18[] memory result = new SD59x18[](noteCount);
-        for (uint256 i=0; i<noteCount; i++) {
-            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][][] memory newStates) = forward(
-                x1,
-                currentInput,
-                states,
-                0,
-                100
-            );
-            states = newStates;
-            currentInput = new SD59x18[](1);
-            currentInput[0] = r2[0];
-            result[i] = sd(int256(sampleWithTemperature(r2, seed)) * 1e18);
-            seed = int256(uint256(keccak256(abi.encodePacked(seed))));
+        for (uint256 i=0; i<x.length-2; i++) {
+            (r2, states) = forward(x[i].intoUint256() / 1e18, states, false);
         }
-        if (vocabInfo.hasVocab) {
-            result = decodeTokens(result);
+
+        SD59x18[] memory result = new SD59x18[](noteCount);
+        uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
+        for (uint256 i=0; i<noteCount; i++) {
+            (r2, states) = forward(inputToken, states, true);
+            uint256 nxtToken = sampleWithTemperature(r2, seed);
+            if (vocabInfo.hasVocab) {
+                nxtToken = vocabInfo.vocabs[nxtToken];
+            }
+            result[i] = sd(int256(nxtToken) * 1e18);
+            seed = int256(uint256(keccak256(abi.encodePacked(seed))));
+            inputToken = nxtToken;
         }
         return (result, states);
     }
@@ -320,27 +310,23 @@ contract MelodyRNN is Ownable {
         if (_modelId != modelId) revert IncorrectModelId();
         int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
 
-        SD59x18[] memory currentInput = x;
-        for (uint256 i=0; i<currentInput.length; i++) {
-            currentInput[i] = currentInput[i] / sd(VOCAB_SIZE * 1e18);
+        SD59x18[] memory r2;
+        SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
+        for (uint256 i=0; i<x.length-2; i++) {
+            (r2, states) = forward(x[i].intoUint256() / 1e18, states, false);
         }
 
-        SD59x18[][][] memory x1 = new SD59x18[][][](0);
-        SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
         SD59x18[] memory result = new SD59x18[](noteCount);
+        uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
         for (uint256 i=0; i<noteCount; i++) {
-            (SD59x18[][][] memory r1, SD59x18[] memory r2, SD59x18[][][] memory newStates) = forward(
-                x1,
-                currentInput,
-                states,
-                0,
-                100
-            );
-            states = newStates;
-            currentInput = new SD59x18[](1);
-            currentInput[0] = r2[0];
-            result[i] = sd(int256(sampleWithTemperature(r2, seed)) * 1e18);
+            (r2, states) = forward(inputToken, states, true);
+            uint256 nxtToken = sampleWithTemperature(r2, seed);
+            if (vocabInfo.hasVocab) {
+                nxtToken = vocabInfo.vocabs[nxtToken];
+            }
+            result[i] = sd(int256(nxtToken) * 1e18);
             seed = int256(uint256(keccak256(abi.encodePacked(seed))));
+            inputToken = nxtToken;
         }
 
         emit NewMelody(modelId, result);
@@ -357,6 +343,7 @@ contract MelodyRNN is Ownable {
             delete model.f;
             delete model.r;
             delete model.lstm;
+            delete model.embedding;
             delete model.layers;
         }
 
@@ -373,6 +360,8 @@ contract MelodyRNN is Ownable {
             appendedWeights = model.d[layerInd].appendWeights(weights);
         } else if (layerType == LayerType.LSTM) {
             appendedWeights = model.lstm[layerInd].appendWeightsPartial(weights);
+        } else if (layerType == LayerType.Embedding) {
+            appendedWeights = model.embedding[layerInd].appendWeights(weights);
         }
         
         model.appendedWeights += appendedWeights;
@@ -406,6 +395,15 @@ contract MelodyRNN is Ownable {
 
             uint256 index = model.d.length - 1;
             model.layers.push(Info(LayerType.Dense, index));
+        } else if (layerType == uint8(LayerType.Embedding)) {
+            (Layers.EmbeddingLayer memory layer, uint out_dim2, uint weights) = Layers
+                .makeEmbeddingLayer(slc);
+            model.embedding.push(layer);
+            model.requiredWeights += weights;
+            dim2 = out_dim2;
+
+            uint256 index = model.embedding.length - 1;
+            model.layers.push(Info(LayerType.Embedding, index));
         } else if (layerType == uint8(LayerType.Flatten)) {
             (Layers.FlattenLayer memory layer, uint out_dim2) = Layers
                 .makeFlattenLayer(slc, dim1);

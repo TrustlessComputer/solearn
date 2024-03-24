@@ -365,7 +365,8 @@ contract EternalAI is Ownable {
     function evaluateRNN(
         // Model memory model,
         uint256 inputToken,
-        SD59x18[][][] memory rnn_state
+        SD59x18[][][] memory rnn_state,
+        bool isGenerating
     ) internal view returns (SD59x18[] memory, SD59x18[][][] memory) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
@@ -379,7 +380,9 @@ contract EternalAI is Ownable {
             if (layerInfo.layerType == LayerType.Embedding) {
                 x2 = model.embedding[idx].forward(x1);
             } else if (layerInfo.layerType == LayerType.Dense) {
-                x2 = model.d[idx].forward(x2);
+                if (i < model.layers.length - 1 || isGenerating) {
+                    x2 = model.d[idx].forward(x2);
+                }
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
                 (x2, rnn_state[idx]) = model.simpleRNN[idx].forward(x2, rnn_state[idx]);
             } else if (layerInfo.layerType == LayerType.LSTM) {
@@ -458,7 +461,7 @@ contract EternalAI is Ownable {
                 states = Tensor3DMethods.zerosTensor(model.lstm.length, 2, model.lstm[0].cell.units).mat;
             }
             for(uint i = 0; i < tokens.length - 1; ++i) {
-                (x2, states) = evaluateRNN(tokens[i], states);
+                (x2, states) = evaluateRNN(tokens[i], states, false);
             }
         }
 
@@ -467,7 +470,7 @@ contract EternalAI is Ownable {
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            (x2, states) = evaluateRNN(lastToken, states);
+            (x2, states) = evaluateRNN(lastToken, states, true);
             lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
@@ -565,7 +568,7 @@ contract EternalAI is Ownable {
         info.vocabs = vocabs;
         for(uint256 i = 0; i < vocabs.length; ++i) {
             info.hashToIndex[Utils.getHash(vocabs[i])] = i+1;
-        }        
+        }
         info.unkIndex = info.hashToIndex[Utils.getHash(unkToken)];
         if (!Utils.equals(vocabs[info.unkIndex - 1], unkToken)) {
             revert UnknownTokenNotInVocabs();
