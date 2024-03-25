@@ -268,10 +268,10 @@ async function main() {
             const recActivationFn: number = getActivationType(layer.config.recurrent_activation);
     
             // reconstruct weights
-            let layerWeights = weightsFlat.splice(0, units * 4 + units * units * 4 + units * 4);
+            let layerWeights = weightsFlat.splice(0, input_units * units * 4 + units * units * 4 + units * 4);
             weights[layerType].push(layerWeights);
             totSize[layerType] += layerWeights.length;
-    
+
             result = abic.encode(["uint8", "uint8", "uint8", "uint256", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units), ethers.BigNumber.from(input_units)]);
             input_units = units;
         } else {

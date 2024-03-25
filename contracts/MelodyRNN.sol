@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./lib/layers/Layers.sol";
 import "hardhat/console.sol";
+import './lib/Utils.sol';
 
 error NotTokenOwner();
 error InsufficientEvalPrice();
@@ -161,6 +162,32 @@ contract MelodyRNN is Ownable {
         b = layer.b.mat;
     }
 
+    function getLSTMLayer(
+        uint256 layerIdx
+    )
+        public
+        view
+        returns (
+            uint256,
+            uint256,
+            SD59x18[][] memory,
+            SD59x18[][] memory,
+            SD59x18[] memory
+        )
+    {
+        Layers.LSTM memory layer = model.lstm[layerIdx];
+        Layers.LSTMCell memory cell = layer.cell;
+        uint256 inputUnits = layer.inputUnits;
+        uint256 units = cell.units;
+        return (
+            inputUnits,
+            units,
+            cell.kernel_f.mat,
+            cell.recurrentKernel_f.mat,
+            cell.bias_f.mat
+        );
+    }
+
     function forward(
         Model memory model,
         uint256 input,
@@ -175,18 +202,34 @@ contract MelodyRNN is Ownable {
             // add more layers
             if (layerInfo.layerType == LayerType.Embedding) {
                 x2 = model.embedding[layerInfo.layerIndex].forward(input);
+                // console.log("embedding ", layerInfo.layerIndex);
+                // for(uint j = 0; j < x2.length; ++j) {
+                //     console.logInt(x2[j].intoInt256());
+                // }
             } else if (layerInfo.layerType == LayerType.Dense) {
                 if (i < model.layers.length - 1 || isGenerating) {
-                    x2Ext = model.d[layerInfo.layerIndex].forward(x2Ext);
+                    x2 = model.d[layerInfo.layerIndex].forward(x2);
+                    // console.log("dense ", layerInfo.layerIndex);
+                    // for(uint j = 0; j < x2.length; ++j) {
+                    //     console.logInt(x2[j].intoInt256());
+                    // }
                 }                
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 Layers.LSTM memory lstm = model.lstm[layerInfo.layerIndex];
                 (x2Ext, states[layerInfo.layerIndex]) = lstm.forward(x2, states[layerInfo.layerIndex]);
+                x2 = x2Ext[0];
+
+                // console.log("states[0] of lstm", layerInfo.layerIndex);
+                // for(uint j = 0; j < states[layerInfo.layerIndex][0].length; ++j) {
+                //     console.logInt(states[layerInfo.layerIndex][0][j].intoInt256());
+                // }
+                // console.log("states[1] of lstm", layerInfo.layerIndex);
+                // for(uint j = 0; j < states[layerInfo.layerIndex][1].length; ++j) {
+                //     console.logInt(states[layerInfo.layerIndex][1][j].intoInt256());
+                // }
             }
         }
-        Tensors.Tensor1D memory x2Tensor = Tensor1DMethods.from(x2Ext[0]).softmax();
-
-        return (x2Tensor.mat, states);
+        return (x2, states);
     }
 
     function decodeTokens(SD59x18[] memory tokens) internal view returns (SD59x18[] memory) {
@@ -229,6 +272,23 @@ contract MelodyRNN is Ownable {
         return vocabInfo.vocabs;
     }
 
+    function getToken(
+        SD59x18[] memory x2,
+        SD59x18 temperature,
+        uint256 seed 
+    ) internal view returns (uint256) {
+        SD59x18[] memory tmp = Utils.clone(x2);
+        for(uint i = 0; i < tmp.length; ++i) {
+            tmp[i] = tmp[i] / temperature;
+        }
+
+        Tensors.Tensor1D memory xt = Tensor1DMethods.from(tmp);
+        SD59x18[] memory probs = xt.softmax().mat;
+        uint256 outputToken = Utils.getWeightedRandom(probs, seed);
+
+        return outputToken;
+    }
+
     function generateMelodyTest(
         uint256 _modelId,
         uint256 noteCount,
@@ -237,8 +297,9 @@ contract MelodyRNN is Ownable {
         if (_modelId != modelId) revert IncorrectModelId();
 
         Model memory model = model;
-        int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
+        uint256 seed = uint256(keccak256(abi.encodePacked(x)));
 
+        SD59x18 temperature = sd(1e18);
         SD59x18[] memory r2;
         SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
         for (uint256 i=0; i<x.length-1; i++) {
@@ -249,13 +310,12 @@ contract MelodyRNN is Ownable {
         uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
         for (uint256 i=0; i<noteCount; i++) {
             (r2, states) = forward(model, inputToken, states, true);
-            uint256 nxtToken = sampleWithTemperature(r2, seed);
+            uint256 nxtToken = getToken(r2, temperature, seed);
             if (vocabInfo.hasVocab) {
                 nxtToken = vocabInfo.vocabs[nxtToken];
             }
             result[i] = sd(int256(nxtToken) * 1e18);
-            seed = int256(uint256(keccak256(abi.encodePacked(seed))));
-            // console.log(inputToken, nxtToken);
+            seed = uint256(keccak256(abi.encodePacked(seed)));
             inputToken = nxtToken;
         }
         return (result, states);
@@ -269,8 +329,9 @@ contract MelodyRNN is Ownable {
         if (_modelId != modelId) revert IncorrectModelId();
         
         Model memory model = model;
-        int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
+        uint256 seed = uint256(keccak256(abi.encodePacked(x)));
 
+        SD59x18 temperature = sd(1e18);
         SD59x18[] memory r2;
         SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
         for (uint256 i=0; i<x.length-1; i++) {
@@ -281,12 +342,12 @@ contract MelodyRNN is Ownable {
         uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
         for (uint256 i=0; i<noteCount; i++) {
             (r2, states) = forward(model, inputToken, states, true);
-            uint256 nxtToken = sampleWithTemperature(r2, seed);
+            uint256 nxtToken = getToken(r2, temperature, seed);
             if (vocabInfo.hasVocab) {
                 nxtToken = vocabInfo.vocabs[nxtToken];
             }
             result[i] = sd(int256(nxtToken) * 1e18);
-            seed = int256(uint256(keccak256(abi.encodePacked(seed))));
+            seed = uint256(keccak256(abi.encodePacked(seed)));
             inputToken = nxtToken;
         }
 
