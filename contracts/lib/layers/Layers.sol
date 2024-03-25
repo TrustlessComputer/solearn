@@ -163,7 +163,7 @@ library Layers {
 	function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal view returns (SD59x18[][] memory, SD59x18[][] memory) {
 		SD59x18[][] memory res = new SD59x18[][](1);
 		// TODO: check
-		SD59x18[] memory x = new SD59x18[](layer.cell.units);
+		SD59x18[] memory x = new SD59x18[](layer.inputUnits);
 		for (uint i = 0; i < _x.length; i++) {
 			x[i] = _x[i];
 		}

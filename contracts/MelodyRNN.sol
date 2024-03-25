@@ -162,10 +162,11 @@ contract MelodyRNN is Ownable {
     }
 
     function forward(
+        Model memory model,
         uint256 input,
         SD59x18[][][] memory states,
         bool isGenerating
-    ) public view returns (SD59x18[] memory, SD59x18[][][] memory) {
+    ) internal view returns (SD59x18[] memory, SD59x18[][][] memory) {
         SD59x18[] memory x2;
         SD59x18[][] memory x2Ext;
         for (uint256 i = 0; i < model.layers.length; i++) {
@@ -187,37 +188,6 @@ contract MelodyRNN is Ownable {
 
         return (x2Tensor.mat, states);
     }
-
-    // function evaluate(
-    //     uint256 modelId,
-    //     uint256 fromLayerIndex,
-    //     uint256 toLayerIndex,
-    //     SD59x18[][][] calldata x1,
-    //     SD59x18[] calldata x2,
-    //     SD59x18[][] memory states
-    // )
-    //     public
-    //     view
-    //     returns (SD59x18, SD59x18[][][] memory, SD59x18[] memory)
-    // {
-    //     SD59x18[][][] memory r1;
-    //     SD59x18[] memory r2;
-    //     (r1, r2, states) = forward(
-    //         modelId,
-    //         x1,
-    //         x2,
-    //         states,
-    //         fromLayerIndex,
-    //         toLayerIndex
-    //     );
-
-    //     if (toLayerIndex == model.layers.length - 1) {
-    //         if (r2.length != 1) revert InvalidOutput();
-    //         return (r2[0], r1, r2);
-    //     } else {
-    //         return (sd(0), r1, r2);
-    //     }
-    // }
 
     function decodeTokens(SD59x18[] memory tokens) internal view returns (SD59x18[] memory) {
         VocabInfo storage info = vocabInfo;
@@ -255,6 +225,10 @@ contract MelodyRNN is Ownable {
         return choice;
     }
 
+    function getVocabs() public view returns (uint256[] memory) {
+        return vocabInfo.vocabs;
+    }
+
     function generateMelodyTest(
         uint256 _modelId,
         uint256 noteCount,
@@ -262,45 +236,30 @@ contract MelodyRNN is Ownable {
     ) public view onlyMintedModel returns (SD59x18[] memory, SD59x18[][][] memory) {
         if (_modelId != modelId) revert IncorrectModelId();
 
+        Model memory model = model;
         int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
 
         SD59x18[] memory r2;
         SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
-        for (uint256 i=0; i<x.length-2; i++) {
-            (r2, states) = forward(x[i].intoUint256() / 1e18, states, false);
+        for (uint256 i=0; i<x.length-1; i++) {
+            (r2, states) = forward(model, x[i].intoUint256() / 1e18, states, false);
         }
 
         SD59x18[] memory result = new SD59x18[](noteCount);
         uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
         for (uint256 i=0; i<noteCount; i++) {
-            (r2, states) = forward(inputToken, states, true);
+            (r2, states) = forward(model, inputToken, states, true);
             uint256 nxtToken = sampleWithTemperature(r2, seed);
             if (vocabInfo.hasVocab) {
                 nxtToken = vocabInfo.vocabs[nxtToken];
             }
             result[i] = sd(int256(nxtToken) * 1e18);
             seed = int256(uint256(keccak256(abi.encodePacked(seed))));
+            // console.log(inputToken, nxtToken);
             inputToken = nxtToken;
         }
         return (result, states);
     }
-
-    // function classify(
-    //     uint256 tokenId,
-    //     uint256 fromLayerIndex,
-    //     uint256 toLayerIndex,
-    //     SD59x18[][][] calldata x1,
-    //     SD59x18[] calldata x2
-    // ) external {
-    //     uint256 modelId = tokenId;
-    //     (SD59x18 output, SD59x18[][][] memory outputs1, SD59x18[] memory outputs2) = evaluate(
-    //         modelId,
-    //         fromLayerIndex,
-    //         toLayerIndex,
-    //         x1,
-    //         x2
-    //     );
-    // }
 
     function generateMelody(
         uint256 _modelId,
@@ -308,18 +267,20 @@ contract MelodyRNN is Ownable {
         SD59x18[] calldata x
     ) external onlyMintedModel {
         if (_modelId != modelId) revert IncorrectModelId();
+        
+        Model memory model = model;
         int256 seed = int256(uint256(keccak256(abi.encodePacked(x))));
 
         SD59x18[] memory r2;
         SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
-        for (uint256 i=0; i<x.length-2; i++) {
-            (r2, states) = forward(x[i].intoUint256() / 1e18, states, false);
+        for (uint256 i=0; i<x.length-1; i++) {
+            (r2, states) = forward(model, x[i].intoUint256() / 1e18, states, false);
         }
 
         SD59x18[] memory result = new SD59x18[](noteCount);
         uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
         for (uint256 i=0; i<noteCount; i++) {
-            (r2, states) = forward(inputToken, states, true);
+            (r2, states) = forward(model, inputToken, states, true);
             uint256 nxtToken = sampleWithTemperature(r2, seed);
             if (vocabInfo.hasVocab) {
                 nxtToken = vocabInfo.vocabs[nxtToken];

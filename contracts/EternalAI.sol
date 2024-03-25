@@ -363,7 +363,7 @@ contract EternalAI is Ownable {
     }
 
     function evaluateRNN(
-        // Model memory model,
+        Model memory model,
         uint256 inputToken,
         SD59x18[][][] memory rnn_state,
         bool isGenerating
@@ -461,7 +461,7 @@ contract EternalAI is Ownable {
                 states = Tensor3DMethods.zerosTensor(model.lstm.length, 2, model.lstm[0].cell.units).mat;
             }
             for(uint i = 0; i < tokens.length - 1; ++i) {
-                (x2, states) = evaluateRNN(tokens[i], states, false);
+                (x2, states) = evaluateRNN(model, tokens[i], states, false);
             }
         }
 
@@ -470,7 +470,7 @@ contract EternalAI is Ownable {
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            (x2, states) = evaluateRNN(lastToken, states, true);
+            (x2, states) = evaluateRNN(model, lastToken, states, true);
             lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
