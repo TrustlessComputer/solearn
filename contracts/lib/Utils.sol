@@ -120,6 +120,7 @@ library Utils {
 		bytes8[][] memory buffer = new bytes8[][](n);
 		unchecked {
 			for(uint i = 0; i < n; ++i) {
+				buffer[i] = new bytes8[](m);
 				for(uint j = 0; j < m; ++j) {
 					buffer[i][j] = fixedPointNumberToFloatPointNumber(mat[i][j]);
 				}
@@ -170,6 +171,7 @@ library Utils {
 		SD59x18[][] memory buffer = new SD59x18[][](n);
 		unchecked {
 			for(uint i = 0; i < n; ++i) {
+				buffer[i] = new SD59x18[](m);
 				for(uint j = 0; j < m; ++j) {
 					buffer[i][j] = floatPointNumberToFixedPointNumber(mat[i][j]);
 				}
