@@ -215,6 +215,11 @@ contract MelodyRNN is Ownable {
                     // }
                 }                
             } else if (layerInfo.layerType == LayerType.LSTM) {
+                if (x2.length == 0) {
+                    x2 = new SD59x18[](1);
+                    x2[0] = sd(int(input) * 1e18 / VOCAB_SIZE);
+                }
+
                 Layers.LSTM memory lstm = model.lstm[layerInfo.layerIndex];
                 (x2Ext, states[layerInfo.layerIndex]) = lstm.forward(x2, states[layerInfo.layerIndex]);
                 x2 = x2Ext[0];

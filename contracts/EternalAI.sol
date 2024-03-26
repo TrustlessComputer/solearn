@@ -386,6 +386,11 @@ contract EternalAI is Ownable {
             } else if (layerInfo.layerType == LayerType.SimpleRNN) {
                 (x2, rnn_state[idx]) = model.simpleRNN[idx].forward(x2, rnn_state[idx]);
             } else if (layerInfo.layerType == LayerType.LSTM) {
+                if (x2.length == 0) {
+                    x2 = new SD59x18[](1);
+                    x2[0] = sd(int(x1 * 1e18 / vocabInfo.vocabs.length));
+                }
+
                 SD59x18[][] memory x2Ext;
                 (x2Ext, rnn_state[idx]) = model.lstm[idx].forward(x2, rnn_state[idx]);
                 x2 = x2Ext[0];
