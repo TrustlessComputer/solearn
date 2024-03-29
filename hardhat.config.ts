@@ -1,5 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-verify";
 import "hardhat-deploy";
 import './scripts/base.task';
 import './scripts/melody.task';
@@ -89,6 +90,8 @@ const config: HardhatUserConfig = {
       timeout: 500_000,
       gasPrice: 1_000_000_000,
       blockGasLimit: 100_000_000_000,
+      melodyRNNAddress: process.env.REGTEST2_MELODY_ADDRESS,
+      testAddress: process.env.REGTEST2_TEST_ADDRESS,
     },
   },
   namedAccounts: {
@@ -99,6 +102,21 @@ const config: HardhatUserConfig = {
     tests: './tests',
     cache: './cache',
     artifacts: './artifacts',
+  },
+  etherscan: {
+    apiKey: {
+      regtest2: process.env.ETHERSCAN_API_KEY || ""
+    },
+    customChains: [
+      {
+        network: 'regtest2',
+        chainId: 20155,
+        urls: {
+          apiURL: 'https://eternal-ai2.tc.l2aas.com/rpc',
+          browserURL: 'https://eternal-ai2.tc.l2aas.com',
+        },
+      },
+    ],
   },
 };
 

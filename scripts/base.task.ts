@@ -173,6 +173,15 @@ function fuzzyMatch(word: string, dict: string[]): string {
     return bestCand;
 }
 
+function isAllUppercase(text: string): boolean {
+    for(let c of text) {
+        if (c < 'A' || c > 'Z') {
+            return false;
+        }
+    }
+    return true;
+}
+
 function tokenizeWordOnly(text: string): string[] {
     const tokens: string[] = [];
     let word = "";
@@ -181,7 +190,9 @@ function tokenizeWordOnly(text: string): string[] {
             word += c;
         } else {
             if (word !== "") {
-                tokens.push(word);
+                if (!isAllUppercase(word)) {
+                    tokens.push(word);
+                }
                 word = "";
             }
         }
@@ -201,6 +212,7 @@ function replaceMatchedWords(text: string, words: string[], matchedWords: string
 
 function postprocessText(text: string, dict: string[]): string {
     const words = tokenizeWordOnly(text);
+    console.log()
     const matchedWords = words.map(word => fuzzyMatch(word, dict));
     const replacedText = replaceMatchedWords(text, words, matchedWords);
     return replacedText;
@@ -689,6 +701,8 @@ task("generate-text", "generate text from RNN model")
         const modelAddress = await c.modelAddr(tokenId);
         const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
+        // const vocabs = await modelContract.
+
         let startTime = new Date().getTime();
         let result = "";
         let seed = ethers.BigNumber.from("123");
@@ -703,6 +717,18 @@ task("generate-text", "generate text from RNN model")
 // And say one that had woney to his parts.
 // `
 
+        const originalPrompt = prompt;
+        const promptMinLen = 20;
+        if (prompt.length > promptMinLen) {
+            prompt.slice(0, prompt.length - promptMinLen);
+        } else {
+            let padding = "";
+            for(let i = 0; i < promptMinLen - prompt.length; ++i) {
+                padding += '\n';
+            }
+            prompt = padding + prompt;
+        }
+
         let states: ethers.BigNumber[][] = [];
         for(let i = 0; i < toGenerate; i += generatePerTx) {
             const generate = Math.min(toGenerate - i, generatePerTx);
@@ -713,11 +739,11 @@ task("generate-text", "generate text from RNN model")
         }
 
         console.log("-------------- Prompt + Generated text --------------");
-        console.log(taskArgs.prompt + result);
+        console.log(originalPrompt + result);
         if (taskArgs.dictionary) {            
             const dict: string[] = JSON.parse(fs.readFileSync(taskArgs.dictionary, 'utf-8'));
             console.log("------------  Prompt + Postprocessed text ----------");
-            console.log(taskArgs.prompt + postprocessText(result, dict));
+            console.log(originalPrompt + postprocessText(result, dict));
         }
         console.log("----------------------------------------------------");
 

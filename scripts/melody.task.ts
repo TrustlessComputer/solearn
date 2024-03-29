@@ -419,8 +419,8 @@ task("generate-melody", "evaluate model for each layer")
 
         let vocabs: ethers.BigNumber[] = await mldy.getVocabs();
 
-        // let rands = [68];
-        let rands = [68, 129, 30, 31, 32, 35, 129, 37];
+        let rands = [68];
+        // let rands = [68, 129, 30, 31, 32, 35, 129, 37, 35, 33];
         for (let i = rands.length; i < inputLen; i++) {
             const idx = Math.floor(Math.random() * vocabs.length);
             rands.unshift(vocabs[idx].toNumber()); // integers ranged [0,129]

@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 // import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./lib/layers/Layers.sol";
-import "hardhat/console.sol";
 import './lib/Utils.sol';
 
 error NotTokenOwner();
@@ -202,17 +201,17 @@ contract MelodyRNN is Ownable {
             // add more layers
             if (layerInfo.layerType == LayerType.Embedding) {
                 x2 = model.embedding[layerInfo.layerIndex].forward(input);
-                // console.log("embedding ", layerInfo.layerIndex);
-                // for(uint j = 0; j < x2.length; ++j) {
-                //     console.logInt(x2[j].intoInt256());
-                // }
+                console.log("embedding ", layerInfo.layerIndex);
+                for(uint j = 0; j < x2.length; ++j) {
+                    console.logInt(x2[j].intoInt256());
+                }
             } else if (layerInfo.layerType == LayerType.Dense) {
                 if (i < model.layers.length - 1 || isGenerating) {
                     x2 = model.d[layerInfo.layerIndex].forward(x2);
-                    // console.log("dense ", layerInfo.layerIndex);
-                    // for(uint j = 0; j < x2.length; ++j) {
-                    //     console.logInt(x2[j].intoInt256());
-                    // }
+                    console.log("dense ", layerInfo.layerIndex);
+                    for(uint j = 0; j < x2.length; ++j) {
+                        console.logInt(x2[j].intoInt256());
+                    }
                 }                
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 if (x2.length == 0) {
@@ -224,14 +223,14 @@ contract MelodyRNN is Ownable {
                 (x2Ext, states[layerInfo.layerIndex]) = lstm.forward(x2, states[layerInfo.layerIndex]);
                 x2 = x2Ext[0];
 
-                // console.log("states[0] of lstm", layerInfo.layerIndex);
-                // for(uint j = 0; j < states[layerInfo.layerIndex][0].length; ++j) {
-                //     console.logInt(states[layerInfo.layerIndex][0][j].intoInt256());
-                // }
-                // console.log("states[1] of lstm", layerInfo.layerIndex);
-                // for(uint j = 0; j < states[layerInfo.layerIndex][1].length; ++j) {
-                //     console.logInt(states[layerInfo.layerIndex][1][j].intoInt256());
-                // }
+                console.log("states[0] of lstm", layerInfo.layerIndex);
+                for(uint j = 0; j < states[layerInfo.layerIndex][0].length; ++j) {
+                    console.logInt(states[layerInfo.layerIndex][0][j].intoInt256());
+                }
+                console.log("states[1] of lstm", layerInfo.layerIndex);
+                for(uint j = 0; j < states[layerInfo.layerIndex][1].length; ++j) {
+                    console.logInt(states[layerInfo.layerIndex][1][j].intoInt256());
+                }
             }
         }
         return (x2, states);
@@ -315,6 +314,10 @@ contract MelodyRNN is Ownable {
         uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
         for (uint256 i=0; i<noteCount; i++) {
             (r2, states) = forward(model, inputToken, states, true);
+            console.log("i, r2:", i);
+            for(uint j = 0; j < r2.length; ++j) {
+                console.logInt(r2[j].intoInt256());
+            }
             uint256 nxtToken = getToken(r2, temperature, seed);
             if (vocabInfo.hasVocab) {
                 nxtToken = vocabInfo.vocabs[nxtToken];

@@ -8,7 +8,7 @@ import "../tensors/Tensor3DMethods.sol";
 import "../tensors/Tensor4DMethods.sol";
 import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 error TooMuchData();
 
