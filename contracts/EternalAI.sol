@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./thirdparty/solidity-stringutils/strings.sol";
-import "./lib/layers/Layers.sol";
+import "./lib/layers-cuda/Layers.sol";
 import "./lib/Utils.sol";
 
 error NotTokenOwner();
@@ -282,42 +282,42 @@ contract EternalAI is Ownable {
         return (x1, x2);
     }
 
-    function evaluate(
-        uint256 _modelId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        SD59x18[][][] calldata x1,
-        SD59x18[] calldata x2
-    )
-        public
-        view
-        onlyMintedModel
-        returns (string memory, SD59x18[][][] memory, SD59x18[] memory, SD59x18)
-    {
-        if (toLayerIndex >= model.layers.length) {
-            toLayerIndex = model.layers.length - 1; // update to the last layer
-        }
+    // function evaluate(
+    //     uint256 _modelId,
+    //     uint256 fromLayerIndex,
+    //     uint256 toLayerIndex,
+    //     SD59x18[][][] calldata x1,
+    //     SD59x18[] calldata x2
+    // )
+    //     public
+    //     view
+    //     onlyMintedModel
+    //     returns (string memory, SD59x18[][][] memory, SD59x18[] memory, SD59x18)
+    // {
+    //     if (toLayerIndex >= model.layers.length) {
+    //         toLayerIndex = model.layers.length - 1; // update to the last layer
+    //     }
 
-        (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
-            x1,
-            x2,
-            fromLayerIndex,
-            toLayerIndex
-        );
+    //     (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
+    //         x1,
+    //         x2,
+    //         fromLayerIndex,
+    //         toLayerIndex
+    //     );
 
-        if (toLayerIndex == model.layers.length - 1) {
-            uint256 maxInd = 0;
-            for (uint256 i = 1; i < r2.length; i++) {
-                if (r2[i].gt(r2[maxInd])) {
-                    maxInd = i;
-                }
-            }
+    //     if (toLayerIndex == model.layers.length - 1) {
+    //         uint256 maxInd = 0;
+    //         for (uint256 i = 1; i < r2.length; i++) {
+    //             if (r2[i].gt(r2[maxInd])) {
+    //                 maxInd = i;
+    //             }
+    //         }
 
-            return (model.classesName[maxInd], r1, r2, r2[maxInd]);
-        } else {
-            return ("", r1, r2, sd(0));
-        }
-    }
+    //         return (model.classesName[maxInd], r1, r2, r2[maxInd]);
+    //     } else {
+    //         return ("", r1, r2, sd(0));
+    //     }
+    // }
 
     function classify(
         uint256 _modelId,
@@ -372,7 +372,7 @@ contract EternalAI is Ownable {
         uint256 inputToken,
         SD59x18[][][] memory rnn_state,
         bool isGenerating
-    ) internal view returns (SD59x18[] memory, SD59x18[][][] memory) {
+    ) internal returns (SD59x18[] memory, SD59x18[][][] memory) {
         uint256 x1 = inputToken;
         SD59x18[] memory x2;
 
@@ -436,7 +436,7 @@ contract EternalAI is Ownable {
         SD59x18[] memory x2,
         SD59x18 temperature,
         uint256 seed 
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         uint unkIndex = vocabInfo.unkIndex - 1;
 
         SD59x18[] memory tmp = Utils.clone(x2);
@@ -458,7 +458,7 @@ contract EternalAI is Ownable {
         uint256 toGenerate,
         SD59x18[][][] memory states,
         uint256 seed
-    ) internal view returns (string memory, SD59x18[][][] memory, uint256) {
+    ) internal returns (string memory, SD59x18[][][] memory, uint256) {
         SD59x18 temperature = sd(7e17);
 
         Model memory model = model;
@@ -490,15 +490,15 @@ contract EternalAI is Ownable {
         return (generatedText, states, seed); 
     } 
 
-    function generateTextNoTx(
-        uint _modelId,
-        string memory prompt,
-        uint256 toGenerate,
-        SD59x18[][][] memory states,
-        uint256 seed
-    ) external view onlyMintedModel returns (string memory, SD59x18[][][] memory, uint256) {
-        return generateTextHelper(prompt, toGenerate, states, seed); 
-    }
+    // function generateTextNoTx(
+    //     uint _modelId,
+    //     string memory prompt,
+    //     uint256 toGenerate,
+    //     SD59x18[][][] memory states,
+    //     uint256 seed
+    // ) external view onlyMintedModel returns (string memory, SD59x18[][][] memory, uint256) {
+    //     return generateTextHelper(prompt, toGenerate, states, seed); 
+    // }
 
     function generateText(
         uint _modelId,

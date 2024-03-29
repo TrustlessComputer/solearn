@@ -493,42 +493,6 @@ task("mint-models", "mint multiple model in a folder (with their weights)")
 
     });
 
-task("mint-models", "mint multiple model in a folder (with their weights)")
-    .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("folder", "folder path", "", types.string)
-    .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
-    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-        const { ethers, deployments, getNamedAccounts } = hre;
-        const { deployer: signerAddress } = await getNamedAccounts();
-        const signer = await ethers.getSigner(signerAddress);
-
-        const folder = taskArgs.folder;
-        const modelDirents = await getModelDirents(folder);
-        
-        const models = modelDirents.map((dirent, index) => ({
-            name: path.basename(dirent.name, '.json'),
-            path: path.join(folder, dirent.name),
-            id: utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0")),
-        }));
-
-        const modelInfos = [{"name":"Alien","id":"0x2971776e597fcdf04b51943c02500a5f2c37d70474ce531f8106729ae1497509"},{"name":"Ape","id":"0x6b4d0f0900b58882d95a1a4bc916b532afafa19945ae76a61bc3b1256d600c31"},{"name":"Female","id":"0x451dcda49d1704e9d98da55a3f03ea76713231a47464e4a1545877246ab163ce"},{"name":"Male","id":"0xa965627403bfb51ef963344b4534986cd2731859dee5c9b7448dfea830db71fc"},{"name":"Zombie","id":"0xd7872a355fdd068abaed442af0ade744992f2eb128b9326bca012bdcd7018745"}];
-        for(const model of models) {
-            console.log("Minting model:", model.name);
-            await hre.run("mint-model-id", {
-                model: model.path, 
-                contract: taskArgs.contract,
-                id: model.id,
-                maxlen: taskArgs.maxlen,
-            });
-            modelInfos.push({
-                name: model.name,
-                id: model.id,
-            })
-        }
-
-        fs.writeFileSync("model_list.json", JSON.stringify(modelInfos));
-    });
-
 task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
@@ -709,6 +673,7 @@ task("generate-text", "generate text from RNN model")
     .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
     .addOptionalParam("generatepertx", "number of characters to generate per tx", -1, types.int)
     .addOptionalParam("dictionary", "dictionary for fuzzy match post processing", "", types.string)
+    .addOptionalParam("debugpath", "path to save tensors for debug", "", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -757,6 +722,10 @@ task("generate-text", "generate text from RNN model")
                 states = textGeneratedEvent.args?.states;
                 seed = textGeneratedEvent.args?.seed;
             }
+
+            console.log(text);
+            console.log(states);
+            console.log(seed);
     
             result += text;
             prompt = text.slice(text.length - 1);
@@ -771,18 +740,12 @@ task("generate-text", "generate text from RNN model")
             const testMatmulData = testMatmulEvents.map(event => event.args.data);
             const testMatmulDec = testMatmulData.map(mat => mat.map(arr => recursiveToString(arr)));
     
-            if (taskArgs.cuda === 1) {
-                fs.writeFileSync(`debug_outputs/cuda_RNNOutput_${i}.json`, JSON.stringify(testRNNOutputEvents));
-                fs.writeFileSync(`debug_outputs/cuda_Entropy_${i}.json`, JSON.stringify(testEntropyEvents));
-                fs.writeFileSync(`debug_outputs/cuda_Probs_${i}.json`, JSON.stringify(testProbsEvents));
-                fs.writeFileSync(`debug_outputs/cuda_Dense_${i}.json`, JSON.stringify(testDenseEvents));
-                fs.writeFileSync(`debug_outputs/cuda_events_${i}.json`, JSON.stringify(testMatmulDec));    
-            } else {
-                fs.writeFileSync(`debug_outputs/no_cuda_RNNOutput_${i}.json`, JSON.stringify(testRNNOutputEvents));
-                fs.writeFileSync(`debug_outputs/no_cuda_Entropy_${i}.json`, JSON.stringify(testEntropyEvents));
-                fs.writeFileSync(`debug_outputs/no_cuda_Probs_${i}.json`, JSON.stringify(testProbsEvents));
-                fs.writeFileSync(`debug_outputs/no_cuda_Dense_${i}.json`, JSON.stringify(testDenseEvents));
-                fs.writeFileSync(`debug_outputs/no_cuda_events_${i}.json`, JSON.stringify(testMatmulDec));    
+            if (taskArgs.debugpath !== "") {
+                fs.writeFileSync(`${taskArgs.debugpath}_RNNOutput_${i}.json`, JSON.stringify(testRNNOutputEvents));
+                fs.writeFileSync(`${taskArgs.debugpath}_Entropy_${i}.json`, JSON.stringify(testEntropyEvents));
+                fs.writeFileSync(`${taskArgs.debugpath}_Probs_${i}.json`, JSON.stringify(testProbsEvents));
+                fs.writeFileSync(`${taskArgs.debugpath}_Dense_${i}.json`, JSON.stringify(testDenseEvents));
+                fs.writeFileSync(`${taskArgs.debugpath}_events_${i}.json`, JSON.stringify(testMatmulDec));    
             }
         }
 

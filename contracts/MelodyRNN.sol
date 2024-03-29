@@ -1,5 +1,5 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity 0.8.19;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 // import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -45,18 +45,18 @@ contract MelodyRNN is Ownable {
 
     event NewMelody(uint256 indexed tokenId, SD59x18[] melody);
 
-//     event Forwarded(
-//         uint256 indexed tokenId,
-//         uint256 fromLayerIndex,
-//         uint256 toLayerIndex,
-//         SD59x18[][][] outputs1,
-//         SD59x18[] outputs2
-//     );
+    event Forwarded(
+        uint256 indexed tokenId,
+        uint256 fromLayerIndex,
+        uint256 toLayerIndex,
+        SD59x18[][][] outputs1,
+        SD59x18[] outputs2
+    );
 
-//     event Deployed(
-//         address indexed owner,
-//         uint256 indexed tokenId
-//     );
+    event Deployed(
+        address indexed owner,
+        uint256 indexed tokenId
+    );
 
     struct Model {
         uint256[3] inputDim;
@@ -82,17 +82,17 @@ contract MelodyRNN is Ownable {
         uint256[] vocabs;
     }
 
-//     enum LayerType {
-//         Dense,
-//         Flatten,
-//         Rescale,
-//         Input,
-//         MaxPooling2D,
-//         Conv2D,
-//         Embedding,
-//         SimpleRNN,
-//         LSTM
-//     }
+    enum LayerType {
+        Dense,
+        Flatten,
+        Rescale,
+        Input,
+        MaxPooling2D,
+        Conv2D,
+        Embedding,
+        SimpleRNN,
+        LSTM
+    }
 
     modifier onlyOwnerOrOperator() {
         if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
@@ -193,7 +193,7 @@ contract MelodyRNN is Ownable {
         uint256 input,
         SD59x18[][][] memory states,
         bool isGenerating
-    ) internal view returns (SD59x18[] memory, SD59x18[][][] memory) {
+    ) internal returns (SD59x18[] memory, SD59x18[][][] memory) {
         SD59x18[] memory x2;
         SD59x18[][] memory x2Ext;
         for (uint256 i = 0; i < model.layers.length; i++) {
@@ -294,37 +294,37 @@ contract MelodyRNN is Ownable {
         return outputToken;
     }
 
-    function generateMelodyTest(
-        uint256 _modelId,
-        uint256 noteCount,
-        SD59x18[] calldata x
-    ) public view onlyMintedModel returns (SD59x18[] memory, SD59x18[][][] memory) {
-        if (_modelId != modelId) revert IncorrectModelId();
+    // function generateMelodyTest(
+    //     uint256 _modelId,
+    //     uint256 noteCount,
+    //     SD59x18[] calldata x
+    // ) public view onlyMintedModel returns (SD59x18[] memory, SD59x18[][][] memory) {
+    //     if (_modelId != modelId) revert IncorrectModelId();
 
-        Model memory model = model;
-        uint256 seed = uint256(keccak256(abi.encodePacked(x)));
+    //     Model memory model = model;
+    //     uint256 seed = uint256(keccak256(abi.encodePacked(x)));
 
-        SD59x18 temperature = sd(1e18);
-        SD59x18[] memory r2;
-        SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
-        for (uint256 i=0; i<x.length-1; i++) {
-            (r2, states) = forward(model, x[i].intoUint256() / 1e18, states, false);
-        }
+    //     SD59x18 temperature = sd(1e18);
+    //     SD59x18[] memory r2;
+    //     SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
+    //     for (uint256 i=0; i<x.length-1; i++) {
+    //         (r2, states) = forward(model, x[i].intoUint256() / 1e18, states, false);
+    //     }
 
-        SD59x18[] memory result = new SD59x18[](noteCount);
-        uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
-        for (uint256 i=0; i<noteCount; i++) {
-            (r2, states) = forward(model, inputToken, states, true);
-            uint256 nxtToken = getToken(r2, temperature, seed);
-            if (vocabInfo.hasVocab) {
-                nxtToken = vocabInfo.vocabs[nxtToken];
-            }
-            result[i] = sd(int256(nxtToken) * 1e18);
-            seed = uint256(keccak256(abi.encodePacked(seed)));
-            inputToken = nxtToken;
-        }
-        return (result, states);
-    }
+    //     SD59x18[] memory result = new SD59x18[](noteCount);
+    //     uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
+    //     for (uint256 i=0; i<noteCount; i++) {
+    //         (r2, states) = forward(model, inputToken, states, true);
+    //         uint256 nxtToken = getToken(r2, temperature, seed);
+    //         if (vocabInfo.hasVocab) {
+    //             nxtToken = vocabInfo.vocabs[nxtToken];
+    //         }
+    //         result[i] = sd(int256(nxtToken) * 1e18);
+    //         seed = uint256(keccak256(abi.encodePacked(seed)));
+    //         inputToken = nxtToken;
+    //     }
+    //     return (result, states);
+    // }
 
     function generateMelody(
         uint256 _modelId,

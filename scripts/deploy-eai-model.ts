@@ -132,6 +132,7 @@ async function main() {
     if (!MODEL_OWNER || !ethers.utils.isAddress(MODEL_OWNER)) {
         throw new Error("MODEL_OWNER is not set");
     }
+    console.log(MODEL_JSON);
     const provider = ethers.getDefaultProvider(NODE_ENDPOINT);
     const signer = new ethers.Wallet(PRIVATE_KEY, provider);
     const abic = ethers.utils.defaultAbiCoder;
