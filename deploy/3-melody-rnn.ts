@@ -1,18 +1,13 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { ethers } from 'hardhat';
-import fs from 'fs';
 
-const abic = ethers.utils.defaultAbiCoder;
+const modelName = 'MelodyRNN';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts, network } = hre;
-    const { deploy, execute } = deployments;
+    const { deploy, get } = deployments;
     const { deployer } = await getNamedAccounts();
 
-    if (network.name === 'hardhat' || network.name === 'localhost') {
-        await network.provider.send("evm_setIntervalMining", [3000]);
-    }
-
+    const models = await get('Models');
     await deploy('MelodyRNN', {
         from: deployer,
         proxy: {
@@ -20,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: 'initialize',
-                    args: [],
+                    args: [modelName, models.address],
                 },
                 onUpgrade: {
                     methodName: 'afterUpgrade',
@@ -34,6 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 };
 
-func.tags = ['3', 'MelodyRNN'];
+func.tags = ['3', modelName];
+func.dependencies = ['1'];
 func.skip = async () => true;
 export default func;

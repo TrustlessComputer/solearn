@@ -2,15 +2,19 @@ import { task, types } from "hardhat/config";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
-import sharp from 'sharp';
-import { ethers } from "ethers";
-import { PromiseOrValue } from "../typechain-types/common";
+import { BigNumber, ethers } from "ethers";
+import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
+import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
+import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 
+import { execSync } from 'child_process';
 
-const ContractName = "MelodyRNN";
+const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
-const gasConfig = { gasLimit: 1_000_000_000 };
+const gasConfig = { gasLimit: 10_000_000_000 };
+const mintPrice = ethers.utils.parseEther('0.1');
+const mintConfig = { value: mintPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
@@ -67,7 +71,7 @@ function getActivationType(name: string): number {
     let activationFn: number = -1;
     if (name === 'leakyrelu') {
         activationFn = 0;
-    } else if (name === 'linear') {
+    } else if (name === 'linear' || name === 'softmax') {
         activationFn = 1;
     } else if (name === 'relu') {
         activationFn = 2;
@@ -139,8 +143,9 @@ function getConvSize(
 
 task("mint-melody-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)
-    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
     .addOptionalParam("id", "token id", "0", types.string)
+    .addOptionalParam("to", "new model owner address", "", types.string)
     .addOptionalParam("uri", "token URI", "", types.string)
     .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
@@ -197,7 +202,7 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
                 result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
             } else if (layer.class_name === 'InputLayer') {
                 const dim = layer.config.batch_input_shape.slice(1);
-                if (dim.length == 1 && dim[0] == null) {
+                if (dim.length == 1 || dim.length == 2) {
                     result = abic.encode(["uint8", "uint8"], [layerType, 0]);
                     input_units = 1;
                 } else if (dim.length == 3) {
@@ -205,7 +210,7 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
                     const w = ethers.BigNumber.from(dim[1]);
                     const c = ethers.BigNumber.from(dim[2]);
                     result = abic.encode(["uint8", "uint8", "uint[3]"], [layerType, 1, [h, w, c]]);
-                    input_units = w;
+                    input_units = [h.toNumber(), w.toNumber(), c.toNumber()];
                 } else {
                     input_units = dim[0]
                 }
@@ -282,7 +287,7 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
                 const recActivationFn: number = getActivationType(layer.config.recurrent_activation);
     
                 // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, units * 4 + units * units * 4 + units * 4);
+                let layerWeights = weightsFlat.splice(0, input_units * units * 4 + units * units * 4 + units * 4);
                 weights[layerType].push(layerWeights);
                 totSize[layerType] += layerWeights.length;
     
@@ -297,35 +302,35 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
             }
         }
         params.layers_config = newLayerConfig.filter((x: any) => x !== null);
-        
+
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
             const baseContract = await deployments.get(ContractName);
             contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
-        const tokenId = ethers.BigNumber.from(taskArgs.id);
-        try {
-            const tx = await c.safeMint(signer.address, tokenId, taskArgs.uri, params.model_name);
-            await tx.wait();
-
-            console.log("Minted new MelodyRNN model, tx:", tx.hash);
-        } catch (e) {
-            const ownerAddress = await c.ownerOf(tokenId).catch(_ => {
-                throw e;
-            });
-            if (ethers.utils.getAddress(ownerAddress) === ethers.utils.getAddress(signer.address)) {
-                console.log("Using existing MelodyRNN model #" + tokenId.toString());
-            } else {
-                console.log("MelodyRNN #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
-                return;
-            }
-        }
+        const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
+        // deploy a MelodyRNN contract
+        const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
+        const mldyImpl = await MelodyFac.deploy(params.model_name, contractAddress);
+        // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
+        // const initData = MelodyFac.interface.encodeFunctionData("initialize", [params.model_name, contractAddress]);
+        // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
+        // const mldy = MelodyFac.attach(mldyProxy.address);
+        const mldy = MelodyFac.attach(mldyImpl.address);
+        console.log("Deployed MelodyRNN contract: ", mldy.address);
 
         console.log("Setting AI model");
-        const setWeightTx = await c.setModel(tokenId, params.layers_config, gasConfig);
+        const setWeightTx = await mldy.setModel(params.layers_config, gasConfig);
         await setWeightTx.wait();
         console.log('tx', setWeightTx.hash);
+
+        if (params.vocabulary) {
+            console.log("Setting vocabs");
+            const vocabs = params.vocabulary;
+            const setVocabTx = await mldy.setVocabs(vocabs);
+            await setVocabTx.wait();
+            console.log('tx', setVocabTx.hash);
+        }
 
         const weightStr = JSON.stringify(weights);
         console.log("Total weights len: ", weightStr.length);
@@ -336,6 +341,15 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
             return _w.splice(0, maxlen);
         }
 
+        const checkForDeployedModel = (receipt: { events: any[]; }) => {
+            const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
+            if (deployedEvent != null) {
+                const owner = deployedEvent.args?.owner;
+                const tokenId = deployedEvent.args?.tokenId;
+                console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+            }
+        }
+
         for (let i = 0; i < MaxLayerType; ++i) {
             if (totSize[i] === 0) continue;
             console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
@@ -343,26 +357,44 @@ task("mint-melody-model-id", "mint model id (and upload weights)")
             for (let wi = 0; wi < weights[i].length; ++wi) {
                 for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
                     
-                    const appendWeightTx = await c.appendWeights(tokenId, temp, wi, i, gasConfig);
+                    const appendWeightTx = await mldy.appendWeights(temp, wi, i, gasConfig);
                     const receipt = await appendWeightTx.wait(2);
                     console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                    const deployedEvent = receipt.events?.find(event => event.event === 'Deployed');
-                    if (deployedEvent != null) {
-                        const owner = deployedEvent.args?.owner;
-                        const tokenId = deployedEvent.args?.tokenId;
-                        console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-                    }
+                    checkForDeployedModel(receipt);
                 }
             }            
+        }
+
+        const modelUri = "";
+        try {
+            const tx = await c.safeMint(taskArgs.to || signer.address, modelUri, mldy.address, mintConfig);
+            const rc = await tx.wait();
+            // listen for Transfer event
+            const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
+            if (transferEvent != null) {
+                const from = transferEvent.args?.from;
+                const to = transferEvent.args?.to;
+                const tokenId = transferEvent.args?.tokenId;
+                console.log("tx:", tx.hash);
+                console.log(`Minted new MelodyRNN model, to=${to}, tokenId=${tokenId}`);
+            }
+            checkForDeployedModel(rc);
+        } catch (e) {
+            console.error("Error minting model: ", e);
+            throw e;
         }
     });
 
 task("generate-melody", "evaluate model for each layer")
-    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
-    .addOptionalParam("count", "number of notes to generate", 1, types.int)
+    .addOptionalParam("count", "number of step", 1, types.int)
+    .addOptionalParam("steplen", "number of notes to generate per step", 1, types.int)
+    .addOptionalParam("output", "output file path", "output.mid", types.string)
     // .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+        const inputLen = 20;
+        const stepLen = taskArgs.steplen;
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
         const signer = await ethers.getSigner(signerAddress);
@@ -375,38 +407,67 @@ task("generate-melody", "evaluate model for each layer")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
+        const modelAddress = await c.modelAddr(tokenId);
+        const mldy = new ethers.Contract(modelAddress, MelodyRNNArtifact.abi, signer);
 
         let startTime = new Date().getTime();
 
-        for (let i = 0; i < taskArgs.count; i++) {
-            // get a list of 20 random numbers in the range (0,127)
-            let x1: PromiseOrValue<ethers.BigNumberish>[][][] = [];
-            let rands = [];
-            for (let i = 0; i < 20; i++) {
-                rands.push(Math.floor(Math.random() * 128));
-            }
+        // let rands = [];
+        // for (let i = 0; i < inputLen; i++) {
+        //     rands.push(Math.floor(Math.random() * 130)); // integers ranged [0,129]
+        // }
 
-            let x2 = rands.map(n => ethers.BigNumber.from(String(Math.trunc(n * 1e18))));
+        let vocabs: ethers.BigNumber[] = await mldy.getVocabs();
 
-            const [res, r1, r2] = await c.evaluate(tokenId, 0, 10, x1, x2);
+        // let rands = [68];
+        let rands = [68, 129, 30, 31, 32, 35, 129, 37];
+        for (let i = rands.length; i < inputLen; i++) {
+            const idx = Math.floor(Math.random() * vocabs.length);
+            rands.unshift(vocabs[idx].toNumber()); // integers ranged [0,129]
+        }
 
-            // const [className, r1, r2] = await measureTime(async () => {
-            //     return await c.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2);
-            // });
-            x1 = r1;
-            x2 = r2;
+        console.log(rands);
 
-            console.log("result: ", res);
-
-
-            // if (toLayerIndex >= numLayers - 1) {
-            //     break;
-            // }
-        }    
+        let x2 = rands.map(n => ethers.BigNumber.from(String(Math.trunc(n * 1e18))));
+        // console.log("x2:", x2);
         
+        let melody: any[] = [];
+        for (let i = 0; i < taskArgs.count; i++) {
+            // let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
+            // const rc = await tx.wait();
+            // console.log("result:", rc);
+            const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
+
+            // get event NewMelody
+            // const newMelody = rc.events?.find(event => event.event === 'NewMelody');
+            // if (newMelody != null) {
+                // const res = newMelody.args?.melody;
+                const notes = res.map((num: ethers.BigNumber) => Number(num.div(BigNumber.from("1000000000000000000"))))
+                // // prevent repetition at the end
+                // const last = x2.slice(melody.length-stepLen);
+                // let repeated = false;
+                // for (let i = 0; i < last.length; i++) {
+                //     if (last[i].eq(res[i])) {
+                //         repeated = true;
+                //         break;
+                //     }
+                // }
+                // if (repeated) { 
+                //     res[res.length - 1] = ethers.BigNumber.from(String(Math.trunc(Math.floor(Math.random() * 128) * 1e18)));
+                // }
+                x2 = x2.concat(res).slice(stepLen);
+                melody = melody.concat(notes);
+                // sleep for 1s
+                await new Promise(r => setTimeout(r, 1000));
+            // }
+        }
+        console.log("generated melody:", melody);
+
+        const cmd = `python scripts/gen_midi.py --data "${JSON.stringify(melody)}" --output-path "${taskArgs.output}"`;
+        execSync(cmd);
 
         let endTime = new Date().getTime();
-        console.log("Time: ", (endTime - startTime) / (60 * 1000));
+        console.log("Time: ", (endTime - startTime) / 1000);
     });
 
 
@@ -423,8 +484,21 @@ task("get-melody-model", "get eternal AI model")
         }
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const model = await c.getInfo(tokenId);
+        const modelAddress = await c.modelAddr(tokenId);
+        console.log("Reading MelodyRNN model at address", modelAddress);
+        const mldy = new ethers.Contract(modelAddress, MelodyRNNArtifact.abi, signer);
+        // const model = await mldy.getInfo(tokenId);
 
-        fs.writeFileSync("baseDesc.json", JSON.stringify(model));
+        // fs.writeFileSync("baseDesc.json", JSON.stringify(model));
         // console.log(JSON.stringify(model));
+
+        // const lstmInfo = await mldy.getLSTMLayer(ethers.BigNumber.from(2));
+        // const lstmInfoDec = [
+        //     lstmInfo[0].toString(),
+        //     lstmInfo[1].toString(),
+        //     lstmInfo[2].map(numArr => numArr.map(num => num.toString())),
+        //     lstmInfo[3].map(numArr => numArr.map(num => num.toString())),
+        //     lstmInfo[4].map(num => num.toString()),
+        // ]
+        // fs.writeFileSync("lstmInfo.json", JSON.stringify(lstmInfoDec));
     });

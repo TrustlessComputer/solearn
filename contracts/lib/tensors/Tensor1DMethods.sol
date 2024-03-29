@@ -83,6 +83,15 @@ library Tensor1DMethods {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 
+	function mul(Tensors.Tensor1D memory a, SD59x18 num) internal pure returns (Tensors.Tensor1D memory) {
+		Tensors.Tensor1D memory res = zerosTensor(a.n);
+		for (uint i = 0; i < a.n; i++) {
+			res.mat[i] = a.mat[i] * num;
+		}
+		return res;
+	}
+
+
 
 	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(b.m);
