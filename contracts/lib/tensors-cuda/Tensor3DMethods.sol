@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import { Float64x64, fromInt } from "./../Float64x64/Lib.sol";
 import "./Tensors.sol";
 import "./Tensor2DMethods.sol";
 
@@ -11,11 +10,11 @@ library Tensor3DMethods {
 		ts.n = n;
 		ts.m = m;
 		ts.p = p;
-		ts.mat = new SD59x18[][][](n);
+		ts.mat = new Float64x64[][][](n);
 		for (uint i = 0; i < n; i++) {
-			ts.mat[i] = new SD59x18[][](m);
+			ts.mat[i] = new Float64x64[][](m);
 			for(uint j = 0; j < m; j++) {
-				ts.mat[i][j] = new SD59x18[](p);
+				ts.mat[i][j] = new Float64x64[](p);
 			}
 		}
 	}
@@ -24,24 +23,24 @@ library Tensor3DMethods {
 		ts.n = n;
 		ts.m = m;
 		ts.p = p;
-		ts.mat = new SD59x18[][][](n);
+		ts.mat = new Float64x64[][][](n);
 		for (uint i = 0; i < n; i++) {
-			ts.mat[i] = new SD59x18[][](m);
+			ts.mat[i] = new Float64x64[][](m);
 		}
 	}
 
-	function from(SD59x18[][][] memory mat) internal pure returns (Tensors.Tensor3D memory ts) {
+	function from(Float64x64[][][] memory mat) internal pure returns (Tensors.Tensor3D memory ts) {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
 		ts.p = mat[0][0].length;
 		ts.mat = mat;
 	}
 
-	function flat(SD59x18[][][] memory mat) internal pure returns (SD59x18[] memory) {
+	function flat(Float64x64[][][] memory mat) internal pure returns (Float64x64[] memory) {
 		uint n = mat.length;
 		uint m = mat[0].length;
 		uint p = mat[0][0].length;
-		SD59x18[] memory result = new SD59x18[](n * m * p);
+		Float64x64[] memory result = new Float64x64[](n * m * p);
 		uint ptr = 0;
 		for (uint i = 0; i < n; i++) {
 			for (uint j = 0; j < m; j++) {
@@ -54,19 +53,19 @@ library Tensor3DMethods {
 		return result;
 	}
 
-	function load(Tensors.Tensor3D memory ts, SD59x18[] memory data, uint n, uint m, uint p) internal pure {
+	function load(Tensors.Tensor3D memory ts, Float64x64[] memory data, uint n, uint m, uint p) internal pure {
 		ts.n = n;
 		ts.m = m;
 		ts.p = p;
-		ts.mat = new SD59x18[][][](n);
+		ts.mat = new Float64x64[][][](n);
 
 		uint ptr = 0;
 		for (uint i = 0; i < n; i++) {
-			ts.mat[i] = new SD59x18[][](m);
+			ts.mat[i] = new Float64x64[][](m);
 			for (uint j = 0; j < m; j++) {
-				ts.mat[i][j] = new SD59x18[](p);
+				ts.mat[i][j] = new Float64x64[](p);
 				for (uint k = 0; k < p; k++) {
-					ts.mat[i][j][k] = ptr < data.length ? data[ptr] : sd(0);
+					ts.mat[i][j][k] = ptr < data.length ? data[ptr] : Float64x64.wrap(0);
 					ptr += 1;					
 				}
 			}
@@ -77,7 +76,7 @@ library Tensor3DMethods {
 		return ts.n * ts.m * ts.p;
 	}
 
-	function loadPartial(Tensors.Tensor3D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
+	function loadPartial(Tensors.Tensor3D storage ts, Float64x64[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint m = ts.m;
 		uint p = ts.p;
 		uint cnt = count(ts);
@@ -97,7 +96,7 @@ library Tensor3DMethods {
 
 	function __apply_unary_op(
 		Tensors.Tensor3D memory a,
-		function(SD59x18) internal pure returns (SD59x18) op
+		function(Float64x64) internal pure returns (Float64x64) op
 	) internal pure returns (Tensors.Tensor3D memory) {
 		Tensors.Tensor3D memory res = zerosTensor(a.n, a.m, a.p);
 		for (uint i = 0; i < res.n; i++) {
@@ -129,7 +128,7 @@ library Tensor3DMethods {
 	function __apply_binary_op(
 		Tensors.Tensor3D memory a, 
 		Tensors.Tensor1D memory b, 
-		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
+		function(Float64x64, Float64x64) internal pure returns (Float64x64) op
 	) internal pure returns (Tensors.Tensor3D memory) {
 		Tensors.Tensor3D memory res = zerosTensor(a.n, a.m, a.p);
 		for (uint i = 0; i < res.n; i++) {
@@ -145,7 +144,7 @@ library Tensor3DMethods {
 	function __apply_binary_op(
 		Tensors.Tensor3D memory a, 
 		Tensors.Tensor3D memory b, 
-		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
+		function(Float64x64, Float64x64) internal pure returns (Float64x64) op
 	) internal pure returns (Tensors.Tensor3D memory) {
 		Tensors.Tensor3D memory res = zerosTensor(a.n, a.m, a.p);
 		for (uint i = 0; i < res.n; i++) {
@@ -179,14 +178,14 @@ library Tensor3DMethods {
 		uint[2] memory pos,
 		uint[2] memory size,
 		uint p
-	) internal pure returns (SD59x18) {
+	) internal pure returns (Float64x64) {
 		unchecked {
-		SD59x18 cell = sd(-1e9 * 1e18);
+		Float64x64 cell = fromInt(-1e9);
 		for(uint dx = 0; dx < size[0]; ++dx) {
 			for(uint dy = 0; dy < size[1]; ++dy) {
 				uint X = pos[0] + dx;
 				uint Y = pos[1] + dy;
-				SD59x18 val = (X >= 0 && X < a.n && Y >= 0 && Y < a.m) ? a.mat[X][Y][p] : sd(0);
+				Float64x64 val = (X >= 0 && X < a.n && Y >= 0 && Y < a.m) ? a.mat[X][Y][p] : Float64x64.wrap(0);
 				cell = Tensors.max(cell, val);
 			}
 		}
@@ -200,9 +199,9 @@ library Tensor3DMethods {
 		uint[2] memory pos,
 		uint[2] memory size,
 		uint p
-	) internal pure returns (SD59x18) {
+	) internal pure returns (Float64x64) {
 		unchecked {
-		SD59x18 cell = sd(0);
+		Float64x64 cell = Float64x64.wrap(0);
 		for(uint dx = 0; dx < size[0]; ++dx) {
 			for(uint dy = 0; dy < size[1]; ++dy) {
 				uint X = pos[0] + dx;
@@ -270,7 +269,7 @@ library Tensor3DMethods {
 
 	function softmax(Tensors.Tensor3D memory a) internal pure returns (Tensors.Tensor3D memory) {
 		Tensors.Tensor3D memory res = __apply_unary_op(a, Tensors.__exp);
-		SD59x18 sum_e = sd(0);
+		Float64x64 sum_e = Float64x64.wrap(0);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
 				for (uint k = 0; k < res.p; k++) {

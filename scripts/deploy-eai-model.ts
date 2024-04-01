@@ -132,7 +132,6 @@ async function main() {
     if (!MODEL_OWNER || !ethers.utils.isAddress(MODEL_OWNER)) {
         throw new Error("MODEL_OWNER is not set");
     }
-    console.log(MODEL_JSON);
     const provider = ethers.getDefaultProvider(NODE_ENDPOINT);
     const signer = new ethers.Wallet(PRIVATE_KEY, provider);
     const abic = ethers.utils.defaultAbiCoder;
@@ -146,7 +145,7 @@ async function main() {
         const temp = Buffer.from(params.weight_b64, 'base64');
         const floats = new Float32Array(new Uint8Array(temp).buffer);
         for (let i = 0; i < floats.length; i++) {
-            weightsFlat.push(ethers.BigNumber.from(String(Math.trunc(floats[i] * 1e18))));
+            weightsFlat.push(ethers.BigNumber.from(String(Math.trunc(floats[i] * Math.pow(2, 64)))));
         }
     }
 
@@ -181,8 +180,8 @@ async function main() {
             result = abic.encode(["uint8"], [layerType]);
             input_units = input_units[0] * input_units[1] * input_units[2];
         } else if (layer.class_name === 'Rescaling') {
-            const n1 = ethers.BigNumber.from(String(layer.config.scale * 1e18))
-            const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("1000000000000000000"));
+            const n1 = ethers.BigNumber.from(String(layer.config.scale * Math.pow(2, 64)));
+            const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("18446744073709551616"));
             result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
         } else if (layer.class_name === 'InputLayer') {
             const dim = layer.config.batch_input_shape.slice(1);
@@ -284,6 +283,7 @@ async function main() {
             newLayerConfig.push(result);
         }
     }
+
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
 
     let tokenId = ethers.BigNumber.from(0); // placeholder
@@ -291,7 +291,8 @@ async function main() {
     const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
     // deploy a EternalAI contract
     const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
-    const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name || [], nftContractAddress);
+    
+    const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name || [], nftContractAddress, gasConfig);
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);

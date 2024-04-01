@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
+import { Float64x64, fromInt, toInt } from "./Float64x64/Lib.sol";
 
 library Utils {
-	function zip(SD59x18[][] memory rows) internal pure returns (SD59x18[][] memory) {
-		SD59x18[][] memory result = new SD59x18[][](rows[0].length);
+	function zip(Float64x64[][] memory rows) internal pure returns (Float64x64[][] memory) {
+		Float64x64[][] memory result = new Float64x64[][](rows[0].length);
 		for (uint i = 0; i < rows[0].length; i++) {
-			result[i] = new SD59x18[](rows.length);
+			result[i] = new Float64x64[](rows.length);
 			for (uint j = 0; j < rows.length; j++) {
 				result[i][j] = rows[j][i];
 			}
@@ -15,8 +15,8 @@ library Utils {
 		return result;
 	}
 
-	function clone(SD59x18[] memory items) internal pure returns (SD59x18[] memory) {
-		SD59x18[] memory result = new SD59x18[](items.length);
+	function clone(Float64x64[] memory items) internal pure returns (Float64x64[] memory) {
+		Float64x64[] memory result = new Float64x64[](items.length);
 		for (uint i = 0; i < items.length; i++) {
 			result[i] = items[i];
 		}
@@ -38,13 +38,13 @@ library Utils {
 		return string(result);
 	}
 
-	function rand(uint256 seed) internal pure returns (SD59x18) {
-		return sd(int(seed % 1e18));
+	function rand(uint256 seed) internal pure returns (Float64x64) {
+		return Float64x64.wrap(int128(uint128(seed % (1<<64))));
 	}
 
-	function getWeightedRandom(SD59x18[] memory probs, uint256 seed) internal pure returns (uint256) {
-		SD59x18 x = rand(seed);
-		SD59x18 sum = sd(0);
+	function getWeightedRandom(Float64x64[] memory probs, uint256 seed) internal pure returns (uint256) {
+		Float64x64 x = rand(seed);
+		Float64x64 sum = Float64x64.wrap(0);
 		for (uint256 i = 0; i < probs.length; i++) {
 			sum = sum + probs[i];
 			if (sum.gt(x)) {
@@ -62,121 +62,121 @@ library Utils {
 		return getHash(a) == getHash(b);
 	}
 
-	function getBinaryDigits(int256 x) internal pure returns (uint256) {
-		uint256 count;
-		while (x > 0) {
-			++count;
-			x >>= 1;
-		}
-		return count;
-	}
+	// function getBinaryDigits(int256 x) internal pure returns (uint256) {
+	// 	uint256 count;
+	// 	while (x > 0) {
+	// 		++count;
+	// 		x >>= 1;
+	// 	}
+	// 	return count;
+	// }
 
-	function fixedPointNumberToFloatPointNumber(SD59x18 fixedPoint) internal pure returns (bytes8) {
-		int256 value = fixedPoint.intoInt256();
-		unchecked {
-			if (value == 0) {
-				return 0;
-			}
+	// function fixedPointNumberToFloatPointNumber(Float64x64 fixedPoint) internal pure returns (bytes8) {
+	// 	int256 value = fixedPoint.intoInt256();
+	// 	unchecked {
+	// 		if (value == 0) {
+	// 			return 0;
+	// 		}
 
-			if (value == type(int256).min) {
-				return bytes8(uint64(14978972360634269696));
-			}
+	// 		if (value == type(int256).min) {
+	// 			return bytes8(uint64(14978972360634269696));
+	// 		}
 
-			uint256 isNegative;
-			if (value < 0) {
-				isNegative = 1;
-				value = -value;
-			}
+	// 		uint256 isNegative;
+	// 		if (value < 0) {
+	// 			isNegative = 1;
+	// 			value = -value;
+	// 		}
 
-			uint256 exponent = 0;
-			uint256 mantissa = 0;
-			if (value >= 1e18) {
-				exponent = getBinaryDigits(value / 1e18) - 1;
-				value >>= exponent;
-				exponent += 1023;
-			} else {
-				exponent = getBinaryDigits(1e18 / value);
-				value <<= exponent;
-				exponent = exponent ^ 1023;
-			}
+	// 		uint256 exponent = 0;
+	// 		uint256 mantissa = 0;
+	// 		if (value >= 1e18) {
+	// 			exponent = getBinaryDigits(value / 1e18) - 1;
+	// 			value >>= exponent;
+	// 			exponent += 1023;
+	// 		} else {
+	// 			exponent = getBinaryDigits(1e18 / value);
+	// 			value <<= exponent;
+	// 			exponent = exponent ^ 1023;
+	// 		}
 
-			value -= 1e18;
-			for (uint256 i = 0; i < 52; ++i) {
-				value <<= 1;
-				mantissa <<= 1;
-				if (value >= 1e18) {
-					mantissa |= 1;
-					value -= 1e18;
-				}
-			}
+	// 		value -= 1e18;
+	// 		for (uint256 i = 0; i < 52; ++i) {
+	// 			value <<= 1;
+	// 			mantissa <<= 1;
+	// 			if (value >= 1e18) {
+	// 				mantissa |= 1;
+	// 				value -= 1e18;
+	// 			}
+	// 		}
 
-			return bytes8(uint64(mantissa | (exponent << 52) | (isNegative << 63)));
-		}
-	}
+	// 		return bytes8(uint64(mantissa | (exponent << 52) | (isNegative << 63)));
+	// 	}
+	// }
 
-	function fixedPointMatrixToFloatPointMatrix(SD59x18[][] memory mat) internal pure returns (bytes8[][] memory) {
-		uint n = mat.length;
-		uint m = mat[0].length;
-		bytes8[][] memory buffer = new bytes8[][](n);
-		unchecked {
-			for(uint i = 0; i < n; ++i) {
-				buffer[i] = new bytes8[](m);
-				for(uint j = 0; j < m; ++j) {
-					buffer[i][j] = fixedPointNumberToFloatPointNumber(mat[i][j]);
-				}
-			}
-		}
-		return buffer;
-	}
+	// function fixedPointMatrixToFloatPointMatrix(Float64x64[][] memory mat) internal pure returns (bytes8[][] memory) {
+	// 	uint n = mat.length;
+	// 	uint m = mat[0].length;
+	// 	bytes8[][] memory buffer = new bytes8[][](n);
+	// 	unchecked {
+	// 		for(uint i = 0; i < n; ++i) {
+	// 			buffer[i] = new bytes8[](m);
+	// 			for(uint j = 0; j < m; ++j) {
+	// 				buffer[i][j] = fixedPointNumberToFloatPointNumber(mat[i][j]);
+	// 			}
+	// 		}
+	// 	}
+	// 	return buffer;
+	// }
 
-	function _shift_fixed_one(int256 i) private pure returns (int256) {
-		return i >= 0
-			? int256(1e18) << uint256(i)
-			: i > -63 ?
-				int256(1e18) >> uint256(-i) : int256(0);
-	}
+	// function _shift_fixed_one(int256 i) private pure returns (int256) {
+	// 	return i >= 0
+	// 		? int256(1e18) << uint256(i)
+	// 		: i > -63 ?
+	// 			int256(1e18) >> uint256(-i) : int256(0);
+	// }
 
-	function floatPointNumberToFixedPointNumber(bytes8 floatPoint) internal pure returns (SD59x18) {
-		uint64 value = uint64(floatPoint);
-		if (value == 0) {
-			return sd(0);
-		}
+	// function floatPointNumberToFixedPointNumber(bytes8 floatPoint) internal pure returns (Float64x64) {
+	// 	uint64 value = uint64(floatPoint);
+	// 	if (value == 0) {
+	// 		return Float64x64.wrap(0);
+	// 	}
 
-		if (value == 14978972360634269696) {
-			return sd(type(int256).min);
-		}
+	// 	if (value == 14978972360634269696) {
+	// 		return sd(type(int256).min);
+	// 	}
 
-		bool isNegative = (value >> 63) == 1;
+	// 	bool isNegative = (value >> 63) == 1;
 
-		int256 exponent = int256(uint256((value >> 52) & 2047)) - 1023;
-		if (exponent > 128) {
-			revert('Out of bounds');
-		}
+	// 	int256 exponent = int256(uint256((value >> 52) & 2047)) - 1023;
+	// 	if (exponent > 128) {
+	// 		revert('Out of bounds');
+	// 	}
 
-		uint256 mantissa = value & 4503599627370495;
+	// 	uint256 mantissa = value & 4503599627370495;
 
-		int256 fixedValue = _shift_fixed_one(exponent);
-		for (uint256 i = 0; i < 52; ++i) {
-			if ((mantissa >> (51 - i)) & 1 == 1) {
-				fixedValue += _shift_fixed_one(exponent - int256(i) - 1);
-			}
-		}
+	// 	int256 fixedValue = _shift_fixed_one(exponent);
+	// 	for (uint256 i = 0; i < 52; ++i) {
+	// 		if ((mantissa >> (51 - i)) & 1 == 1) {
+	// 			fixedValue += _shift_fixed_one(exponent - int256(i) - 1);
+	// 		}
+	// 	}
 
-		return sd(isNegative ? -fixedValue : fixedValue);
-	}
+	// 	return sd(isNegative ? -fixedValue : fixedValue);
+	// }
 
-	function floatPointMatrixToFixedPointMatrix(bytes8[][] memory mat) internal pure returns (SD59x18[][] memory) {
-		uint n = mat.length;
-		uint m = mat[0].length;
-		SD59x18[][] memory buffer = new SD59x18[][](n);
-		unchecked {
-			for(uint i = 0; i < n; ++i) {
-				buffer[i] = new SD59x18[](m);
-				for(uint j = 0; j < m; ++j) {
-					buffer[i][j] = floatPointNumberToFixedPointNumber(mat[i][j]);
-				}
-			}
-		}
-		return buffer;
-	}
+	// function floatPointMatrixToFixedPointMatrix(bytes8[][] memory mat) internal pure returns (Float64x64[][] memory) {
+	// 	uint n = mat.length;
+	// 	uint m = mat[0].length;
+	// 	Float64x64[][] memory buffer = new Float64x64[][](n);
+	// 	unchecked {
+	// 		for(uint i = 0; i < n; ++i) {
+	// 			buffer[i] = new Float64x64[](m);
+	// 			for(uint j = 0; j < m; ++j) {
+	// 				buffer[i][j] = floatPointNumberToFixedPointNumber(mat[i][j]);
+	// 			}
+	// 		}
+	// 	}
+	// 	return buffer;
+	// }
 }

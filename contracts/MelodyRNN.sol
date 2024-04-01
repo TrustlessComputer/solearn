@@ -34,7 +34,7 @@ contract MelodyRNN is Ownable {
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor3DMethods for Tensors.Tensor3D;
     using Tensor4DMethods for Tensors.Tensor4D;
-    int256 constant VOCAB_SIZE = 130;
+    uint256 constant VOCAB_SIZE = 130;
 
     Model public model;
     IModelReg public modelRegistry;
@@ -43,14 +43,14 @@ contract MelodyRNN is Ownable {
     uint256 version;
     VocabInfo public vocabInfo;
 
-    event NewMelody(uint256 indexed tokenId, SD59x18[] melody);
+    event NewMelody(uint256 indexed tokenId, Float64x64[] melody);
 
     event Forwarded(
         uint256 indexed tokenId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[][][] outputs1,
-        SD59x18[] outputs2
+        Float64x64[][][] outputs1,
+        Float64x64[] outputs2
     );
 
     event Deployed(
@@ -151,8 +151,8 @@ contract MelodyRNN is Ownable {
         returns (
             uint256 dim_in,
             uint256 dim_out,
-            SD59x18[][] memory w,
-            SD59x18[] memory b
+            Float64x64[][] memory w,
+            Float64x64[] memory b
         )
     {
         Layers.DenseLayer memory layer = model.d[layerIdx];
@@ -170,9 +170,9 @@ contract MelodyRNN is Ownable {
         returns (
             uint256,
             uint256,
-            SD59x18[][] memory,
-            SD59x18[][] memory,
-            SD59x18[] memory
+            Float64x64[][] memory,
+            Float64x64[][] memory,
+            Float64x64[] memory
         )
     {
         Layers.LSTM memory layer = model.lstm[layerIdx];
@@ -191,11 +191,11 @@ contract MelodyRNN is Ownable {
     function forward(
         Model memory model,
         uint256 input,
-        SD59x18[][][] memory states,
+        Float64x64[][][] memory states,
         bool isGenerating
-    ) internal returns (SD59x18[] memory, SD59x18[][][] memory) {
-        SD59x18[] memory x2;
-        SD59x18[][] memory x2Ext;
+    ) internal returns (Float64x64[] memory, Float64x64[][][] memory) {
+        Float64x64[] memory x2;
+        Float64x64[][] memory x2Ext;
         for (uint256 i = 0; i < model.layers.length; i++) {
             Info memory layerInfo = model.layers[i];
 
@@ -216,8 +216,8 @@ contract MelodyRNN is Ownable {
                 }                
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 if (x2.length == 0) {
-                    x2 = new SD59x18[](1);
-                    x2[0] = sd(int(input) * 1e18 / VOCAB_SIZE);
+                    x2 = new Float64x64[](1);
+                    x2[0] = Float64x64.wrap(int128(int((input << 64) / VOCAB_SIZE)));
                 }
 
                 Layers.LSTM memory lstm = model.lstm[layerInfo.layerIndex];
@@ -237,40 +237,13 @@ contract MelodyRNN is Ownable {
         return (x2, states);
     }
 
-    function decodeTokens(SD59x18[] memory tokens) internal view returns (SD59x18[] memory) {
+    function decodeTokens(Float64x64[] memory tokens) internal view returns (Float64x64[] memory) {
         VocabInfo storage info = vocabInfo;
         for(uint i = 0; i < tokens.length; ++i) {
-            uint256 id = tokens[i].intoUint256() / 1e18;
-            tokens[i] = sd(int256(info.vocabs[id] * 1e18));
+            uint64 id = uint64(toInt(tokens[i]));
+            tokens[i] = fromInt(int(info.vocabs[id]));
         }
         return tokens;
-    }
-
-    function sampleWithTemperature(SD59x18[] memory probabilities, int256 seed) public pure returns (uint256) {
-        uint256 n = probabilities.length;
-        SD59x18[] memory p = new SD59x18[](n);
-        SD59x18 sumNewProbs;
-        for (uint256 i=0; i<n; i++) {
-            // p[i] = probabilities[i].ln() / temperature;
-            // p[i] = p[i].exp();
-            p[i] = probabilities[i];
-            sumNewProbs = sumNewProbs + p[i];
-        }
-        for (uint256 i=0; i<n; i++) {
-            p[i] = p[i] / sumNewProbs;
-        }
-        // sample
-        SD59x18 r = sd(seed % 1e18).abs();
-        uint256 choice = 0;
-        for (uint256 i=0; i<n; i++) {
-            r = r - p[i];
-            if (r.unwrap() < 0) {
-                choice = i;
-                break;
-            }
-        }
-
-        return choice;
     }
 
     function getVocabs() public view returns (uint256[] memory) {
@@ -278,17 +251,17 @@ contract MelodyRNN is Ownable {
     }
 
     function getToken(
-        SD59x18[] memory x2,
-        SD59x18 temperature,
+        Float64x64[] memory x2,
+        Float64x64 temperature,
         uint256 seed 
     ) internal view returns (uint256) {
-        SD59x18[] memory tmp = Utils.clone(x2);
+        Float64x64[] memory tmp = Utils.clone(x2);
         for(uint i = 0; i < tmp.length; ++i) {
             tmp[i] = tmp[i] / temperature;
         }
 
         Tensors.Tensor1D memory xt = Tensor1DMethods.from(tmp);
-        SD59x18[] memory probs = xt.softmax().mat;
+        Float64x64[] memory probs = xt.softmax().mat;
         uint256 outputToken = Utils.getWeightedRandom(probs, seed);
 
         return outputToken;
@@ -297,21 +270,21 @@ contract MelodyRNN is Ownable {
     // function generateMelodyTest(
     //     uint256 _modelId,
     //     uint256 noteCount,
-    //     SD59x18[] calldata x
-    // ) public view onlyMintedModel returns (SD59x18[] memory, SD59x18[][][] memory) {
+    //     Float64x64[] calldata x
+    // ) public view onlyMintedModel returns (Float64x64[] memory, Float64x64[][][] memory) {
     //     if (_modelId != modelId) revert IncorrectModelId();
 
     //     Model memory model = model;
     //     uint256 seed = uint256(keccak256(abi.encodePacked(x)));
 
-    //     SD59x18 temperature = sd(1e18);
-    //     SD59x18[] memory r2;
-    //     SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
+    //     Float64x64 temperature = sd(1e18);
+    //     Float64x64[] memory r2;
+    //     Float64x64[][][] memory states = new Float64x64[][][](model.lstm.length);
     //     for (uint256 i=0; i<x.length-1; i++) {
     //         (r2, states) = forward(model, x[i].intoUint256() / 1e18, states, false);
     //     }
 
-    //     SD59x18[] memory result = new SD59x18[](noteCount);
+    //     Float64x64[] memory result = new Float64x64[](noteCount);
     //     uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
     //     for (uint256 i=0; i<noteCount; i++) {
     //         (r2, states) = forward(model, inputToken, states, true);
@@ -329,29 +302,29 @@ contract MelodyRNN is Ownable {
     function generateMelody(
         uint256 _modelId,
         uint256 noteCount,
-        SD59x18[] calldata x
+        Float64x64[] calldata x
     ) external onlyMintedModel {
         if (_modelId != modelId) revert IncorrectModelId();
         
         Model memory model = model;
         uint256 seed = uint256(keccak256(abi.encodePacked(x)));
 
-        SD59x18 temperature = sd(1e18);
-        SD59x18[] memory r2;
-        SD59x18[][][] memory states = new SD59x18[][][](model.lstm.length);
+        Float64x64 temperature = Float64x64.wrap(1 << 64); // 1.0
+        Float64x64[] memory r2;
+        Float64x64[][][] memory states = new Float64x64[][][](model.lstm.length);
         for (uint256 i=0; i<x.length-1; i++) {
-            (r2, states) = forward(model, x[i].intoUint256() / 1e18, states, false);
+            (r2, states) = forward(model, uint(int(toInt(x[i]))), states, false);
         }
 
-        SD59x18[] memory result = new SD59x18[](noteCount);
-        uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
+        Float64x64[] memory result = new Float64x64[](noteCount);
+        uint256 inputToken = uint(int(toInt(x[x.length - 1])));
         for (uint256 i=0; i<noteCount; i++) {
             (r2, states) = forward(model, inputToken, states, true);
             uint256 nxtToken = getToken(r2, temperature, seed);
             if (vocabInfo.hasVocab) {
                 nxtToken = vocabInfo.vocabs[nxtToken];
             }
-            result[i] = sd(int256(nxtToken) * 1e18);
+            result[i] = fromInt(int(nxtToken));
             seed = uint256(keccak256(abi.encodePacked(seed)));
             inputToken = nxtToken;
         }
@@ -378,7 +351,7 @@ contract MelodyRNN is Ownable {
     }
 
     function appendWeights(
-        SD59x18[] memory weights,
+        Float64x64[] memory weights,
         uint256 layerInd,
         LayerType layerType
     ) external onlyOwnerOrOperator {

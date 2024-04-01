@@ -31,11 +31,12 @@ interface IModelReg is IERC721Upgradeable {
 }
 
 contract EternalAI is Ownable {
-    event TestMatMul(SD59x18[][] data);
-    event TestEntropy(SD59x18[] data);
-    event TestProbs(SD59x18[] data);
-    event TestRNNOutput(SD59x18[] data);
-	event TestDense(SD59x18[] x, SD59x18[] w, SD59x18 tmp, SD59x18 b, SD59x18 y, SD59x18 res);
+    event TestMatMul(Float64x64[][] data);
+    event TestEntropy(Float64x64[] data);
+    event TestProbs(Float64x64[] data);
+    event TestRNNOutput(Float64x64[] data);
+	event TestDense(Float64x64[] x, Float64x64[] w, Float64x64 tmp, Float64x64 b, Float64x64 y, Float64x64 res);
+    event TestGemm(uint n, uint m, uint p);
     
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
@@ -61,16 +62,16 @@ contract EternalAI is Ownable {
         uint256 indexed tokenId,
         uint256 classIndex,
         string className,
-        SD59x18[] outputs,
-        SD59x18 confidence
+        Float64x64[] outputs,
+        Float64x64 confidence
     );
 
     event Forwarded(
         uint256 indexed tokenId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[][][] outputs1,
-        SD59x18[] outputs2
+        Float64x64[][][] outputs1,
+        Float64x64[] outputs2
     );
 
     event Deployed(
@@ -81,7 +82,7 @@ contract EternalAI is Ownable {
     event TextGenerated(
         uint256 indexed tokenId,
         string result,
-        SD59x18[][][] states,
+        Float64x64[][][] states,
         uint256 seed
     );
 
@@ -187,8 +188,8 @@ contract EternalAI is Ownable {
         returns (
             uint256 dim_in,
             uint256 dim_out,
-            SD59x18[][] memory w,
-            SD59x18[] memory b
+            Float64x64[][] memory w,
+            Float64x64[] memory b
         )
     {
         Layers.DenseLayer memory layer = model.d[layerIdx];
@@ -209,8 +210,8 @@ contract EternalAI is Ownable {
             uint256 m,
             uint256 p,
             uint256 q,
-            SD59x18[][][][] memory w,
-            SD59x18[] memory b
+            Float64x64[][][][] memory w,
+            Float64x64[] memory b
         )
     {
         Layers.Conv2DLayer memory layer = model.c2[layerIdx];
@@ -231,9 +232,9 @@ contract EternalAI is Ownable {
         returns (
             uint256,
             uint256,
-            SD59x18[][] memory,
-            SD59x18[][] memory,
-            SD59x18[] memory
+            Float64x64[][] memory,
+            Float64x64[][] memory,
+            Float64x64[] memory
         )
     {
         Layers.LSTM memory layer = model.lstm[layerIdx];
@@ -250,11 +251,11 @@ contract EternalAI is Ownable {
     }
 
     function forward(
-        SD59x18[][][] memory x1,
-        SD59x18[] memory x2,
+        Float64x64[][][] memory x1,
+        Float64x64[] memory x2,
         uint256 fromLayerIndex,
         uint256 toLayerIndex
-    ) public returns (SD59x18[][][] memory, SD59x18[] memory) {
+    ) public returns (Float64x64[][][] memory, Float64x64[] memory) {
         for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
             Info memory layerInfo = model.layers[i];
 
@@ -274,7 +275,7 @@ contract EternalAI is Ownable {
             // the last layer
             if (i == model.layers.length - 1) {
                 Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
-                SD59x18[] memory result = xt.softmax().mat;
+                Float64x64[] memory result = xt.softmax().mat;
                 return (x1, result);
             }
         }
@@ -286,19 +287,19 @@ contract EternalAI is Ownable {
     //     uint256 _modelId,
     //     uint256 fromLayerIndex,
     //     uint256 toLayerIndex,
-    //     SD59x18[][][] calldata x1,
-    //     SD59x18[] calldata x2
+    //     Float64x64[][][] calldata x1,
+    //     Float64x64[] calldata x2
     // )
     //     public
     //     view
     //     onlyMintedModel
-    //     returns (string memory, SD59x18[][][] memory, SD59x18[] memory, SD59x18)
+    //     returns (string memory, Float64x64[][][] memory, Float64x64[] memory, Float64x64)
     // {
     //     if (toLayerIndex >= model.layers.length) {
     //         toLayerIndex = model.layers.length - 1; // update to the last layer
     //     }
 
-    //     (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
+    //     (Float64x64[][][] memory r1, Float64x64[] memory r2) = forward(
     //         x1,
     //         x2,
     //         fromLayerIndex,
@@ -315,7 +316,7 @@ contract EternalAI is Ownable {
 
     //         return (model.classesName[maxInd], r1, r2, r2[maxInd]);
     //     } else {
-    //         return ("", r1, r2, sd(0));
+    //         return ("", r1, r2, Float64x64.wrap(0));
     //     }
     // }
 
@@ -323,8 +324,8 @@ contract EternalAI is Ownable {
         uint256 _modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
-        SD59x18[][][] calldata x1,
-        SD59x18[] calldata x2
+        Float64x64[][][] calldata x1,
+        Float64x64[] calldata x2
     ) external payable onlyMintedModel {
         if (msg.value < modelRegistry.evalPrice()) revert InsufficientEvalPrice();
         (bool success, ) = modelRegistry.royaltyReceiver().call{value: msg.value}("");
@@ -334,7 +335,7 @@ contract EternalAI is Ownable {
             toLayerIndex = model.layers.length - 1; // update to the last layer
         }
 
-        (SD59x18[][][] memory r1, SD59x18[] memory r2) = forward(
+        (Float64x64[][][] memory r1, Float64x64[] memory r2) = forward(
             x1,
             x2,
             fromLayerIndex,
@@ -370,11 +371,11 @@ contract EternalAI is Ownable {
     function evaluateRNN(
         Model memory model,
         uint256 inputToken,
-        SD59x18[][][] memory rnn_state,
+        Float64x64[][][] memory rnn_state,
         bool isGenerating
-    ) internal returns (SD59x18[] memory, SD59x18[][][] memory) {
+    ) internal returns (Float64x64[] memory, Float64x64[][][] memory) {
         uint256 x1 = inputToken;
-        SD59x18[] memory x2;
+        Float64x64[] memory x2;
 
         uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
@@ -392,11 +393,11 @@ contract EternalAI is Ownable {
                 (x2, rnn_state[idx]) = model.simpleRNN[idx].forward(x2, rnn_state[idx]);
             } else if (layerInfo.layerType == LayerType.LSTM) {
                 if (x2.length == 0) {
-                    x2 = new SD59x18[](1);
-                    x2[0] = sd(int(x1 * 1e18 / vocabInfo.vocabs.length));
+                    x2 = new Float64x64[](1);
+                    x2[0] = Float64x64.wrap(int128(int((x1 << 64) / vocabInfo.vocabs.length)));
                 }
 
-                SD59x18[][] memory x2Ext;
+                Float64x64[][] memory x2Ext;
                 (x2Ext, rnn_state[idx]) = model.lstm[idx].forward(x2, rnn_state[idx]);
                 x2 = x2Ext[0];
             }
@@ -433,21 +434,21 @@ contract EternalAI is Ownable {
     }
 
     function getToken(
-        SD59x18[] memory x2,
-        SD59x18 temperature,
+        Float64x64[] memory x2,
+        Float64x64 temperature,
         uint256 seed 
     ) internal returns (uint256) {
         uint unkIndex = vocabInfo.unkIndex - 1;
 
-        SD59x18[] memory tmp = Utils.clone(x2);
-        tmp[unkIndex] = tmp[unkIndex] - sd(1e18 * 1e18);
+        Float64x64[] memory tmp = Utils.clone(x2);
+        tmp[unkIndex] = tmp[unkIndex] - fromInt(1e9);
         for(uint i = 0; i < tmp.length; ++i) {
             tmp[i] = tmp[i] / temperature;
         }
         emit TestEntropy(tmp);
 
         Tensors.Tensor1D memory xt = Tensor1DMethods.from(tmp);
-        SD59x18[] memory probs = xt.softmax().mat;
+        Float64x64[] memory probs = xt.softmax().mat;
         emit TestProbs(probs);
         uint256 outputToken = Utils.getWeightedRandom(probs, seed);
         return outputToken;
@@ -456,16 +457,16 @@ contract EternalAI is Ownable {
     function generateTextHelper(
         string memory prompt,
         uint256 toGenerate,
-        SD59x18[][][] memory states,
+        Float64x64[][][] memory states,
         uint256 seed
-    ) internal returns (string memory, SD59x18[][][] memory, uint256) {
-        SD59x18 temperature = sd(7e17);
+    ) internal returns (string memory, Float64x64[][][] memory, uint256) {
+        Float64x64 temperature = Float64x64.wrap(12912720851596686131); // 0.7
 
         Model memory model = model;
 
         uint256[] memory tokens = tokenize(prompt); 
 
-        SD59x18[] memory x2;
+        Float64x64[] memory x2;
         if (states.length == 0) {
             if (model.simpleRNN.length > 0) {
                 states = Tensor3DMethods.zerosTensor(model.simpleRNN.length, 1, model.simpleRNN[0].units).mat;
@@ -494,9 +495,9 @@ contract EternalAI is Ownable {
     //     uint _modelId,
     //     string memory prompt,
     //     uint256 toGenerate,
-    //     SD59x18[][][] memory states,
+    //     Float64x64[][][] memory states,
     //     uint256 seed
-    // ) external view onlyMintedModel returns (string memory, SD59x18[][][] memory, uint256) {
+    // ) external view onlyMintedModel returns (string memory, Float64x64[][][] memory, uint256) {
     //     return generateTextHelper(prompt, toGenerate, states, seed); 
     // }
 
@@ -504,7 +505,7 @@ contract EternalAI is Ownable {
         uint _modelId,
         string memory prompt,
         uint256 toGenerate,
-        SD59x18[][][] memory states,
+        Float64x64[][][] memory states,
         uint256 seed
     ) external onlyMintedModel {
         string memory generatedText;
@@ -549,7 +550,7 @@ contract EternalAI is Ownable {
 
     function appendWeights(
         uint256 _modelId,
-        SD59x18[] memory weights,
+        Float64x64[] memory weights,
         uint256 layerInd,
         LayerType layerType
     ) external onlyOwnerOrOperator {

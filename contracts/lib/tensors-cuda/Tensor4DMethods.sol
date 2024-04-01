@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import { Float64x64, fromInt } from "./../Float64x64/Lib.sol";
 import "./Tensors.sol";
 import "./Tensor2DMethods.sol";
 import "hardhat/console.sol";
@@ -13,13 +12,13 @@ library Tensor4DMethods {
 		ts.m = m;
 		ts.p = p;
 		ts.q = q;
-		ts.mat = new SD59x18[][][][](n);
+		ts.mat = new Float64x64[][][][](n);
 		for (uint i = 0; i < n; i++) {
-			ts.mat[i] = new SD59x18[][][](m);
+			ts.mat[i] = new Float64x64[][][](m);
 			for(uint j = 0; j < m; j++) {
-				ts.mat[i][j] = new SD59x18[][](p);
+				ts.mat[i][j] = new Float64x64[][](p);
 				for(uint k = 0; k < p; k++) {
-					ts.mat[i][j][k] = new SD59x18[](q);
+					ts.mat[i][j][k] = new Float64x64[](q);
 				}
 			}
 		}
@@ -30,16 +29,16 @@ library Tensor4DMethods {
 		ts.m = m;
 		ts.p = p;
 		ts.q = q;
-		ts.mat = new SD59x18[][][][](n);
+		ts.mat = new Float64x64[][][][](n);
 		for (uint i = 0; i < n; i++) {
-			ts.mat[i] = new SD59x18[][][](m);
+			ts.mat[i] = new Float64x64[][][](m);
 			for(uint j = 0; j < m; j++) {
-				ts.mat[i][j] = new SD59x18[][](p);
+				ts.mat[i][j] = new Float64x64[][](p);
 			}
 		}
 	}
 
-	function from(SD59x18[][][][] memory mat) internal pure returns (Tensors.Tensor4D memory ts) {
+	function from(Float64x64[][][][] memory mat) internal pure returns (Tensors.Tensor4D memory ts) {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
 		ts.p = mat[0][0].length;
@@ -47,12 +46,12 @@ library Tensor4DMethods {
 		ts.mat = mat;
 	}
 
-	function flat(SD59x18[][][][] memory mat) internal pure returns (SD59x18[] memory) {
+	function flat(Float64x64[][][][] memory mat) internal pure returns (Float64x64[] memory) {
 		uint n = mat.length;
 		uint m = mat[0].length;
 		uint p = mat[0][0].length;
 		uint q = mat[0][0][0].length;
-		SD59x18[] memory result = new SD59x18[](n * m * p * q);
+		Float64x64[] memory result = new Float64x64[](n * m * p * q);
 		uint ptr = 0;
 		for (uint i = 0; i < n; i++) {
 			for (uint j = 0; j < m; j++) {
@@ -67,22 +66,22 @@ library Tensor4DMethods {
 		return result;
 	}
 
-	function load(Tensors.Tensor4D memory ts, SD59x18[] memory data, uint n, uint m, uint p, uint q) internal pure {
+	function load(Tensors.Tensor4D memory ts, Float64x64[] memory data, uint n, uint m, uint p, uint q) internal pure {
 		ts.n = n;
 		ts.m = m;
 		ts.p = p;
 		ts.q = q;
-		ts.mat = new SD59x18[][][][](n);
+		ts.mat = new Float64x64[][][][](n);
 
 		uint ptr = 0;
 		for (uint i = 0; i < n; i++) {
-			ts.mat[i] = new SD59x18[][][](m);
+			ts.mat[i] = new Float64x64[][][](m);
 			for (uint j = 0; j < m; j++) {
-				ts.mat[i][j] = new SD59x18[][](p);
+				ts.mat[i][j] = new Float64x64[][](p);
 				for (uint k = 0; k < p; k++) {
-					ts.mat[i][j][k] = new SD59x18[](q);
+					ts.mat[i][j][k] = new Float64x64[](q);
 					for (uint l = 0; l < q; l++) {
-						ts.mat[i][j][k][l] = ptr < data.length ? data[ptr] : sd(0);
+						ts.mat[i][j][k][l] = ptr < data.length ? data[ptr] : Float64x64.wrap(0);
 						ptr += 1;
 					}
 				}
@@ -94,7 +93,7 @@ library Tensor4DMethods {
 		return ts.n * ts.m * ts.p * ts.q;
 	}
 
-	function loadPartial(Tensors.Tensor4D storage ts, SD59x18[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
+	function loadPartial(Tensors.Tensor4D storage ts, Float64x64[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint m = ts.m;
 		uint p = ts.p;
 		uint q = ts.q;
@@ -119,7 +118,7 @@ library Tensor4DMethods {
 
 	function __apply_unary_op(
 		Tensors.Tensor4D memory a,
-		function(SD59x18) internal pure returns (SD59x18) op
+		function(Float64x64) internal pure returns (Float64x64) op
 	) internal pure returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
 		for (uint i = 0; i < res.n; i++) {
@@ -153,7 +152,7 @@ library Tensor4DMethods {
 	function __apply_binary_op(
 		Tensors.Tensor4D memory a,
 		Tensors.Tensor1D memory b,
-		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
+		function(Float64x64, Float64x64) internal pure returns (Float64x64) op
 	) internal pure returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
 		for (uint i = 0; i < res.n; i++) {
@@ -171,7 +170,7 @@ library Tensor4DMethods {
 	function __apply_binary_op(
 		Tensors.Tensor4D memory a,
 		Tensors.Tensor4D memory b,
-		function(SD59x18, SD59x18) internal pure returns (SD59x18) op
+		function(Float64x64, Float64x64) internal pure returns (Float64x64) op
 	) internal pure returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
 		for (uint i = 0; i < res.n; i++) {
@@ -208,14 +207,14 @@ library Tensor4DMethods {
 		uint[2] memory size,
 		uint i,
 		uint p
-	) internal pure returns (SD59x18) {
+	) internal pure returns (Float64x64) {
 		unchecked {
-		SD59x18 cell = sd(-1e9 * 1e18);
+		Float64x64 cell = fromInt(-1e9);
 		for(uint dx = 0; dx < size[0]; ++dx) {
 			for(uint dy = 0; dy < size[1]; ++dy) {
 				uint X = pos[0] + dx;
 				uint Y = pos[1] + dy;
-				SD59x18 val = (X >= 0 && X < a.m && Y >= 0 && Y < a.p) ? a.mat[i][X][Y][p] : sd(0);
+				Float64x64 val = (X >= 0 && X < a.m && Y >= 0 && Y < a.p) ? a.mat[i][X][Y][p] : Float64x64.wrap(0);
 				cell = Tensors.max(cell, val);
 			}
 		}
@@ -230,9 +229,9 @@ library Tensor4DMethods {
 		uint[2] memory size,
 		uint i,
 		uint p
-	) internal pure returns (SD59x18) {
+	) internal pure returns (Float64x64) {
 		unchecked {
-		SD59x18 cell = sd(0);
+		Float64x64 cell = Float64x64.wrap(0);
 		for(uint dx = 0; dx < size[0]; ++dx) {
 			for(uint dy = 0; dy < size[1]; ++dy) {
 				uint X = pos[0] + dx;
@@ -304,7 +303,7 @@ library Tensor4DMethods {
 
 	function softmax(Tensors.Tensor4D memory a) internal pure returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = __apply_unary_op(a, Tensors.__exp);
-		SD59x18 sum_e = sd(0);
+		Float64x64 sum_e = Float64x64.wrap(0);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
 				for (uint k = 0; k < res.p; k++) {
