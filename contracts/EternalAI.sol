@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./thirdparty/solidity-stringutils/strings.sol";
-import "./lib/layers-cuda/Layers.sol";
+import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
 
 error NotTokenOwner();
