@@ -4,10 +4,11 @@ import "hardhat-deploy";
 import './scripts/base.task';
 import './scripts/melody.task';
 import "hardhat-tracer";
+// import "@foundry-rs/hardhat-anvil";
 import 'dotenv/config'
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
-const config = {
+const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   anvil: {
     url: "http://127.0.0.1:8545/",
@@ -61,7 +62,7 @@ const config = {
     aitest: {
       url: "https://eternal-ai.tc.l2aas.com/rpc",
       accounts: [
-        process.env.AITEST_PRIVATE_KEY,
+        process.env.AITEST_PRIVATE_KEY || "", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
@@ -70,7 +71,7 @@ const config = {
     regtest: {
       url: "https://testnet.eternalai.org/rpc",
       accounts: [
-        process.env.REGTEST_PRIVATE_KEY,
+        process.env.REGTEST_PRIVATE_KEY || "", // private key
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
@@ -81,7 +82,7 @@ const config = {
     regtest2: {
       url: "https://eternal-ai2.tc.l2aas.com/rpc",
       accounts: [
-        process.env.REGTEST2_PRIVATE_KEY,
+        process.env.REGTEST2_PRIVATE_KEY || "",
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
@@ -92,7 +93,7 @@ const config = {
     cudatest: {
       url: "http://34.143.155.8:8545",
       accounts: [
-        process.env.CUDATEST_PRIVATE_KEY,
+        process.env.CUDATEST_PRIVATE_KEY || "",
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582

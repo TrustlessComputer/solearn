@@ -38,3 +38,12 @@ npx hardhat test-iteration --network anvil --contract '0x9fE46736679d2D9a65F0992
 # npx hardhat mint-model-id --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --model 'sample-models/cnn_cifar_mini.json'
 
 # npx hardhat eval-img --network anvil --id '0' --offline true --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --img 'sample-images/cifar10/airplane/0000.jpg'
+
+npx hardhat generate-text --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --prompt $'ROMEO:\nIs the day so young?' --togenerate 100 --generatepertx 10
+
+npx hardhat mint-melody-model-id --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --model 'sample-models/little_musicnet.json' --maxlen 100000
+
+npx hardhat generate-melody --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --count 50 --steplen 1 --output "outputs/vgm.mid"
+npx hardhat generate-melody --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --count 1 --steplen 50 --output "outputs/vgm_stateful.mid"
+
+npx hardhat get-melody-model --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'

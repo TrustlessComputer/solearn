@@ -166,7 +166,7 @@ library Layers {
 	function forward(LSTM memory layer, SD59x18[] memory _x, SD59x18[][] memory states) internal returns (SD59x18[][] memory, SD59x18[][] memory) {
 		SD59x18[][] memory res = new SD59x18[][](1);
 		// TODO: check
-		SD59x18[] memory x = new SD59x18[](layer.cell.units);
+		SD59x18[] memory x = new SD59x18[](layer.inputUnits);
 		for (uint i = 0; i < _x.length; i++) {
 			x[i] = _x[i];
 		}
@@ -228,6 +228,16 @@ library Layers {
 		Tensors.Tensor1D memory y = tmp.add(bt);
 		Tensors.Tensor1D memory zt = y.activation(layer.activation);
 		emit TestDense(xt.mat, w_col, tmp.mat[34], bt.mat[34], y.mat[34], zt.mat[34]);
+		return zt.mat;
+	}
+
+	function forward(DenseLayer memory layer, SD59x18[][] memory x) internal view returns (SD59x18[][] memory) {
+		Tensors.Tensor2D memory xt = Tensor2DMethods.from(x);
+		Tensors.Tensor2D memory wt = layer.w;
+		Tensors.Tensor1D memory bt = layer.b;
+		Tensors.Tensor2D memory y = xt.matMul(wt).add(bt);
+		Tensors.Tensor2D memory zt = y.activation(layer.activation);
+
 		return zt.mat;
 	}
 
@@ -534,7 +544,7 @@ library Layers {
 		requiredWeights = layer.w.count() + layer.b.count();
 	}
 
-	function makeLSTMLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (LSTM memory layer, uint256 out_dim) {
+	function makeLSTMLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (LSTM memory layer, uint256 out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint8 ractv, uint256 numUnits, uint256 numInputs) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint8, uint256, uint256)
@@ -564,6 +574,7 @@ library Layers {
 			0
 		);
 		out_dim = numUnits;
+		requiredWeights = 4 * numInputs * numUnits + 4 * numUnits * numUnits + 4 * numUnits;
 	}
 
 	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (FlattenLayer memory layer, uint256 out_dim) {

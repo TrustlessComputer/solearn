@@ -534,7 +534,7 @@ library Layers {
 		requiredWeights = layer.w.count() + layer.b.count();
 	}
 
-	function makeLSTMLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (LSTM memory layer, uint256 out_dim) {
+	function makeLSTMLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (LSTM memory layer, uint256 out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint8 ractv, uint256 numUnits, uint256 numInputs) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint8, uint256, uint256)
@@ -564,6 +564,7 @@ library Layers {
 			0
 		);
 		out_dim = numUnits;
+		requiredWeights = 4 * numInputs * numUnits + 4 * numUnits * numUnits + 4 * numUnits;
 	}
 
 	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (FlattenLayer memory layer, uint256 out_dim) {

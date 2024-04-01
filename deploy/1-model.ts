@@ -11,6 +11,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await network.provider.send("evm_setIntervalMining", [3000]);
     }
 
+    // uint256 _mintPrice, uint256 _evalPrice, address _royaltyReceiver, uint256 _nextModelId
+    const mintPrice = ethers.utils.parseEther('0.1');
+    const evalPrice = ethers.utils.parseEther('0.01');
+    const royaltyReceiver = deployer;
+    const nextModelId = 1000;
+
     await deploy('Models', {
         from: deployer,
         proxy: {
@@ -18,8 +24,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: 'initialize',
-                    args: [],
+                    args: [mintPrice, evalPrice, royaltyReceiver],
                 },
+                // onUpgrade: {
+                //     methodName: 'afterUpgrade',
+                //     args: [mintPrice, evalPrice, royaltyReceiver, nextModelId],
+                // }
             },
         },
 
