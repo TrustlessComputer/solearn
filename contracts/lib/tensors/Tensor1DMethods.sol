@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { Float64x64 } from "./../Float64x64/Lib.sol";
+import { Float32x32 } from "./../Float32x32/Lib32x32.sol";
+import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 import "./Tensors.sol";
 
 error InvalidMatrixDimensions();
 
 library Tensor1DMethods {
-	event TestMatMul(Float64x64[][] data);
+	event TestMatMul(Float32x32[][] data);
 	function zerosTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
-		ts.mat = new Float64x64[](n);
+		ts.mat = new Float32x32[](n);
 	}
 
 	function emptyTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
 	}
 	
-	function from(Float64x64[] memory mat) internal pure returns (Tensors.Tensor1D memory ts) {
+	function from(Float32x32[] memory mat) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = mat.length;
 		ts.mat = mat;
 	}
@@ -28,8 +29,8 @@ library Tensor1DMethods {
 	
 	function __apply_unary_op(
 		Tensors.Tensor1D memory a,
-		function(Float64x64) internal pure returns (Float64x64) op
-	) internal pure returns (Tensors.Tensor1D memory) {
+		function(Float32x32) internal view returns (Float32x32) op
+	) internal view returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
 		for (uint i = 0; i < res.n; i++) {
 			res.mat[i] = op(a.mat[i]);
@@ -40,7 +41,7 @@ library Tensor1DMethods {
 	function __apply_binary_op(
 		Tensors.Tensor1D memory a, 
 		Tensors.Tensor1D memory b, 
-		function(Float64x64, Float64x64) internal pure returns (Float64x64) op
+		function(Float32x32, Float32x32) internal pure returns (Float32x32) op
 	) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
 		for (uint i = 0; i < res.n; i++) {
@@ -49,7 +50,7 @@ library Tensor1DMethods {
 		return res;
 	}
     
-	function activation(Tensors.Tensor1D memory a, Tensors.ActivationFunc actv) internal pure returns (Tensors.Tensor1D memory) {
+	function activation(Tensors.Tensor1D memory a, Tensors.ActivationFunc actv) internal view returns (Tensors.Tensor1D memory) {
 		if (actv == Tensors.ActivationFunc.LeakyReLU) {
 			return __apply_unary_op(a, Tensors.__leaky_relu);
 		} else if (actv == Tensors.ActivationFunc.Linear) {
@@ -69,7 +70,7 @@ library Tensor1DMethods {
 		return __apply_binary_op(a, b, Tensors.__add);
 	}
 
-	function add(Tensors.Tensor1D memory a, Float64x64 num) internal pure returns (Tensors.Tensor1D memory) {
+	function add(Tensors.Tensor1D memory a, Float32x32 num) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
 		for (uint i = 0; i < a.n; i++) {
 			res.mat[i] = a.mat[i] + num;
@@ -82,7 +83,7 @@ library Tensor1DMethods {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 
-	function mul(Tensors.Tensor1D memory a, Float64x64 num) internal pure returns (Tensors.Tensor1D memory) {
+	function mul(Tensors.Tensor1D memory a, Float32x32 num) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
 		for (uint i = 0; i < a.n; i++) {
 			res.mat[i] = a.mat[i] * num;
@@ -99,15 +100,15 @@ library Tensor1DMethods {
 				res.mat[j] = res.mat[j] + a.mat[k] * b.mat[k][j];
 			}
 		}
-		Float64x64[][] memory tmp = new Float64x64[][](1);
+		Float32x32[][] memory tmp = new Float32x32[][](1);
 		tmp[0] = res.mat;
 		emit TestMatMul(tmp); 
 		return res;
 	}
 
-	function load(Tensors.Tensor1D memory ts, Float64x64[] memory data, uint n) internal pure {
+	function load(Tensors.Tensor1D memory ts, Float32x32[] memory data, uint n) internal pure {
 		ts.n = n;
-		ts.mat = new Float64x64[](n);
+		ts.mat = new Float32x32[](n);
 		for (uint i = 0; i < n; i++) {
 			ts.mat[i] = data[i];
 		}
@@ -126,7 +127,7 @@ library Tensor1DMethods {
 	}
 
 
-	function loadPartial(Tensors.Tensor1D storage ts, Float64x64[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
+	function loadPartial(Tensors.Tensor1D storage ts, Float32x32[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint n = ts.n; 
 		while (idx < data.length && ptr < n) {
 			ts.mat.push(data[idx]);
@@ -142,22 +143,29 @@ library Tensor1DMethods {
 		return result;
 	}
 
-	function softmax(Tensors.Tensor1D memory a) internal pure returns (Tensors.Tensor1D memory) {
-		Tensors.Tensor1D memory res = Tensor1DMethods.cloneTensor(a);
-		// Exp will fail if input is greater than 43
-		for(uint i = 0; i < res.n; i++) {
-			if (res.mat[i] > fromInt(40)) {
-				res.mat[i] = fromInt(40);
-			}
+	function softmax(Tensors.Tensor1D memory a) internal view returns (Tensors.Tensor1D memory) {
+		uint n = a.n;
+
+		SD59x18[] memory tmp = new SD59x18[](n);
+		for(uint i = 0; i < n; i++) {
+			tmp[i] = sd(int(Float32x32.unwrap(a.mat[i])) * 1e18 >> 32);
 		}
-		res = __apply_unary_op(res, Tensors.__exp);
-		
-		Float64x64 sum_e = Float64x64.wrap(0);
-		for (uint i = 0; i < res.n; i++) {
-			sum_e = sum_e + res.mat[i];
+		// Exp will fail if input is greater than 21
+		for(uint i = 0; i < n; i++) {
+			tmp[i] = tmp[i].exp();	
 		}
-		for (uint i = 0; i < a.n; i++) {
-			res.mat[i] = res.mat[i].div(sum_e);
+
+		SD59x18 sum_e = sd(0);
+		for(uint i = 0; i < n; i++) {
+			sum_e = sum_e + tmp[i];
+		}
+		for(uint i = 0; i < n; i++) {
+			tmp[i] = tmp[i].div(sum_e);
+		}
+
+		Tensors.Tensor1D memory res = Tensor1DMethods.zerosTensor(n);
+		for(uint i = 0; i < n; i++) {
+			res.mat[i] = Float32x32.wrap(int64((tmp[i].unwrap() << 32) / 1e18));
 		}
 		return res;
 	}

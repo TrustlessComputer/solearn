@@ -230,7 +230,7 @@ task("mint-model-id", "mint model id (and upload weights)")
             const temp = Buffer.from(params.weight_b64, 'base64');
             const floats = new Float32Array(new Uint8Array(temp).buffer);
             for (let i = 0; i < floats.length; i++) {
-                weightsFlat.push(ethers.BigNumber.from(String(Math.trunc(floats[i] * Math.pow(2, 64)))));
+                weightsFlat.push(ethers.BigNumber.from(String(Math.trunc(floats[i] * Math.pow(2, 32)))));
             }
         }
 
@@ -265,7 +265,7 @@ task("mint-model-id", "mint model id (and upload weights)")
                 result = abic.encode(["uint8"], [layerType]);
                 input_units = input_units[0] * input_units[1] * input_units[2];
             } else if (layer.class_name === 'Rescaling') {
-                const n1 = ethers.BigNumber.from(String(layer.config.scale * Math.pow(2, 64)))
+                const n1 = ethers.BigNumber.from(String(layer.config.scale * Math.pow(2, 32)))
                 const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("18446744073709551616"));
                 result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
             } else if (layer.class_name === 'InputLayer') {

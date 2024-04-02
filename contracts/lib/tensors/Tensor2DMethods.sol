@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { Float64x64 } from "./../Float64x64/Lib.sol";
+import { Float32x32 } from "./../Float32x32/Lib32x32.sol";
 import "./Tensors.sol";
 import "./Tensor1DMethods.sol";
 
@@ -9,19 +9,19 @@ library Tensor2DMethods {
 	function zerosTensor(uint n, uint m) internal pure returns (Tensors.Tensor2D memory ts) {
 		ts.n = n;
 		ts.m = m;
-		ts.mat = new Float64x64[][](n);
+		ts.mat = new Float32x32[][](n);
 		for (uint i = 0; i < n; i++) {
-			ts.mat[i] = new Float64x64[](m);
+			ts.mat[i] = new Float32x32[](m);
 		}
 	}
 	
 	function emptyTensor(uint n, uint m) internal pure returns (Tensors.Tensor2D memory ts) {
 		ts.n = n;
 		ts.m = m;
-		ts.mat = new Float64x64[][](n);
+		ts.mat = new Float32x32[][](n);
 	}
 	
-	function from(Float64x64[][] memory mat) internal pure returns (Tensors.Tensor2D memory ts) {
+	function from(Float32x32[][] memory mat) internal pure returns (Tensors.Tensor2D memory ts) {
 		ts.n = mat.length;
 		ts.m = mat[0].length;
 		ts.mat = mat;
@@ -31,8 +31,8 @@ library Tensor2DMethods {
 		return Tensor1DMethods.from(flat(ts.mat));
 	}
 
-	function flat(Float64x64[][] memory mat) internal pure returns (Float64x64[] memory) {
-		Float64x64[] memory result = new Float64x64[](mat.length * mat[0].length);
+	function flat(Float32x32[][] memory mat) internal pure returns (Float32x32[] memory) {
+		Float32x32[] memory result = new Float32x32[](mat.length * mat[0].length);
 		uint ptr = 0;
 		for (uint i = 0; i < mat.length; i++) {
 			for (uint j = 0; j < mat[i].length; j++) {
@@ -43,16 +43,16 @@ library Tensor2DMethods {
 		return result;
 	}
 
-	function load(Tensors.Tensor2D memory ts, Float64x64[] memory data, uint n, uint m) internal pure {
+	function load(Tensors.Tensor2D memory ts, Float32x32[] memory data, uint n, uint m) internal pure {
 		ts.n = n;
 		ts.m = m;
-		ts.mat = new Float64x64[][](n);
+		ts.mat = new Float32x32[][](n);
 
 		uint ptr = 0;
 		for (uint i = 0; i < n; i++) {
-			ts.mat[i] = new Float64x64[](m);
+			ts.mat[i] = new Float32x32[](m);
 			for (uint j = 0; j < m; j++) {
-				ts.mat[i][j] = ptr < data.length ? data[ptr] : Float64x64.wrap(0);
+				ts.mat[i][j] = ptr < data.length ? data[ptr] : Float32x32.wrap(0);
 				ptr += 1;
 			}
 		}
@@ -62,7 +62,7 @@ library Tensor2DMethods {
 		return ts.n * ts.m;
 	}
 
-	function loadPartial(Tensors.Tensor2D storage ts, Float64x64[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
+	function loadPartial(Tensors.Tensor2D storage ts, Float32x32[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint m = ts.m;
 		uint cnt = count(ts);
 		while (idx < data.length && ptr < cnt) {
@@ -81,8 +81,8 @@ library Tensor2DMethods {
 
 	function __apply_unary_op(
 		Tensors.Tensor2D memory a,
-		function(Float64x64) internal pure returns (Float64x64) op
-	) internal pure returns (Tensors.Tensor2D memory) {
+		function(Float32x32) internal view returns (Float32x32) op
+	) internal view returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
@@ -92,7 +92,7 @@ library Tensor2DMethods {
 		return res;
 	}
 
-	function activation(Tensors.Tensor2D memory a, Tensors.ActivationFunc actv) internal pure returns (Tensors.Tensor2D memory) {
+	function activation(Tensors.Tensor2D memory a, Tensors.ActivationFunc actv) internal view returns (Tensors.Tensor2D memory) {
 		if (actv == Tensors.ActivationFunc.LeakyReLU) {
 			return __apply_unary_op(a, Tensors.__leaky_relu);
 		} else if (actv == Tensors.ActivationFunc.Linear) {
@@ -111,7 +111,7 @@ library Tensor2DMethods {
 	function __apply_binary_op(
 		Tensors.Tensor2D memory a, 
 		Tensors.Tensor1D memory b, 
-		function(Float64x64, Float64x64) internal pure returns (Float64x64) op
+		function(Float32x32, Float32x32) internal pure returns (Float32x32) op
 	) internal pure returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
 		for (uint i = 0; i < res.n; i++) {
@@ -125,7 +125,7 @@ library Tensor2DMethods {
 	function __apply_binary_op(
 		Tensors.Tensor2D memory a, 
 		Tensors.Tensor2D memory b, 
-		function(Float64x64, Float64x64) internal pure returns (Float64x64) op
+		function(Float32x32, Float32x32) internal pure returns (Float32x32) op
 	) internal pure returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
 		for (uint i = 0; i < res.n; i++) {
@@ -156,10 +156,10 @@ library Tensor2DMethods {
 		Tensors.Tensor2D memory res;
 		res.n = a.n;
 		res.m = b.m;
-		res.mat = new Float64x64[][](res.n);
+		res.mat = new Float32x32[][](res.n);
 
 		for (uint i = 0; i < res.n; i++) {
-			res.mat[i] = new Float64x64[](res.m);
+			res.mat[i] = new Float32x32[](res.m);
 			for (uint j = 0; j < res.m; j++) {
 				for (uint k = 0; k < a.m; k++) {
 					res.mat[i][j] = res.mat[i][j] + a.mat[i][k].mul(b.mat[k][j]);
@@ -169,9 +169,9 @@ library Tensor2DMethods {
 		return res;
 	}
 
-	function softmax(Tensors.Tensor2D memory a) internal pure returns (Tensors.Tensor2D memory) {
+	function softmax(Tensors.Tensor2D memory a) internal view returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = __apply_unary_op(a, Tensors.__exp);
-		Float64x64 sum_e = Float64x64.wrap(0);
+		Float32x32 sum_e = Float32x32.wrap(0);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
 				sum_e = sum_e + res.mat[i][j];

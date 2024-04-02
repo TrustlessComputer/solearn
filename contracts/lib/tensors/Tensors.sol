@@ -1,36 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { Float64x64, fromInt, toInt } from "./../Float64x64/Lib.sol";
+import { Float32x32, fromInt, toInt } from "./../Float32x32/Lib32x32.sol";
+import "hardhat/console.sol";
 
 error InvalidActivationFunction();
 error InvalidPaddingType();
 
 library Tensors {
-	Float64x64 private constant ONE = Float64x64.wrap(1 << 64);
-	Float64x64 private constant TWO = Float64x64.wrap(2 << 64);
-	Float64x64 private constant TEN = Float64x64.wrap(10 << 64);
+	Float32x32 private constant ONE = Float32x32.wrap(1 << 32);
+	Float32x32 private constant TWO = Float32x32.wrap(2 << 32);
+	Float32x32 private constant TEN = Float32x32.wrap(10 << 32);
 
 	struct Tensor1D {
-		Float64x64[] mat;
+		Float32x32[] mat;
 		uint n;
 	}
 
 	struct Tensor2D {
-		Float64x64[][] mat;
+		Float32x32[][] mat;
 		uint n;
 		uint m;
 	}
 
 	struct Tensor3D {
-		Float64x64[][][] mat;
+		Float32x32[][][] mat;
 		uint n;
 		uint m;
 		uint p;
 	}
 
 	struct Tensor4D {
-		Float64x64[][][][] mat;
+		Float32x32[][][][] mat;
 		uint n;
 		uint m;
 		uint p;
@@ -50,44 +51,48 @@ library Tensors {
 		Same
 	}
 
-	function __linear(Float64x64 x) internal pure returns (Float64x64) {
+	function __linear(Float32x32 x) internal pure returns (Float32x32) {
 		return x;
 	}
 
-	function __relu(Float64x64 x) internal pure returns (Float64x64) {
-		return Float64x64.unwrap(x) > 0 ? x : Float64x64.wrap(0);
+	function __relu(Float32x32 x) internal pure returns (Float32x32) {
+		return Float32x32.unwrap(x) > 0 ? x : Float32x32.wrap(0);
 	}
 
-	function __leaky_relu(Float64x64 x) internal pure returns (Float64x64) {
-		return Float64x64.unwrap(x) > 0 ? x : x.mul(TWO).div(TEN);
+	function __leaky_relu(Float32x32 x) internal pure returns (Float32x32) {
+		return Float32x32.unwrap(x) > 0 ? x : x.mul(TWO).div(TEN);
 	}
 
-	function __sigmoid(Float64x64 x) internal pure returns (Float64x64) {
-		// Exp will fail if input is greater than 43
-		if (Float64x64.unwrap(x) < -43 << 64) {
-			x = fromInt(-43);
+	function __sigmoid(Float32x32 x) internal view returns (Float32x32) {
+		// Exp will fail if input is greater than 21
+		if (Float32x32.unwrap(x) < -21 << 32) {
+			x = fromInt(-21);
 		}
+		// console.logInt(Float32x32.unwrap(x));
+		// console.logInt(Float32x32.unwrap((-x).exp()));
+		// console.logInt(Float32x32.unwrap(ONE));
+		// console.logInt(Float32x32.unwrap(ONE + (-x).exp()));
 		return ONE.div(ONE + (-x).exp());
 	}
 
-	function __tanh(Float64x64 x) internal pure returns (Float64x64) {
-		// Exp will fail if input is greater than 43
-		if (Float64x64.unwrap(x) > 21 << 64) {
-			x = fromInt(21);
+	function __tanh(Float32x32 x) internal pure returns (Float32x32) {
+		// Exp will fail if input is greater than 21
+		if (Float32x32.unwrap(x) > 10 << 32) {
+			x = fromInt(10);
 		}
-		Float64x64 t = TWO.mul(x).exp();
+		Float32x32 t = TWO.mul(x).exp();
 		return (t - ONE).div(t + ONE);
 	}
 
-	function __add(Float64x64 a, Float64x64 b) internal pure returns (Float64x64) {
+	function __add(Float32x32 a, Float32x32 b) internal pure returns (Float32x32) {
 		return a + b;
 	}
 
-	function __mul(Float64x64 a, Float64x64 b) internal pure returns (Float64x64) {
+	function __mul(Float32x32 a, Float32x32 b) internal pure returns (Float32x32) {
 		return a.mul(b);
 	}
 
-	function __exp(Float64x64 a) internal pure returns (Float64x64) {
+	function __exp(Float32x32 a) internal pure returns (Float32x32) {
 		return a.exp();
 	}
 	
@@ -95,8 +100,8 @@ library Tensors {
 		return a > b ? a - b : 0;
 	}
 
-	function max(Float64x64 a, Float64x64 b) internal pure returns (Float64x64) {
-		return Float64x64.unwrap(a) > Float64x64.unwrap(a) ? a : b;
+	function max(Float32x32 a, Float32x32 b) internal pure returns (Float32x32) {
+		return Float32x32.unwrap(a) > Float32x32.unwrap(a) ? a : b;
 	}
 
 	function getConvSize(

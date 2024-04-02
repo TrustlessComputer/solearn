@@ -6,15 +6,15 @@ import "../tensors/Tensor1DMethods.sol";
 import "../tensors/Tensor2DMethods.sol";
 import "../tensors/Tensor3DMethods.sol";
 import "../tensors/Tensor4DMethods.sol";
-import { Float64x64, fromInt, toInt } from "./../Float64x64/Lib.sol";
+import { Float32x32, fromInt, toInt } from "./../Float32x32/Lib32x32.sol";
 
 // import "hardhat/console.sol";
 
 error TooMuchData();
 
 library Layers {
-	event TestRNNOutput(Float64x64[] data);
-	event TestDense(Float64x64[] x, Float64x64[] w, Float64x64 tmp, Float64x64 b, Float64x64 y, Float64x64 res);
+	event TestRNNOutput(Float32x32[] data);
+	event TestDense(Float32x32[] x, Float32x32[] w, Float32x32 tmp, Float32x32 b, Float32x32 y, Float32x32 res);
 
 	using Tensor1DMethods for Tensors.Tensor1D;
 	using Tensor2DMethods for Tensors.Tensor2D;
@@ -28,8 +28,8 @@ library Layers {
 
 	struct RescaleLayer {
 		uint layerIndex; // index within the model
-		Float64x64 scale;
-		Float64x64 offset;
+		Float32x32 scale;
+		Float32x32 offset;
 	}
 
 	struct FlattenLayer {
@@ -112,15 +112,15 @@ library Layers {
 		uint ptrLayer;
 	}
 	
-	function forward(LSTMCell memory layer, Float64x64[] memory x, Float64x64[][] memory states) internal returns (Float64x64[] memory, Float64x64[] memory) {
-		Float64x64[] memory c;
-		Float64x64[] memory o;
+	function forward(LSTMCell memory layer, Float32x32[] memory x, Float32x32[][] memory states) internal returns (Float32x32[] memory, Float32x32[] memory) {
+		Float32x32[] memory c;
+		Float32x32[] memory o;
 		{
 			if (states.length == 0) {
 				// make new
-				states = new Float64x64[][](2);
-				states[0] = new Float64x64[](layer.units);
-				states[1] = new Float64x64[](layer.units);
+				states = new Float32x32[][](2);
+				states[0] = new Float32x32[](layer.units);
+				states[1] = new Float32x32[](layer.units);
 			}
 
 			Tensors.Tensor1D memory h_tm1 = Tensor1DMethods.from(states[0]);
@@ -136,13 +136,13 @@ library Layers {
 			x_c = Tensor1DMethods.add(x_c, layer.bias_c);
 			x_o = Tensor1DMethods.add(x_o, layer.bias_o);
 
-			Float64x64[][] memory xArr = new Float64x64[][](4);
+			Float32x32[][] memory xArr = new Float32x32[][](4);
 			xArr[0] = x_i.mat;
 			xArr[1] = x_f.mat;
 			xArr[2] = x_c.mat;
 			xArr[3] = x_o.mat;
 
-			Float64x64[][] memory h_tm1_mat = new Float64x64[][](4);
+			Float32x32[][] memory h_tm1_mat = new Float32x32[][](4);
 			h_tm1_mat[0] = h_tm1.mat;
 			h_tm1_mat[1] = h_tm1.mat;
 			h_tm1_mat[2] = h_tm1.mat;
@@ -150,30 +150,30 @@ library Layers {
 
 			(c, o) = _compute_carry_and_output(layer, xArr, h_tm1_mat, c_tm1.mat);
 		}
-		Float64x64[] memory h = Tensor1DMethods.from(o).mul(Tensor1DMethods.from(c).activation(layer.activation)).mat;
+		Float32x32[] memory h = Tensor1DMethods.from(o).mul(Tensor1DMethods.from(c).activation(layer.activation)).mat;
 		return (h, c);
 	}
 
-	function _compute_carry_and_output(LSTMCell memory layer, Float64x64[][] memory x, Float64x64[][] memory h_tm1, Float64x64[] memory c_tm1) internal returns (Float64x64[] memory, Float64x64[] memory) {
+	function _compute_carry_and_output(LSTMCell memory layer, Float32x32[][] memory x, Float32x32[][] memory h_tm1, Float32x32[] memory c_tm1) internal returns (Float32x32[] memory, Float32x32[] memory) {
 		Tensors.Tensor1D memory i = Tensor1DMethods.from(x[0]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[0]), layer.recurrentKernel_i)).activation(layer.recurrentActivation);
 		Tensors.Tensor1D memory f = Tensor1DMethods.from(x[1]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[1]), layer.recurrentKernel_f)).activation(layer.recurrentActivation);
-		Float64x64[] memory c = f.mul(Tensor1DMethods.from(c_tm1)).add(i.mul(Tensor1DMethods.from(x[2]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[2]), layer.recurrentKernel_c)).activation(layer.activation))).mat;
-		Float64x64[] memory o = Tensor1DMethods.from(x[3]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[3]), layer.recurrentKernel_o)).activation(layer.recurrentActivation).mat;
+		Float32x32[] memory c = f.mul(Tensor1DMethods.from(c_tm1)).add(i.mul(Tensor1DMethods.from(x[2]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[2]), layer.recurrentKernel_c)).activation(layer.activation))).mat;
+		Float32x32[] memory o = Tensor1DMethods.from(x[3]).add(Tensor1DMethods.matMul(Tensor1DMethods.from(h_tm1[3]), layer.recurrentKernel_o)).activation(layer.recurrentActivation).mat;
 		
 		return (c, o);
 	}
 
-	function forward(LSTM memory layer, Float64x64[] memory _x, Float64x64[][] memory states) internal returns (Float64x64[][] memory, Float64x64[][] memory) {
-		Float64x64[][] memory res = new Float64x64[][](1);
+	function forward(LSTM memory layer, Float32x32[] memory _x, Float32x32[][] memory states) internal returns (Float32x32[][] memory, Float32x32[][] memory) {
+		Float32x32[][] memory res = new Float32x32[][](1);
 		// TODO: check
-		Float64x64[] memory x = new Float64x64[](layer.inputUnits);
+		Float32x32[] memory x = new Float32x32[](layer.inputUnits);
 		for (uint i = 0; i < _x.length; i++) {
 			x[i] = _x[i];
 		}
 
-		Float64x64[][] memory newStates = new Float64x64[][](2);
+		Float32x32[][] memory newStates = new Float32x32[][](2);
 		for (uint i = 0; i < res.length; i++) {
-			(Float64x64[] memory h, Float64x64[] memory c) = forward(layer.cell, x, states);
+			(Float32x32[] memory h, Float32x32[] memory c) = forward(layer.cell, x, states);
 			newStates[0] = h;
 			newStates[1] = c;
 			res[i] = h;
@@ -182,21 +182,21 @@ library Layers {
 		return (res, newStates);
 	}
 		
-	function forward(FlattenLayer memory layer, Float64x64[][][] memory mat) internal pure returns (Float64x64[] memory) {
+	function forward(FlattenLayer memory layer, Float32x32[][][] memory mat) internal pure returns (Float32x32[] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(mat);
 		return Tensor3DMethods.flat(xt.mat);
 	}
 
-	function forward(RescaleLayer memory layer, Float64x64[][][] memory x) internal pure returns (Float64x64[][][] memory) {
+	function forward(RescaleLayer memory layer, Float32x32[][][] memory x) internal pure returns (Float32x32[][][] memory) {
 		uint n = x.length;
 		uint m = x[0].length;
 		uint p = x[0][0].length;
 
-		Float64x64[][][] memory y = new Float64x64[][][](n);
+		Float32x32[][][] memory y = new Float32x32[][][](n);
 		for (uint i = 0; i < n; i++) {
-			y[i] = new Float64x64[][](m);
+			y[i] = new Float32x32[][](m);
 			for (uint j = 0; j < m; j++) {
-				y[i][j] = new Float64x64[](p);
+				y[i][j] = new Float32x32[](p);
 				for (uint k = 0; k < p; k++) {
 					y[i][j][k] = x[i][j][k].mul(layer.scale) + layer.offset;					
 				}
@@ -205,7 +205,7 @@ library Layers {
 		return y;
 	}
 
-	function forward(DenseLayer memory layer, Float64x64[] memory x) internal returns (Float64x64[] memory) {
+	function forward(DenseLayer memory layer, Float32x32[] memory x) internal returns (Float32x32[] memory) {
 		Tensors.Tensor1D memory xt = Tensor1DMethods.from(x);
 		Tensors.Tensor2D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
@@ -221,7 +221,7 @@ library Layers {
 			return zt.mat;
 		}
 		Tensors.Tensor1D memory tmp = xt.matMul(wt);
-		Float64x64[] memory w_col = new Float64x64[](wt.n);
+		Float32x32[] memory w_col = new Float32x32[](wt.n);
 		for(uint i = 0; i < wt.n; ++i) {
 			w_col[i] = wt.mat[i][34];
 		}
@@ -231,7 +231,7 @@ library Layers {
 		return zt.mat;
 	}
 
-	function forward(DenseLayer memory layer, Float64x64[][] memory x) internal view returns (Float64x64[][] memory) {
+	function forward(DenseLayer memory layer, Float32x32[][] memory x) internal view returns (Float32x32[][] memory) {
 		Tensors.Tensor2D memory xt = Tensor2DMethods.from(x);
 		Tensors.Tensor2D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
@@ -241,13 +241,13 @@ library Layers {
 		return zt.mat;
 	}
 
-	function forward(MaxPooling2DLayer memory layer, Float64x64[][][] memory x) internal pure returns (Float64x64[][][] memory) {
+	function forward(MaxPooling2DLayer memory layer, Float32x32[][][] memory x) internal pure returns (Float32x32[][][] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
 		Tensors.Tensor3D memory yt = xt.maxPooling2D(layer.stride, layer.size, layer.padding);
 		return yt.mat;
 	}
 
-	function forward(Conv2DLayer memory layer, Float64x64[][][] memory x) internal pure returns (Float64x64[][][] memory) {
+	function forward(Conv2DLayer memory layer, Float32x32[][][] memory x) internal view returns (Float32x32[][][] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
 		Tensors.Tensor4D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
@@ -256,11 +256,11 @@ library Layers {
 		return zt.mat;
 	}
 
-	function forward(EmbeddingLayer memory layer, uint x) internal pure returns (Float64x64[] memory) {
+	function forward(EmbeddingLayer memory layer, uint x) internal pure returns (Float32x32[] memory) {
 		return layer.w.mat[x];
 	}
 
-	function forward(SimpleRNNLayer memory layer, Float64x64[] memory x, Float64x64[][] memory states) internal returns (Float64x64[] memory, Float64x64[][] memory) {
+	function forward(SimpleRNNLayer memory layer, Float32x32[] memory x, Float32x32[][] memory states) internal returns (Float32x32[] memory, Float32x32[][] memory) {
 		Tensors.Tensor1D memory x_t = Tensor1DMethods.from(x);
 		Tensors.Tensor1D memory h_t = Tensor1DMethods.from(states[0]);
 		Tensors.Tensor1D memory yx_t = Tensor1DMethods.matMul(x_t, layer.wx);
@@ -272,7 +272,7 @@ library Layers {
 		return (states[0], states);
 	}
 
-	function appendWeights(DenseLayer storage layer, Float64x64[] memory x) internal returns (uint) {
+	function appendWeights(DenseLayer storage layer, Float32x32[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
 		uint idx = 0;
@@ -301,7 +301,7 @@ library Layers {
 		return idx;
 	}
 
-	function appendWeights(LSTM storage layer, Float64x64[] memory x) internal returns (uint) {
+	function appendWeights(LSTM storage layer, Float32x32[] memory x) internal returns (uint) {
 		// will overwrite the weights
 		uint currentWeight = 0;
 		for (uint i = 0; i < layer.inputUnits; i++) {
@@ -361,7 +361,7 @@ library Layers {
 		return currentWeight;
 	}
 
-	function appendWeightsPartial(LSTM storage layer, Float64x64[] memory x) internal returns (uint) {
+	function appendWeightsPartial(LSTM storage layer, Float32x32[] memory x) internal returns (uint) {
 		// can append weights to the end, at the cost of slightly higher gas
 		LSTMCell storage cell = layer.cell;
 		uint ptrLayer = layer.ptrLayer;
@@ -436,7 +436,7 @@ library Layers {
 		return idx;
 	}
 
-	function appendWeights(Conv2DLayer storage layer, Float64x64[] memory x) internal returns (uint) {
+	function appendWeights(Conv2DLayer storage layer, Float32x32[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
 		uint idx = 0;
@@ -467,7 +467,7 @@ library Layers {
 		return idx;
 	}
 
-	function appendWeights(EmbeddingLayer storage layer, Float64x64[] memory x) internal returns (uint) {
+	function appendWeights(EmbeddingLayer storage layer, Float32x32[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
 		uint idx = 0;
@@ -488,7 +488,7 @@ library Layers {
 		return idx;
 	}
 
-	function appendWeights(SimpleRNNLayer storage layer, Float64x64[] memory x) internal returns (uint) {
+	function appendWeights(SimpleRNNLayer storage layer, Float32x32[] memory x) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
 		uint idx = 0;
@@ -583,9 +583,9 @@ library Layers {
 	}
 
 	function makeRescaleLayer(SingleLayerConfig memory slc) internal pure returns (RescaleLayer memory layer) {
-		(, Float64x64 scale, Float64x64 offset) = abi.decode(
+		(, Float32x32 scale, Float32x32 offset) = abi.decode(
 			slc.conf,
-			(uint8, Float64x64, Float64x64)
+			(uint8, Float32x32, Float32x32)
 		);
 		layer = RescaleLayer(
 			slc.ind,

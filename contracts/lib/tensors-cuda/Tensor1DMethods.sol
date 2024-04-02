@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import { Float64x64 } from "./../Float64x64/Lib.sol";
+import { Float32x32 } from "./../Float32x32/Lib32x32.sol";
+import { SD59x18, sd } from "@prb/math/src/SD59x18.sol";
 import "./Tensors.sol";
 import "../libCuda.sol";
 
 error InvalidMatrixDimensions();
 
 library Tensor1DMethods {
-	event TestMatMul(Float64x64[][] data);
+	event TestMatMul(Float32x32[][] data);
 	function zerosTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
-		ts.mat = new Float64x64[](n);
+		ts.mat = new Float32x32[](n);
 	}
 
 	function emptyTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
 	}
 
-	function from(Float64x64[] memory mat) internal pure returns (Tensors.Tensor1D memory ts) {
+	function from(Float32x32[] memory mat) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = mat.length;
 		ts.mat = mat;
 	}
@@ -29,7 +30,7 @@ library Tensor1DMethods {
 
 	function __apply_unary_op(
 		Tensors.Tensor1D memory a,
-		function(Float64x64) internal pure returns (Float64x64) op
+		function(Float32x32) internal pure returns (Float32x32) op
 	) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
 		for (uint i = 0; i < res.n; i++) {
@@ -41,7 +42,7 @@ library Tensor1DMethods {
 	function __apply_binary_op(
 		Tensors.Tensor1D memory a,
 		Tensors.Tensor1D memory b,
-		function(Float64x64, Float64x64) internal pure returns (Float64x64) op
+		function(Float32x32, Float32x32) internal pure returns (Float32x32) op
 	) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
 		for (uint i = 0; i < res.n; i++) {
@@ -70,7 +71,7 @@ library Tensor1DMethods {
 		return __apply_binary_op(a, b, Tensors.__add);
 	}
 
-	function add(Tensors.Tensor1D memory a, Float64x64 num) internal pure returns (Tensors.Tensor1D memory) {
+	function add(Tensors.Tensor1D memory a, Float32x32 num) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
 		for (uint i = 0; i < a.n; i++) {
 			res.mat[i] = a.mat[i] + num;
@@ -93,9 +94,9 @@ library Tensor1DMethods {
 		// 		b.mat[i][j] = b.mat[i][j] * sd(1e16);
 		// 	}
 		// }
-		Float64x64[][] memory a_mat = new Float64x64[][](1);
+		Float32x32[][] memory a_mat = new Float32x32[][](1);
 		a_mat[0] = a.mat;
-		Float64x64[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,6,32,32);
+		Float32x32[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,6,32,32);
 		// for(uint j = 0; j < b.m; ++j) {
 		// 	res[0][j] = res[0][j] * sd(1e22);
 		// }
@@ -103,9 +104,9 @@ library Tensor1DMethods {
 		return from(res[0]);
 	}
 
-	function load(Tensors.Tensor1D memory ts, Float64x64[] memory data, uint n) internal pure {
+	function load(Tensors.Tensor1D memory ts, Float32x32[] memory data, uint n) internal pure {
 		ts.n = n;
-		ts.mat = new Float64x64[](n);
+		ts.mat = new Float32x32[](n);
 		for (uint i = 0; i < n; i++) {
 			ts.mat[i] = data[i];
 		}
@@ -124,7 +125,7 @@ library Tensor1DMethods {
 	}
 
 
-	function loadPartial(Tensors.Tensor1D storage ts, Float64x64[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
+	function loadPartial(Tensors.Tensor1D storage ts, Float32x32[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
 		uint n = ts.n;
 		while (idx < data.length && ptr < n) {
 			ts.mat.push(data[idx]);
@@ -140,22 +141,29 @@ library Tensor1DMethods {
 		return result;
 	}
 
-	function softmax(Tensors.Tensor1D memory a) internal pure returns (Tensors.Tensor1D memory) {
-		Tensors.Tensor1D memory res = Tensor1DMethods.cloneTensor(a);
-		// Exp will fail if input is greater than 43
-		for(uint i = 0; i < res.n; i++) {
-			if (res.mat[i] > fromInt(40)) {
-				res.mat[i] = fromInt(40);
-			}
+	function softmax(Tensors.Tensor1D memory a) internal view returns (Tensors.Tensor1D memory) {
+		uint n = a.n;
+
+		SD59x18[] memory tmp = new SD59x18[](n);
+		for(uint i = 0; i < n; i++) {
+			tmp[i] = sd(int(Float32x32.unwrap(a.mat[i])) * 1e18 >> 32);
 		}
-		res = __apply_unary_op(res, Tensors.__exp);		
-		
-		Float64x64 sum_e = Float64x64.wrap(0);
-		for (uint i = 0; i < res.n; i++) {
-			sum_e = sum_e + res.mat[i];
+		// Exp will fail if input is greater than 21
+		for(uint i = 0; i < n; i++) {
+			tmp[i] = tmp[i].exp();	
 		}
-		for (uint i = 0; i < a.n; i++) {
-			res.mat[i] = res.mat[i].div(sum_e);
+
+		SD59x18 sum_e = sd(0);
+		for(uint i = 0; i < n; i++) {
+			sum_e = sum_e + tmp[i];
+		}
+		for(uint i = 0; i < n; i++) {
+			tmp[i] = tmp[i].div(sum_e);
+		}
+
+		Tensors.Tensor1D memory res = Tensor1DMethods.zerosTensor(n);
+		for(uint i = 0; i < n; i++) {
+			res.mat[i] = Float32x32.wrap(int64((tmp[i].unwrap() << 32) / 1e18));
 		}
 		return res;
 	}
