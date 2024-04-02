@@ -473,9 +473,9 @@ contract EternalAI is Ownable {
             } else if (model.lstm.length > 0) {
                 states = Tensor3DMethods.zerosTensor(model.lstm.length, 2, model.lstm[0].cell.units).mat;
             }
-            for(uint i = 0; i < tokens.length - 1; ++i) {
-                (x2, states) = evaluateRNN(model, tokens[i], states, false);
-            }
+        }
+        for(uint i = 0; i < tokens.length - 1; ++i) {
+            (x2, states) = evaluateRNN(model, tokens[i], states, false);
         }
 
         uint256 lastToken = tokens[tokens.length - 1];

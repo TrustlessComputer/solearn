@@ -695,10 +695,32 @@ task("generate-text", "generate text from RNN model")
         const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
         let startTime = new Date().getTime();
-        let result = "";
         let seed = ethers.BigNumber.from("123");
-        let text;
+        let states: ethers.BigNumber[][][] = [];
 
+        // Processing prompt
+        for(let i = 0; i < prompt.length - 1; i += generatePerTx) {
+            const generate = Math.min(prompt.length - 1 - i, generatePerTx);
+            console.log(`Processing prompt ${i+1}-${i+generate}`);
+            
+            // console.log(prompt.substr(i, generate));
+
+            const tx = await modelContract.generateText(tokenId, prompt.substr(i, generate) + "[UNK]", 0, states, seed, gasConfig);
+            const rc = await tx.wait();
+
+            const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
+            if (textGeneratedEvent) {
+                states = textGeneratedEvent.args?.states;
+                seed = textGeneratedEvent.args?.seed;
+            }
+    
+            console.log(`Used gas: `, rc.gasUsed);
+        }
+
+        prompt = prompt.slice(prompt.length - 1);
+        console.log(prompt);
+        let result = "";
+        let text;
 //         result = `
 // No, sir, I will not?
 
@@ -708,7 +730,7 @@ task("generate-text", "generate text from RNN model")
 // And say one that had woney to his parts.
 // `
 
-        let states: ethers.BigNumber[][] = [];
+        // Generating text
         for(let i = 0; i < toGenerate; i += generatePerTx) {
             const generate = Math.min(toGenerate - i, generatePerTx);
             console.log(`Generating characters ${i+1}-${i+generate}`);
@@ -716,39 +738,33 @@ task("generate-text", "generate text from RNN model")
             const tx = await modelContract.generateText(tokenId, prompt, generate, states, seed, gasConfig);
             const rc = await tx.wait();
 
-            // console.log(rc);
-
             const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
             if (textGeneratedEvent) {
                 text = textGeneratedEvent.args?.result;
                 states = textGeneratedEvent.args?.states;
                 seed = textGeneratedEvent.args?.seed;
             }
-
-            // console.log(text);
-            // console.log(states);
-            // console.log(seed);
     
             result += text;
             prompt = text.slice(text.length - 1);
             console.log(`Used gas: `, rc.gasUsed);
 
-            const testRNNOutputEvents = rc.events?.filter(event => event.event === 'TestRNNOutput').map(event => event.args.data).map(arr => recursiveToString(arr));
-            const testEntropyEvents = rc.events?.filter(event => event.event === 'TestEntropy').map(event => event.args.data).map(arr => recursiveToString(arr));
-            const testProbsEvents = rc.events?.filter(event => event.event === 'TestProbs').map(event => event.args.data).map(arr => recursiveToString(arr));
-            const testDenseEvents = rc.events?.filter(event => event.event === 'TestDense').map(event => [event.args.x, event.args.w, event.args.tmp, event.args.b, event.args.y, event.args.res]).map(arr => recursiveToString(arr));
+            // const testRNNOutputEvents = rc.events?.filter(event => event.event === 'TestRNNOutput').map(event => event.args.data).map(arr => recursiveToString(arr));
+            // const testEntropyEvents = rc.events?.filter(event => event.event === 'TestEntropy').map(event => event.args.data).map(arr => recursiveToString(arr));
+            // const testProbsEvents = rc.events?.filter(event => event.event === 'TestProbs').map(event => event.args.data).map(arr => recursiveToString(arr));
+            // const testDenseEvents = rc.events?.filter(event => event.event === 'TestDense').map(event => [event.args.x, event.args.w, event.args.tmp, event.args.b, event.args.y, event.args.res]).map(arr => recursiveToString(arr));
     
-            const testMatmulEvents = rc.events?.filter(event => event.event === 'TestMatMul');
-            const testMatmulData = testMatmulEvents.map(event => event.args.data);
-            const testMatmulDec = testMatmulData.map(mat => mat.map(arr => recursiveToString(arr)));
+            // const testMatmulEvents = rc.events?.filter(event => event.event === 'TestMatMul');
+            // const testMatmulData = testMatmulEvents.map(event => event.args.data);
+            // const testMatmulDec = testMatmulData.map(mat => mat.map(arr => recursiveToString(arr)));
     
-            if (taskArgs.debugpath !== "") {
-                fs.writeFileSync(`${taskArgs.debugpath}_RNNOutput_${i}.json`, JSON.stringify(testRNNOutputEvents));
-                fs.writeFileSync(`${taskArgs.debugpath}_Entropy_${i}.json`, JSON.stringify(testEntropyEvents));
-                fs.writeFileSync(`${taskArgs.debugpath}_Probs_${i}.json`, JSON.stringify(testProbsEvents));
-                fs.writeFileSync(`${taskArgs.debugpath}_Dense_${i}.json`, JSON.stringify(testDenseEvents));
-                fs.writeFileSync(`${taskArgs.debugpath}_events_${i}.json`, JSON.stringify(testMatmulDec));    
-            }
+            // if (taskArgs.debugpath !== "") {
+            //     fs.writeFileSync(`${taskArgs.debugpath}_RNNOutput_${i}.json`, JSON.stringify(testRNNOutputEvents));
+            //     fs.writeFileSync(`${taskArgs.debugpath}_Entropy_${i}.json`, JSON.stringify(testEntropyEvents));
+            //     fs.writeFileSync(`${taskArgs.debugpath}_Probs_${i}.json`, JSON.stringify(testProbsEvents));
+            //     fs.writeFileSync(`${taskArgs.debugpath}_Dense_${i}.json`, JSON.stringify(testDenseEvents));
+            //     fs.writeFileSync(`${taskArgs.debugpath}_events_${i}.json`, JSON.stringify(testMatmulDec));    
+            // }
         }
 
         console.log("-------------- Prompt + Generated text --------------");
