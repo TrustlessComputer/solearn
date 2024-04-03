@@ -158,7 +158,7 @@ library Tensor2DMethods {
 		res.n = a.n;
 		res.m = b.m;
 
-		res.mat = CUDA.gemmSD59x18(a.mat,b.mat,6,32,32);
+		res.mat = CUDA.gemmSD59x18(a.mat,b.mat,7,32,32);
 
 		return res;
 	}

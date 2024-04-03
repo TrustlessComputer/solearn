@@ -100,11 +100,8 @@ library CUDA {
     internal
     returns (Float32x32[][] memory result) {
         emit TestGemm(mat1.length, mat1[0].length, mat2[0].length);
-        // bytes8[][] memory buffer1 = Utils.fixedPointMatrixToFloatPointMatrix(mat1);
-        // bytes8[][] memory buffer2 = Utils.fixedPointMatrixToFloatPointMatrix(mat2);
         (, bytes memory matData) = CUDA_GEMM.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-        // result = Utils.floatPointMatrixToFixedPointMatrix(bufferResult);
     }
 
     function abs(int[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal

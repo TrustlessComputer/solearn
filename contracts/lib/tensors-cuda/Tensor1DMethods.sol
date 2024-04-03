@@ -96,7 +96,7 @@ library Tensor1DMethods {
 		// }
 		Float32x32[][] memory a_mat = new Float32x32[][](1);
 		a_mat[0] = a.mat;
-		Float32x32[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,6,32,32);
+		Float32x32[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,7,32,32);
 		// for(uint j = 0; j < b.m; ++j) {
 		// 	res[0][j] = res[0][j] * sd(1e22);
 		// }
