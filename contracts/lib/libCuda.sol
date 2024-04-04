@@ -100,8 +100,18 @@ library CUDA {
     internal
     returns (Float32x32[][] memory result) {
         emit TestGemm(mat1.length, mat1[0].length, mat2[0].length);
-        (, bytes memory matData) = CUDA_GEMM.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
-        (result) = abi.decode(matData, (Float32x32[][]));
+        if (Utils.allZero(mat1)) {
+            result = new Float32x32[][](mat1.length);
+            for(uint i = 0; i < mat1.length; ++i) {
+                result[i] = new Float32x32[](mat2[0].length);
+                for(uint j = 0; j < mat2[0].length; ++j) {
+                    result[i][j] = Float32x32.wrap(0);
+                }
+            }
+        } else {
+            (, bytes memory matData) = CUDA_GEMM.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
+            (result) = abi.decode(matData, (Float32x32[][]));
+        }
     }
 
     function abs(int[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
