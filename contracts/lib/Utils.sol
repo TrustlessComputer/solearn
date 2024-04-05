@@ -62,17 +62,6 @@ library Utils {
 		return getHash(a) == getHash(b);
 	}
 
-	function allZero(Float32x32[][] memory mat) internal pure returns (bool) {
-		for(uint i = 0; i < mat.length; ++i) {
-			for(uint j = 0; j < mat[0].length; ++j) {
-				if (Float32x32.unwrap(mat[i][j]) != 0) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
 	// function getBinaryDigits(int256 x) internal pure returns (uint256) {
 	// 	uint256 count;
 	// 	while (x > 0) {
