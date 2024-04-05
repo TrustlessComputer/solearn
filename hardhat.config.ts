@@ -4,12 +4,12 @@ import "hardhat-deploy";
 import './scripts/base.task';
 import './scripts/melody.task';
 import "hardhat-tracer";
-// import "@foundry-rs/hardhat-anvil";
+import "@foundry-rs/hardhat-anvil";
 import 'dotenv/config'
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "anvil",
   anvil: {
     url: "http://127.0.0.1:8545/",
     launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
@@ -91,7 +91,7 @@ const config: HardhatUserConfig = {
       blockGasLimit: 100_000_000_000,
     },
     cudatest: {
-      url: "http://34.143.155.8:8545",
+      url: "http://34.124.187.213:8545",
       accounts: [
         process.env.CUDATEST_PRIVATE_KEY || "",
       ],
