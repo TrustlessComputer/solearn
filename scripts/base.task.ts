@@ -9,6 +9,7 @@ import levenshtein from 'js-levenshtein';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
 import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
 import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
+import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName, getModelDirents, pixelsToImage, measureTime, postprocessText } from "./utils";
 
 const ContractName = "Models";
 const MaxWeightLen = 1000;
@@ -34,182 +35,6 @@ const evalConfig = { value: evalPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
-function recursiveToString(arr: any): any {
-    return arr.map((val: any) => Array.isArray(val) ? recursiveToString(val) : val.toString());
-}
-
-function getLayerType(name: string): number {
-    let layerType: number = -1;
-    if (name === 'Dense') {
-        layerType = 0;
-    } else if (name === 'Flatten') {
-        layerType = 1;
-    } else if (name === 'Rescaling') {
-        layerType = 2;
-    } else if (name === 'InputLayer') {
-        layerType = 3;
-    } else if (name === 'MaxPooling2D') {
-        layerType = 4;
-    } else if (name === 'Conv2D') {
-        layerType = 5;
-    } else if (name === 'Embedding') {
-        layerType = 6;
-    } else if (name === 'SimpleRNN') {
-        layerType = 7;
-    } else if (name === 'LSTM') {
-        layerType = 8;
-    }
-    return layerType;
-}
-
-function getLayerName(type: number): string {
-    let layerName: string = "N/A";
-    if (type === 0) {
-        layerName = 'Dense';
-    } else if (type === 1) {
-        layerName = 'Flatten';
-    } else if (type === 2) {
-        layerName = 'Rescaling';
-    } else if (type === 3) {
-        layerName = 'InputLayer';
-    } else if (type === 4) {
-        layerName = 'MaxPooling2D';
-    } else if (type === 5) {
-        layerName = 'Conv2D';
-    } else if (type === 6) {
-        layerName = 'Embedding';
-    } else if (type === 7) {
-        layerName = 'SimpleRNN';
-    } else if (type === 8) {
-        layerName = 'LSTM';
-    }
-    return layerName;
-}
-
-function getActivationType(name: string): number {
-    let activationFn: number = -1;
-    if (name === 'leakyrelu') {
-        activationFn = 0;
-    } else if (name === 'linear') {
-        activationFn = 1;
-    } else if (name === 'relu') {
-        activationFn = 2;
-    } else if (name === 'sigmoid') {
-        activationFn = 3;
-    } else if (name === 'tanh') {
-        activationFn = 4;
-    }
-    return activationFn;
-}
-
-function getPaddingType(name: string): number {
-    let paddingType: number = -1;
-    if (name === "valid") {
-        paddingType = 0;
-    } else if (name === "same") {
-        paddingType = 1;
-    }
-    return paddingType;
-}
-
-async function measureTime(f: any): Promise<any> {
-    const start = Date.now();
-    const ret = await f();
-    const end = Date.now();
-    console.log(`Execution time: ${(end - start) / 1000.0} s`);
-    return ret
-}
-
-function pixelsToImage(pixels: ethers.BigNumber[], h: number, w: number, c: number): ethers.BigNumber[][][] {
-    let ptr = 0;
-    let img: ethers.BigNumber[][][] = [];
-    for(let i = 0; i < h; ++i) {
-        img.push([]);
-        for(let j = 0; j < w; ++j) {
-            img[i].push([]);
-            for(let k = 0; k < c; ++k) {
-                img[i][j].push(pixels[ptr]);
-                ++ptr;
-            }
-        }
-    }
-    return img;
-}
-
-function getConvSize(
-    dim: number[],
-    size: number[],
-    stride: number[],
-    padding: string,
-): { 
-    out: number[], 
-    pad: number[] 
-} {
-    const out = [], pad = [];
-    for(let i = 0; i < 2; ++i) {
-        if (padding == "same") {
-            out.push((dim[i] + stride[i] - 1) / stride[i]);
-            const total_pad = (dim[i] % stride[i] == 0) ? Math.max(size[i] - stride[i], 0) : Math.max(size[i] - dim[i] % stride[i], 0);
-            pad.push(total_pad / 2);
-        } else if (padding == "valid") {
-            // TODO: What if dim[i] < size[i]
-            out.push((dim[i] - size[i]) / stride[i] + 1);
-            pad.push(0);
-        }
-    }
-    return { out, pad };
-}
-
-async function getModelDirents(folder: string): Promise<fs.Dirent[]> {
-    const dirs = await fs.promises.readdir(folder, { withFileTypes: true });
-    return dirs.filter(dirent => dirent.isFile() && path.extname(dirent.name) == ".json");
-}
-
-function fuzzyMatch(word: string, dict: string[]): string {
-    let bestCand = "", bestDist = -1;
-    for(let cand of dict) {
-        const dist = levenshtein(word, cand);
-        if (bestCand === "" || dist < bestDist) {
-            bestCand = cand;
-            bestDist = dist;
-        }
-    }
-    return bestCand;
-}
-
-function tokenizeWordOnly(text: string): string[] {
-    const tokens: string[] = [];
-    let word = "";
-    for(let c of text) {
-        if (c === '\'' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-            word += c;
-        } else {
-            if (word !== "") {
-                tokens.push(word);
-                word = "";
-            }
-        }
-    }
-    return tokens;
-}
-
-function replaceMatchedWords(text: string, words: string[], matchedWords: string[]): string {
-    let result = "";
-    for(let i = 0; i < words.length; ++i) {
-        let pos = text.search(words[i]);
-        result += text.substring(0, pos) + matchedWords[i];
-        text = text.slice(pos + words[i].length);
-    }
-    return result;
-}
-
-function postprocessText(text: string, dict: string[]): string {
-    const words = tokenizeWordOnly(text);
-    const matchedWords = words.map(word => fuzzyMatch(word, dict));
-    const replacedText = replaceMatchedWords(text, words, matchedWords);
-    return replacedText;
-}
-
 task("mint-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
@@ -230,7 +55,7 @@ task("mint-model-id", "mint model id (and upload weights)")
             const temp = Buffer.from(params.weight_b64, 'base64');
             const floats = new Float32Array(new Uint8Array(temp).buffer);
             for (let i = 0; i < floats.length; i++) {
-                weightsFlat.push(ethers.BigNumber.from(String(Math.trunc(floats[i] * Math.pow(2, 32)))));
+                weightsFlat.push(fromFloat(floats[i]));
             }
         }
 
@@ -265,7 +90,7 @@ task("mint-model-id", "mint model id (and upload weights)")
                 result = abic.encode(["uint8"], [layerType]);
                 input_units = input_units[0] * input_units[1] * input_units[2];
             } else if (layer.class_name === 'Rescaling') {
-                const n1 = ethers.BigNumber.from(String(layer.config.scale * Math.pow(2, 32)))
+                const n1 = fromFloat(layer.config.scale);
                 const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("18446744073709551616"));
                 result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
             } else if (layer.class_name === 'InputLayer') {

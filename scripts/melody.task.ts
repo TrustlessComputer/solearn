@@ -8,6 +8,7 @@ import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8
 import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 
 import { execSync } from 'child_process';
+import { getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from "./utils";
 
 const ContractName = "Models";
 const MaxWeightLen = 1000;
@@ -17,129 +18,6 @@ const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
-
-function getLayerType(name: string): number {
-    let layerType: number = -1;
-    if (name === 'Dense') {
-        layerType = 0;
-    } else if (name === 'Flatten') {
-        layerType = 1;
-    } else if (name === 'Rescaling') {
-        layerType = 2;
-    } else if (name === 'InputLayer') {
-        layerType = 3;
-    } else if (name === 'MaxPooling2D') {
-        layerType = 4;
-    } else if (name === 'Conv2D') {
-        layerType = 5;
-    } else if (name === 'Embedding') {
-        layerType = 6;
-    } else if (name === 'SimpleRNN') {
-        layerType = 7;
-    } else if (name === 'LSTM') {
-        layerType = 8;
-    }
-    
-    return layerType;
-}
-
-function getLayerName(type: number): string {
-    let layerName: string = "N/A";
-    if (type === 0) {
-        layerName = 'Dense';
-    } else if (type === 1) {
-        layerName = 'Flatten';
-    } else if (type === 2) {
-        layerName = 'Rescaling';
-    } else if (type === 3) {
-        layerName = 'InputLayer';
-    } else if (type === 4) {
-        layerName = 'MaxPooling2D';
-    } else if (type === 5) {
-        layerName = 'Conv2D';
-    } else if (type === 6) {
-        layerName = 'Embedding';
-    } else if (type === 7) {
-        layerName = 'SimpleRNN';
-    } else if (type === 8) {
-        layerName = 'LSTM';
-    }
-    return layerName;
-}
-
-function getActivationType(name: string): number {
-    let activationFn: number = -1;
-    if (name === 'leakyrelu') {
-        activationFn = 0;
-    } else if (name === 'linear' || name === 'softmax') {
-        activationFn = 1;
-    } else if (name === 'relu') {
-        activationFn = 2;
-    } else if (name === 'sigmoid') {
-        activationFn = 3;
-    } else if (name === 'tanh') {
-        activationFn = 4;
-    }
-    return activationFn;
-}
-
-function getPaddingType(name: string): number {
-    let paddingType: number = -1;
-    if (name === "valid") {
-        paddingType = 0;
-    } else if (name === "same") {
-        paddingType = 1;
-    }
-    return paddingType;
-}
-
-async function measureTime(f: any): Promise<any> {
-    const start = Date.now();
-    const ret = await f();
-    const end = Date.now();
-    console.log(`Execution time: ${(end - start) / 1000.0} s`);
-    return ret
-}
-
-function pixelsToImage(pixels: ethers.BigNumber[], h: number, w: number, c: number): ethers.BigNumber[][][] {
-    let ptr = 0;
-    let img: ethers.BigNumber[][][] = [];
-    for (let i = 0; i < h; ++i) {
-        img.push([]);
-        for (let j = 0; j < w; ++j) {
-            img[i].push([]);
-            for (let k = 0; k < c; ++k) {
-                img[i][j].push(pixels[ptr]);
-                ++ptr;
-            }
-        }
-    }
-    return img;
-}
-
-function getConvSize(
-    dim: number[],
-    size: number[],
-    stride: number[],
-    padding: string,
-): { 
-    out: number[], 
-    pad: number[] 
-} {
-    const out = [], pad = [];
-    for (let i = 0; i < 2; ++i) {
-        if (padding == "same") {
-            out.push((dim[i] + stride[i] - 1) / stride[i]);
-            const total_pad = (dim[i] % stride[i] == 0) ? Math.max(size[i] - stride[i], 0) : Math.max(size[i] - dim[i] % stride[i], 0);
-            pad.push(total_pad / 2);
-        } else if (padding == "valid") {
-            // TODO: What if dim[i] < size[i]
-            out.push((dim[i] - size[i]) / stride[i] + 1);
-            pad.push(0);
-        }
-    }
-    return { out, pad };
-}
 
 task("mint-melody-model-id", "mint model id (and upload weights)")
     .addOptionalParam("model", "model file name", "", types.string)

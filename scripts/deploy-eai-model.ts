@@ -4,6 +4,7 @@ import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/Eternal
 import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
 import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 import dotenv from 'dotenv';
+import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './utils';
 
 dotenv.config();
 
@@ -15,105 +16,6 @@ const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
-
-function getLayerType(name: string): number {
-    let layerType: number = -1;
-    if (name === 'Dense') {
-        layerType = 0;
-    } else if (name === 'Flatten') {
-        layerType = 1;
-    } else if (name === 'Rescaling') {
-        layerType = 2;
-    } else if (name === 'InputLayer') {
-        layerType = 3;
-    } else if (name === 'MaxPooling2D') {
-        layerType = 4;
-    } else if (name === 'Conv2D') {
-        layerType = 5;
-    } else if (name === 'Embedding') {
-        layerType = 6;
-    } else if (name === 'SimpleRNN') {
-        layerType = 7;
-    } else if (name === 'LSTM') {
-        layerType = 8;
-    }
-    
-    return layerType;
-}
-
-function getLayerName(type: number): string {
-    let layerName: string = "N/A";
-    if (type === 0) {
-        layerName = 'Dense';
-    } else if (type === 1) {
-        layerName = 'Flatten';
-    } else if (type === 2) {
-        layerName = 'Rescaling';
-    } else if (type === 3) {
-        layerName = 'InputLayer';
-    } else if (type === 4) {
-        layerName = 'MaxPooling2D';
-    } else if (type === 5) {
-        layerName = 'Conv2D';
-    } else if (type === 6) {
-        layerName = 'Embedding';
-    } else if (type === 7) {
-        layerName = 'SimpleRNN';
-    } else if (type === 8) {
-        layerName = 'LSTM';
-    }
-    return layerName;
-}
-
-function getActivationType(name: string): number {
-    let activationFn: number = -1;
-    if (name === 'leakyrelu') {
-        activationFn = 0;
-    } else if (name === 'linear') {
-        activationFn = 1;
-    } else if (name === 'relu') {
-        activationFn = 2;
-    } else if (name === 'sigmoid') {
-        activationFn = 3;
-    } else if (name === 'tanh') {
-        activationFn = 4;
-    }
-    return activationFn;
-}
-
-function getPaddingType(name: string): number {
-    let paddingType: number = -1;
-    if (name === "valid") {
-        paddingType = 0;
-    } else if (name === "same") {
-        paddingType = 1;
-    }
-    return paddingType;
-}
-
-function getConvSize(
-    dim: number[],
-    size: number[],
-    stride: number[],
-    padding: string,
-): { 
-    out: number[], 
-    pad: number[] 
-} {
-    const out = [], pad = [];
-    for (let i = 0; i < 2; ++i) {
-        if (padding == "same") {
-            out.push((dim[i] + stride[i] - 1) / stride[i]);
-            const total_pad = (dim[i] % stride[i] == 0) ? Math.max(size[i] - stride[i], 0) : Math.max(size[i] - dim[i] % stride[i], 0);
-            pad.push(total_pad / 2);
-        } else if (padding == "valid") {
-            // TODO: What if dim[i] < size[i]
-            out.push((dim[i] - size[i]) / stride[i] + 1);
-            pad.push(0);
-        }
-    }
-    return { out, pad };
-}
 
 async function main() {
     const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, CHUNK_LEN } = process.env;
@@ -145,7 +47,7 @@ async function main() {
         const temp = Buffer.from(params.weight_b64, 'base64');
         const floats = new Float32Array(new Uint8Array(temp).buffer);
         for (let i = 0; i < floats.length; i++) {
-            weightsFlat.push(ethers.BigNumber.from(String(Math.trunc(floats[i] * Math.pow(2, 32)))));
+            weightsFlat.push(fromFloat(floats[i]));
         }
     }
 
@@ -180,7 +82,7 @@ async function main() {
             result = abic.encode(["uint8"], [layerType]);
             input_units = input_units[0] * input_units[1] * input_units[2];
         } else if (layer.class_name === 'Rescaling') {
-            const n1 = ethers.BigNumber.from(String(layer.config.scale * Math.pow(2, 32)));
+            const n1 = fromFloat(layer.config.scale);
             const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("18446744073709551616"));
             result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
         } else if (layer.class_name === 'InputLayer') {
