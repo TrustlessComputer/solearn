@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-// import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-// import "@openzeppelin/contracts/access/AccessControl.sol";
-// import "@openzeppelin/contracts/utils/Strings.sol";
-// import "hardhat/console.sol";
-// import "@openzeppelin/contracts/utils/Counters.sol";
-
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./thirdparty/solidity-stringutils/strings.sol";
-import "./lib/layers-cuda/Layers.sol";
+import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
+// import "hardhat/console.sol";
 
 error NotTokenOwner();
 error InsufficientMintPrice();

@@ -2,11 +2,10 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-// import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./lib/layers/Layers.sol";
-import "hardhat/console.sol";
 import './lib/Utils.sol';
+// import "hardhat/console.sol";
 
 error NotTokenOwner();
 error InsufficientEvalPrice();

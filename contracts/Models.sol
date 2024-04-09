@@ -60,7 +60,7 @@ contract Models is Initializable,
         return super.tokenURI(tokenId);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Upgradeable, ERC721EnumerableUpgradeable, IERC165Upgradeable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Upgradeable, ERC721EnumerableUpgradeable, IERC165Upgradeable, ERC721URIStorageUpgradeable) returns (bool) {
         return
         interfaceId == type(IERC2981Upgradeable).interfaceId ||
         super.supportsInterface(interfaceId);
