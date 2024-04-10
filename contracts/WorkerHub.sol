@@ -6,20 +6,18 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
+import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 
 abstract contract WorkerHubStorage is IWorkerHub {
+    mapping(address => bool) public isModel;
     mapping(address => Worker) internal workers;
     mapping(uint256 => Inference) internal inferences;
     mapping(uint256 => UnstakeRequest) internal unstakeRequests;
 
-    uint256 public collectionIdentifier;
     uint256 public inferenceNumber;
     uint256 public unstakeRequestNumber;
-    uint256 public inferenceCost;
     uint256 public minimumStake;
-    string public modelName;
-    string public modelUrl;
 
     uint8 public feePercentage;
     uint8 public royaltyPercentage;
@@ -39,12 +37,8 @@ ReentrancyGuardUpgradeable {
     function initialize(
         address _treasury,
         address _collection,
-        uint256 _collectionIdentifier,
-        string calldata _modelName,
-        string calldata _modelUrl,
         uint8 _feePercentage,
         uint8 _royaltyPercentage,
-        uint256 _inferenceCost,
         uint256 _minimumStake,
         uint40 _stakeLockingDuration
     ) external initializer {
@@ -56,12 +50,8 @@ ReentrancyGuardUpgradeable {
 
         treasury = _treasury;
         collection = _collection;
-        collectionIdentifier = _collectionIdentifier;
-        modelName = _modelName;
-        modelUrl = _modelUrl;
         feePercentage = _feePercentage;
         royaltyPercentage = _royaltyPercentage;
-        inferenceCost = _inferenceCost;
         minimumStake = _minimumStake;
         stakeLockingDuration = _stakeLockingDuration;
     }
@@ -88,26 +78,6 @@ ReentrancyGuardUpgradeable {
         emit CollectionUpdate(_collection);
     }
 
-    function updateCollectionIdentifier(uint256 _collectionIdentifier) external onlyOwner {
-        collectionIdentifier = _collectionIdentifier;
-        emit CollectionIdentifierUpdate(_collectionIdentifier);
-    }
-
-    function updateModelName(string calldata _modelName) external onlyOwner {
-        modelName = _modelName;
-        emit ModelNameUpdate(_modelName);
-    }
-
-    function updateModelUrl(string calldata _modelUrl) external onlyOwner {
-        modelUrl = _modelUrl;
-        emit ModelUrlUpdate(_modelUrl);
-    }
-
-    function updateInferenceCost(uint256 _inferenceCost) external onlyOwner {
-        inferenceCost = _inferenceCost;
-        emit InferenceCostUpdate(_inferenceCost);
-    }
-
     function updateFeePercentage(uint8 _feePercentage) external onlyOwner {
         feePercentage = _feePercentage;
         emit FeePercentageUpdate(_feePercentage);
@@ -128,30 +98,44 @@ ReentrancyGuardUpgradeable {
         emit StakeLockingDurationUpdate(_stakeLockingDuration);
     }
 
+    function registerModel(address _model) external onlyOwner {
+        if (isModel[_model]) revert AlreadyRegistered();
+
+        isModel[_model] = true;
+
+        emit ModelRegistration(_model);
+    }
+
+    function unregisterModel(address _model) external onlyOwner {
+        if (!isModel[_model]) revert NotRegistered();
+
+        isModel[_model] = false;
+
+        emit ModelUnregistration(_model);
+    }
+
     function authorizeWorker(address _worker) external onlyOwner {
         workers[_worker].isAuthorized = true;
+
+        emit WorkerAuthorization(_worker);
     }
 
     function unauthorizeWorker(address _worker) external onlyOwner {
         workers[_worker].isAuthorized = false;
+
+        emit WorkerUnauthorization(_worker);
     }
 
-    function getIndividualInferences(address _account) external view returns (Inference[] memory) {
-        uint256 counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (inferences[i].creator == _account) {
-                counter++;
-            }
-        }
+    function getInference(uint256 _inferenceId) external view returns (Inference memory) {
+        if (_inferenceId == 0 || _inferenceId > inferenceNumber) revert InvalidInferenceId();
+        return inferences[_inferenceId];
+    }
 
-        Inference[] memory result = new Inference[](counter);
-        counter = 0;
+    function getInferences() external view returns (Inference[] memory) {
+        Inference[] memory result = new Inference[](inferenceNumber);
         for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (inferences[i].creator == _account) {
-                result[counter++] = inferences[i];
-            }
+            result[i] = inferences[i];
         }
-
         return result;
     }
 
@@ -171,8 +155,28 @@ ReentrancyGuardUpgradeable {
                     i,
                     inference.value,
                     inference.data,
+                    inference.model,
                     inference.creator
                 );
+            }
+        }
+
+        return result;
+    }
+
+    function getIndividualInferences(address _account) external view returns (Inference[] memory) {
+        uint256 counter = 0;
+        for (uint256 i = 1; i <= inferenceNumber; ++i) {
+            if (inferences[i].creator == _account) {
+                counter++;
+            }
+        }
+
+        Inference[] memory result = new Inference[](counter);
+        counter = 0;
+        for (uint256 i = 1; i <= inferenceNumber; ++i) {
+            if (inferences[i].creator == _account) {
+                result[counter++] = inferences[i];
             }
         }
 
@@ -196,6 +200,7 @@ ReentrancyGuardUpgradeable {
                         i,
                         inference.value,
                         inference.data,
+                        inference.model,
                         inference.creator
                     );
                 }
@@ -204,9 +209,49 @@ ReentrancyGuardUpgradeable {
         return result;
     }
 
-    function getInference(uint256 _inferenceId) external view returns (Inference memory) {
-        if (_inferenceId == 0 || _inferenceId > inferenceNumber) revert InvalidInferenceId();
-        return inferences[_inferenceId];
+    function getModelInferences(address _model) external view returns (Inference[] memory) {
+        uint256 counter = 0;
+        for (uint256 i = 1; i <= inferenceNumber; ++i) {
+            if (inferences[i].model == _model) {
+                counter++;
+            }
+        }
+
+        Inference[] memory result = new Inference[](counter);
+        counter = 0;
+        for (uint256 i = 1; i <= inferenceNumber; ++i) {
+            if (inferences[i].model == _model) {
+                result[counter++] = inferences[i];
+            }
+        }
+
+        return result;
+    }
+
+    function getModelUnresolvedInferences(address _model) external view returns (UnresolvedInference[] memory) {
+        uint256 counter = 0;
+        for (uint256 i = 1; i <= inferenceNumber; ++i) {
+            if (!inferences[i].isResolved && inferences[i].model == _model) {
+                counter++;
+            }
+        }
+
+        UnresolvedInference[] memory result = new UnresolvedInference[](counter);
+        counter = 0;
+        for (uint256 i = 1; i <= inferenceNumber; ++i) {
+            if (!inferences[i].isResolved && inferences[i].model == _model) {
+                Inference memory inference = inferences[i];
+                result[counter++] = UnresolvedInference(
+                    i,
+                    inference.value,
+                    inference.data,
+                    inference.model,
+                    inference.creator
+                );
+            }
+        }
+
+        return result;
     }
 
     function getWorker(address _worker) external view returns (Worker memory) {
@@ -311,17 +356,18 @@ ReentrancyGuardUpgradeable {
         emit Unstake(msg.sender, _requestIds);
     }
 
-    function infer(bytes calldata _data) external payable whenNotPaused returns (uint256) {
-        if (msg.value < inferenceCost) revert InsufficientFunds();
+    function infer(bytes calldata _data, address _creator) external payable whenNotPaused returns (uint256) {
+        if (!isModel[msg.sender]) revert Unauthorized();
 
         uint256 inferenceId = ++inferenceNumber;
         inferences[inferenceId] = Inference(
             msg.value,
             _data,
             '',
+            false,
             msg.sender,
-            address(0),
-            false
+            _creator,
+            address(0)
         );
 
         emit NewInference(inferenceId);
@@ -352,8 +398,9 @@ ReentrancyGuardUpgradeable {
             (success, ) = treasury.call{value: fee}("");
             if (!success) revert FailedTransfer();
 
-            if (collection != address(0)) {
-                address modelOwner = IERC721Upgradeable(collection).ownerOf(collectionIdentifier);
+            uint256 modelIdentifier = IHybridModel(inference.model).identifier();
+            if (modelIdentifier != 0) {
+                address modelOwner = IERC721Upgradeable(collection).ownerOf(modelIdentifier);
                 uint256 royalty = value * royaltyPercentage / 100;
                 reward -= royalty;
                 (success, ) = modelOwner.call{value: royalty}("");
