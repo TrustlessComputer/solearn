@@ -51,7 +51,7 @@ const config: HardhatUserConfig = {
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       treasuryAddress: process.env.REGTEST3_TREASURY_ADDRESS,
-      collectionAddress: process.env.REGTEST3_TREASURY_ADDRESS,
+      collectionAddress: process.env.REGTEST3_COLLECTION_ADDRESS,
       workerHubAddress: process.env.REGTEST3_WORKER_HUB_ADDRESS,
       timeout: 500_000,
       gasPrice: 1_000_000_000,
@@ -65,7 +65,7 @@ const config: HardhatUserConfig = {
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       treasuryAddress: process.env.CUDATEST_TREASURY_ADDRESS,
-      collectionAddress: process.env.CUDATEST_TREASURY_ADDRESS,
+      collectionAddress: process.env.CUDATEST_COLLECTION_ADDRESS,
       workerHubAddress: process.env.CUDATEST_WORKER_HUB_ADDRESS,
       timeout: 500_000,
       gasPrice: 1_000_000_000,

@@ -21,7 +21,7 @@ async function deployWorkerHub() {
                 `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
             );
 
-            const collectionAddress = config.treasuryAddress || ethers.constants.AddressZero;
+            const collectionAddress = config.collectionAddress || ethers.constants.AddressZero;
 
             const feePercentage = 10;
             const royaltyPercentage = 20;
