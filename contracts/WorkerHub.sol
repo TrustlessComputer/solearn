@@ -356,12 +356,13 @@ ReentrancyGuardUpgradeable {
         emit Unstake(msg.sender, _requestIds);
     }
 
-    function infer(bytes calldata _data, address _creator) external payable whenNotPaused returns (uint256) {
+    function infer(bytes calldata _data, uint256 _modelId, address _creator) external payable whenNotPaused returns (uint256) {
         if (!isModel[msg.sender]) revert Unauthorized();
 
         uint256 inferenceId = ++inferenceNumber;
         inferences[inferenceId] = Inference(
             msg.value,
+            _modelId,
             _data,
             '',
             false,

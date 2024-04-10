@@ -84,6 +84,6 @@ ReentrancyGuardUpgradeable {
     function infer(bytes calldata _data) external payable whenNotPaused nonReentrant returns (uint256) {
         if (msg.value < inferenceCost) revert InsufficientFunds();
 
-        return IWorkerHub(workerHub).infer{value: msg.value}(_data, msg.sender);
+        return IWorkerHub(workerHub).infer{value: msg.value}(_data, identifier, msg.sender);
     }
 }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 interface IWorkerHub {
     struct Inference {
         uint256 value;
+        uint256 modelId;
         bytes data;
         bytes result;
         bool isResolved;
@@ -103,6 +104,6 @@ interface IWorkerHub {
     function requestUnstake(uint256 value) external;
     function unstake(uint256[] calldata requestIds) external;
 
-    function infer(bytes calldata _data, address _creator) external payable returns (uint256);
-    function submitResult(uint256 _inferenceId, bytes calldata _result) external;
+    function infer(bytes calldata data, uint256 identifier, address creator) external payable returns (uint256);
+    function submitResult(uint256 inferenceId, bytes calldata result) external;
 }
