@@ -399,13 +399,15 @@ ReentrancyGuardUpgradeable {
             (success, ) = treasury.call{value: fee}("");
             if (!success) revert FailedTransfer();
 
-            uint256 modelIdentifier = IHybridModel(inference.model).identifier();
-            if (modelIdentifier != 0) {
-                address modelOwner = IERC721Upgradeable(collection).ownerOf(modelIdentifier);
-                uint256 royalty = value * royaltyPercentage / 100;
-                reward -= royalty;
-                (success, ) = modelOwner.call{value: royalty}("");
-                if (!success) revert FailedTransfer();
+            if (collection != address(0)) {
+                uint256 modelIdentifier = IHybridModel(inference.model).identifier();
+                if (modelIdentifier != 0) {
+                    address modelOwner = IERC721Upgradeable(collection).ownerOf(modelIdentifier);
+                    uint256 royalty = value * royaltyPercentage / 100;
+                    reward -= royalty;
+                    (success, ) = modelOwner.call{value: royalty}("");
+                    if (!success) revert FailedTransfer();
+                }
             }
 
             (success, ) = msg.sender.call{value: reward}("");

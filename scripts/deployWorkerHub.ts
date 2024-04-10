@@ -23,12 +23,8 @@ async function deployWorkerHub() {
 
             const collectionAddress = config.treasuryAddress || ethers.constants.AddressZero;
 
-            const collectionIdentifier = 0;
-            const modelName = "TEST";
-            const modelUrl = "abc.com";
             const feePercentage = 10;
             const royaltyPercentage = 20;
-            const inferenceCost = ethers.constants.WeiPerEther;
             const minimumStake = ethers.constants.WeiPerEther;
             const stakeLockingDuration = 60;
 
@@ -38,12 +34,8 @@ async function deployWorkerHub() {
                 [
                     treasuryAddress,
                     collectionAddress,
-                    collectionIdentifier,
-                    modelName,
-                    modelUrl,
                     feePercentage,
                     royaltyPercentage,
-                    inferenceCost,
                     minimumStake,
                     stakeLockingDuration
                 ]
