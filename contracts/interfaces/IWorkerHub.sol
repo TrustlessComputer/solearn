@@ -51,7 +51,7 @@ interface IWorkerHub {
     event Stake(address indexed worker, uint256 value);
     event Unstake(address indexed worker, uint256[] requestIds);
 
-    event NewInference(uint256 indexed inferenceId);
+    event NewInference(uint256 indexed inferenceId, address indexed creator);
     event ResultSubmission(uint256 indexed inferenceId, address indexed worker);
 
     error AlreadyRegistered();

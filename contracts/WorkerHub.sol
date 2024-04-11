@@ -371,7 +371,7 @@ ReentrancyGuardUpgradeable {
             address(0)
         );
 
-        emit NewInference(inferenceId);
+        emit NewInference(inferenceId, _creator);
 
         return inferenceId;
     }
