@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-interface IHybridModel {
+import {IModels} from "../Models.sol";
+
+interface IHybridModel is IModels {
     event WorkerHubUpdate(address newAddress);
 
     event IdentifierUpdate(uint256 newValue);
@@ -10,6 +12,7 @@ interface IHybridModel {
     event UrlUpdate(string newValue);
 
     error InsufficientFunds();
+    error ModelIdAlreadySet();
 
     function version() external pure returns (string memory version);
 

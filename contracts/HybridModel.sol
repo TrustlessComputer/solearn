@@ -81,6 +81,12 @@ ReentrancyGuardUpgradeable {
         emit InferenceCostUpdate(_inferenceCost);
     }
 
+    function setModelId(uint256 _modelId) external {
+        if (identifier != 0) revert ModelIdAlreadySet();
+        identifier = _modelId;
+        emit IdentifierUpdate(_modelId);
+    }
+
     function infer(bytes calldata _data) external payable whenNotPaused nonReentrant returns (uint256) {
         if (msg.value < inferenceCost) revert InsufficientFunds();
 

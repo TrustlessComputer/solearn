@@ -7,10 +7,10 @@ async function deployHybridModel() {
     const WorkerHub = await ethers.getContractFactory('WorkerHub');
 
     const workerHubAddress = config.workerHubAddress;
-    const identifier = 3;
-    const name = `Model ${identifier}`;
-    const url = `abc.com/${identifier}`;
-    const inferenceCost = ethers.utils.parseEther('1');
+    const identifier = 0;
+    const name = 'Futuristic Fragment';//`Model ${identifier}`;
+    const url = '';//`abc.com/${identifier}`;
+    const inferenceCost = ethers.utils.parseEther('100');
 
     const hybridModel = await upgrades.deployProxy(
         HybridModel,

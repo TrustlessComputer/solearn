@@ -24,9 +24,9 @@ async function deployWorkerHub() {
             const collectionAddress = config.collectionAddress || ethers.constants.AddressZero;
 
             const feePercentage = 10;
-            const royaltyPercentage = 20;
+            const royaltyPercentage = 10;
             const minimumStake = ethers.constants.WeiPerEther;
-            const stakeLockingDuration = 60;
+            const stakeLockingDuration = 0;
 
 
             const workerHub = await upgrades.deployProxy(
