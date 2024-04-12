@@ -5,6 +5,7 @@ import "hardhat-deploy";
 import './scripts/base.task';
 import './scripts/melody.task';
 import './scripts/test.task';
+import './scripts/rune.task';
 // import "hardhat-tracer";
 import "@foundry-rs/hardhat-anvil";
 import 'dotenv/config'
