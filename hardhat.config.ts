@@ -4,13 +4,14 @@ import '@openzeppelin/hardhat-upgrades';
 import "hardhat-deploy";
 import './scripts/base.task';
 import './scripts/melody.task';
+import './scripts/test.task';
 // import "hardhat-tracer";
 import "@foundry-rs/hardhat-anvil";
 import 'dotenv/config'
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "anvil",
   anvil: {
     url: "http://127.0.0.1:8545/",
     launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
@@ -43,6 +44,17 @@ const config: HardhatUserConfig = {
       timeout: 500_000_000,
       blockGasLimit: 2_500_000_000,
     },
+    regtest2: {
+      url: "https://eternal-ai2.tc.l2aas.com/rpc",
+      accounts: [
+        process.env.REGTEST2_PRIVATE_KEY || "",
+      ],
+      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
+      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
+      timeout: 500_000,
+      gasPrice: 1_000_000_000,
+      blockGasLimit: 100_000_000_000,
+    } as any,
     regtest3: {
       url: "https://eternal-ai3.tc.l2aas.com/rpc",
       accounts: [
