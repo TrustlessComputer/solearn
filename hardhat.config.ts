@@ -63,7 +63,7 @@ const config: HardhatUserConfig = {
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       treasuryAddress: process.env.REGTEST3_TREASURY_ADDRESS,
-      collectionAddress: process.env.REGTEST3_TREASURY_ADDRESS,
+      collectionAddress: process.env.REGTEST3_COLLECTION_ADDRESS,
       workerHubAddress: process.env.REGTEST3_WORKER_HUB_ADDRESS,
       timeout: 500_000,
       gasPrice: 1_000_000_000,
@@ -76,9 +76,9 @@ const config: HardhatUserConfig = {
       ],
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
-      treasuryAddress: process.env.TREASURY_TREASURY_ADDRESS,
-      collectionAddress: process.env.TREASURY_TREASURY_ADDRESS,
-      workerHubAddress: process.env.TREASURY_WORKER_HUB_ADDRESS,
+      treasuryAddress: process.env.CUDATEST_TREASURY_ADDRESS,
+      collectionAddress: process.env.CUDATEST_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.CUDATEST_WORKER_HUB_ADDRESS,
       timeout: 500_000,
       gasPrice: 1_000_000_000,
       blockGasLimit: 100_000_000_000,
@@ -92,6 +92,21 @@ const config: HardhatUserConfig = {
     tests: './tests',
     cache: './cache',
     artifacts: './artifacts',
+  },
+  etherscan: {
+    apiKey: {
+      regtest3: 'abc123',
+    },
+    customChains: [
+      {
+        network: 'regtest3',
+        chainId: 20156,
+        urls: {
+          apiURL: 'https://eternal-ai3.tc.l2aas.com/api',
+          browserURL: 'https://eternal-ai3.tc.l2aas.com'
+        }
+      }
+    ],
   },
   mocha: {
     timeout: 2000000,

@@ -8,7 +8,13 @@
     "hh:verify": "npx hardhat verify",
     "blockscout:verify": "npx hardhat blockscout-verify",
     "ts:run": "npx ts-node",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "console:regtest3": "npx hardhat console --network regtest3",
+    "deployWorkerHub:regtest3": "npx hardhat run scripts/deployWorkerHub.ts --network regtest3",
+    "deployHybridModel:regtest3": "npx hardhat run scripts/deployHybridModel.ts --network regtest3",
+    "console:cudatest": "npx hardhat console --network cudatest",
+    "deployWorkerHub:cudatest": "npx hardhat run scripts/deployWorkerHub.ts --network cudatest",
+    "deployHybridModel:cudatest": "npx hardhat run scripts/deployHyrbidModel.ts --network cudatest"
   },
   "devDependencies": {
     "@ericxstone/hardhat-blockscout-verify": "^1.0.2",
@@ -43,6 +49,7 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-verify": "^2.0.5",
     "js-levenshtein": "^1.1.6"
   }
 }
