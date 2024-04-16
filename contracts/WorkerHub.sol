@@ -134,7 +134,7 @@ ReentrancyGuardUpgradeable {
     function getInferences() external view returns (Inference[] memory) {
         Inference[] memory result = new Inference[](inferenceNumber);
         for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            result[i] = inferences[i];
+            result[i-1] = inferences[i];
         }
         return result;
     }
