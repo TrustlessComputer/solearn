@@ -10,6 +10,7 @@ import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/Eternal
 import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
 import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName, getModelDirents, pixelsToImage, measureTime, postprocessText } from "./utils";
+import { runeToText, isRune } from "./rune.task";
 
 const ContractName = "Models";
 const MaxWeightLen = 1000;
@@ -598,6 +599,9 @@ task("generate-text", "generate text from RNN model")
             const dict: string[] = JSON.parse(fs.readFileSync(taskArgs.dictionary, 'utf-8'));
             console.log("------------  Prompt + Postprocessed text ----------");
             console.log(taskArgs.prompt + postprocessText(result, dict));
+        } else if (isRune(result)) {
+            console.log("------------  Prompt + Transliterated rune ----------");
+            console.log(runeToText(taskArgs.prompt + result));
         }
         console.log("----------------------------------------------------");
 

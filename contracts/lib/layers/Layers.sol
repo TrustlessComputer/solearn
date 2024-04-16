@@ -220,14 +220,17 @@ library Layers {
 			Tensors.Tensor1D memory zt = y.activation(layer.activation);
 			return zt.mat;
 		}
+		// console.log("Prepare to matMul");
 		Tensors.Tensor1D memory tmp = xt.matMul(wt);
-		Float32x32[] memory w_col = new Float32x32[](wt.n);
-		for(uint i = 0; i < wt.n; ++i) {
-			w_col[i] = wt.mat[i][34];
-		}
+		// Float32x32[] memory w_col = new Float32x32[](wt.n);
+		// for(uint i = 0; i < wt.n; ++i) {
+		// 	w_col[i] = wt.mat[i][34];
+		// }
+		// console.log("Prepare to add");
 		Tensors.Tensor1D memory y = tmp.add(bt);
+		// console.log("Prepare to activation");
 		Tensors.Tensor1D memory zt = y.activation(layer.activation);
-		emit TestDense(xt.mat, w_col, tmp.mat[34], bt.mat[34], y.mat[34], zt.mat[34]);
+		// emit TestDense(xt.mat, w_col, tmp.mat[34], bt.mat[34], y.mat[34], zt.mat[34]);
 		return zt.mat;
 	}
 
