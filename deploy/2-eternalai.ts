@@ -7,7 +7,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deploy, get } = deployments;
     const { deployer } = await getNamedAccounts();
 
-    const models = await get('Models');
+    const models = await get('ModelReg');
     await deploy('EternalAI', {
         from: deployer,
         proxy: {

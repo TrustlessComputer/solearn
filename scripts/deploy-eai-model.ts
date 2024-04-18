@@ -1,14 +1,13 @@
-import { ethers } from 'ethers';
+import hre from "hardhat";
+import { ethers, utils } from "ethers";
 import fs from 'fs';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
-import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
-import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 import dotenv from 'dotenv';
 import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './utils';
 
 dotenv.config();
 
-const ContractName = "Models";
+const ContractName = "ModelReg";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const gasConfig = { gasLimit: 10_000_000_000 };
@@ -18,6 +17,7 @@ const mintConfig = { value: mintPrice };
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
 async function main() {
+    const { ethers } = hre;
     const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, CHUNK_LEN } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
@@ -187,11 +187,15 @@ async function main() {
     }
 
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
+    params.classes_name =  params.classes_name || [];
 
     let tokenId = ethers.BigNumber.from(0); // placeholder
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
-    const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
+
+    const modelReg = await ethers.getContractAt('ModelReg', nftContractAddress);
+
     // deploy a EternalAI contract
+    // EternalAI contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
     const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
     
     const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name || [], nftContractAddress, gasConfig);
@@ -223,8 +227,8 @@ async function main() {
     const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
         return _w.splice(0, maxlen);
     }
-    const checkForDeployedModel = (receipt: { events: any[]; }) => {
-        const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
+    const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
+        const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
         if (deployedEvent != null) {
             const owner = deployedEvent.args?.owner;
             const tokenId = deployedEvent.args?.tokenId;
@@ -249,10 +253,10 @@ async function main() {
     }
 
     try {
-        const tx = await c.safeMint(MODEL_OWNER || signer.address, modelUri, eai.address, {...mintConfig, gasLimit: 1_000_000 });
+        const tx = await modelReg.safeMint(MODEL_OWNER || signer.address, modelUri, eai.address, {...mintConfig, gasLimit: 1_000_000 });
         const rc = await tx.wait();
         // listen for Transfer event
-        const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
+        const transferEvent = rc.events?.find((event: ethers.Event) => event.event === 'Transfer');
         if (transferEvent != null) {
             const from = transferEvent.args?.from;
             const to = transferEvent.args?.to;

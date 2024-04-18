@@ -7,17 +7,12 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URISto
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+import { IModelReg } from "./interfaces/IModelReg.sol";
+import { IModel } from "./interfaces/IModel.sol";
+
 error InsufficientMintPrice();
 
-interface IModels {
-    function setModelId(uint256 _modelId) external;
-}
-
-contract Models is Initializable,
-    ERC721Upgradeable,
-    ERC721EnumerableUpgradeable,
-    ERC721URIStorageUpgradeable,
-    IERC2981Upgradeable {
+contract ModelRegStorage is IModelReg {
     uint256 public mintPrice;
     uint256 public evalPrice;
     uint8 protocolFeePercent; // deprecated
@@ -25,6 +20,16 @@ contract Models is Initializable,
     address public royaltyReceiver;
     uint256 public nextModelId;
 
+    uint256[50] private __gap;
+}
+
+contract ModelReg is 
+ModelRegStorage,
+Initializable,
+ERC721Upgradeable,
+ERC721EnumerableUpgradeable,
+ERC721URIStorageUpgradeable,
+IERC2981Upgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -99,7 +104,7 @@ contract Models is Initializable,
         _setTokenURI(modelId, uri);
         modelAddr[modelId] = _modelAddr;
         nextModelId++;
-        IModels(_modelAddr).setModelId(modelId);
+        IModel(_modelAddr).setModelId(modelId);
     }
 
     /* @dev EIP2981 royalties implementation. 

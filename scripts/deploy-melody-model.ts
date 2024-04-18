@@ -1,14 +1,13 @@
+import hre from "hardhat";
 import { ethers } from 'ethers';
 import fs from 'fs';
 import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
-import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
-import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 import dotenv from 'dotenv';
 import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './utils';
 
 dotenv.config();
 
-const ContractName = "Models";
+const ModelRegContractName = "ModelReg";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const gasConfig = { gasLimit: 10_000_000_000 };
@@ -18,6 +17,7 @@ const mintConfig = { value: mintPrice };
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
 async function main() {
+    const { ethers } = hre;
     const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, CHUNK_LEN } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
@@ -187,7 +187,9 @@ async function main() {
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
 
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
-    const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
+
+    const modelReg = await ethers.getContractAt(ModelRegContractName, nftContractAddress);
+
     // deploy a MelodyRNN contract
     const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
     const mldyImpl = await MelodyFac.deploy(params.model_name, nftContractAddress);
@@ -219,9 +221,8 @@ async function main() {
     const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
         return _w.splice(0, maxlen);
     }
-
-    const checkForDeployedModel = (receipt: { events: any[]; }) => {
-        const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
+    const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
+        const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
         if (deployedEvent != null) {
             const owner = deployedEvent.args?.owner;
             const tokenId = deployedEvent.args?.tokenId;
@@ -247,10 +248,10 @@ async function main() {
     const modelUri = "";
     console.log('before mibnt')
     try {
-        const tx = await c.safeMint(MODEL_OWNER || signer.address, modelUri, mldy.address, mintConfig);
+        const tx = await modelReg.safeMint(MODEL_OWNER || signer.address, modelUri, mldy.address, mintConfig);
         const rc = await tx.wait();
         // listen for Transfer event
-        const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
+        const transferEvent = rc.events?.find((event: ethers.Event) => event.event === 'Transfer');
         if (transferEvent != null) {
             const from = transferEvent.args?.from;
             const to = transferEvent.args?.to;
@@ -263,7 +264,6 @@ async function main() {
         console.error("Error minting model: ", e);
         throw e;
     }
-    console.log('after mibnt')
 }
 
 main().catch((error) => {

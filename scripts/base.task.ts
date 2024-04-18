@@ -7,12 +7,10 @@ import { ethers, utils } from "ethers";
 import path from 'path';
 import levenshtein from 'js-levenshtein';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
-import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
-import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
-import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName, getModelDirents, pixelsToImage, measureTime, postprocessText } from "./utils";
+import { getLayerName, getModelDirents, pixelsToImage, measureTime, postprocessText } from "./utils";
 import { runeToText, isRune } from "./rune.task";
 
-const ContractName = "Models";
+const ModelRegContractName = "ModelReg";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 
@@ -34,290 +32,44 @@ const mintConfig = { value: mintPrice };
 const evalPrice = ethers.utils.parseEther('0.01');
 const evalConfig = { value: evalPrice };
 
-// model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
+// task("mint-models", "mint multiple model in a folder (with their weights)")
+//     .addOptionalParam("contract", "contract address", "", types.string)
+//     .addOptionalParam("folder", "folder path", "", types.string)
+//     .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
+//     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+//         const { ethers, deployments, getNamedAccounts } = hre;
+//         const { deployer: signerAddress } = await getNamedAccounts();
+//         const signer = await ethers.getSigner(signerAddress);
 
-task("mint-model-id", "mint model id (and upload weights)")
-    .addOptionalParam("model", "model file name", "", types.string)
-    .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("to", "new model owner address", "", types.string)
-    .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
-    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-        const { ethers, deployments, getNamedAccounts } = hre;
-        const { deployer: signerAddress } = await getNamedAccounts();
-        const signer = await ethers.getSigner(signerAddress);
-        const abic = ethers.utils.defaultAbiCoder;
-
-        // load params from file
-        const modelParams = JSON.parse(fs.readFileSync(taskArgs.model, 'utf-8'));
-        const params = Object.assign({}, modelParams);
-
-        let weightsFlat: ethers.BigNumber[] = [];
-        if (params.weight_b64) {
-            const temp = Buffer.from(params.weight_b64, 'base64');
-            const floats = new Float32Array(new Uint8Array(temp).buffer);
-            for (let i = 0; i < floats.length; i++) {
-                weightsFlat.push(fromFloat(floats[i]));
-            }
-        }
-
-        let weights: ethers.BigNumber[][][] = [];
-        let totSize: number[] = [];
-        for(let i = 0; i < MaxLayerType; ++i) {
-            weights.push([]);
-            totSize.push(0);
-        }
-
-        let newLayerConfig = [];
-        let input_units: any = 0;
-        for (let i = 0; i < params.layers_config.config.layers.length; i++) {
-            const layer = params.layers_config.config.layers[i];
-            let result: String = "";
-            
-            let layerType = getLayerType(layer.class_name);
-
-            if (layer.class_name === 'Dense') {
-                const output_units = layer.config.units;
-    
-                let activationFn: number = getActivationType(layer.config.activation);
-    
-                // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, input_units * output_units + output_units)
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(output_units)]);
-                input_units = output_units;
-            } else if (layer.class_name === 'Flatten') {
-                result = abic.encode(["uint8"], [layerType]);
-                input_units = input_units[0] * input_units[1] * input_units[2];
-            } else if (layer.class_name === 'Rescaling') {
-                const n1 = fromFloat(layer.config.scale);
-                const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("18446744073709551616"));
-                result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
-            } else if (layer.class_name === 'InputLayer') {
-                const dim = layer.config.batch_input_shape.slice(1);
-                if (dim.length == 1 || dim.length == 2) {
-                    result = abic.encode(["uint8", "uint8"], [layerType, 0]);
-                    input_units = 1;
-                } else if (dim.length == 3) {
-                    const h = ethers.BigNumber.from(dim[0]);
-                    const w = ethers.BigNumber.from(dim[1]);
-                    const c = ethers.BigNumber.from(dim[2]);
-                    result = abic.encode(["uint8", "uint8", "uint[3]"], [layerType, 1, [h, w, c]]);
-                    input_units = [h.toNumber(), w.toNumber(), c.toNumber()];
-                }
-            } else if (layer.class_name === 'MaxPooling2D') {
-                const f_w = layer.config.pool_size[0];
-                const f_h = layer.config.pool_size[1];
-                const s_w = layer.config.strides[0];
-                const s_h = layer.config.strides[1];
-                const padding = layer.config.padding;
-    
-                result = abic.encode(["uint8", "uint[2]", "uint[2]", "uint8"], [
-                    layerType,
-                    [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)],
-                    [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
-                    getPaddingType(padding),
-                ]);
-    
-                const { out } = getConvSize([input_units[0], input_units[1]], [f_w, f_h], [s_w, s_h], padding);
-                input_units = [out[0], out[1], input_units[2]];
-            } else if (layer.class_name === 'Conv2D') {
-                const filters = layer.config.filters;
-                const f_w = layer.config.kernel_size[0];
-                const f_h = layer.config.kernel_size[1];
-                const s_w = layer.config.strides[0];
-                const s_h = layer.config.strides[1];
-                const padding = layer.config.padding;
-                const d = input_units[2];
-    
-                let activationFn: number = getActivationType(layer.config.activation);
-    
-                // reconstruct weights
-                // Filter: (F_W, F_H, D, K)
-                let layerWeights = weightsFlat.splice(0, f_w * f_h * d * filters + filters);
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint8", "uint", "uint[2]", "uint[2]", "uint8"], [
-                    layerType,
-                    activationFn,
-                    ethers.BigNumber.from(filters),
-                    [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)],
-                    [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
-                    getPaddingType(padding),
-                ]);
-    
-                const { out } = getConvSize([input_units[0], input_units[1]], [f_w, f_h], [s_w, s_h], padding);
-                input_units = [ out[0], out[1], filters];
-            } else if (layer.class_name === 'Embedding') {
-                let inputDim = layer.config.input_dim;
-                let outputDim = layer.config.output_dim;
-    
-                // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, inputDim * outputDim);
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint256", "uint256"], [layerType, ethers.BigNumber.from(inputDim), ethers.BigNumber.from(outputDim)]);
-                input_units = outputDim;
-            } else if (layer.class_name === 'SimpleRNN') {
-                const units = layer.config.units;
-                const activationFn: number = getActivationType(layer.config.activation);
-    
-                // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, input_units * units + units * units + units);
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(units)]);
-                input_units = units;
-            } else if (layer.class_name === 'LSTM') {
-                const units = layer.config.units;
-                console.log("input units to LSTM: ", input_units);
-                console.log("LSTM units:", units);
-                const activationFn: number = getActivationType(layer.config.activation);
-                const recActivationFn: number = getActivationType(layer.config.recurrent_activation);
-    
-                // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, input_units * units * 4 + units * units * 4 + units * 4);
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint8", "uint8", "uint256", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units), ethers.BigNumber.from(input_units)]);
-                input_units = units;
-            } else {
-                continue; // handle dropout etc
-            }
-
-            if (result.length > 0) {
-                newLayerConfig.push(result);
-            }
-        }
-        params.layers_config = newLayerConfig.filter((x: any) => x !== null);
-        params.classes_name =  params.classes_name || [];
-
-        let contractAddress = taskArgs.contract;
-        if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
-            contractAddress = baseContract.address;
-        }
-        const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
-        // deploy a EternalAI contract
-        const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
-        const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name, contractAddress);
-        // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
-        // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
-        // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
-        const eai = EaiFac.attach(eaiImpl.address);
-        console.log("Deployed EternalAI contract: ", eai.address);
-
-        console.log("Setting AI model");
-        const setWeightTx = await eai.setEternalAI(tokenId, params.layers_config, gasConfig);
-        await setWeightTx.wait();
-        console.log('tx', setWeightTx.hash);
-
-        if (params.vocabulary) {
-            console.log("Setting vocabs");
-            const vocabs = params.vocabulary;
-            const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]");
-            await setVocabTx.wait();
-            console.log('tx', setVocabTx.hash);
-        }
-
-        const weightStr = JSON.stringify(weights);
-        console.log("Total weights len: ", weightStr.length);
-
-        console.log(`Set weights`);
-        const maxlen = taskArgs.maxlen;
-        const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
-            return _w.splice(0, maxlen);
-        }
-        const checkForDeployedModel = (receipt: { events: any[]; }) => {
-            const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
-            if (deployedEvent != null) {
-                const owner = deployedEvent.args?.owner;
-                const tokenId = deployedEvent.args?.tokenId;
-                console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-            }
-        }
-
-        for (let i = 0; i < MaxLayerType; ++i) {
-            if (totSize[i] === 0) continue;
-            console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
-
-            for (let wi = 0; wi < weights[i].length; ++wi) {
-                for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                        
-                    const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
-                    const receipt = await appendWeightTx.wait(2);
-                    console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                    
-                    checkForDeployedModel(receipt);
-                }
-            }
-        }
+//         const folder = taskArgs.folder;
+//         const modelDirents = await getModelDirents(folder);
         
-        try {
-            const tx = await c.safeMint(taskArgs.to || signer.address, "", eai.address, {...mintConfig, gasLimit: 1_000_000 });
-            const rc = await tx.wait();
-            // listen for Transfer event
-            const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
-            if (transferEvent != null) {
-                const from = transferEvent.args?.from;
-                const to = transferEvent.args?.to;
-                const tokenId = transferEvent.args?.tokenId;
-                console.log("tx:", tx.hash);
-                console.log(`Minted new EternalAI model, to=${to}, tokenId=${tokenId}`);
-            }
-            checkForDeployedModel(rc);
-        } catch (e) {
-            console.error("Error minting model: ", e);
-            throw e;
-        }
+//         const models = modelDirents.map((dirent, index) => ({
+//             name: path.basename(dirent.name, '.json'),
+//             path: path.join(folder, dirent.name),
+//         }));
 
-        fs.writeFileSync("model_address.json", JSON.stringify(eai.address));
-    });
-
-task("mint-models", "mint multiple model in a folder (with their weights)")
-    .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("folder", "folder path", "", types.string)
-    .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
-    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-        const { ethers, deployments, getNamedAccounts } = hre;
-        const { deployer: signerAddress } = await getNamedAccounts();
-        const signer = await ethers.getSigner(signerAddress);
-
-        const folder = taskArgs.folder;
-        const modelDirents = await getModelDirents(folder);
+//         const modelInfos = [];
+//         for(const model of models) {
+//             console.log("Minting model:", model.name);
+//             await hre.run("mint-model-id", {
+//                 model: model.path, 
+//                 contract: taskArgs.contract,
+//                 maxlen: taskArgs.maxlen,
+//             });
+//             const address: string = JSON.parse(fs.readFileSync("model_address.json", 'utf-8'));
+//             const c = await ethers.getContractAt(ModelRegContractName, address, signer);
+//             const modelId = await c.modelId();
         
-        const models = modelDirents.map((dirent, index) => ({
-            name: path.basename(dirent.name, '.json'),
-            path: path.join(folder, dirent.name),
-        }));
+//             modelInfos.push({
+//                 name: model.name,
+//                 id: modelId,
+//                 contractAddress: address,
+//             })
+//             fs.writeFileSync("model_list.json", JSON.stringify(modelInfos));
+//         }
 
-        const modelInfos = [];
-        for(const model of models) {
-            console.log("Minting model:", model.name);
-            await hre.run("mint-model-id", {
-                model: model.path, 
-                contract: taskArgs.contract,
-                maxlen: taskArgs.maxlen,
-            });
-            const address: string = JSON.parse(fs.readFileSync("model_address.json", 'utf-8'));
-            const c = await ethers.getContractAt(ContractName, address, signer);
-            const modelId = await c.modelId();
-        
-            modelInfos.push({
-                name: model.name,
-                id: modelId,
-                contractAddress: address,
-            })
-            fs.writeFileSync("model_list.json", JSON.stringify(modelInfos));
-        }
-
-    });
+//     });
 
 task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
@@ -331,14 +83,14 @@ task("eval-img", "evaluate model for each layer")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
+            const baseContract = await deployments.get(ModelRegContractName);
             contractAddress = baseContract.address;
         }
 
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        // const modelAddress = await c.modelAddr(tokenId);
-        const modelContract = new ethers.Contract(contractAddress, EternalAIArtifact.abi, signer);
+        const modelAddress = await modelRegContract.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
         const imgRaw = fs.readFileSync(taskArgs.img);
         console.log("imgRaw: ", imgRaw);
@@ -466,14 +218,14 @@ task("gas-generate-text", "estimate gas of generate-text")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
+            const baseContract = await deployments.get(ModelRegContractName);
             contractAddress = baseContract.address;
         }
 
         const prompt = "Q";
         const seed = ethers.BigNumber.from(123);
 
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const c = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const modelAddress = await c.modelAddr(ethers.BigNumber.from(taskArgs.id));
         const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
@@ -507,7 +259,7 @@ task("generate-text", "generate text from RNN model")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
+            const baseContract = await deployments.get(ModelRegContractName);
             contractAddress = baseContract.address;
         }
 
@@ -515,9 +267,9 @@ task("generate-text", "generate text from RNN model")
         const toGenerate = taskArgs.togenerate;
         const generatePerTx = (taskArgs.generatepertx == -1) ? toGenerate : taskArgs.generatepertx;
 
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await c.modelAddr(tokenId);
+        const modelAddress = await modelRegContract.modelAddr(tokenId);
         const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
         let startTime = new Date().getTime();
@@ -617,15 +369,13 @@ task("get-model", "get eternal AI model")
         const [signer] = await ethers.getSigners();
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
+            const baseContract = await deployments.get(ModelRegContractName);
             contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        // console.log(contractAddress, tokenId);
-        // const modelAddress = await c.modelAddr(tokenId);
-        // console.log(modelAddress);
-        const modelContract = new ethers.Contract(contractAddress, EternalAIArtifact.abi, signer);
+        const modelAddress = await modelRegContract.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
         const model = await modelContract.getInfo();
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
@@ -668,8 +418,8 @@ task("check-models")
         const { deployer: signerAddress } = await getNamedAccounts();
         const signer = await ethers.getSigner(signerAddress);
         
-        const c = await ethers.getContractAt(ContractName, taskArgs.contract, signer);
-        const modelAddress = await c.modelAddr(ethers.BigNumber.from(1));
+        const modelRegContract = await ethers.getContractAt(ModelRegContractName, taskArgs.contract, signer);
+        const modelAddress = await modelRegContract.modelAddr(ethers.BigNumber.from(1));
         const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
         const folder = taskArgs.folder;
         const modelDirents = await getModelDirents(folder);
@@ -694,7 +444,7 @@ task("get-pending-max-multi")
     .addOptionalParam("model", "model contract address", "0x0964Eb14A7DF17f1B5b56c43f2d9B5b8873d573C", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers } = hre;
-        const c = await ethers.getContractAt('WorkerHub', taskArgs.workerhub);
-        const pendingRequests = await c.getModelUnresolvedInferences(taskArgs.model);
+        const workerHub = await ethers.getContractAt('WorkerHub', taskArgs.workerhub);
+        const pendingRequests = await workerHub.getModelUnresolvedInferences(taskArgs.model);
         console.log(pendingRequests.length);
     });

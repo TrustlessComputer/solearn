@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./lib/layers/Layers.sol";
 import './lib/Utils.sol';
+import { IModelRegPublic } from "./interfaces/IModelReg.sol";
 // import "hardhat/console.sol";
 
 error NotTokenOwner();
@@ -14,12 +15,6 @@ error InvalidOutput();
 error InvalidInput();
 error IncorrectModelId();
 error NotModelRegistry();
-
-interface IModelReg is IERC721Upgradeable {
-    function modelAddr(uint256 tokenId) external view returns (address);
-    function evalPrice() external view returns (uint256);
-    function royaltyReceiver() external view returns (address);
-}
 
 contract MelodyRNN is Ownable {
     using Layers for Layers.RescaleLayer;
@@ -36,7 +31,7 @@ contract MelodyRNN is Ownable {
     uint256 constant VOCAB_SIZE = 130;
 
     Model public model;
-    IModelReg public modelRegistry;
+    IModelRegPublic public modelRegistry;
     uint256 public modelId;
 
     uint256 version;
@@ -109,7 +104,7 @@ contract MelodyRNN is Ownable {
 
     constructor(string memory _modelName, address _modelRegistry) Ownable() {
         model.modelName = _modelName;
-        modelRegistry = IModelReg(_modelRegistry);        
+        modelRegistry = IModelRegPublic(_modelRegistry);        
         version = 1;
     }
 

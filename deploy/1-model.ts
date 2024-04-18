@@ -17,7 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const royaltyReceiver = deployer;
     const nextModelId = 1000;
 
-    await deploy('Models', {
+    await deploy('ModelReg', {
         from: deployer,
         proxy: {
             proxyContract: 'OpenZeppelinTransparentProxy',
@@ -38,5 +38,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 };
 
-func.tags = ['1', 'Models'];
+func.tags = ['1', 'ModelReg'];
 export default func;

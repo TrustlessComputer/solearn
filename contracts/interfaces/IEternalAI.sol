@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { SD59x18 } from "@prb/math/src/SD59x18.sol";
-import { IERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 
 enum LayerType {
     Dense,
@@ -18,7 +17,7 @@ struct Info {
     uint256 layerIndex;
 }
 
-interface IEternalAI is IERC721Enumerable {
+interface IEternalAI {
     function getInfo(
         uint256 modelId
     ) 

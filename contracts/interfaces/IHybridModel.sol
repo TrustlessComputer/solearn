@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {IModels} from "../Models.sol";
+import { IModel } from "./IModel.sol";
 
-interface IHybridModel is IModels {
+interface IHybridModel is IModel {
     event WorkerHubUpdate(address newAddress);
 
     event IdentifierUpdate(uint256 newValue);
