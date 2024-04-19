@@ -6,10 +6,11 @@ import sharp from 'sharp';
 import { ethers, utils } from "ethers";
 import path from 'path';
 import levenshtein from 'js-levenshtein';
-import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
+// import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
 import { getLayerName, getModelDirents, pixelsToImage, measureTime, postprocessText } from "./utils";
 import { runeToText, isRune } from "./rune.task";
 
+const EternalAIContractName = "EternalAI";
 const ModelRegContractName = "ModelReg";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
@@ -90,7 +91,7 @@ task("eval-img", "evaluate model for each layer")
         const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const modelAddress = await modelRegContract.modelAddr(tokenId);
-        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
 
         const imgRaw = fs.readFileSync(taskArgs.img);
         console.log("imgRaw: ", imgRaw);
@@ -227,7 +228,7 @@ task("gas-generate-text", "estimate gas of generate-text")
 
         const c = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const modelAddress = await c.modelAddr(ethers.BigNumber.from(taskArgs.id));
-        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
 
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const temperature = ethers.BigNumber.from(1.0).mul(ethers.constants.WeiPerEther);
@@ -270,7 +271,7 @@ task("generate-text", "generate text from RNN model")
         const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const modelAddress = await modelRegContract.modelAddr(tokenId);
-        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
 
         let startTime = new Date().getTime();
         let seed = ethers.BigNumber.from("123");
@@ -375,7 +376,7 @@ task("get-model", "get eternal AI model")
         const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const modelAddress = await modelRegContract.modelAddr(tokenId);
-        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
         const model = await modelContract.getInfo();
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
@@ -420,7 +421,7 @@ task("check-models")
         
         const modelRegContract = await ethers.getContractAt(ModelRegContractName, taskArgs.contract, signer);
         const modelAddress = await modelRegContract.modelAddr(ethers.BigNumber.from(1));
-        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
+        const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
         const folder = taskArgs.folder;
         const modelDirents = await getModelDirents(folder);
         

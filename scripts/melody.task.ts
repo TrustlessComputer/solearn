@@ -3,11 +3,9 @@ import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
 import { BigNumber, ethers } from "ethers";
-import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
-
 import { execSync } from 'child_process';
-import { getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from "./utils";
 
+const MelodyRNNContractName = "MelodyRNN";
 const ModelRegContractName = "ModelReg";
 const gasConfig = { gasLimit: 10_000_000_000 };
 const mintPrice = ethers.utils.parseEther('0.1');
@@ -36,7 +34,7 @@ task("generate-melody", "evaluate model for each layer")
         const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const modelAddress = await modelRegContract.modelAddr(tokenId);
-        const mldy = new ethers.Contract(modelAddress, MelodyRNNArtifact.abi, signer);
+        const mldy = await ethers.getContractAt(MelodyRNNContractName, modelAddress, signer);
 
         let startTime = new Date().getTime();
 
@@ -114,7 +112,7 @@ task("get-melody-model", "get eternal AI model")
         const tokenId = ethers.BigNumber.from(taskArgs.id);
         const modelAddress = await modelRegContract.modelAddr(tokenId);
         console.log("Reading MelodyRNN model at address", modelAddress);
-        const mldy = new ethers.Contract(modelAddress, MelodyRNNArtifact.abi, signer);
+        const mldy = await ethers.getContractAt(MelodyRNNContractName, modelAddress, signer);
         // const model = await mldy.getInfo(tokenId);
 
         // fs.writeFileSync("baseDesc.json", JSON.stringify(model));
