@@ -62,6 +62,8 @@ task("generate-melody", "evaluate model for each layer")
             // let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
             // const rc = await tx.wait();
             // console.log("result:", rc);
+
+            // TODO: Fix the task to use tx 
             const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
 
             // get event NewMelody

@@ -75,7 +75,6 @@ task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
-    .addOptionalParam("offline", "whether to create tx or not", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
         const { deployer: signerAddress } = await getNamedAccounts();
@@ -130,118 +129,55 @@ task("eval-img", "evaluate model for each layer")
 
         let startTime = new Date().getTime();
 
-        if (taskArgs.offline) {
-            for (let i = 0; ; i = i + batchLayerNum) {
-                const fromLayerIndex = i;
-                const toLayerIndex = i + batchLayerNum - 1;
-    
-                console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
-                if (x1.length > 0) {
-                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
-                }
-                if (x2.length > 0) {
-                    console.log(`x2: (${x2.length})`);
-                }
-                    
-                [classsNameRes, x1, x2, confidence] = await modelContract.evaluate(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...gasConfig });
-                if (classsNameRes !== "") {
-                    console.log("Class name:", classsNameRes);                    
-                    console.log("Confidence:", confidence);
-                    console.log(x2);
-                    // console.log("Confidence:", confidence.div(1e14).toNumber() / 100.0);
-                }
+        for (let i = 0; ; i = i + batchLayerNum) {
+            const fromLayerIndex = i;
+            const toLayerIndex = i + batchLayerNum - 1;
 
-                if (toLayerIndex >= numLayers - 1) {
-                    break;
-                }
+            console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
+            if (x1.length > 0) {
+                console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
             }
-        } else {
-            for (let i = 0; ; i = i + batchLayerNum) {
-                const fromLayerIndex = i;
-                const toLayerIndex = i + batchLayerNum - 1;
-    
-                console.log(`Layer ${i}: ${getLayerName(model[3][i][0])}`)
-                if (x1.length > 0) {
-                    console.log(`x1: (${x1.length}, ${x1[0].length}, ${x1[0][0].length})`);
-                }
-                if (x2.length > 0) {
-                    console.log(`x2: (${x2.length})`);
-                }
-    
-                const tx: ethers.ContractTransaction = await measureTime(async () => {
-                    return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig, ...gasConfig });
-                });
-    
-                console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
-                const receipt = await tx.wait(1);
-    
-                console.log(`Used gas: `, receipt.gasUsed);
-    
-                const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
-                const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
-                if (forwardedEvent) {
-                    const tokenId = forwardedEvent.args?.tokenId;
-                    const fromLayerIndex = forwardedEvent.args?.fromLayerIndex;
-                    const toLayerIndex = forwardedEvent.args?.toLayerIndex;
-                    const outputs1 = forwardedEvent.args?.outputs1;
-                    const outputs2 = forwardedEvent.args?.outputs2;
-                    console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs2 });
-                    x1 = outputs1;
-                    x2 = outputs2;
-                } else if (classifiedEvent) {
-                    const tokenId = classifiedEvent.args?.tokenId;
-                    const classIndex = classifiedEvent.args?.classIndex;
-                    const className = classifiedEvent.args?.className;
-                    const outputs = classifiedEvent.args?.outputs;
-                    const confidence = classifiedEvent.args?.confidence;
-                    console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs, confidence });
-                    classsNameRes = className;
-                }
-    
-                if (toLayerIndex >= numLayers - 1) {
-                    break;
-                }
-            }                
-        }
+            if (x2.length > 0) {
+                console.log(`x2: (${x2.length})`);
+            }
+
+            const tx: ethers.ContractTransaction = await measureTime(async () => {
+                return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig, ...gasConfig });
+            });
+
+            console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
+            const receipt = await tx.wait(1);
+
+            console.log(`Used gas: `, receipt.gasUsed);
+
+            const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');
+            const classifiedEvent = receipt.events?.find(event => event.event === 'Classified');
+            if (forwardedEvent) {
+                const tokenId = forwardedEvent.args?.tokenId;
+                const fromLayerIndex = forwardedEvent.args?.fromLayerIndex;
+                const toLayerIndex = forwardedEvent.args?.toLayerIndex;
+                const outputs1 = forwardedEvent.args?.outputs1;
+                const outputs2 = forwardedEvent.args?.outputs2;
+                console.log('"Forwarded" event emitted', { tokenId, fromLayerIndex, toLayerIndex, outputs2 });
+                x1 = outputs1;
+                x2 = outputs2;
+            } else if (classifiedEvent) {
+                const tokenId = classifiedEvent.args?.tokenId;
+                const classIndex = classifiedEvent.args?.classIndex;
+                const className = classifiedEvent.args?.className;
+                const outputs = classifiedEvent.args?.outputs;
+                const confidence = classifiedEvent.args?.confidence;
+                console.log('"Classified" event emitted', { tokenId, classIndex, className, outputs, confidence });
+                classsNameRes = className;
+            }
+
+            if (toLayerIndex >= numLayers - 1) {
+                break;
+            }
+        }                
 
         let endTime = new Date().getTime();
         console.log("Time: ", (endTime - startTime) / (60 * 1000));
-    });
-
-task("gas-generate-text", "estimate gas of generate-text")
-    .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("id", "token id of model", "1", types.string)
-    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-        const { ethers, deployments, getNamedAccounts } = hre;
-        const { deployer: signerAddress } = await getNamedAccounts();
-        const signer = await ethers.getSigner(signerAddress);
-
-        let contractAddress = taskArgs.contract;
-        if (contractAddress === "") {
-            const baseContract = await deployments.get(ModelRegContractName);
-            contractAddress = baseContract.address;
-        }
-
-        const prompt = "Q";
-        const seed = ethers.BigNumber.from(123);
-
-        const c = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
-        const modelAddress = await c.modelAddr(ethers.BigNumber.from(taskArgs.id));
-        const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
-
-        const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const temperature = ethers.BigNumber.from(1.0).mul(ethers.constants.WeiPerEther);
-
-        let startTime = new Date().getTime();
-
-        for(let i = 1; i <= 100; ++i) {
-            const toGenerate = ethers.BigNumber.from(i);
-            const gas = await modelContract.estimateGas.generateText(tokenId, prompt, toGenerate, seed, temperature, gasConfig);
-            console.log(i, gas);
-        }
-
-        let endTime = new Date().getTime();
-        console.log("Time: ", (endTime - startTime) / (1000));
     });
 
 task("generate-text", "generate text from RNN model")
@@ -392,52 +328,52 @@ task("get-model", "get eternal AI model")
         // fs.writeFileSync("lstmInfo.json", JSON.stringify(lstmInfoDec));
     });
 
-task("get-model-ids")
-    .addOptionalParam("folder", "folder path", "", types.string)
-    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-        const { ethers, deployments, getNamedAccounts } = hre;
-        const { deployer: signerAddress } = await getNamedAccounts();
-        const signer = await ethers.getSigner(signerAddress);
+// task("get-model-ids")
+//     .addOptionalParam("folder", "folder path", "", types.string)
+//     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+//         const { ethers, deployments, getNamedAccounts } = hre;
+//         const { deployer: signerAddress } = await getNamedAccounts();
+//         const signer = await ethers.getSigner(signerAddress);
 
-        const folder = taskArgs.folder;
-        const modelDirents = await getModelDirents(folder);
+//         const folder = taskArgs.folder;
+//         const modelDirents = await getModelDirents(folder);
         
-        const models = modelDirents.map((dirent, index) => ({
-            name: path.basename(dirent.name, '.json'),
-            id: ethers.BigNumber.from(utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0"))).toString(),
-        }));
+//         const models = modelDirents.map((dirent, index) => ({
+//             name: path.basename(dirent.name, '.json'),
+//             id: ethers.BigNumber.from(utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0"))).toString(),
+//         }));
 
-        fs.writeFileSync("model_list_2.json", JSON.stringify(models));
-    })
+//         fs.writeFileSync("model_list_2.json", JSON.stringify(models));
+//     })
 
-task("check-models")
-    .addOptionalParam("contract", "contract address", "", types.string)
-    .addOptionalParam("folder", "folder path", "", types.string)
-    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-        const { ethers, deployments, getNamedAccounts } = hre;
-        const { deployer: signerAddress } = await getNamedAccounts();
-        const signer = await ethers.getSigner(signerAddress);
+// task("check-models")
+//     .addOptionalParam("contract", "contract address", "", types.string)
+//     .addOptionalParam("folder", "folder path", "", types.string)
+//     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+//         const { ethers, deployments, getNamedAccounts } = hre;
+//         const { deployer: signerAddress } = await getNamedAccounts();
+//         const signer = await ethers.getSigner(signerAddress);
         
-        const modelRegContract = await ethers.getContractAt(ModelRegContractName, taskArgs.contract, signer);
-        const modelAddress = await modelRegContract.modelAddr(ethers.BigNumber.from(1));
-        const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
-        const folder = taskArgs.folder;
-        const modelDirents = await getModelDirents(folder);
+//         const modelRegContract = await ethers.getContractAt(ModelRegContractName, taskArgs.contract, signer);
+//         const modelAddress = await modelRegContract.modelAddr(ethers.BigNumber.from(1));
+//         const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
+//         const folder = taskArgs.folder;
+//         const modelDirents = await getModelDirents(folder);
         
-        const models = modelDirents.map(dirent => ({
-            name: path.basename(dirent.name, '.json'),
-            id: utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0")),
-        }));
+//         const models = modelDirents.map(dirent => ({
+//             name: path.basename(dirent.name, '.json'),
+//             id: utils.keccak256(utils.toUtf8Bytes(dirent.name + "v1.0")),
+//         }));
 
-        for(const model of models) {
-            const data = await modelContract.getInfo();
-            if (!data[0][0].eq(ethers.BigNumber.from(24))) {
-                console.log(`Model ${model.name} at id ${model.id} not found`);
-            }
-        }
+//         for(const model of models) {
+//             const data = await modelContract.getInfo();
+//             if (!data[0][0].eq(ethers.BigNumber.from(24))) {
+//                 console.log(`Model ${model.name} at id ${model.id} not found`);
+//             }
+//         }
 
-        fs.writeFileSync("model_list_2.json", JSON.stringify(models));
-    })
+//         fs.writeFileSync("model_list_2.json", JSON.stringify(models));
+//     })
 
 task("get-pending-max-multi")
     .addOptionalParam("workerhub", "worker_hub contract address", "0x5E077E883b9b44CC5213140c87d98DAB35E6390e", types.string)
