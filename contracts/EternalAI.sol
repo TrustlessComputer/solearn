@@ -9,6 +9,7 @@ import "./thirdparty/solidity-stringutils/strings.sol";
 import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
 import { IModelRegPublic } from "./interfaces/IModelReg.sol";
+import { IOnchainModel } from "./interfaces/IOnchainModel.sol";
 // import "hardhat/console.sol";
 
 error NotTokenOwner();
@@ -19,7 +20,7 @@ error UnknownTokenNotInVocabs();
 error IncorrectModelId();
 error NotModelRegistry();
 
-contract EternalAI is Ownable {
+contract EternalAI is IOnchainModel, Ownable {
     event TestMatMul(Float32x32[][] data);
     event TestEntropy(Float32x32[] data);
     event TestProbs(Float32x32[] data);
@@ -63,11 +64,6 @@ contract EternalAI is Ownable {
         Float32x32[] outputs2
     );
 
-    event Deployed(
-        address indexed owner,
-        uint256 indexed tokenId
-    );
-
     event TextGenerated(
         uint256 indexed tokenId,
         string result,
@@ -97,23 +93,6 @@ contract EternalAI is Ownable {
         string[] vocabs;
         mapping(bytes32 => uint256) hashToIndex;
         uint unkIndex;
-    }
-
-    struct Info {
-        LayerType layerType;
-        uint256 layerIndex;
-    }
-
-    enum LayerType {
-        Dense,
-        Flatten,
-        Rescale,
-        Input,
-        MaxPooling2D,
-        Conv2D,
-        Embedding,
-        SimpleRNN,
-        LSTM
     }
 
     modifier onlyOwnerOrOperator() {

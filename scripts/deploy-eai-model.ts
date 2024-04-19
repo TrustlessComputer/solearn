@@ -3,7 +3,7 @@ import { ethers, utils } from "ethers";
 import fs from 'fs';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
 import dotenv from 'dotenv';
-import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './utils';
+import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './lib/utils';
 
 dotenv.config();
 

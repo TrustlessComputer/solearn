@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./lib/layers/Layers.sol";
 import './lib/Utils.sol';
 import { IModelRegPublic } from "./interfaces/IModelReg.sol";
+import { IOnchainModel } from "./interfaces/IOnchainModel.sol";
 // import "hardhat/console.sol";
 
 error NotTokenOwner();
@@ -16,7 +17,7 @@ error InvalidInput();
 error IncorrectModelId();
 error NotModelRegistry();
 
-contract MelodyRNN is Ownable {
+contract MelodyRNN is IOnchainModel, Ownable {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
@@ -47,11 +48,6 @@ contract MelodyRNN is Ownable {
         Float32x32[] outputs2
     );
 
-    event Deployed(
-        address indexed owner,
-        uint256 indexed tokenId
-    );
-
     struct Model {
         uint256[3] inputDim;
         string modelName;
@@ -65,27 +61,10 @@ contract MelodyRNN is Ownable {
         Layers.LSTM[] lstm;
         Layers.EmbeddingLayer[] embedding;
     }
-
-    struct Info {
-        LayerType layerType;
-        uint256 layerIndex;
-    }
     
     struct VocabInfo {
         bool hasVocab;
         uint256[] vocabs;
-    }
-
-    enum LayerType {
-        Dense,
-        Flatten,
-        Rescale,
-        Input,
-        MaxPooling2D,
-        Conv2D,
-        Embedding,
-        SimpleRNN,
-        LSTM
     }
 
     modifier onlyOwnerOrOperator() {

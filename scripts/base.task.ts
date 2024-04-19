@@ -5,9 +5,8 @@ import fs from 'fs';
 import sharp from 'sharp';
 import { ethers, utils } from "ethers";
 import path from 'path';
-import levenshtein from 'js-levenshtein';
-// import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
-import { getLayerName, getModelDirents, pixelsToImage, measureTime, postprocessText } from "./utils";
+import { getLayerName } from "./lib/modelLib";
+import { getModelDirents, pixelsToImage, measureTime, postprocessText } from "./lib/utils";
 import { runeToText, isRune } from "./rune.task";
 
 const EternalAIContractName = "EternalAI";
