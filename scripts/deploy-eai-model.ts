@@ -3,8 +3,8 @@ import { ethers, utils } from "ethers";
 import fs from 'fs';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
 import dotenv from 'dotenv';
-import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './lib/utils';
-
+import { fromFloat } from './lib/utils';
+import { getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './lib/modelLib';
 dotenv.config();
 
 const ContractName = "ModelReg";

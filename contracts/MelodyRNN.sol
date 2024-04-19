@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./lib/layers/Layers.sol";
 import './lib/Utils.sol';
 import { IModelRegPublic } from "./interfaces/IModelReg.sol";
-import { IOnchainModel } from "./interfaces/IOnchainModel.sol";
+import { IMelodyRNN } from "./interfaces/IMelodyRNN.sol";
 // import "hardhat/console.sol";
 
 error NotTokenOwner();
@@ -17,7 +17,7 @@ error InvalidInput();
 error IncorrectModelId();
 error NotModelRegistry();
 
-contract MelodyRNN is IOnchainModel, Ownable {
+contract MelodyRNN is IMelodyRNN, Ownable {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
@@ -37,35 +37,6 @@ contract MelodyRNN is IOnchainModel, Ownable {
 
     uint256 version;
     VocabInfo public vocabInfo;
-
-    event NewMelody(uint256 indexed tokenId, Float32x32[] melody);
-
-    event Forwarded(
-        uint256 indexed tokenId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        Float32x32[][][] outputs1,
-        Float32x32[] outputs2
-    );
-
-    struct Model {
-        uint256[3] inputDim;
-        string modelName;
-        uint256 numLayers;
-        Info[] layers;
-        uint256 requiredWeights;
-        uint256 appendedWeights;
-        Layers.RescaleLayer[] r;
-        Layers.FlattenLayer[] f;
-        Layers.DenseLayer[] d;
-        Layers.LSTM[] lstm;
-        Layers.EmbeddingLayer[] embedding;
-    }
-    
-    struct VocabInfo {
-        bool hasVocab;
-        uint256[] vocabs;
-    }
 
     modifier onlyOwnerOrOperator() {
         if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
@@ -239,38 +210,6 @@ contract MelodyRNN is IOnchainModel, Ownable {
 
         return outputToken;
     }
-
-    // function generateMelodyTest(
-    //     uint256 _modelId,
-    //     uint256 noteCount,
-    //     Float32x32[] calldata x
-    // ) public view onlyMintedModel returns (Float32x32[] memory, Float32x32[][][] memory) {
-    //     if (_modelId != modelId) revert IncorrectModelId();
-
-    //     Model memory model = model;
-    //     uint256 seed = uint256(keccak256(abi.encodePacked(x)));
-
-    //     Float32x32 temperature = sd(1e18);
-    //     Float32x32[] memory r2;
-    //     Float32x32[][][] memory states = new Float32x32[][][](model.lstm.length);
-    //     for (uint256 i=0; i<x.length-1; i++) {
-    //         (r2, states) = forward(model, x[i].intoUint256() / 1e18, states, false);
-    //     }
-
-    //     Float32x32[] memory result = new Float32x32[](noteCount);
-    //     uint256 inputToken = x[x.length - 1].intoUint256() / 1e18;
-    //     for (uint256 i=0; i<noteCount; i++) {
-    //         (r2, states) = forward(model, inputToken, states, true);
-    //         uint256 nxtToken = getToken(r2, temperature, seed);
-    //         if (vocabInfo.hasVocab) {
-    //             nxtToken = vocabInfo.vocabs[nxtToken];
-    //         }
-    //         result[i] = sd(int256(nxtToken) * 1e18);
-    //         seed = uint256(keccak256(abi.encodePacked(seed)));
-    //         inputToken = nxtToken;
-    //     }
-    //     return (result, states);
-    // }
 
     function generateMelody(
         uint256 _modelId,

@@ -3,7 +3,8 @@ import { ethers } from 'ethers';
 import fs from 'fs';
 import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
 import dotenv from 'dotenv';
-import { fromFloat, getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './lib/utils';
+import { fromFloat } from './lib/utils';
+import { getLayerType, getActivationType, getPaddingType, getConvSize, getLayerName } from './lib/modelLib';
 
 dotenv.config();
 

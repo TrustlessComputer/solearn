@@ -1,23 +1,22 @@
-# Deploy local node
+# Deploy ModelRegister contract
 npx hardhat deploy --tags 1 --network cudatest
 
-npx hardhat get-model --network cudatest --id '3' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75'
+# EternalAI
+npx hardhat run scripts/deploy-eai-model.ts
 
-# npx hardhat generate-text --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:' --togenerate 100
-npx hardhat generate-text --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\n' --togenerate 20
-npx hardhat generate-text --network cudatest --id '4' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20
-npx hardhat generate-text --network cudatest --id '5' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20
-npx hardhat generate-text --network cudatest --id '6' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20
-npx hardhat generate-text --network cudatest --id '7' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20
-npx hardhat generate-text --network cudatest --id '8' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20
-npx hardhat generate-text --network cudatest --id '9' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20
-npx hardhat generate-text --network cudatest --id '10' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20 --cuda 1
-npx hardhat generate-text --network cudatest --id '11' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20 --cuda 0
-npx hardhat generate-text --network cudatest --id '18' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'Q' --togenerate 10 --cuda 1
-npx hardhat generate-text --network cudatest --id '19' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'Q' --togenerate 10 --cuda 0
-
-npx hardhat gas-generate-text --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 20
-
-npx hardhat generate-text --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'t' --togenerate 1 --generatepertx 1
+npx hardhat eval-img --network cudatest --id '1' --offline true --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --img 'sample-images/10x10/cryptoadz/000.png'
 
 npx hardhat generate-text --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 100 --generatepertx 10
+
+npx hardhat get-model --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75'
+
+# MelodyRNN
+npx hardhat run scripts/deploy-melody-model.ts
+
+npx hardhat generate-melody --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --count 50 --steplen 1 --output "outputs/vgm.mid"
+npx hardhat generate-melody --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --count 1 --steplen 50 --output "outputs/vgm_stateful.mid"
+
+npx hardhat get-melody-model --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75'
+
+# Testing contract storage
+npx hardhat test-storage-multi-contract --network cudatest --n 500000

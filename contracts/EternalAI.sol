@@ -9,7 +9,7 @@ import "./thirdparty/solidity-stringutils/strings.sol";
 import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
 import { IModelRegPublic } from "./interfaces/IModelReg.sol";
-import { IOnchainModel } from "./interfaces/IOnchainModel.sol";
+import { IEternalAI } from "./interfaces/IEternalAI.sol";
 // import "hardhat/console.sol";
 
 error NotTokenOwner();
@@ -20,7 +20,7 @@ error UnknownTokenNotInVocabs();
 error IncorrectModelId();
 error NotModelRegistry();
 
-contract EternalAI is IOnchainModel, Ownable {
+contract EternalAI is IEternalAI, Ownable {
     event TestMatMul(Float32x32[][] data);
     event TestEntropy(Float32x32[] data);
     event TestProbs(Float32x32[] data);
@@ -47,53 +47,6 @@ contract EternalAI is IOnchainModel, Ownable {
     IModelRegPublic public modelRegistry;
     uint256 public modelId;
     uint256 version;
-
-    event Classified(
-        uint256 indexed tokenId,
-        uint256 classIndex,
-        string className,
-        Float32x32[] outputs,
-        Float32x32 confidence
-    );
-
-    event Forwarded(
-        uint256 indexed tokenId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        Float32x32[][][] outputs1,
-        Float32x32[] outputs2
-    );
-
-    event TextGenerated(
-        uint256 indexed tokenId,
-        string result,
-        Float32x32[][][] states,
-        uint256 seed
-    );
-
-    struct Model {
-        uint256[3] inputDim;
-        string modelName;
-        string[] classesName;
-        uint256 numLayers;
-        Info[] layers;
-        uint256 requiredWeights;
-        uint256 appendedWeights;
-        Layers.RescaleLayer[] r;
-        Layers.FlattenLayer[] f;
-        Layers.DenseLayer[] d;
-        Layers.MaxPooling2DLayer[] mp2;
-        Layers.Conv2DLayer[] c2;
-        Layers.EmbeddingLayer[] embedding;
-        Layers.SimpleRNNLayer[] simpleRNN;
-        Layers.LSTM[] lstm;       
-    }
-
-    struct VocabInfo {
-        string[] vocabs;
-        mapping(bytes32 => uint256) hashToIndex;
-        uint unkIndex;
-    }
 
     modifier onlyOwnerOrOperator() {
         if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
@@ -250,43 +203,6 @@ contract EternalAI is IOnchainModel, Ownable {
 
         return (x1, x2);
     }
-
-    // function evaluate(
-    //     uint256 _modelId,
-    //     uint256 fromLayerIndex,
-    //     uint256 toLayerIndex,
-    //     Float32x32[][][] calldata x1,
-    //     Float32x32[] calldata x2
-    // )
-    //     public
-    //     view
-    //     onlyMintedModel
-    //     returns (string memory, Float32x32[][][] memory, Float32x32[] memory, Float32x32)
-    // {
-    //     if (toLayerIndex >= model.layers.length) {
-    //         toLayerIndex = model.layers.length - 1; // update to the last layer
-    //     }
-
-    //     (Float32x32[][][] memory r1, Float32x32[] memory r2) = forward(
-    //         x1,
-    //         x2,
-    //         fromLayerIndex,
-    //         toLayerIndex
-    //     );
-
-    //     if (toLayerIndex == model.layers.length - 1) {
-    //         uint256 maxInd = 0;
-    //         for (uint256 i = 1; i < r2.length; i++) {
-    //             if (r2[i].gt(r2[maxInd])) {
-    //                 maxInd = i;
-    //             }
-    //         }
-
-    //         return (model.classesName[maxInd], r1, r2, r2[maxInd]);
-    //     } else {
-    //         return ("", r1, r2, Float32x32.wrap(0));
-    //     }
-    // }
 
     function classify(
         uint256 _modelId,
