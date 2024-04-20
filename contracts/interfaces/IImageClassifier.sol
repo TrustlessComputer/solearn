@@ -4,8 +4,14 @@ pragma solidity ^0.8.0;
 import "./../lib/layers/Layers.sol";
 import { IOnchainModel } from "./IOnchainModel.sol";
 
-interface IMelodyRNN is IOnchainModel {
-    event NewMelody(uint256 indexed tokenId, Float32x32[] melody);
+interface IImageClassifier is IOnchainModel {
+    event Classified(
+        uint256 indexed tokenId,
+        uint256 classIndex,
+        string className,
+        Float32x32[] outputs,
+        Float32x32 confidence
+    );
 
     event Forwarded(
         uint256 indexed tokenId,
@@ -16,35 +22,31 @@ interface IMelodyRNN is IOnchainModel {
     );
 
     struct Model {
-        uint256[3] inputDim;
         string modelName;
-        uint256 numLayers;
-        Info[] layers;
+        string[] classesName;
         uint256 requiredWeights;
         uint256 appendedWeights;
-        Layers.RescaleLayer[] r;
-        Layers.FlattenLayer[] f;
-        Layers.DenseLayer[] d;
-        Layers.LSTM[] lstm;
-        Layers.EmbeddingLayer[] embedding;
-    }
-    
-    struct VocabInfo {
-        bool hasVocab;
-        uint256[] vocabs;
+        Info[] layers;
+        Layers.InputImageLayer[] input;
+        Layers.RescaleLayer[] rescale;
+        Layers.FlattenLayer[] flatten;
+        Layers.DenseLayer[] dense;
+        Layers.MaxPooling2DLayer[] maxPooling2D;
+        Layers.Conv2DLayer[] conv2D;
     }
 
-    function getInfo(
-    )
+    function getInfo()
         external
         view
         returns (
             uint256[3] memory,
             string memory,
+            string[] memory,
             Info[] memory
         );
 
     function getDenseLayer(
+        uint256 _modelId,
         uint256 layerIdx
     )
         external
@@ -56,38 +58,38 @@ interface IMelodyRNN is IOnchainModel {
             Float32x32[] memory b
         );
 
-    function getLSTMLayer(
+    function getConv2DLayer(
+        uint256 _modelId,
         uint256 layerIdx
     )
         external
         view
         returns (
-            uint256,
-            uint256,
-            Float32x32[][] memory,
-            Float32x32[][] memory,
-            Float32x32[] memory
+            uint256 n,
+            uint256 m,
+            uint256 p,
+            uint256 q,
+            Float32x32[][][][] memory w,
+            Float32x32[] memory b
         );
 
-    function getVocabs() external view returns (uint256[] memory);
-
-    function generateMelody(
+    function classify(
         uint256 _modelId,
-        uint256 noteCount,
-        Float32x32[] calldata x
-    ) external;
+        uint256 fromLayerIndex,
+        uint256 toLayerIndex,
+        Float32x32[][][] calldata x1,
+        Float32x32[] calldata x2
+    ) external payable;
 
-    function setModel(
+    function setOnchainModel(
+        uint256 _modelId,
         bytes[] calldata layers_config
     ) external;
 
     function appendWeights(
+        uint256 _modelId,
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType
-    ) external;
-    
-    function setVocabs(
-        uint256[] memory vocabs
     ) external;
 }

@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { ethers, utils } from "ethers";
 import fs from 'fs';
-import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
+import * as ImageClassifierArtifact from '../artifacts/contracts/ImageClassifier.sol/ImageClassifier.json';
 import dotenv from 'dotenv';
 import { fromFloat } from './lib/utils';
 import { MaxLayerType, getLayerName, getModelConfig } from './lib/modelLib';
@@ -59,16 +59,16 @@ async function main() {
 
     const modelReg = await ethers.getContractAt(ModelRegContractName, nftContractAddress);
 
-    // deploy a EternalAI contract
-    // EternalAI contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
-    const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
+    // deploy a ImageClassifier contract
+    // ImageClassifier contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
+    const EaiFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);
     
     const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name || [], nftContractAddress, gasConfig);
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
     const eai = EaiFac.attach(eaiImpl.address);
-    console.log("Deployed EternalAI contract: ", eai.address);
+    console.log("Deployed ImageClassifier contract: ", eai.address);
         
     const modelUri = ""; // unused
     console.log("Setting AI model");
@@ -127,7 +127,7 @@ async function main() {
             const to = transferEvent.args?.to;
             const tokenId = transferEvent.args?.tokenId;
             console.log("tx:", tx.hash);
-            console.log(`Minted new EternalAI model, to=${to}, tokenId=${tokenId}`);
+            console.log(`Minted new ImageClassifier model, to=${to}, tokenId=${tokenId}`);
         }
         checkForDeployedModel(rc);
     } catch (e) {

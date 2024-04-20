@@ -3,6 +3,14 @@ import { ethers, utils } from "ethers";
 import path from 'path';
 import levenshtein from 'js-levenshtein';
 
+export function enumElementCount(enumName: any): number {
+    let count = 0
+    for(let item in enumName) {
+        if(isNaN(Number(item))) count++;
+    }
+    return count
+}
+
 export function recursiveToString(arr: any): any {
     return arr.map((val: any) => Array.isArray(val) ? recursiveToString(val) : val.toString());
 }

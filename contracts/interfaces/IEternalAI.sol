@@ -129,7 +129,7 @@ interface IEternalAI is IOnchainModel {
         uint256 _modelId,
         Float32x32[] memory weights,
         uint256 layerInd,
-        LayerType layerType
+        Layers.LayerType layerType
     ) external;
     
     function setVocabs(

@@ -21,9 +21,40 @@ library Layers {
 	using Tensor3DMethods for Tensors.Tensor3D;
 	using Tensor4DMethods for Tensors.Tensor4D;
 
+	enum LayerType {
+        Input,
+        Dense,
+        Flatten,
+        Rescale,
+        MaxPooling2D,
+        Conv2D,
+        Embedding,
+        SimpleRNN,
+        LSTM
+    }
+
+	enum InputType {
+		Image,
+		Token,
+		Scalar
+	}
+    
 	struct SingleLayerConfig {
 		bytes conf;
 		uint256 ind;
+	}
+
+	struct InputImageLayer {
+		uint layerIndex;
+		uint[3] inputDim;
+	}
+
+	struct InputTokenLayer {
+		uint layerIndex;
+	}
+
+	struct InputScalarLayer {
+		uint layerIndex;
 	}
 
 	struct RescaleLayer {
@@ -529,7 +560,7 @@ library Layers {
 		return idx;
 	}
 
-	function makeDenseLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (DenseLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
+	function makeDenseLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (DenseLayer memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 d) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint256)
@@ -538,12 +569,13 @@ library Layers {
 			slc.ind,
 			Tensors.ActivationFunc(actv),
 			d,
-			Tensor2DMethods.emptyTensor(dim, d),
+			Tensor2DMethods.emptyTensor(dim[0], d),
 			Tensor1DMethods.emptyTensor(d),
 			0,
 			0
 		);
-		out_dim = d;
+		out_dim = new uint[](1);
+		out_dim[0] = d;
 		requiredWeights = layer.w.count() + layer.b.count();
 	}
 
@@ -580,9 +612,10 @@ library Layers {
 		requiredWeights = 4 * numInputs * numUnits + 4 * numUnits * numUnits + 4 * numUnits;
 	}
 
-	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (FlattenLayer memory layer, uint256 out_dim) {
+	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (FlattenLayer memory layer, uint256[] memory out_dim) {
 		layer = FlattenLayer(slc.ind);
-		out_dim = dim[0] * dim[1] * dim[2];
+		out_dim = new uint256[](1);
+		out_dim[0] = dim[0] * dim[1] * dim[2];
 	}
 
 	function makeRescaleLayer(SingleLayerConfig memory slc) internal pure returns (RescaleLayer memory layer) {
@@ -597,7 +630,7 @@ library Layers {
 		);
 	}
 
-	function makeMaxPooling2DLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (MaxPooling2DLayer memory layer, uint256[3] memory out_dim) {
+	function makeMaxPooling2DLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (MaxPooling2DLayer memory layer, uint256[] memory out_dim) {
 		(, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
 			slc.conf,
 			(uint8, uint256[2], uint256[2], uint8)
@@ -609,16 +642,19 @@ library Layers {
 			Tensors.PaddingType(padding)
 		);
  		uint256[2] memory out;
-    (out, ) = Tensors.getConvSize(
+    	(out, ) = Tensors.getConvSize(
 			[dim[0], dim[1]],
 			size,
 			stride,
 			Tensors.PaddingType(padding)
 		);
-		out_dim = [out[0], out[1], dim[2]];
+		out_dim = new uint[](3);
+		out_dim[0] = out[0];
+		out_dim[1] = out[1];
+		out_dim[2] = dim[2];
 	}
 
-	function makeConv2DLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (Conv2DLayer memory layer, uint256[3] memory out_dim, uint256 requiredWeights) {
+	function makeConv2DLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (Conv2DLayer memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 filters, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
 				slc.conf,
 				(uint8, uint8, uint256, uint256[2], uint256[2], uint8)
@@ -642,8 +678,11 @@ library Layers {
 			stride,
 			Tensors.PaddingType(padding)
 		);
-		out_dim = [out[0], out[1], filters];
-		requiredWeights = layer.w.count() + layer.b.count();
+		out_dim = new uint[](3);
+		out_dim[0] = out[0];
+		out_dim[1] = out[1];
+		out_dim[2] = filters;
+		requiredWeights = size[0] * size[1] * dim[2] * filters + filters;
 	}
 
 	function makeEmbeddingLayer(SingleLayerConfig memory slc) internal pure returns (EmbeddingLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
@@ -680,5 +719,37 @@ library Layers {
 		);
 		out_dim = units;
 		requiredWeights = layer.wx.count() + layer.wh.count() + layer.b.count();
+	}
+
+	function makeInputImageLayer(SingleLayerConfig memory slc) internal pure returns (InputImageLayer memory layer, uint256[] memory out_dim) {
+		uint[3] memory ipd_dim;
+		(, ipd_dim) = abi.decode(
+			slc.conf,
+			(uint8, uint256[3])
+		);
+		layer = Layers.InputImageLayer(
+			slc.ind,
+			ipd_dim
+		);
+		out_dim = new uint[](3);
+		out_dim[0] = ipd_dim[0];
+		out_dim[1] = ipd_dim[1];
+		out_dim[2] = ipd_dim[2];
+	}
+	
+	function makeInputTokenLayer(SingleLayerConfig memory slc) internal pure returns (InputTokenLayer memory layer, uint256[] memory out_dim) {
+		layer = Layers.InputTokenLayer(
+			slc.ind
+		);
+		out_dim = new uint[](1);
+		out_dim[0] = 1;
+	}
+	
+	function makeInputScalarLayer(SingleLayerConfig memory slc) internal pure returns (InputScalarLayer memory layer, uint256[] memory out_dim) {
+		layer = Layers.InputScalarLayer(
+			slc.ind
+		);
+		out_dim = new uint[](1);
+		out_dim[0] = 1;
 	}
 }

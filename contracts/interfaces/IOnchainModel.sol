@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { IModel } from "./IModel.sol";
+import { Layers } from "./../lib/layers/Layers.sol";
 
 interface IOnchainModel is IModel {
     event Deployed(
@@ -9,20 +10,8 @@ interface IOnchainModel is IModel {
         uint256 indexed tokenId
     );
     
-    enum LayerType {
-        Dense,
-        Flatten,
-        Rescale,
-        Input,
-        MaxPooling2D,
-        Conv2D,
-        Embedding,
-        SimpleRNN,
-        LSTM
-    }
-    
     struct Info {
-        LayerType layerType;
+        Layers.LayerType layerType;
         uint256 layerIndex;
     }    
 }

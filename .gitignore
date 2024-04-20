@@ -16,6 +16,9 @@ out.log
 artifacts/*
 !artifacts/contracts
 artifacts/contracts/*
+!artifacts/contracts/ImageClassifier.sol
+artifacts/contracts/ImageClassifier.sol/*
+!artifacts/contracts/ImageClassifier.sol/ImageClassifier.json
 !artifacts/contracts/EternalAI.sol
 artifacts/contracts/EternalAI.sol/*
 !artifacts/contracts/EternalAI.sol/EternalAI.json
