@@ -565,6 +565,7 @@ library Layers {
 			slc.conf,
 			(uint8, uint8, uint256)
 		);
+		console.log(dim[0], d);
 		layer = Layers.DenseLayer(
 			slc.ind,
 			Tensors.ActivationFunc(actv),
@@ -618,11 +619,13 @@ library Layers {
 		out_dim[0] = dim[0] * dim[1] * dim[2];
 	}
 
-	function makeRescaleLayer(SingleLayerConfig memory slc) internal pure returns (RescaleLayer memory layer) {
+	function makeRescaleLayer(SingleLayerConfig memory slc) internal returns (RescaleLayer memory layer) {
 		(, Float32x32 scale, Float32x32 offset) = abi.decode(
 			slc.conf,
 			(uint8, Float32x32, Float32x32)
 		);
+		// console.logInt(Float32x32.unwrap(scale));
+		// console.logInt(Float32x32.unwrap(offset));
 		layer = RescaleLayer(
 			slc.ind,
 			scale,
@@ -723,14 +726,15 @@ library Layers {
 
 	function makeInputImageLayer(SingleLayerConfig memory slc) internal pure returns (InputImageLayer memory layer, uint256[] memory out_dim) {
 		uint[3] memory ipd_dim;
-		(, ipd_dim) = abi.decode(
+		(, , ipd_dim) = abi.decode(
 			slc.conf,
-			(uint8, uint256[3])
+			(uint8, uint8, uint256[3])
 		);
 		layer = Layers.InputImageLayer(
 			slc.ind,
 			ipd_dim
 		);
+		// console.log(ipd_dim[0], ipd_dim[1], ipd_dim[2]);
 		out_dim = new uint[](3);
 		out_dim[0] = ipd_dim[0];
 		out_dim[1] = ipd_dim[1];

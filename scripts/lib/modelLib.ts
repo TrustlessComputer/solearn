@@ -36,7 +36,7 @@ export const MaxLayerType = enumElementCount(LayerType);
 
 export function getLayerType(name: string): number {
     const layer = LayerType[name as keyof typeof LayerType];
-    return (!layer) ? -1 : layer;
+    return (layer === undefined) ? -1 : layer;
 }
 
 export function getLayerName(type: number): string {
@@ -45,12 +45,12 @@ export function getLayerName(type: number): string {
 
 export function getActivationType(name: string): number {
     const activation = Activation[name as keyof typeof Activation];
-    return (!activation) ? -1 : activation;
+    return (activation === undefined) ? -1 : activation;
 }
 
 export function getPaddingType(name: string): number {
     const padding = Padding[name as keyof typeof Padding];
-    return (!padding) ? -1 : padding;
+    return (padding === undefined) ? -1 : padding;
 }
 
 export function getConvSize(
@@ -101,6 +101,7 @@ export function getModelConfig(
         let result: String = "";
         
         let layerType = getLayerType(layer.class_name);        
+
         if (layer.class_name === 'Dense') {
             const output_units = layer.config.units;
     
@@ -118,8 +119,9 @@ export function getModelConfig(
             input_units = input_units[0] * input_units[1] * input_units[2];
         } else if (layer.class_name === 'Rescaling') {
             const n1 = fromFloat(layer.config.scale);
-            const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("18446744073709551616"));
-            result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
+            const n2 = fromFloat(layer.config.offset);
+            // const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("18446744073709551616"));
+            result = abic.encode(["uint8", "int64", "int64"], [layerType, n1, n2]);
         } else if (layer.class_name === 'InputLayer') {
             const dim = layer.config.batch_input_shape.slice(1);
             if (dim.length == 1 || dim.length == 2) {

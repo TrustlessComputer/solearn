@@ -52,15 +52,12 @@ contract ImageClassifier is IImageClassifier, Ownable {
         _;
     }
 
-    constructor(string memory _modelName, string[] memory _classesName, address _modelRegistry) Ownable() {
+    constructor(string memory _modelName, address _modelRegistry) Ownable() {
         model.modelName = _modelName;
-        model.classesName = _classesName;
 
         modelRegistry = IModelRegPublic(_modelRegistry);      
         version = 1;
     }
-
-
 
     // function initialize(string memory _modelName, string[] memory _classesName, address _modelRegistry) public initializer {
     //     __Ownable_init();
@@ -215,6 +212,12 @@ contract ImageClassifier is IImageClassifier, Ownable {
         // if (!success) revert TransferFailed();
     }
 
+    function setClassesName(
+        string[] memory classesName
+    ) external onlyOwnerOrOperator {
+        model.classesName = classesName;
+    }
+
     function setOnchainModel(
         uint256 _modelId,
         bytes[] calldata layers_config
@@ -242,6 +245,7 @@ contract ImageClassifier is IImageClassifier, Ownable {
         }
 
         modelId = _modelId;
+        console.log(model.appendedWeights, model.requiredWeights, modelId);
         if (model.appendedWeights == model.requiredWeights && modelId > 0) {
             emit Deployed(modelRegistry.ownerOf(modelId), modelId);
         }
@@ -270,6 +274,11 @@ contract ImageClassifier is IImageClassifier, Ownable {
         uint256[] memory dim
     ) internal returns (uint256[] memory) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
+
+        // console.log("dim, layerType:", dim.length, layerType);
+        // for(uint i = 0; i < dim.length; ++i) {
+        //     console.log(dim[i]);
+        // }
 
         // add more layers
         if (layerType == uint8(Layers.LayerType.Input)) {
@@ -329,6 +338,7 @@ contract ImageClassifier is IImageClassifier, Ownable {
         model.appendedWeights = 0;
         uint256[] memory dim;
         for (uint256 i = 0; i < layersConfig.length; i++) {
+            console.log("i: ", i);
             dim = makeLayer(
                 Layers.SingleLayerConfig(layersConfig[i], i),
                 dim

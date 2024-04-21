@@ -86,6 +86,10 @@ interface IImageClassifier is IOnchainModel {
         bytes[] calldata layers_config
     ) external;
 
+    function setClassesName(
+        string[] memory classesName
+    ) external;
+
     function appendWeights(
         uint256 _modelId,
         Float32x32[] memory weights,

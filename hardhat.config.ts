@@ -2,7 +2,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import '@openzeppelin/hardhat-upgrades';
 import "hardhat-deploy";
-import './scripts/base.task';
+import './scripts/image.task';
 import './scripts/melody.task';
 import './scripts/test.task';
 import './scripts/rune.task';

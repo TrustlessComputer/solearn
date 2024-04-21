@@ -9,7 +9,7 @@ dotenv.config();
 
 const ModelRegContractName = "ModelReg";
 const MaxWeightLen = 1000;
-const gasConfig = { gasLimit: 10_000_000_000 };
+const gasConfig = { gasLimit: 1_000_000_000 };
 const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
 
@@ -61,28 +61,24 @@ async function main() {
 
     // deploy a ImageClassifier contract
     // ImageClassifier contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
-    const EaiFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);
+    const ImageFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);
     
-    const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name || [], nftContractAddress, gasConfig);
+    const imageImpl = await ImageFac.deploy(params.model_name, nftContractAddress, gasConfig);
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
-    // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
+    // const initData = ImageFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
-    const eai = EaiFac.attach(eaiImpl.address);
-    console.log("Deployed ImageClassifier contract: ", eai.address);
+    const image = ImageFac.attach(imageImpl.address);
+    console.log("Deployed ImageClassifier contract: ", image.address);
+
+    console.log("Setting classes name");    
+    const setClassesNameTx = await image.setClassesName(params.classes_name);
+    await setClassesNameTx.wait();
+    console.log('tx', setClassesNameTx.hash);
         
-    const modelUri = ""; // unused
     console.log("Setting AI model");
-    const setWeightTx = await eai.setEternalAI(tokenId, params.layers_config, gasConfig);
+    const setWeightTx = await image.setOnchainModel(tokenId, params.layers_config, gasConfig);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
-
-    if (params.vocabulary) {
-        console.log("Setting vocabs");
-        const vocabs = params.vocabulary;
-        const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]", gasConfig);
-        await setVocabTx.wait();
-        console.log('tx', setVocabTx.hash);
-    }
 
     const weightStr = JSON.stringify(weights);
     console.log("Total weights len: ", weightStr.length);
@@ -101,6 +97,7 @@ async function main() {
         }
     }
 
+    const modelUri = ""; // unused
     for (let i = 0; i < MaxLayerType; ++i) {
         if (totSize[i] === 0) continue;
         console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
@@ -108,7 +105,7 @@ async function main() {
         for (let wi = 0; wi < weights[i].length; ++wi) {
             for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
                     
-                const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
+                const appendWeightTx = await image.appendWeights(tokenId, temp, wi, i, gasConfig);
                 const receipt = await appendWeightTx.wait(2);
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
                 
@@ -118,7 +115,7 @@ async function main() {
     }
 
     try {
-        const tx = await modelReg.safeMint(MODEL_OWNER || signer.address, modelUri, eai.address, {...mintConfig, gasLimit: 1_000_000 });
+        const tx = await modelReg.safeMint(MODEL_OWNER || signer.address, modelUri, image.address, {...mintConfig, gasLimit: 1_000_000 });
         const rc = await tx.wait();
         // listen for Transfer event
         const transferEvent = rc.events?.find((event: ethers.Event) => event.event === 'Transfer');
