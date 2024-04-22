@@ -4,12 +4,13 @@ import fs from 'fs';
 import * as ImageClassifierArtifact from '../artifacts/contracts/ImageClassifier.sol/ImageClassifier.json';
 import dotenv from 'dotenv';
 import { fromFloat } from './lib/utils';
-import { MaxLayerType, getLayerName, getModelConfig } from './lib/modelLib';
+import { getModelConfig, uploadModelWeights, mintModel } from './lib/modelLib';
 dotenv.config();
 
 const ModelRegContractName = "ModelReg";
 const MaxWeightLen = 1000;
-const gasConfig = { gasLimit: 1_000_000_000 };
+// const gasConfig = { gasLimit: 1_000_000_000 };
+const gasConfig = {};
 const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
 
@@ -49,7 +50,7 @@ async function main() {
         }
     }
 
-    const { newLayerConfig, weights, totSize } = getModelConfig(params, weightsFlat);
+    const { newLayerConfig, weights } = getModelConfig(params, weightsFlat);
 
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
     params.classes_name =  params.classes_name || [];
@@ -61,8 +62,7 @@ async function main() {
 
     // deploy a ImageClassifier contract
     // ImageClassifier contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
-    const ImageFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);
-    
+    const ImageFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);    
     const imageImpl = await ImageFac.deploy(params.model_name, nftContractAddress, gasConfig);
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = ImageFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
@@ -75,62 +75,17 @@ async function main() {
     await setClassesNameTx.wait();
     console.log('tx', setClassesNameTx.hash);
         
-    console.log("Setting AI model");
+    console.log("Setting model");
     const setWeightTx = await image.setOnchainModel(tokenId, params.layers_config, gasConfig);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 
-    const weightStr = JSON.stringify(weights);
-    console.log("Total weights len: ", weightStr.length);
-
-    console.log(`Set weights`);
+    console.log("Uploading weights");
     const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
-    const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
-        return _w.splice(0, maxlen);
-    }
-    const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
-        const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
-        if (deployedEvent != null) {
-            const owner = deployedEvent.args?.owner;
-            const tokenId = deployedEvent.args?.tokenId;
-            console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-        }
-    }
-
-    const modelUri = ""; // unused
-    for (let i = 0; i < MaxLayerType; ++i) {
-        if (totSize[i] === 0) continue;
-        console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
-
-        for (let wi = 0; wi < weights[i].length; ++wi) {
-            for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                    
-                const appendWeightTx = await image.appendWeights(tokenId, temp, wi, i, gasConfig);
-                const receipt = await appendWeightTx.wait(2);
-                console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                
-                checkForDeployedModel(receipt);
-            }
-        }            
-    }
-
-    try {
-        const tx = await modelReg.safeMint(MODEL_OWNER || signer.address, modelUri, image.address, {...mintConfig, gasLimit: 1_000_000 });
-        const rc = await tx.wait();
-        // listen for Transfer event
-        const transferEvent = rc.events?.find((event: ethers.Event) => event.event === 'Transfer');
-        if (transferEvent != null) {
-            const from = transferEvent.args?.from;
-            const to = transferEvent.args?.to;
-            const tokenId = transferEvent.args?.tokenId;
-            console.log("tx:", tx.hash);
-            console.log(`Minted new ImageClassifier model, to=${to}, tokenId=${tokenId}`);
-        }
-        checkForDeployedModel(rc);
-    } catch (e) {
-        console.error("Error minting model: ", e);
-        throw e;
-    }
+    await uploadModelWeights(image, weights, maxlen, gasConfig);
+        
+    console.log("Minting new model")
+    await mintModel(modelReg, image, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {

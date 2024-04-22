@@ -83,15 +83,12 @@ export function getModelConfig(
 ): {
     newLayerConfig: String[],
     weights: ethers.BigNumber[][][],
-    totSize: number[],
 } {
     const abic = ethers.utils.defaultAbiCoder;
 
     let weights: ethers.BigNumber[][][] = [];
-    let totSize: number[] = [];
     for (let i = 0; i < MaxLayerType; ++i) {
         weights.push([]);
-        totSize.push(0);
     }
 
     let newLayerConfig = [];
@@ -110,7 +107,6 @@ export function getModelConfig(
             // reconstruct weights
             let layerWeights = weightsFlat.splice(0, input_units * output_units + output_units)
             weights[layerType].push(layerWeights);
-            totSize[layerType] += layerWeights.length;
     
             result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(output_units)]);
             input_units = output_units;
@@ -165,7 +161,6 @@ export function getModelConfig(
             // Filter: (F_W, F_H, D, K)
             let layerWeights = weightsFlat.splice(0, f_w * f_h * d * filters + filters);
             weights[layerType].push(layerWeights);
-            totSize[layerType] += layerWeights.length;
     
             result = abic.encode(["uint8", "uint8", "uint", "uint[2]", "uint[2]", "uint8"], [
                 layerType,
@@ -185,7 +180,6 @@ export function getModelConfig(
             // reconstruct weights
             let layerWeights = weightsFlat.splice(0, inputDim * outputDim);
             weights[layerType].push(layerWeights);
-            totSize[layerType] += layerWeights.length;
     
             result = abic.encode(["uint8", "uint256", "uint256"], [layerType, ethers.BigNumber.from(inputDim), ethers.BigNumber.from(outputDim)]);
             input_units = outputDim;
@@ -196,7 +190,6 @@ export function getModelConfig(
             // reconstruct weights
             let layerWeights = weightsFlat.splice(0, input_units * units + units * units + units);
             weights[layerType].push(layerWeights);
-            totSize[layerType] += layerWeights.length;
     
             result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(units)]);
             input_units = units;
@@ -210,7 +203,6 @@ export function getModelConfig(
             // reconstruct weights
             let layerWeights = weightsFlat.splice(0, input_units * units * 4 + units * units * 4 + units * 4);
             weights[layerType].push(layerWeights);
-            totSize[layerType] += layerWeights.length;
     
             result = abic.encode(["uint8", "uint8", "uint8", "uint256", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units), ethers.BigNumber.from(input_units)]);
             input_units = units;
@@ -226,6 +218,60 @@ export function getModelConfig(
     return {
         newLayerConfig,
         weights,
-        totSize,
     };
+}
+
+export async function uploadModelWeights(model: ethers.Contract, weights: ethers.BigNumber[][][], maxlen: number, gasConfig: any) {    
+    const weightStr = JSON.stringify(weights);
+    console.log("Total weights len: ", weightStr.length);
+
+    const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
+        return _w.splice(0, maxlen);
+    }
+    
+    let tokenId = ethers.BigNumber.from(0); // placeholder
+    for (let i = 0; i < MaxLayerType; ++i) {
+        const totSize = weights[i].map(arr => arr.length).reduce((a, b) => a + b, 0);
+        if (totSize === 0) continue;
+        console.log(`Weight ${getLayerName(i)} size: `, totSize);
+
+        for (let wi = 0; wi < weights[i].length; ++wi) {
+            for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {                   
+                const appendWeightTx = await model.appendWeights(tokenId, temp, wi, i, gasConfig);
+                console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);                
+                const receipt = await appendWeightTx.wait(2);
+                // checkForDeployedModel(receipt);
+            }
+        }
+    }
+}
+
+export async function mintModel(modelReg: ethers.Contract, model: ethers.Contract, modelOwner: string, mintConfig: any) {  
+    const modelUri = ""; // unused
+    const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
+        const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
+        if (deployedEvent != null) {
+            const owner = deployedEvent.args?.owner;
+            const tokenId = deployedEvent.args?.tokenId;
+            console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+        }
+    }
+
+    try {
+        const tx = await modelReg.safeMint(modelOwner, modelUri, model.address, {...mintConfig, gasLimit: 1_000_000 });
+        const rc = await tx.wait();
+        // listen for Transfer event
+        const transferEvent = rc.events?.find((event: ethers.Event) => event.event === 'Transfer');
+        if (transferEvent != null) {
+            const from = transferEvent.args?.from;
+            const to = transferEvent.args?.to;
+            const tokenId = transferEvent.args?.tokenId;
+            console.log("tx:", tx.hash);
+            console.log(`Minted new on-chain model, to=${to}, tokenId=${tokenId}`);
+        }
+        checkForDeployedModel(rc);
+    } catch (e) {
+        console.error("Error minting model: ", e);
+        throw e;
+    }
 }
