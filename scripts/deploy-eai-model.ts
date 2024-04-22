@@ -4,7 +4,7 @@ import fs from 'fs';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
 import dotenv from 'dotenv';
 import { fromFloat } from './lib/utils';
-import { MaxLayerType, getLayerName, getModelConfig } from './lib/modelLib';
+import { getModelConfig, uploadModelWeights, mintModel } from './lib/modelLib';
 dotenv.config();
 
 const ModelRegContractName = "ModelReg";
@@ -49,7 +49,7 @@ async function main() {
         }
     }
 
-    const { newLayerConfig, weights, totSize } = getModelConfig(params, weightsFlat);
+    const { newLayerConfig, weights } = getModelConfig(params, weightsFlat);
 
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
     params.classes_name =  params.classes_name || [];
@@ -63,77 +63,33 @@ async function main() {
     // EternalAI contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
     const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
     
-    const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name || [], nftContractAddress, gasConfig);
+    const eaiImpl = await EaiFac.deploy(params.model_name, nftContractAddress, gasConfig);
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
     const eai = EaiFac.attach(eaiImpl.address);
     console.log("Deployed EternalAI contract: ", eai.address);
         
-    const modelUri = ""; // unused
-    console.log("Setting AI model");
-    const setWeightTx = await eai.setEternalAI(tokenId, params.layers_config, gasConfig);
+    console.log("Setting vocabs");
+    if (!params.vocabulary) {
+        console.log("Vocabs must not be empty. Abort deploying model.");
+        return;
+    }
+    const setVocabTx = await eai.setVocabs(tokenId, params.vocabulary, "[UNK]", gasConfig);
+    await setVocabTx.wait();
+    console.log('tx', setVocabTx.hash);
+
+    console.log("Setting model");
+    const setWeightTx = await eai.setOnchainModel(tokenId, params.layers_config, gasConfig);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 
-    if (params.vocabulary) {
-        console.log("Setting vocabs");
-        const vocabs = params.vocabulary;
-        const setVocabTx = await eai.setVocabs(tokenId, vocabs, "[UNK]", gasConfig);
-        await setVocabTx.wait();
-        console.log('tx', setVocabTx.hash);
-    }
-
-    const weightStr = JSON.stringify(weights);
-    console.log("Total weights len: ", weightStr.length);
-
-    console.log(`Set weights`);
+    console.log("Uploading weights");
     const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
-    const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
-        return _w.splice(0, maxlen);
-    }
-    const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
-        const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
-        if (deployedEvent != null) {
-            const owner = deployedEvent.args?.owner;
-            const tokenId = deployedEvent.args?.tokenId;
-            console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-        }
-    }
-
-    for (let i = 0; i < MaxLayerType; ++i) {
-        if (totSize[i] === 0) continue;
-        console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
-
-        for (let wi = 0; wi < weights[i].length; ++wi) {
-            for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                    
-                const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
-                const receipt = await appendWeightTx.wait(2);
-                console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                
-                checkForDeployedModel(receipt);
-            }
-        }            
-    }
-
-    try {
-        const tx = await modelReg.safeMint(MODEL_OWNER || signer.address, modelUri, eai.address, {...mintConfig, gasLimit: 1_000_000 });
-        const rc = await tx.wait();
-        // listen for Transfer event
-        const transferEvent = rc.events?.find((event: ethers.Event) => event.event === 'Transfer');
-        if (transferEvent != null) {
-            const from = transferEvent.args?.from;
-            const to = transferEvent.args?.to;
-            const tokenId = transferEvent.args?.tokenId;
-            console.log("tx:", tx.hash);
-            console.log(`Minted new EternalAI model, to=${to}, tokenId=${tokenId}`);
-        }
-        checkForDeployedModel(rc);
-    } catch (e) {
-        console.error("Error minting model: ", e);
-        throw e;
-    }
+    await uploadModelWeights(eai, weights, maxlen, gasConfig);        
+        
+    console.log("Minting new model");
+    await mintModel(modelReg, eai, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {

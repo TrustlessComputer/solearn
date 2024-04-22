@@ -39,10 +39,10 @@ interface IImageClassifier is IOnchainModel {
         external
         view
         returns (
-            uint256[3] memory,
-            string memory,
-            string[] memory,
-            Info[] memory
+            uint256[3] memory inputDim,
+            string memory modelName,
+            string[] memory classesName,
+            Info[] memory layers
         );
 
     function getDenseLayer(

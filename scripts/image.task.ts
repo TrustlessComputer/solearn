@@ -141,7 +141,7 @@ task("eval-img", "evaluate model for each layer")
         console.log("Time:", `${(endTime - startTime) / 1000} second`);
     });
 
-task("get-model", "get eternal AI model")
+task("get-image-model", "get eternal AI model")
     .addOptionalParam("contract", "contract address", "", types.string)
     .addOptionalParam("id", "token id", "0", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {

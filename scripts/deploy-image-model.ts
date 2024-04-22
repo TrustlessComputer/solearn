@@ -84,7 +84,7 @@ async function main() {
     const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
     await uploadModelWeights(image, weights, maxlen, gasConfig);
         
-    console.log("Minting new model")
+    console.log("Minting new model");
     await mintModel(modelReg, image, MODEL_OWNER || signer.address, mintConfig);
 }
 

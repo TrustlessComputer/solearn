@@ -13,9 +13,6 @@ import { Float32x32, fromInt, toInt } from "./../Float32x32/Lib32x32.sol";
 error TooMuchData();
 
 library Layers {
-	event TestRNNOutput(Float32x32[] data);
-	event TestDense(Float32x32[] x, Float32x32[] w, Float32x32 tmp, Float32x32 b, Float32x32 y, Float32x32 res);
-
 	using Tensor1DMethods for Tensors.Tensor1D;
 	using Tensor2DMethods for Tensors.Tensor2D;
 	using Tensor3DMethods for Tensors.Tensor3D;
@@ -251,17 +248,8 @@ library Layers {
 			Tensors.Tensor1D memory zt = y.activation(layer.activation);
 			return zt.mat;
 		}
-		// console.log("Prepare to matMul");
-		Tensors.Tensor1D memory tmp = xt.matMul(wt);
-		// Float32x32[] memory w_col = new Float32x32[](wt.n);
-		// for(uint i = 0; i < wt.n; ++i) {
-		// 	w_col[i] = wt.mat[i][34];
-		// }
-		// console.log("Prepare to add");
-		Tensors.Tensor1D memory y = tmp.add(bt);
-		// console.log("Prepare to activation");
+		Tensors.Tensor1D memory y = xt.matMul(wt).add(bt);
 		Tensors.Tensor1D memory zt = y.activation(layer.activation);
-		// emit TestDense(xt.mat, w_col, tmp.mat[34], bt.mat[34], y.mat[34], zt.mat[34]);
 		return zt.mat;
 	}
 
@@ -301,7 +289,6 @@ library Layers {
 		Tensors.Tensor1D memory yh_t = Tensor1DMethods.matMul(h_t, layer.wh);
 		Tensors.Tensor1D memory y_t = Tensor1DMethods.add(Tensor1DMethods.add(yx_t, yh_t), layer.b);
 		Tensors.Tensor1D memory z_t = Tensor1DMethods.activation(y_t, layer.activation);
-		emit TestRNNOutput(z_t.mat);
 		states[0] = z_t.mat;
 		return (states[0], states);
 	}
@@ -580,7 +567,7 @@ library Layers {
 		requiredWeights = layer.w.count() + layer.b.count();
 	}
 
-	function makeLSTMLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (LSTM memory layer, uint256 out_dim, uint256 requiredWeights) {
+	function makeLSTMLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (LSTM memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint8 ractv, uint256 numUnits, uint256 numInputs) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint8, uint256, uint256)
@@ -591,8 +578,7 @@ library Layers {
 			Layers.LSTMCell(
 				numUnits,
 				Tensors.ActivationFunc(actv),
-				Tensors.ActivationFunc(ractv),
-				
+				Tensors.ActivationFunc(ractv),				
 				Tensor2DMethods.zerosTensor(numInputs, numUnits),
 				Tensor2DMethods.zerosTensor(numInputs, numUnits),
 				Tensor2DMethods.zerosTensor(numInputs, numUnits),
@@ -609,7 +595,8 @@ library Layers {
 			0,
 			0
 		);
-		out_dim = numUnits;
+		out_dim = new uint[](1);
+		out_dim[0] = numUnits;
 		requiredWeights = 4 * numInputs * numUnits + 4 * numUnits * numUnits + 4 * numUnits;
 	}
 
@@ -688,7 +675,7 @@ library Layers {
 		requiredWeights = size[0] * size[1] * dim[2] * filters + filters;
 	}
 
-	function makeEmbeddingLayer(SingleLayerConfig memory slc) internal pure returns (EmbeddingLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
+	function makeEmbeddingLayer(SingleLayerConfig memory slc) internal pure returns (EmbeddingLayer memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint256 inputDim, uint256 outputDim) = abi.decode(
 			slc.conf,
 			(uint8, uint256, uint256)
@@ -701,11 +688,12 @@ library Layers {
 			0,
 			0
 		);
-		out_dim = outputDim;
+		out_dim = new uint[](1);
+		out_dim[0] = outputDim;
 		requiredWeights = layer.w.count();
 	}
 
-	function makeSimpleRNNLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (SimpleRNNLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
+	function makeSimpleRNNLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (SimpleRNNLayer memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 units) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint256)
@@ -714,13 +702,14 @@ library Layers {
 			slc.ind,
 			units,
 			Tensors.ActivationFunc(actv),
-			Tensor2DMethods.emptyTensor(dim, units),
+			Tensor2DMethods.emptyTensor(dim[0], units),
 			Tensor2DMethods.emptyTensor(units, units),
 			Tensor1DMethods.emptyTensor(units),
 			0,
 			0
 		);
-		out_dim = units;
+		out_dim = new uint[](1);
+		out_dim[0] = units;
 		requiredWeights = layer.wx.count() + layer.wh.count() + layer.b.count();
 	}
 

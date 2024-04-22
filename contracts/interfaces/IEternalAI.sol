@@ -5,22 +5,6 @@ import "./../lib/layers/Layers.sol";
 import { IOnchainModel } from "./IOnchainModel.sol";
 
 interface IEternalAI is IOnchainModel {
-    event Classified(
-        uint256 indexed tokenId,
-        uint256 classIndex,
-        string className,
-        Float32x32[] outputs,
-        Float32x32 confidence
-    );
-
-    event Forwarded(
-        uint256 indexed tokenId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        Float32x32[][][] outputs1,
-        Float32x32[] outputs2
-    );
-
     event TextGenerated(
         uint256 indexed tokenId,
         string result,
@@ -29,18 +13,13 @@ interface IEternalAI is IOnchainModel {
     );
 
     struct Model {
-        uint256[3] inputDim;
         string modelName;
         string[] classesName;
-        uint256 numLayers;
-        Info[] layers;
         uint256 requiredWeights;
         uint256 appendedWeights;
-        Layers.RescaleLayer[] r;
-        Layers.FlattenLayer[] f;
-        Layers.DenseLayer[] d;
-        Layers.MaxPooling2DLayer[] mp2;
-        Layers.Conv2DLayer[] c2;
+        Info[] layers;
+        Layers.InputTokenLayer[] input;
+        Layers.DenseLayer[] dense;
         Layers.EmbeddingLayer[] embedding;
         Layers.SimpleRNNLayer[] simpleRNN;
         Layers.LSTM[] lstm;       
@@ -56,10 +35,9 @@ interface IEternalAI is IOnchainModel {
         external
         view
         returns (
-            uint256[3] memory,
-            string memory,
-            string[] memory,
-            Info[] memory
+            string memory modelName,
+            string[] memory vocabs,
+            Info[] memory layers
         );
 
     function getDenseLayer(
@@ -72,21 +50,6 @@ interface IEternalAI is IOnchainModel {
             uint256 dim_in,
             uint256 dim_out,
             Float32x32[][] memory w,
-            Float32x32[] memory b
-        );
-
-    function getConv2DLayer(
-        uint256 _modelId,
-        uint256 layerIdx
-    )
-        external
-        view
-        returns (
-            uint256 n,
-            uint256 m,
-            uint256 p,
-            uint256 q,
-            Float32x32[][][][] memory w,
             Float32x32[] memory b
         );
 
@@ -103,14 +66,6 @@ interface IEternalAI is IOnchainModel {
             Float32x32[][] memory,
             Float32x32[] memory
         );
-        
-    function classify(
-        uint256 _modelId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        Float32x32[][][] calldata x1,
-        Float32x32[] calldata x2
-    ) external payable;
     
     function generateText(
         uint _modelId,
@@ -120,9 +75,15 @@ interface IEternalAI is IOnchainModel {
         uint256 seed
     ) external;
 
-    function setEternalAI(
+    function setOnchainModel(
         uint256 _modelId,
         bytes[] calldata layers_config
+    ) external;
+    
+    function setVocabs(
+        uint256 _modelId,
+        string[] memory vocabs,
+        string memory unkToken
     ) external;
 
     function appendWeights(
@@ -130,11 +91,5 @@ interface IEternalAI is IOnchainModel {
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType
-    ) external;
-    
-    function setVocabs(
-        uint256 _modelId,
-        string[] memory vocabs,
-        string memory unkToken
     ) external;
 }

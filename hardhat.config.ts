@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import '@openzeppelin/hardhat-upgrades';
 import "hardhat-deploy";
 import './scripts/image.task';
+import './scripts/textrnn.task';
 import './scripts/melody.task';
 import './scripts/test.task';
 import './scripts/rune.task';

@@ -31,9 +31,9 @@ contract ImageClassifier is IImageClassifier, Ownable {
     using Tensor2DMethods for Tensors.Tensor2D;
     using Tensor3DMethods for Tensors.Tensor3D;
     using Tensor4DMethods for Tensors.Tensor4D;
-    using Strings for *;
 
     Model public model;
+    string[] public classesName;
     IModelRegPublic public modelRegistry;
     uint256 public modelId;
     uint256 version;
@@ -54,22 +54,11 @@ contract ImageClassifier is IImageClassifier, Ownable {
 
     constructor(string memory _modelName, address _modelRegistry) Ownable() {
         model.modelName = _modelName;
-
         modelRegistry = IModelRegPublic(_modelRegistry);      
         version = 1;
     }
 
-    // function initialize(string memory _modelName, string[] memory _classesName, address _modelRegistry) public initializer {
-    //     __Ownable_init();
-    //     model.modelName = _modelName;
-    //     model.classesName = _classesName;
-
-    //     modelRegistry = IModelRegPublic(_modelRegistry);      
-    //     version = 1;
-    // }
-
-    function getInfo(
-    )
+    function getInfo()
         public
         view
         returns (
@@ -220,9 +209,8 @@ contract ImageClassifier is IImageClassifier, Ownable {
 
     function setOnchainModel(
         uint256 _modelId,
-        bytes[] calldata layers_config
+        bytes[] calldata layersConfig
     ) external onlyOwnerOrOperator {
-
         if (model.layers.length > 0) {
             delete model.input;
             delete model.dense;
@@ -233,7 +221,15 @@ contract ImageClassifier is IImageClassifier, Ownable {
             delete model.layers;
         }
 
-        loadEternalAI(layers_config);
+        model.requiredWeights = 0;
+        model.appendedWeights = 0;
+        uint256[] memory dim;
+        for (uint256 i = 0; i < layersConfig.length; i++) {
+            dim = makeLayer(
+                Layers.SingleLayerConfig(layersConfig[i], i),
+                dim
+            );
+        }
     }
 
     function setModelId(uint256 _modelId) external {
@@ -245,7 +241,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
         }
 
         modelId = _modelId;
-        console.log(model.appendedWeights, model.requiredWeights, modelId);
         if (model.appendedWeights == model.requiredWeights && modelId > 0) {
             emit Deployed(modelRegistry.ownerOf(modelId), modelId);
         }
@@ -286,11 +281,11 @@ contract ImageClassifier is IImageClassifier, Ownable {
             if (inputType != uint8(Layers.InputType.Image)) {
                 revert IncorrectInputLayerType();
             }
-            (Layers.InputImageLayer memory layer, uint[] memory img_dim) = Layers
+            (Layers.InputImageLayer memory layer, uint[] memory out_dim) = Layers
                 .makeInputImageLayer(slc);
-            model.input.push(layer);            
+            model.input.push(layer);
             model.layers.push(Info(Layers.LayerType.Input, model.input.length - 1));
-            dim = img_dim;
+            dim = out_dim;
         } else if (layerType == uint8(Layers.LayerType.Dense)) {
             (Layers.DenseLayer memory layer, uint[] memory out_dim, uint weights) = Layers
                 .makeDenseLayer(slc, dim);
@@ -329,20 +324,5 @@ contract ImageClassifier is IImageClassifier, Ownable {
             model.layers.push(Info(Layers.LayerType.Conv2D, index));
         }
         return dim;
-    }
-
-    function loadEternalAI(
-        bytes[] calldata layersConfig
-    ) internal {
-        model.requiredWeights = 0;
-        model.appendedWeights = 0;
-        uint256[] memory dim;
-        for (uint256 i = 0; i < layersConfig.length; i++) {
-            console.log("i: ", i);
-            dim = makeLayer(
-                Layers.SingleLayerConfig(layersConfig[i], i),
-                dim
-            );
-        }
     }
 }
