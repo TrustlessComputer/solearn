@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./../lib/layers/Layers.sol";
 import { IOnchainModel } from "./IOnchainModel.sol";
 
-interface IEternalAI is IOnchainModel {
+interface ITextRNN is IOnchainModel {
     event TextGenerated(
         uint256 indexed tokenId,
         string result,

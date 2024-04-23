@@ -9,7 +9,7 @@ import "./thirdparty/solidity-stringutils/strings.sol";
 import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
 import { IModelRegPublic } from "./interfaces/IModelReg.sol";
-import { IEternalAI } from "./interfaces/IEternalAI.sol";
+import { ITextRNN } from "./interfaces/ITextRNN.sol";
 // import "hardhat/console.sol";
 
 error NotTokenOwner();
@@ -21,7 +21,7 @@ error IncorrectModelId();
 error NotModelRegistry();
 error IncorrectInputLayerType();
 
-contract EternalAI is IEternalAI, Ownable {
+contract TextRNN is ITextRNN, Ownable {
     using Layers for Layers.DenseLayer;
     using Layers for Layers.EmbeddingLayer;
     using Layers for Layers.SimpleRNNLayer;

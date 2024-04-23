@@ -1,14 +1,14 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
-const modelName = 'EternalAI';
+const modelName = 'TextRNN';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts, network } = hre;
     const { deploy, get } = deployments;
     const { deployer } = await getNamedAccounts();
 
     const models = await get('ModelReg');
-    await deploy('EternalAI', {
+    await deploy('TextRNN', {
         from: deployer,
         proxy: {
             proxyContract: 'OpenZeppelinTransparentProxy',

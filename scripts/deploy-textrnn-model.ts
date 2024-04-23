@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { ethers, utils } from "ethers";
 import fs from 'fs';
-import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
+import * as TextRNNArtifact from '../artifacts/contracts/TextRNN.sol/TextRNN.json';
 import dotenv from 'dotenv';
 import { fromFloat } from './lib/utils';
 import { getModelConfig, uploadModelWeights, mintModel } from './lib/modelLib';
@@ -9,7 +9,6 @@ dotenv.config();
 
 const ModelRegContractName = "ModelReg";
 const MaxWeightLen = 1000;
-const gasConfig = { gasLimit: 10_000_000_000 };
 const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
 
@@ -59,34 +58,34 @@ async function main() {
 
     const modelReg = await ethers.getContractAt(ModelRegContractName, nftContractAddress);
 
-    // deploy a EternalAI contract
-    // EternalAI contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
-    const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
+    // deploy a TextRNN contract
+    // TextRNN contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
+    const EaiFac = new ethers.ContractFactory(TextRNNArtifact.abi, TextRNNArtifact.bytecode, signer);
     
-    const eaiImpl = await EaiFac.deploy(params.model_name, nftContractAddress, gasConfig);
+    const eaiImpl = await EaiFac.deploy(params.model_name, nftContractAddress);
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
     const eai = EaiFac.attach(eaiImpl.address);
-    console.log("Deployed EternalAI contract: ", eai.address);
+    console.log("Deployed TextRNN contract: ", eai.address);
         
     console.log("Setting vocabs");
     if (!params.vocabulary) {
         console.log("Vocabs must not be empty. Abort deploying model.");
         return;
     }
-    const setVocabTx = await eai.setVocabs(tokenId, params.vocabulary, "[UNK]", gasConfig);
+    const setVocabTx = await eai.setVocabs(tokenId, params.vocabulary, "[UNK]");
     await setVocabTx.wait();
     console.log('tx', setVocabTx.hash);
 
     console.log("Setting model");
-    const setWeightTx = await eai.setOnchainModel(tokenId, params.layers_config, gasConfig);
+    const setWeightTx = await eai.setOnchainModel(tokenId, params.layers_config);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 
     console.log("Uploading weights");
     const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
-    await uploadModelWeights(eai, weights, maxlen, gasConfig);        
+    await uploadModelWeights(eai, weights, maxlen);        
         
     console.log("Minting new model");
     await mintModel(modelReg, eai, MODEL_OWNER || signer.address, mintConfig);

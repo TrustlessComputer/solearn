@@ -9,8 +9,6 @@ dotenv.config();
 
 const ModelRegContractName = "ModelReg";
 const MaxWeightLen = 1000;
-// const gasConfig = { gasLimit: 1_000_000_000 };
-const gasConfig = {};
 const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
 
@@ -63,7 +61,7 @@ async function main() {
     // deploy a ImageClassifier contract
     // ImageClassifier contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
     const ImageFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);    
-    const imageImpl = await ImageFac.deploy(params.model_name, nftContractAddress, gasConfig);
+    const imageImpl = await ImageFac.deploy(params.model_name, nftContractAddress);
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = ImageFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
@@ -76,13 +74,13 @@ async function main() {
     console.log('tx', setClassesNameTx.hash);
         
     console.log("Setting model");
-    const setWeightTx = await image.setOnchainModel(tokenId, params.layers_config, gasConfig);
+    const setWeightTx = await image.setOnchainModel(tokenId, params.layers_config);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 
     console.log("Uploading weights");
     const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
-    await uploadModelWeights(image, weights, maxlen, gasConfig);
+    await uploadModelWeights(image, weights, maxlen);
         
     console.log("Minting new model");
     await mintModel(modelReg, image, MODEL_OWNER || signer.address, mintConfig);

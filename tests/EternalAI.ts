@@ -134,7 +134,7 @@ function getConvSize(
   return {W, H, L, R, T, B};
 }
 
-describe("EternalAI", function () {
+describe("TextRNN", function () {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshot in every test.
@@ -145,7 +145,7 @@ describe("EternalAI", function () {
     const signer = await ethers.getSigner(signerAddress);
     const abic = ethers.utils.defaultAbiCoder;
 
-    const ContractName = "EternalAI";
+    const ContractName = "TextRNN";
     const contractAddress = "0x639453f46C75C1b4a43a8FdBA27B03b916748a44";
     const eternalAI = await ethers.getContractAt(ContractName, contractAddress, signer);
 
@@ -254,15 +254,15 @@ describe("EternalAI", function () {
     // try {
     //   const tx = await eternalAI.safeMint(signer.address, tokenId, uri, params.model_name, params.classes_name, { value: ethers.utils.parseEther("0.01") });
     //   await tx.wait();
-    //   console.log("Minted new EternalAI model");
+    //   console.log("Minted new TextRNN model");
     // } catch (e) {
     //   const ownerAddress = await eternalAI.ownerOf(tokenId).catch(_ => {
     //     throw e;
     //   });
     //   if (ethers.utils.getAddress(ownerAddress) === ethers.utils.getAddress(signer.address)) {
-    //     console.log("Using existing EternalAI model #" + tokenId.toString());
+    //     console.log("Using existing TextRNN model #" + tokenId.toString());
     //   } else {
-    //     console.log("EternalAI #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
+    //     console.log("TextRNN #" + tokenId.toString(), "already exists and belongs to", ownerAddress);
     //     return;
     //   }
     // }

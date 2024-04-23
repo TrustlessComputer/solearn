@@ -54,7 +54,7 @@ task("eval-img", "evaluate model for each layer")
 
         const imgRaw = fs.readFileSync(taskArgs.img);
         console.log("imgRaw: ", imgRaw);
-        // TODO: Get inputDim from EternalAI and use the width and height from inputDim instead
+        // TODO: Get inputDim from TextRNN and use the width and height from inputDim instead
         // How to get input image size?
 
         const model = await modelContract.getInfo();
@@ -102,7 +102,7 @@ task("eval-img", "evaluate model for each layer")
             }
 
             const tx: ethers.ContractTransaction = await measureTime(async () => {
-                return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig, ...gasConfig });
+                return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig });
             });
 
             console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);

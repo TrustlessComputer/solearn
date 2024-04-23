@@ -221,7 +221,7 @@ export function getModelConfig(
     };
 }
 
-export async function uploadModelWeights(model: ethers.Contract, weights: ethers.BigNumber[][][], maxlen: number, gasConfig: any) {    
+export async function uploadModelWeights(model: ethers.Contract, weights: ethers.BigNumber[][][], maxlen: number) {    
     const weightStr = JSON.stringify(weights);
     console.log("Total weights len: ", weightStr.length);
 
@@ -237,7 +237,7 @@ export async function uploadModelWeights(model: ethers.Contract, weights: ethers
 
         for (let wi = 0; wi < weights[i].length; ++wi) {
             for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {                   
-                const appendWeightTx = await model.appendWeights(tokenId, temp, wi, i, gasConfig);
+                const appendWeightTx = await model.appendWeights(tokenId, temp, wi, i);
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);                
                 const receipt = await appendWeightTx.wait(2);
                 // checkForDeployedModel(receipt);
