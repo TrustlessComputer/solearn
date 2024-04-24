@@ -64,6 +64,16 @@
       "address": "0xD65Bcd702A1260ec165bE6175Bd91cAfD99112F5",
       "txHash": "0xf8d1c6579d1e0919b954563436c917eb5ce92da94c48130bd2c6d391a7b37969",
       "kind": "transparent"
+    },
+    {
+      "address": "0x0964Eb14A7DF17f1B5b56c43f2d9B5b8873d573C",
+      "txHash": "0xea2645b71d9cf59542f91cadf25456f8c94ac04c0b15363376faadf2041ee87a",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xD8Be4116d30e5fE642bF1544b93Ae9e979fe5700",
+      "txHash": "0x34b1b03f7942d738749553b079097242f152d81e5496e59522d5b3fa5f7097d0",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -1275,7 +1285,7 @@
             "label": "workers",
             "offset": 0,
             "slot": "1",
-            "type": "t_mapping(t_address,t_struct(Worker)2896_storage)",
+            "type": "t_mapping(t_address,t_struct(Worker)6081_storage)",
             "contract": "WorkerHubStorage",
             "src": "contracts/WorkerHub.sol:14"
           },
@@ -1283,7 +1293,7 @@
             "label": "inferences",
             "offset": 0,
             "slot": "2",
-            "type": "t_mapping(t_uint256,t_struct(Inference)2891_storage)",
+            "type": "t_mapping(t_uint256,t_struct(Inference)6076_storage)",
             "contract": "WorkerHubStorage",
             "src": "contracts/WorkerHub.sol:15"
           },
@@ -1291,7 +1301,7 @@
             "label": "unstakeRequests",
             "offset": 0,
             "slot": "3",
-            "type": "t_mapping(t_uint256,t_struct(UnstakeRequest)2916_storage)",
+            "type": "t_mapping(t_uint256,t_struct(UnstakeRequest)6101_storage)",
             "contract": "WorkerHubStorage",
             "src": "contracts/WorkerHub.sol:16"
           },
@@ -1466,19 +1476,19 @@
             "label": "mapping(address => bool)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Worker)2896_storage)": {
+          "t_mapping(t_address,t_struct(Worker)6081_storage)": {
             "label": "mapping(address => struct IWorkerHub.Worker)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(Inference)2891_storage)": {
+          "t_mapping(t_uint256,t_struct(Inference)6076_storage)": {
             "label": "mapping(uint256 => struct IWorkerHub.Inference)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(UnstakeRequest)2916_storage)": {
+          "t_mapping(t_uint256,t_struct(UnstakeRequest)6101_storage)": {
             "label": "mapping(uint256 => struct IWorkerHub.UnstakeRequest)",
             "numberOfBytes": "32"
           },
-          "t_struct(Inference)2891_storage": {
+          "t_struct(Inference)6076_storage": {
             "label": "struct IWorkerHub.Inference",
             "members": [
               {
@@ -1532,7 +1542,7 @@
             ],
             "numberOfBytes": "224"
           },
-          "t_struct(UnstakeRequest)2916_storage": {
+          "t_struct(UnstakeRequest)6101_storage": {
             "label": "struct IWorkerHub.UnstakeRequest",
             "members": [
               {
@@ -1562,7 +1572,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(Worker)2896_storage": {
+          "t_struct(Worker)6081_storage": {
             "label": "struct IWorkerHub.Worker",
             "members": [
               {
@@ -1748,6 +1758,345 @@
           "t_uint256": {
             "label": "uint256",
             "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
+    },
+    "9a679ab9b334851d514fb731b9a87a4bab93717f8da162c6e3d0eefdba13fea4": {
+      "address": "0xdeC0f6953b47c47459188026a159d1066d989077",
+      "txHash": "0x6c09e4bee57f6d50f17cde6defa68f7c22955cc5306ae281604b2c5e30c5f053",
+      "layout": {
+        "solcVersion": "0.8.19",
+        "storage": [
+          {
+            "label": "isModel",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:13"
+          },
+          {
+            "label": "workers",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_address,t_struct(Worker)5836_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:14"
+          },
+          {
+            "label": "inferences",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_uint256,t_struct(Inference)5831_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:15"
+          },
+          {
+            "label": "unstakeRequests",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_uint256,t_struct(UnstakeRequest)5856_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:16"
+          },
+          {
+            "label": "inferenceNumber",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:18"
+          },
+          {
+            "label": "unstakeRequestNumber",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_uint256",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:19"
+          },
+          {
+            "label": "minimumStake",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_uint256",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:20"
+          },
+          {
+            "label": "feePercentage",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_uint8",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:22"
+          },
+          {
+            "label": "royaltyPercentage",
+            "offset": 1,
+            "slot": "7",
+            "type": "t_uint8",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:23"
+          },
+          {
+            "label": "stakeLockingDuration",
+            "offset": 2,
+            "slot": "7",
+            "type": "t_uint40",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:24"
+          },
+          {
+            "label": "treasury",
+            "offset": 7,
+            "slot": "7",
+            "type": "t_address",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:26"
+          },
+          {
+            "label": "collection",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_address",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:27"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/WorkerHub.sol:29"
+          },
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "59",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "59",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "60",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:40"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "110",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "111",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "160",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "161",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "210",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "211",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes_storage": {
+            "label": "bytes",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Worker)5836_storage)": {
+            "label": "mapping(address => struct IWorkerHub.Worker)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Inference)5831_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHub.Inference)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(UnstakeRequest)5856_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHub.UnstakeRequest)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Inference)5831_storage": {
+            "label": "struct IWorkerHub.Inference",
+            "members": [
+              {
+                "label": "value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "modelId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "data",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "result",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "isResolved",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "model",
+                "type": "t_address",
+                "offset": 1,
+                "slot": "4"
+              },
+              {
+                "label": "creator",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "worker",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "6"
+              }
+            ],
+            "numberOfBytes": "224"
+          },
+          "t_struct(UnstakeRequest)5856_storage": {
+            "label": "struct IWorkerHub.UnstakeRequest",
+            "members": [
+              {
+                "label": "value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "worker",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "unlockedAt",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "1"
+              },
+              {
+                "label": "isWithdrawn",
+                "type": "t_bool",
+                "offset": 25,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Worker)5836_storage": {
+            "label": "struct IWorkerHub.Worker",
+            "members": [
+              {
+                "label": "stakedValue",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "isAuthorized",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
           },
           "t_uint8": {
             "label": "uint8",
