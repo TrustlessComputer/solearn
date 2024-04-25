@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import { ethers, utils } from "ethers";
+import { ethers } from "ethers";
 import fs from 'fs';
 import * as TextRNNArtifact from '../artifacts/contracts/TextRNN.sol/TextRNN.json';
 import dotenv from 'dotenv';
@@ -51,9 +51,7 @@ async function main() {
     const { newLayerConfig, weights } = getModelConfig(params, weightsFlat);
 
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
-    params.classes_name =  params.classes_name || [];
 
-    let tokenId = ethers.BigNumber.from(0); // placeholder
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
 
     const modelReg = await ethers.getContractAt(ModelRegContractName, nftContractAddress);
@@ -68,18 +66,18 @@ async function main() {
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
     const eai = EaiFac.attach(eaiImpl.address);
     console.log("Deployed TextRNN contract: ", eai.address);
-        
+
     console.log("Setting vocabs");
     if (!params.vocabulary) {
         console.log("Vocabs must not be empty. Abort deploying model.");
         return;
     }
-    const setVocabTx = await eai.setVocabs(tokenId, params.vocabulary, "[UNK]");
+    const setVocabTx = await eai.setVocabs(params.vocabulary, "[UNK]");
     await setVocabTx.wait();
     console.log('tx', setVocabTx.hash);
 
     console.log("Setting model");
-    const setWeightTx = await eai.setOnchainModel(tokenId, params.layers_config);
+    const setWeightTx = await eai.setOnchainModel(params.layers_config);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 

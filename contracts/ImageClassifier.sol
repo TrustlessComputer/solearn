@@ -33,7 +33,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     using Tensor4DMethods for Tensors.Tensor4D;
 
     Model public model;
-    string[] public classesName;
     IModelRegPublic public modelRegistry;
     uint256 public modelId;
     uint256 version;
@@ -77,7 +76,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     }
 
     function getDenseLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         public
@@ -97,7 +95,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     }
 
     function getConv2DLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         public
@@ -154,7 +151,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     }
 
     function classify(
-        uint256 _modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         Float32x32[][][] calldata x1,
@@ -208,7 +204,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     }
 
     function setOnchainModel(
-        uint256 _modelId,
         bytes[] calldata layersConfig
     ) external onlyOwnerOrOperator {
         if (model.layers.length > 0) {
@@ -247,7 +242,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     }
 
     function appendWeights(
-        uint256 _modelId,
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType
@@ -259,9 +253,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
             appendedWeights = model.conv2D[layerInd].appendWeights(weights);
         }
         model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights && _modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), _modelId);
-        }
     }
 
     function makeLayer(
@@ -269,11 +260,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
         uint256[] memory dim
     ) internal returns (uint256[] memory) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
-
-        // console.log("dim, layerType:", dim.length, layerType);
-        // for(uint i = 0; i < dim.length; ++i) {
-        //     console.log(dim[i]);
-        // }
 
         // add more layers
         if (layerType == uint8(Layers.LayerType.Input)) {

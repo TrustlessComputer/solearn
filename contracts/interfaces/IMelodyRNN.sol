@@ -5,26 +5,15 @@ import "./../lib/layers/Layers.sol";
 import { IOnchainModel } from "./IOnchainModel.sol";
 
 interface IMelodyRNN is IOnchainModel {
-    event NewMelody(uint256 indexed tokenId, Float32x32[] melody);
-
-    event Forwarded(
-        uint256 indexed tokenId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        Float32x32[][][] outputs1,
-        Float32x32[] outputs2
-    );
+    event NewMelody(uint256 indexed tokenId, Float32x32[] melody, Float32x32[][][] states);
 
     struct Model {
-        uint256[3] inputDim;
         string modelName;
-        uint256 numLayers;
         Info[] layers;
         uint256 requiredWeights;
         uint256 appendedWeights;
-        Layers.RescaleLayer[] r;
-        Layers.FlattenLayer[] f;
-        Layers.DenseLayer[] d;
+        Layers.InputTokenLayer[] input;
+        Layers.DenseLayer[] dense;
         Layers.LSTM[] lstm;
         Layers.EmbeddingLayer[] embedding;
     }
@@ -34,14 +23,13 @@ interface IMelodyRNN is IOnchainModel {
         uint256[] vocabs;
     }
 
-    function getInfo(
-    )
+    function getInfo()
         external
         view
         returns (
-            uint256[3] memory,
-            string memory,
-            Info[] memory
+            string memory modelName,
+            uint256[] memory vocabs,
+            Info[] memory layers
         );
 
     function getDenseLayer(
@@ -69,15 +57,13 @@ interface IMelodyRNN is IOnchainModel {
             Float32x32[] memory
         );
 
-    function getVocabs() external view returns (uint256[] memory);
-
     function generateMelody(
         uint256 _modelId,
         uint256 noteCount,
         Float32x32[] calldata x
     ) external;
 
-    function setModel(
+    function setOnchainModel(
         bytes[] calldata layers_config
     ) external;
 
@@ -90,4 +76,6 @@ interface IMelodyRNN is IOnchainModel {
     function setVocabs(
         uint256[] memory vocabs
     ) external;
+
+    function getVocabs() external view returns (uint256[] memory);
 }

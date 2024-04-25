@@ -101,13 +101,13 @@ task("eval-img", "evaluate model for each layer")
                 console.log(`x2: (${x2.length})`);
             }
 
-            const tx: ethers.ContractTransaction = await measureTime(async () => {
-                return await modelContract.classify(tokenId, fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig });
-            });
-
-            console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
+            // const tx: ethers.ContractTransaction = await measureTime(async () => {
+            //     return await modelContract.classify(fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig });
+            // });
+            const tx: ethers.ContractTransaction = await modelContract.classify(fromLayerIndex, toLayerIndex, x1, x2, {...evalConfig });
             const receipt = await tx.wait(1);
 
+            console.log(`Layer index: ${fromLayerIndex} => ${toLayerIndex}: Tx: ${tx.hash}`);
             console.log(`Used gas: `, receipt.gasUsed);
 
             const forwardedEvent = receipt.events?.find(event => event.event === 'Forwarded');

@@ -7,9 +7,6 @@ import { execSync } from 'child_process';
 
 const MelodyRNNContractName = "MelodyRNN";
 const ModelRegContractName = "ModelReg";
-const gasConfig = { gasLimit: 10_000_000_000 };
-const mintPrice = ethers.utils.parseEther('0.1');
-const mintConfig = { value: mintPrice };
 
 task("generate-melody", "evaluate model for each layer")
     .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
@@ -17,7 +14,6 @@ task("generate-melody", "evaluate model for each layer")
     .addOptionalParam("count", "number of step", 1, types.int)
     .addOptionalParam("steplen", "number of notes to generate per step", 1, types.int)
     .addOptionalParam("output", "output file path", "output.mid", types.string)
-    // .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const inputLen = 20;
         const stepLen = taskArgs.steplen;
@@ -64,7 +60,17 @@ task("generate-melody", "evaluate model for each layer")
             // console.log("result:", rc);
 
             // TODO: Fix the task to use tx 
-            const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
+            // const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
+
+            const tx = await mldy.generateMelody(tokenId, stepLen, x2);
+            const rc = await tx.wait();
+
+            const newMelodyEvent = rc.events?.find(event => event.event === 'NewMelody');
+            let res, states;
+            if (newMelodyEvent) {
+                states = newMelodyEvent.args?.states;
+                res = newMelodyEvent.args?.melody;
+            }
 
             // get event NewMelody
             // const newMelody = rc.events?.find(event => event.event === 'NewMelody');

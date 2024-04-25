@@ -46,7 +46,6 @@ interface IImageClassifier is IOnchainModel {
         );
 
     function getDenseLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         external
@@ -59,7 +58,6 @@ interface IImageClassifier is IOnchainModel {
         );
 
     function getConv2DLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         external
@@ -74,7 +72,6 @@ interface IImageClassifier is IOnchainModel {
         );
 
     function classify(
-        uint256 _modelId,
         uint256 fromLayerIndex,
         uint256 toLayerIndex,
         Float32x32[][][] calldata x1,
@@ -82,7 +79,6 @@ interface IImageClassifier is IOnchainModel {
     ) external payable;
 
     function setOnchainModel(
-        uint256 _modelId,
         bytes[] calldata layers_config
     ) external;
 
@@ -91,7 +87,6 @@ interface IImageClassifier is IOnchainModel {
     ) external;
 
     function appendWeights(
-        uint256 _modelId,
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType

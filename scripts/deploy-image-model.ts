@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import { ethers, utils } from "ethers";
+import { ethers } from "ethers";
 import fs from 'fs';
 import * as ImageClassifierArtifact from '../artifacts/contracts/ImageClassifier.sol/ImageClassifier.json';
 import dotenv from 'dotenv';
@@ -53,7 +53,6 @@ async function main() {
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
     params.classes_name =  params.classes_name || [];
 
-    let tokenId = ethers.BigNumber.from(0); // placeholder
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
 
     const modelReg = await ethers.getContractAt(ModelRegContractName, nftContractAddress);
@@ -74,7 +73,7 @@ async function main() {
     console.log('tx', setClassesNameTx.hash);
         
     console.log("Setting model");
-    const setWeightTx = await image.setOnchainModel(tokenId, params.layers_config);
+    const setWeightTx = await image.setOnchainModel(params.layers_config);
     await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
 

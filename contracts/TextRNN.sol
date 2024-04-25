@@ -75,7 +75,6 @@ contract TextRNN is ITextRNN, Ownable {
     }
 
     function getDenseLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         public
@@ -95,7 +94,6 @@ contract TextRNN is ITextRNN, Ownable {
     }
 
     function getLSTMLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         public
@@ -252,7 +250,6 @@ contract TextRNN is ITextRNN, Ownable {
     } 
 
     function generateText(
-        uint _modelId,
         string memory prompt,
         uint256 toGenerate,
         Float32x32[][][] memory states,
@@ -264,7 +261,6 @@ contract TextRNN is ITextRNN, Ownable {
     }
 
     function setOnchainModel(
-        uint256 _modelId,
         bytes[] calldata layersConfig
     ) external onlyOwnerOrOperator {
         if (model.layers.length > 0) {
@@ -302,7 +298,6 @@ contract TextRNN is ITextRNN, Ownable {
     }
 
     function appendWeights(
-        uint256 _modelId,
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType
@@ -319,13 +314,9 @@ contract TextRNN is ITextRNN, Ownable {
         }
 
         model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights && _modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), _modelId);
-        }
     }
 
     function setVocabs(
-        uint256 _modelId,
         string[] memory vocabs,
         string memory unkToken
     ) external onlyOwnerOrOperator {

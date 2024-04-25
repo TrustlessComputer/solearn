@@ -229,7 +229,6 @@ export async function uploadModelWeights(model: ethers.Contract, weights: ethers
         return _w.splice(0, maxlen);
     }
     
-    let tokenId = ethers.BigNumber.from(0); // placeholder
     for (let i = 0; i < MaxLayerType; ++i) {
         const totSize = weights[i].map(arr => arr.length).reduce((a, b) => a + b, 0);
         if (totSize === 0) continue;
@@ -237,7 +236,7 @@ export async function uploadModelWeights(model: ethers.Contract, weights: ethers
 
         for (let wi = 0; wi < weights[i].length; ++wi) {
             for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {                   
-                const appendWeightTx = await model.appendWeights(tokenId, temp, wi, i);
+                const appendWeightTx = await model.appendWeights(temp, wi, i);
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);                
                 const receipt = await appendWeightTx.wait(2);
                 // checkForDeployedModel(receipt);

@@ -28,7 +28,7 @@ task("get-pending-all")
         const pendingRequests = await workerHub.getUnresolvedInferences();
 
         const workerTasks: any[] = [];
-        for (let i = 0; i < 20; ++i) workerTasks.push([]);
+        for (let i = 0; i < 10; ++i) workerTasks.push([]);
         for (const request of pendingRequests) workerTasks[request.requestId.toNumber() % 20].push(request.requestId);
 
         const workerTaskCount = workerTasks.map(arr => arr.length);

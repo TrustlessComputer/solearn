@@ -2,33 +2,12 @@ import { task, types } from "hardhat/config";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
-import sharp from 'sharp';
-import { ethers, utils } from "ethers";
-import path from 'path';
-import { getLayerName } from "./lib/modelLib";
-import { getModelDirents, pixelsToImage, measureTime, postprocessText } from "./lib/utils";
+import { ethers } from "ethers";
+import { postprocessText } from "./lib/utils";
 import { runeToText, isRune } from "./rune.task";
 
 const EternalAIContractName = "TextRNN";
 const ModelRegContractName = "ModelReg";
-
-const GasLimit = "90000000000"; // 100 B
-const MaxFeePerGas = "1001000000";  // 1e-5 gwei
-const MaxPriorityFeePerGas = "1000000000";
-// const GasLimit = "290000000"; // 100 M
-// const MaxFeePerGas = "10010";  // 1e-5 gwei
-// const MaxPriorityFeePerGas = "10000";
-// const gasConfig = {
-//     gasLimit: GasLimit,
-//     maxPriorityFeePerGas: MaxPriorityFeePerGas,
-//     maxFeePerGas: MaxFeePerGas,
-// };
-    
-const mintPrice = ethers.utils.parseEther('0.1');
-const mintConfig = { value: mintPrice };
-
-const evalPrice = ethers.utils.parseEther('0.01');
-const evalConfig = { value: evalPrice };
 
 task("generate-text", "generate text from RNN model")
     .addOptionalParam("contract", "contract address", "", types.string)
@@ -69,7 +48,7 @@ task("generate-text", "generate text from RNN model")
             
             // console.log(prompt.substr(i, generate));
 
-            const tx = await modelContract.generateText(tokenId, prompt.substr(i, generate) + "[UNK]", 0, states, seed);
+            const tx = await modelContract.generateText(prompt.substr(i, generate) + "[UNK]", 0, states, seed);
             const rc = await tx.wait();
 
             const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
@@ -99,7 +78,7 @@ task("generate-text", "generate text from RNN model")
             const generate = Math.min(toGenerate - i, generatePerTx);
             console.log(`Generating characters ${i+1}-${i+generate}`);
 
-            const tx = await modelContract.generateText(tokenId, prompt, generate, states, seed);
+            const tx = await modelContract.generateText(prompt, generate, states, seed);
             const rc = await tx.wait();
 
             const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
