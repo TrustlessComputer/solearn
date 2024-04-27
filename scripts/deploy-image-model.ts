@@ -74,8 +74,9 @@ async function main() {
         
     console.log("Setting model");
     const setWeightTx = await image.setOnchainModel(params.layers_config);
-    await setWeightTx.wait();
+    const rc = await setWeightTx.wait();
     console.log('tx', setWeightTx.hash);
+    console.log('Gas used:', rc.gasUsed);
 
     console.log("Uploading weights");
     const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights

@@ -238,8 +238,8 @@ export async function uploadModelWeights(model: ethers.Contract, weights: ethers
             for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {                   
                 const appendWeightTx = await model.appendWeights(temp, wi, i);
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);                
-                const receipt = await appendWeightTx.wait(2);
-                // checkForDeployedModel(receipt);
+                const receipt = await appendWeightTx.wait();
+                console.log('Gas used:', receipt.gasUsed);
             }
         }
     }
