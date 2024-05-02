@@ -745,4 +745,8 @@ library Layers {
 		out_dim = new uint[](1);
 		out_dim[0] = 1;
 	}
+
+	// function parseData(InputImageLayer memory layer, bytes calldata data) internal pure returns (Float32x32[][][] memory) {
+	// 	return abi.decode(data, (Float32x32[][][]));
+	// }
 }

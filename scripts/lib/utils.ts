@@ -100,3 +100,7 @@ export function fromInt(num: any) {
 export function toInt(num: any) {
     return ethers.BigNumber.from(num).div(ethers.BigNumber.from(2).pow(ethers.BigNumber.from(32)));
 }
+
+export function toFloat(num: any) {
+    return ethers.BigNumber.from(num).toNumber() / Math.pow(2, 32);
+}

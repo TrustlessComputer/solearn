@@ -15,8 +15,8 @@ const mintConfig = { value: mintPrice };
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
 async function main() {
-    const { ethers } = hre;
-    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, CHUNK_LEN } = process.env;
+    const { ethers, upgrades } = hre;
+    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, MODEL_INFERENCE_COST, CHUNK_LEN } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
     }
@@ -32,6 +32,7 @@ async function main() {
     if (!MODEL_OWNER || !ethers.utils.isAddress(MODEL_OWNER)) {
         throw new Error("MODEL_OWNER is not set");
     }
+
     const provider = ethers.getDefaultProvider(NODE_ENDPOINT);
     const signer = new ethers.Wallet(PRIVATE_KEY, provider);
 
@@ -60,13 +61,13 @@ async function main() {
     // deploy a ImageClassifier contract
     // ImageClassifier contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
     const ImageFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);    
-    const imageImpl = await ImageFac.deploy(params.model_name, nftContractAddress);
+    const imageImpl = await ImageFac.deploy();
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = ImageFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
     const image = ImageFac.attach(imageImpl.address);
     console.log("Deployed ImageClassifier contract: ", image.address);
-
+    
     console.log("Setting classes name");    
     const setClassesNameTx = await image.setClassesName(params.classes_name);
     await setClassesNameTx.wait();
@@ -81,9 +82,30 @@ async function main() {
     console.log("Uploading weights");
     const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
     await uploadModelWeights(image, weights, maxlen);
-        
+
+    console.log("Deploying OnchainModel contract");
+    const inferenceCost = ethers.BigNumber.from(MODEL_INFERENCE_COST);
+    const OnchainModel = await ethers.getContractFactory('OnchainModel');
+    const onchainModel = await upgrades.deployProxy(
+        OnchainModel,
+        [
+            modelReg.address,
+            0,
+            params.model_name,
+            image.address,
+            inferenceCost
+        ]
+    );
+    await onchainModel.deployed();
+    console.log(`Contract OnchainModel has been deployed to address ${onchainModel.address}`);
+
+    console.log(`Set model inferface`);
+    const tx = await image.setModelInterface(onchainModel.address);
+    await tx.wait();
+    console.log("tx:", tx.hash);
+
     console.log("Minting new model");
-    await mintModel(modelReg, image, MODEL_OWNER || signer.address, mintConfig);
+    await mintModel(modelReg, onchainModel, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {

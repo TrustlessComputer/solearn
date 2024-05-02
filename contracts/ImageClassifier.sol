@@ -10,6 +10,7 @@ import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
 import { IModelRegPublic } from "./interfaces/IModelReg.sol";
 import { IImageClassifier } from "./interfaces/IImageClassifier.sol";
+import { IOnchainModel } from "./interfaces/IOnchainModel.sol";
 // import "hardhat/console.sol";
 
 error NotTokenOwner();
@@ -33,29 +34,25 @@ contract ImageClassifier is IImageClassifier, Ownable {
     using Tensor4DMethods for Tensors.Tensor4D;
 
     Model public model;
-    IModelRegPublic public modelRegistry;
-    uint256 public modelId;
-    uint256 version;
+    address public modelInterface;
 
-    modifier onlyOwnerOrOperator() {
-        if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
-            revert NotTokenOwner();
-        }
-        _;
-    }
+    // modifier onlyOwner() {
+    //     if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
+    //         revert NotTokenOwner();
+    //     }
+    //     _;
+    // }
 
-    modifier onlyMintedModel() {
-        if (modelId == 0) {
-            revert IncorrectModelId();
-        }
-        _;
-    }
+    // modifier onlyMintedModel() {
+    //     if (modelId == 0) {
+    //         revert IncorrectModelId();
+    //     }
+    //     _;
+    // }
 
-    constructor(string memory _modelName, address _modelRegistry) Ownable() {
-        model.modelName = _modelName;
-        modelRegistry = IModelRegPublic(_modelRegistry);      
-        version = 1;
-    }
+    // constructor(address _modelInterface) Ownable() {
+    //     modelInterface = IOnchainModel(_modelInterface);     
+    // }
 
     function getInfo()
         public
@@ -150,62 +147,76 @@ contract ImageClassifier is IImageClassifier, Ownable {
         return (x1, x2);
     }
 
-    function classify(
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        Float32x32[][][] calldata x1,
-        Float32x32[] calldata x2
-    ) external payable onlyMintedModel {
-        if (msg.value < modelRegistry.evalPrice()) revert InsufficientEvalPrice();
-        (bool success, ) = modelRegistry.royaltyReceiver().call{value: msg.value}("");
-        if (!success) revert TransferFailed();
+    // function classify(
+    //     uint256 fromLayerIndex,
+    //     uint256 toLayerIndex,
+    //     Float32x32[][][] calldata x1,
+    //     Float32x32[] calldata x2
+    // ) internal {
+    //     if (toLayerIndex >= model.layers.length) {
+    //         toLayerIndex = model.layers.length - 1; // update to the last layer
+    //     }
 
-        if (toLayerIndex >= model.layers.length) {
-            toLayerIndex = model.layers.length - 1; // update to the last layer
-        }
+    //     (Float32x32[][][] memory r1, Float32x32[] memory r2) = forward(
+    //         x1,
+    //         x2,
+    //         fromLayerIndex,
+    //         toLayerIndex
+    //     );
 
-        (Float32x32[][][] memory r1, Float32x32[] memory r2) = forward(
-            x1,
+    //     if (toLayerIndex == model.layers.length - 1) {
+    //         uint256 maxInd = 0;
+    //         for (uint256 i = 1; i < r2.length; i++) {
+    //             if (r2[i].gt(r2[maxInd])) {
+    //                 maxInd = i;
+    //             }
+    //         }
+
+    //         emit Classified(
+    //             modelId,
+    //             maxInd,
+    //             model.classesName[maxInd],
+    //             r2,
+    //             r2[maxInd]
+    //         );
+    //     } else {
+    //         emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);
+    //     }
+
+    //     // NOTE: TODO uncomment for mainnet
+    //     // uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
+    //     // uint256 royalty = msg.value - protocolFee;
+    //     // (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
+    //     // if (!success) revert TransferFailed();
+    // }
+
+    function classifyImage(Float32x32[][][] memory image) internal returns (string memory, Float32x32) {
+        Float32x32[] memory x2;
+        (, Float32x32[] memory r2) = forward(
+            image,
             x2,
-            fromLayerIndex,
-            toLayerIndex
+            0,
+            model.layers.length - 1
         );
 
-        if (toLayerIndex == model.layers.length - 1) {
-            uint256 maxInd = 0;
-            for (uint256 i = 1; i < r2.length; i++) {
-                if (r2[i].gt(r2[maxInd])) {
-                    maxInd = i;
-                }
+        uint256 maxInd = 0;
+        for (uint256 i = 1; i < r2.length; i++) {
+            if (r2[i].gt(r2[maxInd])) {
+                maxInd = i;
             }
-
-            emit Classified(
-                modelId,
-                maxInd,
-                model.classesName[maxInd],
-                r2,
-                r2[maxInd]
-            );
-        } else {
-            emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);
         }
-
-        // NOTE: TODO uncomment for mainnet
-        // uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
-        // uint256 royalty = msg.value - protocolFee;
-        // (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
-        // if (!success) revert TransferFailed();
+        return (model.classesName[maxInd], r2[maxInd]);
     }
 
     function setClassesName(
         string[] memory classesName
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         model.classesName = classesName;
     }
 
     function setOnchainModel(
         bytes[] calldata layersConfig
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         if (model.layers.length > 0) {
             delete model.input;
             delete model.dense;
@@ -227,25 +238,15 @@ contract ImageClassifier is IImageClassifier, Ownable {
         }
     }
 
-    function setModelId(uint256 _modelId) external {
-        if (msg.sender != address(modelRegistry)) {
-            revert NotModelRegistry();
-        }
-        if (modelId > 0 || modelRegistry.modelAddr(_modelId) != address(this)) {
-            revert IncorrectModelId();
-        }
-
-        modelId = _modelId;
-        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
-        }
+    function isReady() external view returns (bool) {
+        return model.appendedWeights == model.requiredWeights;
     }
 
     function appendWeights(
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         uint appendedWeights;
         if (layerType == Layers.LayerType.Dense) {
             appendedWeights = model.dense[layerInd].appendWeights(weights);
@@ -310,5 +311,18 @@ contract ImageClassifier is IImageClassifier, Ownable {
             model.layers.push(Info(Layers.LayerType.Conv2D, index));
         }
         return dim;
+    }
+
+    function setModelInterface(address _interface) external onlyOwner {
+        modelInterface = _interface;
+    }
+
+    function infer(bytes calldata _data) external returns (bytes memory) {
+        if (msg.sender != modelInterface) revert Unauthorized();
+
+        // Float32x32[][][] memory image = model.input.parseData(_data);
+        Float32x32[][][] memory image = abi.decode(_data, (Float32x32[][][]));
+        (string memory className, Float32x32 confidence) = classifyImage(image);
+        return abi.encode(className, confidence);
     }
 }

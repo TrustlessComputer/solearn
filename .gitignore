@@ -11,20 +11,7 @@ cache
 deployments
 test-results
 out.log
-
-# Exclude all artifact except EternalAI and MelodyRNN
-artifacts/*
-!artifacts/contracts
-artifacts/contracts/*
-!artifacts/contracts/ImageClassifier.sol
-artifacts/contracts/ImageClassifier.sol/*
-!artifacts/contracts/ImageClassifier.sol/ImageClassifier.json
-!artifacts/contracts/EternalAI.sol
-artifacts/contracts/EternalAI.sol/*
-!artifacts/contracts/EternalAI.sol/EternalAI.json
-!artifacts/contracts/MelodyRNN.sol
-artifacts/contracts/MelodyRNN.sol/*
-!artifacts/contracts/MelodyRNN.sol/MelodyRNN.json
+artifacts
 
 .DS_Store
 _models
