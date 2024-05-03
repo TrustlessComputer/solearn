@@ -14,4 +14,6 @@ out.log
 artifacts
 
 .DS_Store
+_data
 _models
+_outputs
