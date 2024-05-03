@@ -36,24 +36,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     Model public model;
     address public modelInterface;
 
-    // modifier onlyOwner() {
-    //     if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
-    //         revert NotTokenOwner();
-    //     }
-    //     _;
-    // }
-
-    // modifier onlyMintedModel() {
-    //     if (modelId == 0) {
-    //         revert IncorrectModelId();
-    //     }
-    //     _;
-    // }
-
-    // constructor(address _modelInterface) Ownable() {
-    //     modelInterface = IOnchainModel(_modelInterface);     
-    // }
-
     function getInfo()
         public
         view
@@ -208,6 +190,15 @@ contract ImageClassifier is IImageClassifier, Ownable {
         return (model.classesName[maxInd], r2[maxInd]);
     }
 
+    function infer(bytes calldata _data) external returns (bytes memory) {
+        if (msg.sender != modelInterface) revert Unauthorized();
+
+        // Float32x32[][][] memory image = model.input.parseData(_data);
+        Float32x32[][][] memory image = abi.decode(_data, (Float32x32[][][]));
+        (string memory className, Float32x32 confidence) = classifyImage(image);
+        return abi.encode(className, confidence);
+    }
+    
     function setClassesName(
         string[] memory classesName
     ) external onlyOwner {
@@ -315,14 +306,5 @@ contract ImageClassifier is IImageClassifier, Ownable {
 
     function setModelInterface(address _interface) external onlyOwner {
         modelInterface = _interface;
-    }
-
-    function infer(bytes calldata _data) external returns (bytes memory) {
-        if (msg.sender != modelInterface) revert Unauthorized();
-
-        // Float32x32[][][] memory image = model.input.parseData(_data);
-        Float32x32[][][] memory image = abi.decode(_data, (Float32x32[][][]));
-        (string memory className, Float32x32 confidence) = classifyImage(image);
-        return abi.encode(className, confidence);
     }
 }

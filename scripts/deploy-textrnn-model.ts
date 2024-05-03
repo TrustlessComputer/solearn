@@ -15,8 +15,8 @@ const mintConfig = { value: mintPrice };
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
 async function main() {
-    const { ethers } = hre;
-    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, CHUNK_LEN } = process.env;
+    const { ethers, upgrades } = hre;
+    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, MODEL_INFERENCE_COST, CHUNK_LEN } = process.env;
     if (!PRIVATE_KEY) {
         throw new Error("PRIVATE_KEY is not set");
     }
@@ -60,7 +60,7 @@ async function main() {
     // TextRNN contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
     const EaiFac = new ethers.ContractFactory(TextRNNArtifact.abi, TextRNNArtifact.bytecode, signer);
     
-    const eaiImpl = await EaiFac.deploy(params.model_name, nftContractAddress);
+    const eaiImpl = await EaiFac.deploy();
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
@@ -85,8 +85,29 @@ async function main() {
     const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
     await uploadModelWeights(eai, weights, maxlen);        
         
+    console.log("Deploying OnchainModel contract");
+    const inferenceCost = ethers.BigNumber.from(MODEL_INFERENCE_COST);
+    const OnchainModel = await ethers.getContractFactory('OnchainModel');
+    const onchainModel = await upgrades.deployProxy(
+        OnchainModel,
+        [
+            modelReg.address,
+            0,
+            params.model_name,
+            eai.address,
+            inferenceCost
+        ]
+    );
+    await onchainModel.deployed();
+    console.log(`Contract OnchainModel has been deployed to address ${onchainModel.address}`);
+
+    console.log(`Set model inferface`);
+    const tx = await eai.setModelInterface(onchainModel.address);
+    await tx.wait();
+    console.log("tx:", tx.hash);
+
     console.log("Minting new model");
-    await mintModel(modelReg, eai, MODEL_OWNER || signer.address, mintConfig);
+    await mintModel(modelReg, onchainModel, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {
