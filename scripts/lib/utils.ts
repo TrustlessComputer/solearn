@@ -15,6 +15,10 @@ export function recursiveToString(arr: any): any {
     return arr.map((val: any) => Array.isArray(val) ? recursiveToString(val) : val.toString());
 }
 
+export function recursiveToFloat(arr: any): any {
+    return arr.map((val: any) => Array.isArray(val) ? recursiveToFloat(val) : toFloat(val));
+}
+
 export async function measureTime(f: any): Promise<any> {
   const start = Date.now();
   const ret = await f();

@@ -108,14 +108,8 @@ contract TextRNN is ITextRNN, Ownable {
 
         uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
-            // console.log("layer: ", i);
-            // for(uint256 j = 0; j < x2.length; ++j) {
-            //     console.logInt(Float32x32.unwrap(x2[j]));
-            // }
             Info memory layerInfo = model.layers[i];
             uint idx = layerInfo.layerIndex;
-
-            // add more layers
             if (layerInfo.layerType == Layers.LayerType.Embedding) {
                 x2 = model.embedding[idx].forward(x1);
             } else if (layerInfo.layerType == Layers.LayerType.Dense) {
@@ -214,12 +208,7 @@ contract TextRNN is ITextRNN, Ownable {
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            // console.log("i: ", i, lastToken);
             (x2, states) = evaluateRNN(model, lastToken, states, true);
-            // console.log("Done forward");
-            // for(uint256 j = 0; j < x2.length; ++j) {
-            //     console.logInt(Float32x32.unwrap(x2[j]));
-            // }
             lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
@@ -309,8 +298,6 @@ contract TextRNN is ITextRNN, Ownable {
         uint256[] memory dim
     ) internal returns (uint256[] memory) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
-
-        // add more layers
         if (layerType == uint8(Layers.LayerType.Input)) {
             (, uint8 inputType) = abi.decode(slc.conf, (uint8, uint8));
             if (inputType != uint8(Layers.InputType.Token)) {

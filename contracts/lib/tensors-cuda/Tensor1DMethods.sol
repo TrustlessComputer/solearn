@@ -97,7 +97,7 @@ library Tensor1DMethods {
 	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal returns (Tensors.Tensor1D memory) {
 		Float32x32[][] memory a_mat = new Float32x32[][](1);
 		a_mat[0] = a.mat;
-		Float32x32[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,7,32,32);
+		Float32x32[][] memory res = CUDA.gemmFloat32x32(a_mat,b.mat,7,32,32);
 		return from(res[0]);
 	}
 

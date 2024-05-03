@@ -157,7 +157,7 @@ library Tensor2DMethods {
 		Tensors.Tensor2D memory res;
 		res.n = a.n;
 		res.m = b.m;
-		res.mat = CUDA.gemmSD59x18(a.mat,b.mat,7,32,32);
+		res.mat = CUDA.gemmFloat32x32(a.mat,b.mat,7,32,32);
 		return res;
 	}
 

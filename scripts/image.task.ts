@@ -5,7 +5,7 @@ import fs from 'fs';
 import sharp from 'sharp';
 import { ethers, utils } from "ethers";
 import path from 'path';
-import { pixelsToImage, fromInt, toFloat } from "./lib/utils";
+import { pixelsToImage, fromInt, toFloat, recursiveToFloat, recursiveToString } from "./lib/utils";
 
 const ImageClassifierContractName = "ImageClassifier";
 const OnchainModelContractName = "OnchainModel";
@@ -102,6 +102,23 @@ task("get-image-model", "get eternal AI model")
         const implementContract = await ethers.getContractAt(ImageClassifierContractName, implementAddress, signer);
 
         const model = await implementContract.getInfo();
+
+        // for(let i = 0; i < 3; ++i) {
+        //     const { n, m, p, q, w, b} = await implementContract.getConv2DLayer(i);
+        //     console.log(n, m, p, q);
+        //     const wFloat = recursiveToFloat(w);
+        //     const bFloat = recursiveToFloat(b);
+        //     fs.writeFileSync(`model_weight_${i*2}.json`, JSON.stringify(wFloat));
+        //     fs.writeFileSync(`model_weight_${i*2+1}.json`, JSON.stringify(bFloat));
+        // }
+        // for(let i = 0; i < 2; ++i) {
+        //     const { dim_in, dim_out, w, b } = await implementContract.getDenseLayer(i);
+        //     console.log(dim_in, dim_out);
+        //     const wFloat = recursiveToFloat(w);
+        //     const bFloat = recursiveToFloat(b);
+        //     fs.writeFileSync(`model_weight_${6+i*2}.json`, JSON.stringify(wFloat));
+        //     fs.writeFileSync(`model_weight_${6+i*2+1}.json`, JSON.stringify(bFloat));
+        // }
 
         fs.writeFileSync("baseDesc.json", JSON.stringify(model));
         // console.log(JSON.stringify(model));

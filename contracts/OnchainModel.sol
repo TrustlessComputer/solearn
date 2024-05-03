@@ -103,7 +103,7 @@ ReentrancyGuardUpgradeable {
         emit IdentifierUpdate(_modelId);
     }
 
-    function infer(bytes memory data) external payable {
+    function infer(bytes calldata data) external payable {
         if (msg.value < inferenceCost) revert InsufficientFunds();
 
         bytes memory result = IOnchainImplementation(implementation).infer(data);

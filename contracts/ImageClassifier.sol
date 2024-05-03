@@ -96,16 +96,10 @@ contract ImageClassifier is IImageClassifier, Ownable {
         b = layer.b.mat;
     }
 
-    function forward(
-        Float32x32[][][] memory x1,
-        Float32x32[] memory x2,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex
-    ) public returns (Float32x32[][][] memory, Float32x32[] memory) {
-        for (uint256 i = fromLayerIndex; i <= toLayerIndex; i++) {
+    function forward(Float32x32[][][] memory x1) public returns (Float32x32[] memory) {
+        Float32x32[] memory x2;
+        for (uint256 i = 0; i < model.layers.length; i++) {
             Info memory layerInfo = model.layers[i];
-
-            // add more layers
             if (layerInfo.layerType == Layers.LayerType.Rescale) {
                 x1 = model.rescale[layerInfo.layerIndex].forward(x1);
             } else if (layerInfo.layerType == Layers.LayerType.Flatten) {
@@ -122,65 +116,14 @@ contract ImageClassifier is IImageClassifier, Ownable {
             if (i == model.layers.length - 1) {
                 Tensors.Tensor1D memory xt = Tensor1DMethods.from(x2);
                 Float32x32[] memory result = xt.softmax().mat;
-                return (x1, result);
+                return result;
             }
         }
-
-        return (x1, x2);
+        return x2;
     }
 
-    // function classify(
-    //     uint256 fromLayerIndex,
-    //     uint256 toLayerIndex,
-    //     Float32x32[][][] calldata x1,
-    //     Float32x32[] calldata x2
-    // ) internal {
-    //     if (toLayerIndex >= model.layers.length) {
-    //         toLayerIndex = model.layers.length - 1; // update to the last layer
-    //     }
-
-    //     (Float32x32[][][] memory r1, Float32x32[] memory r2) = forward(
-    //         x1,
-    //         x2,
-    //         fromLayerIndex,
-    //         toLayerIndex
-    //     );
-
-    //     if (toLayerIndex == model.layers.length - 1) {
-    //         uint256 maxInd = 0;
-    //         for (uint256 i = 1; i < r2.length; i++) {
-    //             if (r2[i].gt(r2[maxInd])) {
-    //                 maxInd = i;
-    //             }
-    //         }
-
-    //         emit Classified(
-    //             modelId,
-    //             maxInd,
-    //             model.classesName[maxInd],
-    //             r2,
-    //             r2[maxInd]
-    //         );
-    //     } else {
-    //         emit Forwarded(modelId, fromLayerIndex, toLayerIndex, r1, r2);
-    //     }
-
-    //     // NOTE: TODO uncomment for mainnet
-    //     // uint256 protocolFee = (msg.value * protocolFeePercent) / 100;
-    //     // uint256 royalty = msg.value - protocolFee;
-    //     // (bool success, ) = address(ownerOf(modelId)).call{value: royalty}("");
-    //     // if (!success) revert TransferFailed();
-    // }
-
     function classifyImage(Float32x32[][][] memory image) internal returns (string memory, Float32x32) {
-        Float32x32[] memory x2;
-        (, Float32x32[] memory r2) = forward(
-            image,
-            x2,
-            0,
-            model.layers.length - 1
-        );
-
+        Float32x32[] memory r2 = forward(image);
         uint256 maxInd = 0;
         for (uint256 i = 1; i < r2.length; i++) {
             if (r2[i].gt(r2[maxInd])) {
@@ -193,7 +136,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     function infer(bytes calldata _data) external returns (bytes memory) {
         if (msg.sender != modelInterface) revert Unauthorized();
 
-        // Float32x32[][][] memory image = model.input.parseData(_data);
         Float32x32[][][] memory image = abi.decode(_data, (Float32x32[][][]));
         (string memory className, Float32x32 confidence) = classifyImage(image);
         return abi.encode(className, confidence);
@@ -252,8 +194,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
         uint256[] memory dim
     ) internal returns (uint256[] memory) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
-
-        // add more layers
         if (layerType == uint8(Layers.LayerType.Input)) {
             (, uint8 inputType) = abi.decode(slc.conf, (uint8, uint8));
             if (inputType != uint8(Layers.InputType.Image)) {

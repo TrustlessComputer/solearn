@@ -96,7 +96,7 @@ library Tensors {
 	}
 
 	function max(Float32x32 a, Float32x32 b) internal pure returns (Float32x32) {
-		return Float32x32.unwrap(a) > Float32x32.unwrap(a) ? a : b;
+		return Float32x32.unwrap(a) > Float32x32.unwrap(b) ? a : b;
 	}
 
 	function getConvSize(
