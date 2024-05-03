@@ -82,8 +82,8 @@ library Tensor2DMethods {
 
 	function __apply_unary_op(
 		Tensors.Tensor2D memory a,
-		function(Float32x32) internal pure returns (Float32x32) op
-	) internal pure returns (Tensors.Tensor2D memory) {
+		function(Float32x32) internal view returns (Float32x32) op
+	) internal view returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = zerosTensor(a.n, a.m);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
@@ -93,7 +93,7 @@ library Tensor2DMethods {
 		return res;
 	}
 
-	function activation(Tensors.Tensor2D memory a, Tensors.ActivationFunc actv) internal pure returns (Tensors.Tensor2D memory) {
+	function activation(Tensors.Tensor2D memory a, Tensors.ActivationFunc actv) internal view returns (Tensors.Tensor2D memory) {
 		if (actv == Tensors.ActivationFunc.LeakyReLU) {
 			return __apply_unary_op(a, Tensors.__leaky_relu);
 		} else if (actv == Tensors.ActivationFunc.Linear) {
@@ -157,13 +157,11 @@ library Tensor2DMethods {
 		Tensors.Tensor2D memory res;
 		res.n = a.n;
 		res.m = b.m;
-
 		res.mat = CUDA.gemmSD59x18(a.mat,b.mat,7,32,32);
-
 		return res;
 	}
 
-	function softmax(Tensors.Tensor2D memory a) internal pure returns (Tensors.Tensor2D memory) {
+	function softmax(Tensors.Tensor2D memory a) internal view returns (Tensors.Tensor2D memory) {
 		Tensors.Tensor2D memory res = __apply_unary_op(a, Tensors.__exp);
 		Float32x32 sum_e = Float32x32.wrap(0);
 		for (uint i = 0; i < res.n; i++) {

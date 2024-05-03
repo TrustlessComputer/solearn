@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 import { Float32x32, fromInt } from "./../Float32x32/Lib32x32.sol";
 import "./Tensors.sol";
 import "./Tensor2DMethods.sol";
-import "hardhat/console.sol";
 
 library Tensor4DMethods {
 	function zerosTensor(uint n, uint m, uint p, uint q) internal pure returns (Tensors.Tensor4D memory ts) {
@@ -118,8 +117,8 @@ library Tensor4DMethods {
 
 	function __apply_unary_op(
 		Tensors.Tensor4D memory a,
-		function(Float32x32) internal pure returns (Float32x32) op
-	) internal pure returns (Tensors.Tensor4D memory) {
+		function(Float32x32) internal view returns (Float32x32) op
+	) internal view returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = zerosTensor(a.n, a.m, a.p, a.q);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
@@ -133,7 +132,7 @@ library Tensor4DMethods {
 		return res;
 	}
 
-	function activation(Tensors.Tensor4D memory a, Tensors.ActivationFunc actv) internal pure returns (Tensors.Tensor4D memory) {
+	function activation(Tensors.Tensor4D memory a, Tensors.ActivationFunc actv) internal view returns (Tensors.Tensor4D memory) {
 		if (actv == Tensors.ActivationFunc.LeakyReLU) {
 			return __apply_unary_op(a, Tensors.__leaky_relu);
 		} else if (actv == Tensors.ActivationFunc.Linear) {
@@ -301,7 +300,7 @@ library Tensor4DMethods {
 		}
 	}
 
-	function softmax(Tensors.Tensor4D memory a) internal pure returns (Tensors.Tensor4D memory) {
+	function softmax(Tensors.Tensor4D memory a) internal view returns (Tensors.Tensor4D memory) {
 		Tensors.Tensor4D memory res = __apply_unary_op(a, Tensors.__exp);
 		Float32x32 sum_e = Float32x32.wrap(0);
 		for (uint i = 0; i < res.n; i++) {

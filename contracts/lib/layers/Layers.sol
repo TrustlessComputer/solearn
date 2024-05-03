@@ -8,8 +8,6 @@ import "../tensors/Tensor3DMethods.sol";
 import "../tensors/Tensor4DMethods.sol";
 import { Float32x32, fromInt, toInt } from "./../Float32x32/Lib32x32.sol";
 
-// import "hardhat/console.sol";
-
 error TooMuchData();
 
 library Layers {
@@ -552,7 +550,6 @@ library Layers {
 			slc.conf,
 			(uint8, uint8, uint256)
 		);
-		console.log(dim[0], d);
 		layer = Layers.DenseLayer(
 			slc.ind,
 			Tensors.ActivationFunc(actv),
@@ -611,8 +608,6 @@ library Layers {
 			slc.conf,
 			(uint8, Float32x32, Float32x32)
 		);
-		// console.logInt(Float32x32.unwrap(scale));
-		// console.logInt(Float32x32.unwrap(offset));
 		layer = RescaleLayer(
 			slc.ind,
 			scale,
@@ -745,8 +740,4 @@ library Layers {
 		out_dim = new uint[](1);
 		out_dim[0] = 1;
 	}
-
-	// function parseData(InputImageLayer memory layer, bytes calldata data) internal pure returns (Float32x32[][][] memory) {
-	// 	return abi.decode(data, (Float32x32[][][]));
-	// }
 }

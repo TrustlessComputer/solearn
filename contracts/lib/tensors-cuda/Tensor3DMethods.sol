@@ -96,8 +96,8 @@ library Tensor3DMethods {
 
 	function __apply_unary_op(
 		Tensors.Tensor3D memory a,
-		function(Float32x32) internal pure returns (Float32x32) op
-	) internal pure returns (Tensors.Tensor3D memory) {
+		function(Float32x32) internal view returns (Float32x32) op
+	) internal view returns (Tensors.Tensor3D memory) {
 		Tensors.Tensor3D memory res = zerosTensor(a.n, a.m, a.p);
 		for (uint i = 0; i < res.n; i++) {
 			for (uint j = 0; j < res.m; j++) {
@@ -109,7 +109,7 @@ library Tensor3DMethods {
 		return res;
 	}
 
-	function activation(Tensors.Tensor3D memory a, Tensors.ActivationFunc actv) internal pure returns (Tensors.Tensor3D memory) {
+	function activation(Tensors.Tensor3D memory a, Tensors.ActivationFunc actv) internal view returns (Tensors.Tensor3D memory) {
 		if (actv == Tensors.ActivationFunc.LeakyReLU) {
 			return __apply_unary_op(a, Tensors.__leaky_relu);
 		} else if (actv == Tensors.ActivationFunc.Linear) {
@@ -267,7 +267,7 @@ library Tensor3DMethods {
 		}
 	}
 
-	function softmax(Tensors.Tensor3D memory a) internal pure returns (Tensors.Tensor3D memory) {
+	function softmax(Tensors.Tensor3D memory a) internal view returns (Tensors.Tensor3D memory) {
 		Tensors.Tensor3D memory res = __apply_unary_op(a, Tensors.__exp);
 		Float32x32 sum_e = Float32x32.wrap(0);
 		for (uint i = 0; i < res.n; i++) {

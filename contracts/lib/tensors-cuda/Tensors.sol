@@ -62,7 +62,7 @@ library Tensors {
 		return Float32x32.unwrap(x) > 0 ? x : x.mul(TWO).div(TEN);
 	}
 
-	function __sigmoid(Float32x32 x) internal pure returns (Float32x32) {
+	function __sigmoid(Float32x32 x) internal view returns (Float32x32) {
 		// Exp will fail if input is greater than 21
 		if (Float32x32.unwrap(x) < -21 << 32) {
 			x = fromInt(-21);
