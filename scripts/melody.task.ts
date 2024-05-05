@@ -4,6 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
 import { BigNumber, ethers } from "ethers";
 import { execSync } from 'child_process';
+import { toInt } from "./lib/utils";
 
 const MelodyRNNContractName = "MelodyRNN";
 const ModelRegContractName = "ModelReg";
@@ -76,7 +77,7 @@ task("generate-melody", "evaluate model for each layer")
             // const newMelody = rc.events?.find(event => event.event === 'NewMelody');
             // if (newMelody != null) {
                 // const res = newMelody.args?.melody;
-                const notes = res.map((num: ethers.BigNumber) => Number(num.div(BigNumber.from("18446744073709551616"))))
+                const notes = res.map((num: ethers.BigNumber) => toInt(num).toNumber());
                 // // prevent repetition at the end
                 // const last = x2.slice(melody.length-stepLen);
                 // let repeated = false;
@@ -98,6 +99,7 @@ task("generate-melody", "evaluate model for each layer")
         console.log("generated melody:", melody);
 
         const cmd = `python scripts/gen_midi.py --data "${JSON.stringify(melody)}" --output-path "${taskArgs.output}"`;
+        // console.log(cmd);
         execSync(cmd);
 
         let endTime = new Date().getTime();
