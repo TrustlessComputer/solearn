@@ -2,19 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "./../lib/layers/Layers.sol";
-import { IOnchainModel } from "./IOnchainModel.sol";
+import { IOnchainImplementation } from "./IOnchainImplementation.sol";
 
-interface IMelodyRNN {
-    struct Info {
-        Layers.LayerType layerType;
-        uint256 layerIndex;
-    }
-
+interface IMelodyRNN is IOnchainImplementation {
     struct Model {
         string modelName;
-        Info[] layers;
         uint256 requiredWeights;
         uint256 appendedWeights;
+        Info[] layers;
         Layers.InputTokenLayer[] input;
         Layers.DenseLayer[] dense;
         Layers.LSTM[] lstm;
@@ -59,12 +54,6 @@ interface IMelodyRNN {
             Float32x32[][] memory,
             Float32x32[] memory
         );
-
-    function generateMelody(
-        uint256 _modelId,
-        uint256 noteCount,
-        Float32x32[] calldata x
-    ) external;
 
     function setOnchainModel(
         bytes[] calldata layers_config

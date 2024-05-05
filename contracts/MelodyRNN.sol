@@ -19,9 +19,6 @@ error NotModelRegistry();
 error IncorrectInputLayerType();
 
 contract MelodyRNN is IMelodyRNN, Ownable {
-    event NewMelody(uint256 indexed tokenId, Float32x32[] melody, Float32x32[][][] states);
-    event Deployed(address indexed owner, uint256 indexed tokenId);
-    
     using Layers for Layers.DenseLayer;
     using Layers for Layers.EmbeddingLayer;
     using Layers for Layers.LSTM;
@@ -32,34 +29,10 @@ contract MelodyRNN is IMelodyRNN, Ownable {
     uint256 constant VOCAB_SIZE = 130;
 
     Model public model;
-    IModelRegPublic public modelRegistry;
-    uint256 public modelId;
-
-    uint256 version;
+    address public modelInterface;
     VocabInfo public vocabInfo;
 
-    modifier onlyOwnerOrOperator() {
-        if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
-            revert NotTokenOwner();
-        }
-        _;
-    }
-
-    modifier onlyMintedModel() {
-        if (modelId == 0) {
-            revert IncorrectModelId();
-        }
-        _;
-    }
-
-    constructor(string memory _modelName, address _modelRegistry) Ownable() {
-        model.modelName = _modelName;
-        modelRegistry = IModelRegPublic(_modelRegistry);        
-        version = 1;
-    }
-
-    function getInfo(
-    )
+    function getInfo()
         public
         view
         returns (
@@ -130,21 +103,11 @@ contract MelodyRNN is IMelodyRNN, Ownable {
         Float32x32[][] memory x2Ext;
         for (uint256 i = 0; i < model.layers.length; i++) {
             Info memory layerInfo = model.layers[i];
-
-            // add more layers
             if (layerInfo.layerType == Layers.LayerType.Embedding) {
                 x2 = model.embedding[layerInfo.layerIndex].forward(input);
-                // console.log("embedding ", layerInfo.layerIndex);
-                // for(uint j = 0; j < x2.length; ++j) {
-                //     console.logInt(x2[j].intoInt256());
-                // }
             } else if (layerInfo.layerType == Layers.LayerType.Dense) {
                 if (i < model.layers.length - 1 || isGenerating) {
                     x2 = model.dense[layerInfo.layerIndex].forward(x2);
-                    // console.log("dense ", layerInfo.layerIndex);
-                    // for(uint j = 0; j < x2.length; ++j) {
-                    //     console.logInt(x2[j].intoInt256());
-                    // }
                 }                
             } else if (layerInfo.layerType == Layers.LayerType.LSTM) {
                 if (x2.length == 0) {
@@ -155,15 +118,6 @@ contract MelodyRNN is IMelodyRNN, Ownable {
                 Layers.LSTM memory lstm = model.lstm[layerInfo.layerIndex];
                 (x2Ext, states[layerInfo.layerIndex]) = lstm.forward(x2, states[layerInfo.layerIndex]);
                 x2 = x2Ext[0];
-
-                // console.log("states[0] of lstm", layerInfo.layerIndex);
-                // for(uint j = 0; j < states[layerInfo.layerIndex][0].length; ++j) {
-                //     console.logInt(states[layerInfo.layerIndex][0][j].intoInt256());
-                // }
-                // console.log("states[1] of lstm", layerInfo.layerIndex);
-                // for(uint j = 0; j < states[layerInfo.layerIndex][1].length; ++j) {
-                //     console.logInt(states[layerInfo.layerIndex][1][j].intoInt256());
-                // }
             }
         }
         return (x2, states);
@@ -200,12 +154,9 @@ contract MelodyRNN is IMelodyRNN, Ownable {
     }
 
     function generateMelody(
-        uint256 _modelId,
         uint256 noteCount,
-        Float32x32[] calldata x
-    ) external onlyMintedModel {
-        if (_modelId != modelId) revert IncorrectModelId();
-        
+        Float32x32[] memory x
+    ) internal returns (Float32x32[] memory) {
         Model memory model = model;
         uint256 seed = uint256(keccak256(abi.encodePacked(x)));
 
@@ -229,12 +180,25 @@ contract MelodyRNN is IMelodyRNN, Ownable {
             inputToken = nxtToken;
         }
 
-        emit NewMelody(modelId, result, states);
+        return result;
     }
 
+    function infer(bytes calldata _data) external returns (bytes memory) {
+        if (msg.sender != modelInterface) revert Unauthorized();
+
+        (
+            uint256 noteCount,
+            Float32x32[] memory x
+        ) = abi.decode(_data, (uint256, Float32x32[]));
+        
+        Float32x32[] memory result = generateMelody(noteCount, x);
+        
+        return abi.encode(result);
+    }
+    
     function setOnchainModel(
         bytes[] calldata layersConfig
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         if (model.layers.length > 0) {
             delete model.input;
             delete model.dense;
@@ -254,11 +218,15 @@ contract MelodyRNN is IMelodyRNN, Ownable {
         }
     }
 
+    function isReady() external view returns (bool) {
+        return model.appendedWeights == model.requiredWeights;
+    }
+
     function appendWeights(
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         uint appendedWeights;
         if (layerType == Layers.LayerType.Dense) {
             appendedWeights = model.dense[layerInd].appendWeights(weights);
@@ -267,16 +235,11 @@ contract MelodyRNN is IMelodyRNN, Ownable {
         } else if (layerType == Layers.LayerType.Embedding) {
             appendedWeights = model.embedding[layerInd].appendWeights(weights);
         }
-        
-        model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
-        }
     }
     
     function setVocabs(
         uint256[] memory vocabs
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         VocabInfo storage info = vocabInfo;
         info.vocabs = vocabs;
         info.hasVocab = true;
@@ -328,17 +291,7 @@ contract MelodyRNN is IMelodyRNN, Ownable {
         return dim;
     }
 
-    function setModelId(uint256 _modelId) external {
-        if (msg.sender != address(modelRegistry)) {
-            revert NotModelRegistry();
-        }
-        if (modelId > 0 || modelRegistry.modelAddr(_modelId) != address(this)) {
-            revert IncorrectModelId();
-        }
-
-        modelId = _modelId;
-        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
-        }
+    function setModelInterface(address _interface) external onlyOwner {
+        modelInterface = _interface;
     }
 }

@@ -7,7 +7,31 @@ import { execSync } from 'child_process';
 import { toInt } from "./lib/utils";
 
 const MelodyRNNContractName = "MelodyRNN";
+const OnchainModelContractName = "OnchainModel";
 const ModelRegContractName = "ModelReg";
+
+async function inferModel(interfaceContract: ethers.Contract, noteCount: number, x: ethers.BigNumber[]) {
+    const abic = ethers.utils.defaultAbiCoder;
+    const data = abic.encode(
+        ["uint256", "int64[]"], 
+        [noteCount, x]
+    );
+
+    const tx = await interfaceContract.infer(data);
+    const rc = await tx.wait();
+    
+    console.log(`Used gas: `, rc.gasUsed);
+
+    const inferResultEvent = rc.events?.find(event => event.event === 'InferResult');
+    if (inferResultEvent) {
+        const result = inferResultEvent.args?.result;
+        const [ res ] = abic.decode(["int64[]"], result);
+        return { res };
+    } else {
+        console.log("Infer result event not found");
+        return {};
+    }
+}
 
 task("generate-melody", "evaluate model for each layer")
     .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
@@ -30,8 +54,11 @@ task("generate-melody", "evaluate model for each layer")
 
         const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await modelRegContract.modelAddr(tokenId);
-        const mldy = await ethers.getContractAt(MelodyRNNContractName, modelAddress, signer);
+        const interfaceAddress = await modelRegContract.modelAddr(tokenId);
+        const interfaceContract = await ethers.getContractAt(OnchainModelContractName, interfaceAddress, signer);        
+        
+        const implementAddress = await interfaceContract.implementation();
+        const implementContract = await ethers.getContractAt(MelodyRNNContractName, implementAddress, signer);
 
         let startTime = new Date().getTime();
 
@@ -40,7 +67,7 @@ task("generate-melody", "evaluate model for each layer")
         //     rands.push(Math.floor(Math.random() * 130)); // integers ranged [0,129]
         // }
 
-        let vocabs: ethers.BigNumber[] = await mldy.getVocabs();
+        let vocabs: ethers.BigNumber[] = await implementContract.getVocabs();
 
         // let rands = [68];
         let rands = [68, 129, 30, 31, 32, 35, 129, 37];
@@ -56,45 +83,12 @@ task("generate-melody", "evaluate model for each layer")
         
         let melody: any[] = [];
         for (let i = 0; i < taskArgs.count; i++) {
-            // let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
-            // const rc = await tx.wait();
-            // console.log("result:", rc);
-
-            // TODO: Fix the task to use tx 
-            // const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
-
-            const tx = await mldy.generateMelody(tokenId, stepLen, x2);
-            const rc = await tx.wait();
-
-            const newMelodyEvent = rc.events?.find(event => event.event === 'NewMelody');
-            let res, states;
-            if (newMelodyEvent) {
-                states = newMelodyEvent.args?.states;
-                res = newMelodyEvent.args?.melody;
-            }
-
-            // get event NewMelody
-            // const newMelody = rc.events?.find(event => event.event === 'NewMelody');
-            // if (newMelody != null) {
-                // const res = newMelody.args?.melody;
-                const notes = res.map((num: ethers.BigNumber) => toInt(num).toNumber());
-                // // prevent repetition at the end
-                // const last = x2.slice(melody.length-stepLen);
-                // let repeated = false;
-                // for (let i = 0; i < last.length; i++) {
-                //     if (last[i].eq(res[i])) {
-                //         repeated = true;
-                //         break;
-                //     }
-                // }
-                // if (repeated) { 
-                //     res[res.length - 1] = ethers.BigNumber.from(String(Math.trunc(Math.floor(Math.random() * 128) * Math.pow(2, 32))));
-                // }
-                x2 = x2.concat(res).slice(stepLen);
-                melody = melody.concat(notes);
-                // sleep for 1s
-                await new Promise(r => setTimeout(r, 1000));
-            // }
+            const { res } = await inferModel(interfaceContract, stepLen, x2);
+            const notes = res.map((num: ethers.BigNumber) => toInt(num).toNumber());
+            x2 = x2.concat(res).slice(stepLen);
+            melody = melody.concat(notes);
+            // sleep for 1s
+            await new Promise(r => setTimeout(r, 1000));
         }
         console.log("generated melody:", melody);
 
