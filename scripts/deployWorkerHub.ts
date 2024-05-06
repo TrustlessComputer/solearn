@@ -15,29 +15,22 @@ async function deployWorkerHub() {
             return config.workerHubAddress;
         })() :
         await (async () => {
-            const treasuryAddress = config.treasuryAddress;
-            assert.ok(
-                treasuryAddress,
-                `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
-            );
-
-            const collectionAddress = config.collectionAddress || ethers.constants.AddressZero;
-
-            const feePercentage = 10;
-            const royaltyPercentage = 10;
-            const minimumStake = ethers.constants.WeiPerEther;
-            const stakeLockingDuration = 0;
-
+            // const treasuryAddress = config.treasuryAddress;
+            // assert.ok(
+            //     treasuryAddress,
+            //     `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
+            // );
 
             const workerHub = await upgrades.deployProxy(
                 WorkerHub,
                 [
-                    treasuryAddress,
-                    collectionAddress,
-                    feePercentage,
-                    royaltyPercentage,
-                    minimumStake,
-                    stakeLockingDuration
+                    ethers.utils.parseEther('100'),
+                    3,
+                    1000000,
+                    ethers.utils.parseEther('100'),
+                    3,
+                    1000000,
+                    1
                 ]
             );
             await workerHub.deployed();

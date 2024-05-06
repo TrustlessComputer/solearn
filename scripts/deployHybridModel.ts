@@ -8,7 +8,7 @@ async function deployHybridModel() {
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
-    const name = 'Futuristic Fragment';//`Model ${identifier}`;
+    const name = 'Multi Max';//`Model ${identifier}`;
     const url = '';//`abc.com/${identifier}`;
     const inferenceCost = ethers.utils.parseEther('100');
 
@@ -18,14 +18,13 @@ async function deployHybridModel() {
             workerHubAddress,
             identifier,
             name,
-            url,
-            inferenceCost
+            url
         ]
     );
     await hybridModel.deployed();
 
     const workerHub = WorkerHub.attach(workerHubAddress);
-    await workerHub.registerModel(hybridModel.address);
+    await workerHub.registerModel(hybridModel.address, 1, inferenceCost);
 
     console.log(`Contract HybridModel has been deployed to address ${hybridModel.address}`);
 

@@ -5,7 +5,7 @@ import {IHeapComparator} from "../lib/heap/IHeapComparator.sol";
 
 import {IInferable} from "./IInferable.sol";
 
-interface IWorkerHub is IInferable, IHeapComparator {
+interface IWorkerHub is IInferable {
     struct Model {
         uint256 modelId;
         uint256 minimumFee;
@@ -23,26 +23,14 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 inferenceId;
         address worker;
         uint40 expiredAt;
+        uint8 index;
         bool accomplished;
-    }
-
-    struct Task {
-        uint256 inferenceId;
-        uint256 value;
-        uint8 workerRequirement;
-    }
-
-    struct Output {
-        bytes data;
-        uint256 validationSubmissions;
-        address minter;
-        uint8 approval;
     }
 
     struct Inference {
         address[] minters;
         address[] validators;
-        Output[] outputs;
+        bytes[] outputs;
         address modelAddress;
         uint256 modelId;
         uint256 value;

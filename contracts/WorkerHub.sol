@@ -5,7 +5,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import {Heap} from "./lib/heap/Heap.sol";
+import {Set} from "./lib/set/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 
 import {WorkerHubStorage} from "./storages/WorkerHubStorage.sol";
@@ -15,8 +15,8 @@ WorkerHubStorage,
 OwnableUpgradeable,
 PausableUpgradeable,
 ReentrancyGuardUpgradeable {
-    using Heap for Heap.AddressHeap;
-    using Heap for Heap.Uint256Heap;
+    using Set for Set.Uint256Set;
+    using Set for Set.AddressSet;
 
     string constant private VERSION = "v0.0.1";
 
@@ -38,20 +38,14 @@ ReentrancyGuardUpgradeable {
         minterMinimumStake = _minterMinimumStake;
         minterRequirement = _minterRequirement;
         mintingTimeLimit = _mintingTimeLimit;
-        mintingAssignmentsFront = 1;
 
         validatorMinimumStake = _validatorMinimumStake;
         validatorRequirement = _validatorRequirement;
         validatingTimeLimit = _validatingTimeLimit;
-        validatingAssignmentsFront = 1;
+
+        minterPivot = 1;
 
         maximumTier = _maximumTier;
-        for (uint256 i = 0; i < _maximumTier; ++i) {
-            minterQueues[i].identifier = int64(uint64(i));
-            validatorQueues[i].identifier = -int64(uint64(i));
-        }
-        mintingTaskQueue.identifier = 1;
-        validatingTaskQueue.identifier = -1;
     }
 
     function version() external pure returns (string memory) {
@@ -76,6 +70,8 @@ ReentrancyGuardUpgradeable {
         minter.stake = msg.value;
         minter.tier = tier;
 
+        minterAddresses.insert(msg.sender);
+
         emit MinterRegistration(msg.sender, tier, msg.value);
     }
 
@@ -88,6 +84,8 @@ ReentrancyGuardUpgradeable {
 
         TransferHelper.safeTransferNative(msg.sender, minter.stake);
         minter.stake = 0;
+
+        minterAddresses.erase(msg.sender);
 
         emit MinterUnregistration(msg.sender);
     }
@@ -109,6 +107,8 @@ ReentrancyGuardUpgradeable {
         validator.stake = msg.value;
         validator.tier = tier;
 
+        validatorAddresses.insert(msg.sender);
+
         emit ValidatorRegistration(msg.sender, tier, msg.value);
     }
 
@@ -121,6 +121,8 @@ ReentrancyGuardUpgradeable {
 
         TransferHelper.safeTransferNative(msg.sender, validator.stake);
         validator.stake = 0;
+
+        validatorAddresses.erase(msg.sender);
 
         emit ValidatorUnregistration(msg.sender);
     }
@@ -160,40 +162,47 @@ ReentrancyGuardUpgradeable {
         inference.value = msg.value;
         inference.creator = _creator;
         inference.modelId = model.modelId;
+        inference.outputs = new bytes[](minterRequirement);
 
-        uint256 taskId = ++taskNumber;
-        Task storage task = tasks[taskId];
-        task.inferenceId = inferenceId;
-        task.workerRequirement = minterRequirement;
+        uint256 minterNumber = minterAddresses.size();
+        for (uint256 i = 1; i <= minterRequirement; ++i) {
+            minterPivot++;
+            if (minterPivot > minterNumber) minterPivot = 1;
+            uint256 assignmentId = ++mintingAssignmentNumber;
+            address minter = minterAddresses.values[minterPivot];
+            mintingAssignments[assignmentId] = Assignment(
+                inferenceId,
+                minter,
+                uint40(block.timestamp + mintingTimeLimit),
+                uint8(i),
+                false
+            );
+            inference.minters.push(minter);
+            assignmentsByMinters[msg.sender].insert(assignmentId);
+        }
 
         emit NewInference(inferenceId, _creator, msg.value);
-
-        _processMintingTasks();
 
         return inferenceId;
     }
 
-    function compareAddress(address _a, address _b, int64 _identifier) external view returns (bool) {
-        return _identifier > 0 ? _compareMinter(_a, _b) : _compareValidator(_a, _b);
+    function getMinterAssignment() external view returns (uint256) {
+        Worker storage minter = minters[msg.sender];
+        if (minter.tier == 0) revert NotRegistered();
+        if (assignmentsByMinters[msg.sender].isEmpty()) {
+            return 0;
+        } else {
+            return assignmentsByMinters[msg.sender].values[0];
+        }
     }
 
-    function compareUint256(uint256 _a, uint256 _b, int64 _identifier) external view returns (bool) {
-        return _compareTask(_a, _b);
+    function getInferenceOutput(uint256 _inferenceId) external view returns (bytes memory) {
+        return inferences[_inferenceId].outputs[0];
     }
 
-    function _compareMinter(address _minter1, address _minter2) private view returns (bool) {
-        return minters[_minter1].commission < minters[_minter2].commission;
-    }
-
-    function _compareValidator(address _validator1, address _validator2) private view returns (bool) {
-        return validators[_validator1].commission < validators[_validator2].commission;
-    }
-
-    function _compareTask(uint256 _taskId1, uint256 _taskId2) private view returns (bool) {
-        return tasks[_taskId1].value > tasks[_taskId2].value;
-    }
-
-    function _processMintingTasks() private {
-
+    function submitOutput(uint256 _assignmentId, bytes calldata _output) external {
+        Assignment storage assignment = mintingAssignments[_assignmentId];
+        if (msg.sender != assignment.worker) revert Unauthorized();
+        inferences[assignment.inferenceId].outputs[assignment.index] = _output;
     }
 }
