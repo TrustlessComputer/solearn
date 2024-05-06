@@ -4,60 +4,58 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
-import {IHybridModel} from "./interfaces/IHybridModel.sol";
-import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
+import {Heap} from "./lib/heap/Heap.sol";
+import {TransferHelper} from "./lib/TransferHelper.sol";
 
-abstract contract WorkerHubStorage is IWorkerHub {
-    mapping(address => bool) public isModel;
-    mapping(address => Worker) internal workers;
-    mapping(uint256 => Inference) internal inferences;
-    mapping(uint256 => UnstakeRequest) internal unstakeRequests;
-
-    uint256 public inferenceNumber;
-    uint256 public unstakeRequestNumber;
-    uint256 public minimumStake;
-
-    uint8 public feePercentage;
-    uint8 public royaltyPercentage;
-    uint40 public stakeLockingDuration;
-
-    address public treasury;
-    address public collection;
-
-    uint256[50] private __gap;
-}
+import {WorkerHubStorage} from "./storages/WorkerHubStorage.sol";
 
 contract WorkerHub is
 WorkerHubStorage,
 OwnableUpgradeable,
 PausableUpgradeable,
 ReentrancyGuardUpgradeable {
+    using Heap for Heap.AddressHeap;
+    using Heap for Heap.Uint256Heap;
+
+    string constant private VERSION = "v0.0.1";
+
+    receive() external payable {}
+
     function initialize(
-        address _treasury,
-        address _collection,
-        uint8 _feePercentage,
-        uint8 _royaltyPercentage,
-        uint256 _minimumStake,
-        uint40 _stakeLockingDuration
+        uint256 _minterMinimumStake,
+        uint8 _minterRequirement,
+        uint40 _mintingTimeLimit,
+        uint256 _validatorMinimumStake,
+        uint8 _validatorRequirement,
+        uint40 _validatingTimeLimit,
+        uint16 _maximumTier
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
-        if (_feePercentage + _royaltyPercentage > 100) revert ConflictedPercentage();
+        minterMinimumStake = _minterMinimumStake;
+        minterRequirement = _minterRequirement;
+        mintingTimeLimit = _mintingTimeLimit;
+        mintingAssignmentsFront = 1;
 
-        treasury = _treasury;
-        collection = _collection;
-        feePercentage = _feePercentage;
-        royaltyPercentage = _royaltyPercentage;
-        minimumStake = _minimumStake;
-        stakeLockingDuration = _stakeLockingDuration;
+        validatorMinimumStake = _validatorMinimumStake;
+        validatorRequirement = _validatorRequirement;
+        validatingTimeLimit = _validatingTimeLimit;
+        validatingAssignmentsFront = 1;
+
+        maximumTier = _maximumTier;
+        for (uint256 i = 0; i < _maximumTier; ++i) {
+            minterQueues[i].identifier = int64(uint64(i));
+            validatorQueues[i].identifier = -int64(uint64(i));
+        }
+        mintingTaskQueue.identifier = 1;
+        validatingTaskQueue.identifier = -1;
     }
 
     function version() external pure returns (string memory) {
-        return "v0.0.1";
+        return VERSION;
     }
 
     function pause() external onlyOwner whenNotPaused {
@@ -68,352 +66,134 @@ ReentrancyGuardUpgradeable {
         _unpause();
     }
 
-    function updateTreasury(address _treasury) external onlyOwner {
-        treasury = _treasury;
-        emit TreasuryUpdate(_treasury);
+    function registerMinter(uint16 tier) external payable {
+        if (tier == 0 || tier > maximumTier) revert InvalidTier();
+        if (msg.value < minterMinimumStake) revert StakeTooLow();
+
+        Worker storage minter = minters[msg.sender];
+        if (minter.tier != 0) revert AlreadyRegistered();
+
+        minter.stake = msg.value;
+        minter.tier = tier;
+
+        emit MinterRegistration(msg.sender, tier, msg.value);
     }
 
-    function updateCollection(address _collection) external onlyOwner {
-        collection = _collection;
-        emit CollectionUpdate(_collection);
+    function unregisterMinter() external nonReentrant {
+        Worker storage minter = minters[msg.sender];
+        if (minter.tier == 0) revert NotRegistered();
+        if (minter.currentTaskId != 0) revert MintingSessionNotEnded();
+
+        minter.tier = 0;
+
+        TransferHelper.safeTransferNative(msg.sender, minter.stake);
+        minter.stake = 0;
+
+        emit MinterUnregistration(msg.sender);
     }
 
-    function updateFeePercentage(uint8 _feePercentage) external onlyOwner {
-        feePercentage = _feePercentage;
-        emit FeePercentageUpdate(_feePercentage);
+    function increaseMinterStake() external payable {
+        Worker storage minter = minters[msg.sender];
+        if (minter.tier == 0) revert NotRegistered();
+        minter.stake += msg.value;
+        emit MinterExtraStake(msg.sender, msg.value);
     }
 
-    function updateRoyaltyPercentage(uint8 _royaltyPercentage) external onlyOwner {
-        royaltyPercentage = _royaltyPercentage;
-        emit RoyaltyPercentageUpdate(_royaltyPercentage);
+    function registerValidator(uint16 tier) external payable {
+        if (tier == 0 || tier > maximumTier) revert InvalidTier();
+        if (msg.value < validatorMinimumStake) revert StakeTooLow();
+
+        Worker storage validator = validators[msg.sender];
+        if (validator.tier != 0) revert AlreadyRegistered();
+
+        validator.stake = msg.value;
+        validator.tier = tier;
+
+        emit ValidatorRegistration(msg.sender, tier, msg.value);
     }
 
-    function updateMinimumStake(uint256 _minimumStake) external onlyOwner {
-        minimumStake = _minimumStake;
-        emit MinimumStakeUpdate(_minimumStake);
+    function unregisterValidator() external nonReentrant {
+        Worker storage validator = validators[msg.sender];
+        if (validator.tier == 0) revert NotRegistered();
+        if (validator.currentTaskId != 0) revert ValidatingSessionNotEnded();
+
+        validator.tier = 0;
+
+        TransferHelper.safeTransferNative(msg.sender, validator.stake);
+        validator.stake = 0;
+
+        emit ValidatorUnregistration(msg.sender);
     }
 
-    function updateStakeLockingDuration(uint40 _stakeLockingDuration) external onlyOwner {
-        stakeLockingDuration = _stakeLockingDuration;
-        emit StakeLockingDurationUpdate(_stakeLockingDuration);
+    function increaseValidatorStake() external payable {
+        Worker storage validator = validators[msg.sender];
+        if (validator.tier == 0) revert NotRegistered();
+        validator.stake += msg.value;
+        emit ValidatorExtraStake(msg.sender, msg.value);
     }
 
-    function registerModel(address _model) external onlyOwner {
-        if (isModel[_model]) revert AlreadyRegistered();
-
-        isModel[_model] = true;
-
-        emit ModelRegistration(_model);
+    function registerModel(address _model, uint16 _tier, uint256 _minimumFee) external onlyOwner returns (uint256) {
+        Model storage model = models[_model];
+        if (model.modelId != 0) revert AlreadyRegistered();
+        uint256 modelId = ++modelNumber;
+        model.modelId = modelId;
+        model.minimumFee = _minimumFee;
+        model.tier = _tier;
+        emit ModelRegistration(_model, modelId, _tier, _minimumFee);
+        return modelId;
     }
 
-    function unregisterModel(address _model) external onlyOwner {
-        if (!isModel[_model]) revert NotRegistered();
-
-        isModel[_model] = false;
-
+    function unregisterModel(address _model) external {
+        Model storage model = models[_model];
+        if (model.modelId == 0) revert NotRegistered();
+        model.modelId = 0;
         emit ModelUnregistration(_model);
     }
 
-    function authorizeWorker(address _worker) external onlyOwner {
-        workers[_worker].isAuthorized = true;
-
-        emit WorkerAuthorization(_worker);
-    }
-
-    function unauthorizeWorker(address _worker) external onlyOwner {
-        workers[_worker].isAuthorized = false;
-
-        emit WorkerUnauthorization(_worker);
-    }
-
-    function getInference(uint256 _inferenceId) external view returns (Inference memory) {
-        if (_inferenceId == 0 || _inferenceId > inferenceNumber) revert InvalidInferenceId();
-        return inferences[_inferenceId];
-    }
-
-    function getInferences() external view returns (Inference[] memory) {
-        Inference[] memory result = new Inference[](inferenceNumber);
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            result[i] = inferences[i];
-        }
-        return result;
-    }
-
-    function getUnresolvedInferences() external view returns (UnresolvedInference[] memory) {
-        uint256 counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (!inferences[i].isResolved) {
-                counter++;
-            }
-        }
-        UnresolvedInference[] memory result = new UnresolvedInference[](counter);
-        counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (!inferences[i].isResolved) {
-                Inference memory inference = inferences[i];
-                result[counter++] = UnresolvedInference(
-                    i,
-                    inference.value,
-                    inference.data,
-                    inference.model,
-                    inference.creator
-                );
-            }
-        }
-
-        return result;
-    }
-
-    function getIndividualInferences(address _account) external view returns (Inference[] memory) {
-        uint256 counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (inferences[i].creator == _account) {
-                counter++;
-            }
-        }
-
-        Inference[] memory result = new Inference[](counter);
-        counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (inferences[i].creator == _account) {
-                result[counter++] = inferences[i];
-            }
-        }
-
-        return result;
-    }
-
-    function getIndividualUnresolvedInferences(address _account) external view returns (UnresolvedInference[] memory) {
-        uint256 counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (!inferences[i].isResolved && inferences[i].creator == _account) {
-                counter++;
-            }
-        }
-
-        UnresolvedInference[] memory result = new UnresolvedInference[](counter);
-        counter = 0;
-            for (uint256 i = 1; i <= inferenceNumber; ++i) {
-                if (!inferences[i].isResolved && inferences[i].creator == _account) {
-                    Inference memory inference = inferences[i];
-                    result[counter++] = UnresolvedInference(
-                        i,
-                        inference.value,
-                        inference.data,
-                        inference.model,
-                        inference.creator
-                    );
-                }
-            }
-
-        return result;
-    }
-
-    function getModelInferences(address _model) external view returns (Inference[] memory) {
-        uint256 counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (inferences[i].model == _model) {
-                counter++;
-            }
-        }
-
-        Inference[] memory result = new Inference[](counter);
-        counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (inferences[i].model == _model) {
-                result[counter++] = inferences[i];
-            }
-        }
-
-        return result;
-    }
-
-    function getModelUnresolvedInferences(address _model) external view returns (UnresolvedInference[] memory) {
-        uint256 counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (!inferences[i].isResolved && inferences[i].model == _model) {
-                counter++;
-            }
-        }
-
-        UnresolvedInference[] memory result = new UnresolvedInference[](counter);
-        counter = 0;
-        for (uint256 i = 1; i <= inferenceNumber; ++i) {
-            if (!inferences[i].isResolved && inferences[i].model == _model) {
-                Inference memory inference = inferences[i];
-                result[counter++] = UnresolvedInference(
-                    i,
-                    inference.value,
-                    inference.data,
-                    inference.model,
-                    inference.creator
-                );
-            }
-        }
-
-        return result;
-    }
-
-    function getWorker(address _worker) external view returns (Worker memory) {
-        return workers[_worker];
-    }
-
-    function getUnstakeRequest(uint256 _requestId) external view returns (UnstakeRequest memory) {
-        return unstakeRequests[_requestId];
-    }
-
-    function getIndividualUnstakeRequests(address _account) external view returns (UnstakeRequest[] memory) {
-        uint256 counter = 0;
-        for (uint256 i = 1; i <= unstakeRequestNumber; ++i) {
-            if (unstakeRequests[i].worker == _account) {
-                counter++;
-            }
-        }
-
-        UnstakeRequest[] memory result = new UnstakeRequest[](counter);
-        counter = 0;
-        for (uint256 i = 1; i <= unstakeRequestNumber; ++i) {
-            if (unstakeRequests[i].worker == _account) {
-                result[counter++] = unstakeRequests[i];
-            }
-        }
-
-        return result;
-    }
-
-    function getIndividualWithdrawableUnstakeRequests(address _account) external view returns (UnstakeRequest[] memory) {
-        uint256 counter = 0;
-        for (uint256 i = 1; i <= unstakeRequestNumber; ++i) {
-            if (unstakeRequests[i].worker == _account
-                && unstakeRequests[i].unlockedAt <= block.timestamp
-                && !unstakeRequests[i].isWithdrawn) {
-                counter++;
-            }
-        }
-
-        UnstakeRequest[] memory result = new UnstakeRequest[](counter);
-        counter = 0;
-        for (uint256 i = 1; i <= unstakeRequestNumber; ++i) {
-            if (unstakeRequests[i].worker == _account
-                && unstakeRequests[i].unlockedAt <= block.timestamp
-                && !unstakeRequests[i].isWithdrawn) {
-                result[counter++] = unstakeRequests[i];
-            }
-        }
-
-        return result;
-    }
-
-    function stake() external payable whenNotPaused {
-        if (!workers[msg.sender].isAuthorized) revert Unauthorized();
-
-        workers[msg.sender].stakedValue += msg.value;
-
-        emit Stake(msg.sender, msg.value);
-    }
-
-    function requestUnstake(uint256 _value) external whenNotPaused {
-        uint256 stakedValue = workers[msg.sender].stakedValue;
-        if (_value > stakedValue) revert InsufficientFunds();
-
-        unchecked {
-            workers[msg.sender].stakedValue = stakedValue - _value;
-
-            uint256 requestId = ++unstakeRequestNumber;
-
-            unstakeRequests[unstakeRequestNumber] = UnstakeRequest(
-                _value,
-                msg.sender,
-                uint40(block.timestamp) + stakeLockingDuration,
-                false
-            );
-
-            emit NewUnstakeRequest(
-                requestId,
-                msg.sender,
-                _value
-            );
-        }
-    }
-
-    function unstake(uint256[] calldata _requestIds) external nonReentrant whenNotPaused {
-        uint256 totalStake;
-
-        unchecked {
-            for (uint256 i = 0; i < _requestIds.length; ++i) {
-                UnstakeRequest storage unstakeRequest = unstakeRequests[_requestIds[i]];
-                if (unstakeRequest.worker != msg.sender) revert Unauthorized();
-                if (unstakeRequest.unlockedAt > block.timestamp) revert StakeIsNotUnlockedYet();
-                if (unstakeRequest.isWithdrawn) revert RequestIsAlreadyWithdrawn();
-                totalStake += unstakeRequest.value;
-                unstakeRequest.isWithdrawn = true;
-            }
-        }
-
-        (bool success, ) = msg.sender.call{value: totalStake}("");
-        if (!success) revert FailedTransfer();
-
-        emit Unstake(msg.sender, _requestIds);
-    }
-
-    function infer(bytes calldata _data, uint256 _modelId, address _creator) external payable whenNotPaused returns (uint256) {
-        if (!isModel[msg.sender]) revert Unauthorized();
-
+    function infer(bytes calldata _input, address _creator) external payable returns (uint256) {
+        Model storage model = models[msg.sender];
+        if (model.tier == 0) revert Unauthorized();
+        if (msg.value < model.minimumFee) revert FeeTooLow();
         uint256 inferenceId = ++inferenceNumber;
-        inferences[inferenceId] = Inference(
-            msg.value,
-            _modelId,
-            _data,
-            '',
-            false,
-            msg.sender,
-            _creator,
-            address(0)
-        );
+        Inference storage inference = inferences[inferenceId];
+        inference.input = _input;
+        inference.value = msg.value;
+        inference.creator = _creator;
+        inference.modelId = model.modelId;
 
-        emit NewInference(inferenceId, _creator);
+        uint256 taskId = ++taskNumber;
+        Task storage task = tasks[taskId];
+        task.inferenceId = inferenceId;
+        task.workerRequirement = minterRequirement;
+
+        emit NewInference(inferenceId, _creator, msg.value);
+
+        _processMintingTasks();
 
         return inferenceId;
     }
 
-    function submitResult(uint256 _inferenceId, bytes calldata _result) external nonReentrant whenNotPaused {
-        if (_inferenceId == 0 || _inferenceId > inferenceNumber) revert InvalidInferenceId();
-        if (feePercentage + royaltyPercentage > 100) revert ConflictedPercentage();
+    function compareAddress(address _a, address _b, int64 _identifier) external view returns (bool) {
+        return _identifier > 0 ? _compareMinter(_a, _b) : _compareValidator(_a, _b);
+    }
 
-        Inference storage inference = inferences[_inferenceId];
-        if (inference.isResolved) revert InferenceIsAlreadyResolved();
+    function compareUint256(uint256 _a, uint256 _b, int64 _identifier) external view returns (bool) {
+        return _compareTask(_a, _b);
+    }
 
-        Worker memory worker = workers[msg.sender];
-        if (!worker.isAuthorized) revert Unauthorized();
-        if (worker.stakedValue < minimumStake) revert NotEnoughStake();
+    function _compareMinter(address _minter1, address _minter2) private view returns (bool) {
+        return minters[_minter1].commission < minters[_minter2].commission;
+    }
 
-        inference.result = _result;
-        inference.isResolved = true;
-        inference.worker = msg.sender;
+    function _compareValidator(address _validator1, address _validator2) private view returns (bool) {
+        return validators[_validator1].commission < validators[_validator2].commission;
+    }
 
-        unchecked {
-            uint256 value = inference.value;
-            uint256 fee = value * feePercentage / 100;
-            uint256 reward = value - fee;
-            bool success;
-            (success, ) = treasury.call{value: fee}("");
-            if (!success) revert FailedTransfer();
+    function _compareTask(uint256 _taskId1, uint256 _taskId2) private view returns (bool) {
+        return tasks[_taskId1].value > tasks[_taskId2].value;
+    }
 
-            if (collection != address(0)) {
-                uint256 modelIdentifier = IHybridModel(inference.model).identifier();
-                if (modelIdentifier != 0) {
-                    address modelOwner = IERC721Upgradeable(collection).ownerOf(modelIdentifier);
-                    uint256 royalty = value * royaltyPercentage / 100;
-                    reward -= royalty;
-                    (success, ) = modelOwner.call{value: royalty}("");
-                    if (!success) revert FailedTransfer();
-                }
-            }
+    function _processMintingTasks() private {
 
-            (success, ) = msg.sender.call{value: reward}("");
-            if (!success) revert FailedTransfer();
-
-            emit ResultSubmission(_inferenceId, msg.sender);
-        }
     }
 }
