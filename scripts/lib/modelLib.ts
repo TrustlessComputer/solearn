@@ -229,7 +229,6 @@ export async function uploadModelWeights(model: ethers.Contract, weights: ethers
         return _w.splice(0, maxlen);
     }
     
-    let tokenId = ethers.BigNumber.from(0); // placeholder
     for (let i = 0; i < MaxLayerType; ++i) {
         const totSize = weights[i].map(arr => arr.length).reduce((a, b) => a + b, 0);
         if (totSize === 0) continue;
@@ -237,28 +236,33 @@ export async function uploadModelWeights(model: ethers.Contract, weights: ethers
 
         for (let wi = 0; wi < weights[i].length; ++wi) {
             for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {                   
-                const appendWeightTx = await model.appendWeights(tokenId, temp, wi, i);
+                const appendWeightTx = await model.appendWeights(temp, wi, i);
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);                
-                const receipt = await appendWeightTx.wait(2);
-                // checkForDeployedModel(receipt);
+                const receipt = await appendWeightTx.wait();
+                console.log('Gas used:', receipt.gasUsed);
             }
         }
     }
 }
 
-export async function mintModel(modelReg: ethers.Contract, model: ethers.Contract, modelOwner: string, mintConfig: any) {  
-    const modelUri = ""; // unused
-    const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
-        const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
-        if (deployedEvent != null) {
-            const owner = deployedEvent.args?.owner;
-            const tokenId = deployedEvent.args?.tokenId;
-            console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-        }
-    }
+export async function mintModel(
+    modelReg: ethers.Contract,
+    model: ethers.Contract,
+    owner: string,
+    mintConfig: any
+) {  
+    // const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
+    //     const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
+    //     if (deployedEvent != null) {
+    //         const owner = deployedEvent.args?.owner;
+    //         const tokenId = deployedEvent.args?.tokenId;
+    //         console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+    //     }
+    // }
 
     try {
-        const tx = await modelReg.safeMint(modelOwner, modelUri, model.address, {...mintConfig, gasLimit: 1_000_000 });
+        const modelUri = ""; // unused
+        const tx = await modelReg.safeMint(owner, modelUri, model.address, {...mintConfig, gasLimit: 1_000_000 });
         const rc = await tx.wait();
         // listen for Transfer event
         const transferEvent = rc.events?.find((event: ethers.Event) => event.event === 'Transfer');
@@ -269,7 +273,7 @@ export async function mintModel(modelReg: ethers.Contract, model: ethers.Contrac
             console.log("tx:", tx.hash);
             console.log(`Minted new on-chain model, to=${to}, tokenId=${tokenId}`);
         }
-        checkForDeployedModel(rc);
+        // checkForDeployedModel(rc);
     } catch (e) {
         console.error("Error minting model: ", e);
         throw e;

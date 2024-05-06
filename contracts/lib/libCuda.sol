@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { Float32x32 } from "./Float32x32/Lib32x32.sol";
-import {Utils} from "./Utils.sol";
-import "hardhat/console.sol";
+import {SD59x18, sd} from "@prb/math/src/SD59x18.sol";
+import {Float32x32} from "./Float32x32/Lib32x32.sol";
 
 library CUDA {
-    event TestGemm(uint n, uint m, uint p);
-
     address constant CUDA_ADD = 0x0000000000000000000000000000000000000021;
     address constant CUDA_SUB = 0x0000000000000000000000000000000000000022;
     address constant CUDA_MUL = 0x0000000000000000000000000000000000000023;
@@ -25,9 +22,9 @@ library CUDA {
     address constant CUDA_SQRT = 0x000000000000000000000000000000000000002F;
 
     uint8 constant _32BIT_SIGN_INT_MAT_TYPE = 4;
+    uint8  constant _64BIT_SIGN_INT_MAT_TYPE_FIXED = 7;
     uint8 constant _32BIT_FLOAT_MAT_TYPE = 5;
     uint8  constant _64BIT_FLOAT_MAT_TYPE = 6;
-
 
     /*uint8 matTypeInBit = 4;
         uint8 matInputTypeSize = 32;
@@ -40,7 +37,7 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function addSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    function addFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_ADD.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
@@ -54,12 +51,12 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function subSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function subFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_SUB.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
     function mul(int[][] memory mat1, int[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
@@ -68,12 +65,12 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function mulSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function mulFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_MUL.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
     function div(int[][] memory mat1, int[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
@@ -82,12 +79,12 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function divSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function divFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_DIV.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
     function gemm(int[][] memory mat1, int[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
@@ -96,10 +93,9 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function gemmSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    function gemmFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
-        emit TestGemm(mat1.length, mat1[0].length, mat2[0].length);
         (, bytes memory matData) = CUDA_GEMM.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
     }
@@ -110,11 +106,11 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function absSD59x18(Float32x32[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
+    /*function absFloat32x32(Float32x32[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_ABS.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
     function bitwiseAnd(int[][] memory mat1, int[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
@@ -123,12 +119,12 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function bitwiseAndSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function bitwiseAndFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_BITWISE_AND.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
     function bitwiseNot(int[][] memory mat1, int[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
@@ -137,12 +133,12 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function bitwiseNotSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function bitwiseNotFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_BITWISE_NOT.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
     function bitwiseOr(int[][] memory mat1, int[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
@@ -190,49 +186,49 @@ library CUDA {
         (result) = abi.decode(matData, (int[][]));
     }
 
-    function bitwiseOrSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function bitwiseOrFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_BITWISE_OR.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
-    function bitwiseXorSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function bitwiseXorFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_BITWISE_XOR.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
-    function expSD59x18(Float32x32[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
+    /*function expFloat32x32(Float32x32[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_EXP.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
-    function logSD59x18(Float32x32[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
+    /*function logFloat32x32(Float32x32[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_LOG.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
-    function maxSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function maxFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_MAX.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
-    function minSD59x18(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
+    /*function minFloat32x32(Float32x32[][] memory mat1, Float32x32[][] memory mat2, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize)
     internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_MIN.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat1, mat2));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 
-    function sqrtSD59x18(Float32x32[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
+    /*function sqrtFloat32x32(Float32x32[][] memory mat, uint8 matTypeInBit, uint8 matInputTypeSize, uint8 matOutputTypeSize) internal
     returns (Float32x32[][] memory result) {
         (, bytes memory matData) = CUDA_SQRT.call(abi.encode(matTypeInBit, matInputTypeSize, matOutputTypeSize, mat));
         (result) = abi.decode(matData, (Float32x32[][]));
-    }
+    }*/
 }

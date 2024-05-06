@@ -8,8 +8,6 @@ import "../tensors-cuda/Tensor3DMethods.sol";
 import "../tensors-cuda/Tensor4DMethods.sol";
 import { Float32x32, fromInt, toInt } from "./../Float32x32/Lib32x32.sol";
 
-// import "hardhat/console.sol";
-
 error TooMuchData();
 
 library Layers {
@@ -18,9 +16,40 @@ library Layers {
 	using Tensor3DMethods for Tensors.Tensor3D;
 	using Tensor4DMethods for Tensors.Tensor4D;
 
+	enum LayerType {
+        Input,
+        Dense,
+        Flatten,
+        Rescale,
+        MaxPooling2D,
+        Conv2D,
+        Embedding,
+        SimpleRNN,
+        LSTM
+    }
+
+	enum InputType {
+		Image,
+		Token,
+		Scalar
+	}
+    
 	struct SingleLayerConfig {
 		bytes conf;
 		uint256 ind;
+	}
+
+	struct InputImageLayer {
+		uint layerIndex;
+		uint[3] inputDim;
+	}
+
+	struct InputTokenLayer {
+		uint layerIndex;
+	}
+
+	struct InputScalarLayer {
+		uint layerIndex;
 	}
 
 	struct RescaleLayer {
@@ -163,7 +192,7 @@ library Layers {
 	function forward(LSTM memory layer, Float32x32[] memory _x, Float32x32[][] memory states) internal returns (Float32x32[][] memory, Float32x32[][] memory) {
 		Float32x32[][] memory res = new Float32x32[][](1);
 		// TODO: check
-		Float32x32[] memory x = new Float32x32[](layer.cell.units);
+		Float32x32[] memory x = new Float32x32[](layer.inputUnits);
 		for (uint i = 0; i < _x.length; i++) {
 			x[i] = _x[i];
 		}
@@ -222,13 +251,23 @@ library Layers {
 		return zt.mat;
 	}
 
+	function forward(DenseLayer memory layer, Float32x32[][] memory x) internal returns (Float32x32[][] memory) {
+		Tensors.Tensor2D memory xt = Tensor2DMethods.from(x);
+		Tensors.Tensor2D memory wt = layer.w;
+		Tensors.Tensor1D memory bt = layer.b;
+		Tensors.Tensor2D memory y = xt.matMul(wt).add(bt);
+		Tensors.Tensor2D memory zt = y.activation(layer.activation);
+
+		return zt.mat;
+	}
+
 	function forward(MaxPooling2DLayer memory layer, Float32x32[][][] memory x) internal pure returns (Float32x32[][][] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
 		Tensors.Tensor3D memory yt = xt.maxPooling2D(layer.stride, layer.size, layer.padding);
 		return yt.mat;
 	}
 
-	function forward(Conv2DLayer memory layer, Float32x32[][][] memory x) internal pure returns (Float32x32[][][] memory) {
+	function forward(Conv2DLayer memory layer, Float32x32[][][] memory x) internal view returns (Float32x32[][][] memory) {
 		Tensors.Tensor3D memory xt = Tensor3DMethods.from(x);
 		Tensors.Tensor4D memory wt = layer.w;
 		Tensors.Tensor1D memory bt = layer.b;
@@ -506,7 +545,7 @@ library Layers {
 		return idx;
 	}
 
-	function makeDenseLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (DenseLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
+	function makeDenseLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (DenseLayer memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 d) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint256)
@@ -515,16 +554,17 @@ library Layers {
 			slc.ind,
 			Tensors.ActivationFunc(actv),
 			d,
-			Tensor2DMethods.emptyTensor(dim, d),
+			Tensor2DMethods.emptyTensor(dim[0], d),
 			Tensor1DMethods.emptyTensor(d),
 			0,
 			0
 		);
-		out_dim = d;
+		out_dim = new uint[](1);
+		out_dim[0] = d;
 		requiredWeights = layer.w.count() + layer.b.count();
 	}
 
-	function makeLSTMLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (LSTM memory layer, uint256 out_dim, uint256 requiredWeights) {
+	function makeLSTMLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (LSTM memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint8 ractv, uint256 numUnits, uint256 numInputs) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint8, uint256, uint256)
@@ -535,8 +575,7 @@ library Layers {
 			Layers.LSTMCell(
 				numUnits,
 				Tensors.ActivationFunc(actv),
-				Tensors.ActivationFunc(ractv),
-				
+				Tensors.ActivationFunc(ractv),				
 				Tensor2DMethods.zerosTensor(numInputs, numUnits),
 				Tensor2DMethods.zerosTensor(numInputs, numUnits),
 				Tensor2DMethods.zerosTensor(numInputs, numUnits),
@@ -553,16 +592,18 @@ library Layers {
 			0,
 			0
 		);
-		out_dim = numUnits;
+		out_dim = new uint[](1);
+		out_dim[0] = numUnits;
 		requiredWeights = 4 * numInputs * numUnits + 4 * numUnits * numUnits + 4 * numUnits;
 	}
 
-	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (FlattenLayer memory layer, uint256 out_dim) {
+	function makeFlattenLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (FlattenLayer memory layer, uint256[] memory out_dim) {
 		layer = FlattenLayer(slc.ind);
-		out_dim = dim[0] * dim[1] * dim[2];
+		out_dim = new uint256[](1);
+		out_dim[0] = dim[0] * dim[1] * dim[2];
 	}
 
-	function makeRescaleLayer(SingleLayerConfig memory slc) internal pure returns (RescaleLayer memory layer) {
+	function makeRescaleLayer(SingleLayerConfig memory slc) internal returns (RescaleLayer memory layer) {
 		(, Float32x32 scale, Float32x32 offset) = abi.decode(
 			slc.conf,
 			(uint8, Float32x32, Float32x32)
@@ -574,7 +615,7 @@ library Layers {
 		);
 	}
 
-	function makeMaxPooling2DLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (MaxPooling2DLayer memory layer, uint256[3] memory out_dim) {
+	function makeMaxPooling2DLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (MaxPooling2DLayer memory layer, uint256[] memory out_dim) {
 		(, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
 			slc.conf,
 			(uint8, uint256[2], uint256[2], uint8)
@@ -586,16 +627,19 @@ library Layers {
 			Tensors.PaddingType(padding)
 		);
  		uint256[2] memory out;
-    (out, ) = Tensors.getConvSize(
+    	(out, ) = Tensors.getConvSize(
 			[dim[0], dim[1]],
 			size,
 			stride,
 			Tensors.PaddingType(padding)
 		);
-		out_dim = [out[0], out[1], dim[2]];
+		out_dim = new uint[](3);
+		out_dim[0] = out[0];
+		out_dim[1] = out[1];
+		out_dim[2] = dim[2];
 	}
 
-	function makeConv2DLayer(SingleLayerConfig memory slc, uint256[3] memory dim) internal pure returns (Conv2DLayer memory layer, uint256[3] memory out_dim, uint256 requiredWeights) {
+	function makeConv2DLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (Conv2DLayer memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 filters, uint256[2] memory size, uint256[2] memory stride, uint8 padding) = abi.decode(
 				slc.conf,
 				(uint8, uint8, uint256, uint256[2], uint256[2], uint8)
@@ -619,11 +663,14 @@ library Layers {
 			stride,
 			Tensors.PaddingType(padding)
 		);
-		out_dim = [out[0], out[1], filters];
-		requiredWeights = layer.w.count() + layer.b.count();
+		out_dim = new uint[](3);
+		out_dim[0] = out[0];
+		out_dim[1] = out[1];
+		out_dim[2] = filters;
+		requiredWeights = size[0] * size[1] * dim[2] * filters + filters;
 	}
 
-	function makeEmbeddingLayer(SingleLayerConfig memory slc) internal pure returns (EmbeddingLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
+	function makeEmbeddingLayer(SingleLayerConfig memory slc) internal pure returns (EmbeddingLayer memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint256 inputDim, uint256 outputDim) = abi.decode(
 			slc.conf,
 			(uint8, uint256, uint256)
@@ -636,11 +683,12 @@ library Layers {
 			0,
 			0
 		);
-		out_dim = outputDim;
+		out_dim = new uint[](1);
+		out_dim[0] = outputDim;
 		requiredWeights = layer.w.count();
 	}
 
-	function makeSimpleRNNLayer(SingleLayerConfig memory slc, uint256 dim) internal pure returns (SimpleRNNLayer memory layer, uint256 out_dim, uint256 requiredWeights) {
+	function makeSimpleRNNLayer(SingleLayerConfig memory slc, uint256[] memory dim) internal pure returns (SimpleRNNLayer memory layer, uint256[] memory out_dim, uint256 requiredWeights) {
 		(, uint8 actv, uint256 units) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint256)
@@ -649,13 +697,47 @@ library Layers {
 			slc.ind,
 			units,
 			Tensors.ActivationFunc(actv),
-			Tensor2DMethods.emptyTensor(dim, units),
+			Tensor2DMethods.emptyTensor(dim[0], units),
 			Tensor2DMethods.emptyTensor(units, units),
 			Tensor1DMethods.emptyTensor(units),
 			0,
 			0
 		);
-		out_dim = units;
+		out_dim = new uint[](1);
+		out_dim[0] = units;
 		requiredWeights = layer.wx.count() + layer.wh.count() + layer.b.count();
+	}
+
+	function makeInputImageLayer(SingleLayerConfig memory slc) internal pure returns (InputImageLayer memory layer, uint256[] memory out_dim) {
+		uint[3] memory ipd_dim;
+		(, , ipd_dim) = abi.decode(
+			slc.conf,
+			(uint8, uint8, uint256[3])
+		);
+		layer = Layers.InputImageLayer(
+			slc.ind,
+			ipd_dim
+		);
+		// console.log(ipd_dim[0], ipd_dim[1], ipd_dim[2]);
+		out_dim = new uint[](3);
+		out_dim[0] = ipd_dim[0];
+		out_dim[1] = ipd_dim[1];
+		out_dim[2] = ipd_dim[2];
+	}
+	
+	function makeInputTokenLayer(SingleLayerConfig memory slc) internal pure returns (InputTokenLayer memory layer, uint256[] memory out_dim) {
+		layer = Layers.InputTokenLayer(
+			slc.ind
+		);
+		out_dim = new uint[](1);
+		out_dim[0] = 1;
+	}
+	
+	function makeInputScalarLayer(SingleLayerConfig memory slc) internal pure returns (InputScalarLayer memory layer, uint256[] memory out_dim) {
+		layer = Layers.InputScalarLayer(
+			slc.ind
+		);
+		out_dim = new uint[](1);
+		out_dim[0] = 1;
 	}
 }

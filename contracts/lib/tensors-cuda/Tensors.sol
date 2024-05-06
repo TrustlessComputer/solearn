@@ -62,7 +62,7 @@ library Tensors {
 		return Float32x32.unwrap(x) > 0 ? x : x.mul(TWO).div(TEN);
 	}
 
-	function __sigmoid(Float32x32 x) internal pure returns (Float32x32) {
+	function __sigmoid(Float32x32 x) internal view returns (Float32x32) {
 		// Exp will fail if input is greater than 21
 		if (Float32x32.unwrap(x) < -21 << 32) {
 			x = fromInt(-21);
@@ -96,7 +96,7 @@ library Tensors {
 	}
 
 	function max(Float32x32 a, Float32x32 b) internal pure returns (Float32x32) {
-		return Float32x32.unwrap(a) > Float32x32.unwrap(a) ? a : b;
+		return Float32x32.unwrap(a) > Float32x32.unwrap(b) ? a : b;
 	}
 
 	function getConvSize(

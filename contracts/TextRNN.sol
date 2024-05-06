@@ -33,30 +33,8 @@ contract TextRNN is ITextRNN, Ownable {
     using Strings for *;
 
     Model public model;
+    address public modelInterface;
     VocabInfo public vocabInfo;
-    IModelRegPublic public modelRegistry;
-    uint256 public modelId;
-    uint256 version;
-
-    modifier onlyOwnerOrOperator() {
-        if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
-            revert NotTokenOwner();
-        }
-        _;
-    }
-
-    modifier onlyMintedModel() {
-        if (modelId == 0) {
-            revert IncorrectModelId();
-        }
-        _;
-    }
-
-    constructor(string memory _modelName, address _modelRegistry) Ownable() {
-        model.modelName = _modelName;
-        modelRegistry = IModelRegPublic(_modelRegistry);      
-        version = 1;
-    }
 
     function getInfo()
         public
@@ -75,7 +53,6 @@ contract TextRNN is ITextRNN, Ownable {
     }
 
     function getDenseLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         public
@@ -95,7 +72,6 @@ contract TextRNN is ITextRNN, Ownable {
     }
 
     function getLSTMLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         public
@@ -132,14 +108,8 @@ contract TextRNN is ITextRNN, Ownable {
 
         uint nLayers = model.layers.length;
         for (uint256 i = 0; i < nLayers; i++) {
-            // console.log("layer: ", i);
-            // for(uint256 j = 0; j < x2.length; ++j) {
-            //     console.logInt(Float32x32.unwrap(x2[j]));
-            // }
             Info memory layerInfo = model.layers[i];
             uint idx = layerInfo.layerIndex;
-
-            // add more layers
             if (layerInfo.layerType == Layers.LayerType.Embedding) {
                 x2 = model.embedding[idx].forward(x1);
             } else if (layerInfo.layerType == Layers.LayerType.Dense) {
@@ -238,35 +208,33 @@ contract TextRNN is ITextRNN, Ownable {
         
         for(uint i = 0; i < toGenerate; ++i) {
             seed = uint256(keccak256(abi.encodePacked(seed)));
-            // console.log("i: ", i, lastToken);
             (x2, states) = evaluateRNN(model, lastToken, states, true);
-            // console.log("Done forward");
-            // for(uint256 j = 0; j < x2.length; ++j) {
-            //     console.logInt(Float32x32.unwrap(x2[j]));
-            // }
             lastToken = getToken(x2, temperature, seed);
             generatedTokens[i] = lastToken;
         }
         string memory generatedText = decodeTokens(generatedTokens);
         return (generatedText, states, seed); 
-    } 
-
-    function generateText(
-        uint _modelId,
-        string memory prompt,
-        uint256 toGenerate,
-        Float32x32[][][] memory states,
-        uint256 seed
-    ) external onlyMintedModel {
-        string memory generatedText;
-        (generatedText, states, seed) = generateTextHelper(prompt, toGenerate, states, seed);
-        emit TextGenerated(modelId, generatedText, states, seed); 
     }
 
+    function infer(bytes calldata _data) external returns (bytes memory) {
+        if (msg.sender != modelInterface) revert Unauthorized();
+
+        (
+            string memory prompt,
+            uint256 toGenerate,
+            Float32x32[][][] memory states,
+            uint256 seed
+        ) = abi.decode(_data, (string, uint256, Float32x32[][][], uint256));
+        
+        string memory generatedText;
+        (generatedText, states, seed) = generateTextHelper(prompt, toGenerate, states, seed);
+        
+        return abi.encode(generatedText, states, seed);
+    }
+    
     function setOnchainModel(
-        uint256 _modelId,
         bytes[] calldata layersConfig
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         if (model.layers.length > 0) {
             delete model.input;
             delete model.dense;
@@ -287,26 +255,15 @@ contract TextRNN is ITextRNN, Ownable {
         }
     }
 
-    function setModelId(uint256 _modelId) external {
-        if (msg.sender != address(modelRegistry)) {
-            revert NotModelRegistry();
-        }
-        if (modelId > 0 || modelRegistry.modelAddr(_modelId) != address(this)) {
-            revert IncorrectModelId();
-        }
-
-        modelId = _modelId;
-        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
-        }
+    function isReady() external view returns (bool) {
+        return model.appendedWeights == model.requiredWeights;
     }
 
     function appendWeights(
-        uint256 _modelId,
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         uint appendedWeights;
         if (layerType == Layers.LayerType.Dense) {
             appendedWeights = model.dense[layerInd].appendWeights(weights);
@@ -319,16 +276,12 @@ contract TextRNN is ITextRNN, Ownable {
         }
 
         model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights && _modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), _modelId);
-        }
     }
 
     function setVocabs(
-        uint256 _modelId,
         string[] memory vocabs,
         string memory unkToken
-    ) external onlyOwnerOrOperator {
+    ) external onlyOwner {
         VocabInfo storage info = vocabInfo;
         info.vocabs = vocabs;
         for(uint256 i = 0; i < vocabs.length; ++i) {
@@ -345,8 +298,6 @@ contract TextRNN is ITextRNN, Ownable {
         uint256[] memory dim
     ) internal returns (uint256[] memory) {
         uint8 layerType = abi.decode(slc.conf, (uint8));
-
-        // add more layers
         if (layerType == uint8(Layers.LayerType.Input)) {
             (, uint8 inputType) = abi.decode(slc.conf, (uint8, uint8));
             if (inputType != uint8(Layers.InputType.Token)) {
@@ -393,5 +344,9 @@ contract TextRNN is ITextRNN, Ownable {
             model.layers.push(Info(Layers.LayerType.LSTM, index));
         }
         return dim;
+    }
+    
+    function setModelInterface(address _interface) external onlyOwner {
+        modelInterface = _interface;
     }
 }

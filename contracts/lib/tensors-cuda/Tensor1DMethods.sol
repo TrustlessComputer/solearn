@@ -18,7 +18,7 @@ library Tensor1DMethods {
 	function emptyTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
 	}
-
+	
 	function from(Float32x32[] memory mat) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = mat.length;
 		ts.mat = mat;
@@ -27,11 +27,11 @@ library Tensor1DMethods {
 	function count(Tensors.Tensor1D memory ts) internal pure returns (uint) {
 		return ts.n;
 	}
-
+	
 	function __apply_unary_op(
 		Tensors.Tensor1D memory a,
-		function(Float32x32) internal pure returns (Float32x32) op
-	) internal pure returns (Tensors.Tensor1D memory) {
+		function(Float32x32) internal view returns (Float32x32) op
+	) internal view returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
 		for (uint i = 0; i < res.n; i++) {
 			res.mat[i] = op(a.mat[i]);
@@ -50,8 +50,8 @@ library Tensor1DMethods {
 		}
 		return res;
 	}
-
-	function activation(Tensors.Tensor1D memory a, Tensors.ActivationFunc actv) internal pure returns (Tensors.Tensor1D memory) {
+    
+	function activation(Tensors.Tensor1D memory a, Tensors.ActivationFunc actv) internal view returns (Tensors.Tensor1D memory) {
 		if (actv == Tensors.ActivationFunc.LeakyReLU) {
 			return __apply_unary_op(a, Tensors.__leaky_relu);
 		} else if (actv == Tensors.ActivationFunc.Linear) {
@@ -66,7 +66,7 @@ library Tensor1DMethods {
 			revert InvalidActivationFunction();
 		}
 	}
-
+	
 	function add(Tensors.Tensor1D memory a, Tensors.Tensor1D memory b) internal pure returns (Tensors.Tensor1D memory) {
 		return __apply_binary_op(a, b, Tensors.__add);
 	}
@@ -84,23 +84,20 @@ library Tensor1DMethods {
 		return __apply_binary_op(a, b, Tensors.__mul);
 	}
 
+	function mul(Tensors.Tensor1D memory a, Float32x32 num) internal pure returns (Tensors.Tensor1D memory) {
+		Tensors.Tensor1D memory res = zerosTensor(a.n);
+		for (uint i = 0; i < a.n; i++) {
+			res.mat[i] = a.mat[i] * num;
+		}
+		return res;
+	}
+
+
 
 	function matMul(Tensors.Tensor1D memory a, Tensors.Tensor2D memory b) internal returns (Tensors.Tensor1D memory) {
-		// for(uint i = 0; i < a.n; ++i) {
-		// 	a.mat[i] = a.mat[i] * sd(1e16);
-		// }
-		// for(uint i = 0; i < b.n; ++i) {
-		// 	for(uint j = 0; j < b.m; ++j) {
-		// 		b.mat[i][j] = b.mat[i][j] * sd(1e16);
-		// 	}
-		// }
 		Float32x32[][] memory a_mat = new Float32x32[][](1);
 		a_mat[0] = a.mat;
-		Float32x32[][] memory res = CUDA.gemmSD59x18(a_mat,b.mat,7,32,32);
-		// for(uint j = 0; j < b.m; ++j) {
-		// 	res[0][j] = res[0][j] * sd(1e22);
-		// }
-		emit TestMatMul(res);
+		Float32x32[][] memory res = CUDA.gemmFloat32x32(a_mat,b.mat,7,32,32);
 		return from(res[0]);
 	}
 

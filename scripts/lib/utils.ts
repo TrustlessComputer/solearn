@@ -15,6 +15,10 @@ export function recursiveToString(arr: any): any {
     return arr.map((val: any) => Array.isArray(val) ? recursiveToString(val) : val.toString());
 }
 
+export function recursiveToFloat(arr: any): any {
+    return arr.map((val: any) => Array.isArray(val) ? recursiveToFloat(val) : toFloat(val));
+}
+
 export async function measureTime(f: any): Promise<any> {
   const start = Date.now();
   const ret = await f();
@@ -99,4 +103,8 @@ export function fromInt(num: any) {
 
 export function toInt(num: any) {
     return ethers.BigNumber.from(num).div(ethers.BigNumber.from(2).pow(ethers.BigNumber.from(32)));
+}
+
+export function toFloat(num: any) {
+    return ethers.BigNumber.from(num).toNumber() / Math.pow(2, 32);
 }

@@ -1,14 +1,19 @@
 # Deploy ModelRegister contract
 npx hardhat deploy --tags 1 --network cudatest
 
-# EternalAI
-npx hardhat run scripts/deploy-eai-model.ts
+# ImageClassifier
+npx hardhat run scripts/deploy-image-model.ts
 
-npx hardhat eval-img --network cudatest --id '1' --offline true --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --img 'sample-images/10x10/cryptoadz/000.png'
+npx hardhat eval-img --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --img 'sample-images/10x10/cryptoadz/000.png'
+
+npx hardhat get-image-model --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75'
+
+# TextRNN
+npx hardhat run scripts/deploy-textrnn-model.ts
 
 npx hardhat generate-text --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75' --prompt $'ROMEO:\nIs the day so young?' --togenerate 100 --generatepertx 10
 
-npx hardhat get-model --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75'
+npx hardhat get-textrnn-model --network cudatest --id '1' --contract '0x1D19Db739A466c156b007B8cC18687Eb21434D75'
 
 # MelodyRNN
 npx hardhat run scripts/deploy-melody-model.ts

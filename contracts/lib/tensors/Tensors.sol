@@ -2,7 +2,6 @@
 pragma solidity ^0.8.9;
 
 import { Float32x32, fromInt, toInt } from "./../Float32x32/Lib32x32.sol";
-import "hardhat/console.sol";
 
 error InvalidActivationFunction();
 error InvalidPaddingType();
@@ -68,10 +67,6 @@ library Tensors {
 		if (Float32x32.unwrap(x) < -21 << 32) {
 			x = fromInt(-21);
 		}
-		// console.logInt(Float32x32.unwrap(x));
-		// console.logInt(Float32x32.unwrap((-x).exp()));
-		// console.logInt(Float32x32.unwrap(ONE));
-		// console.logInt(Float32x32.unwrap(ONE + (-x).exp()));
 		return ONE.div(ONE + (-x).exp());
 	}
 
@@ -101,7 +96,7 @@ library Tensors {
 	}
 
 	function max(Float32x32 a, Float32x32 b) internal pure returns (Float32x32) {
-		return Float32x32.unwrap(a) > Float32x32.unwrap(a) ? a : b;
+		return Float32x32.unwrap(a) > Float32x32.unwrap(b) ? a : b;
 	}
 
 	function getConvSize(

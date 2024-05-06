@@ -2,33 +2,36 @@ import { task, types } from "hardhat/config";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
-import sharp from 'sharp';
-import { ethers, utils } from "ethers";
-import path from 'path';
-import { getLayerName } from "./lib/modelLib";
-import { getModelDirents, pixelsToImage, measureTime, postprocessText } from "./lib/utils";
+import { ethers } from "ethers";
+import { postprocessText } from "./lib/utils";
 import { runeToText, isRune } from "./rune.task";
 
 const EternalAIContractName = "TextRNN";
+const OnchainModelContractName = "OnchainModel";
 const ModelRegContractName = "ModelReg";
 
-const GasLimit = "90000000000"; // 100 B
-const MaxFeePerGas = "1001000000";  // 1e-5 gwei
-const MaxPriorityFeePerGas = "1000000000";
-// const GasLimit = "290000000"; // 100 M
-// const MaxFeePerGas = "10010";  // 1e-5 gwei
-// const MaxPriorityFeePerGas = "10000";
-// const gasConfig = {
-//     gasLimit: GasLimit,
-//     maxPriorityFeePerGas: MaxPriorityFeePerGas,
-//     maxFeePerGas: MaxFeePerGas,
-// };
-    
-const mintPrice = ethers.utils.parseEther('0.1');
-const mintConfig = { value: mintPrice };
+async function inferModel(interfaceContract: ethers.Contract, prompt: string, generate: number, states: ethers.BigNumber[][][], seed: ethers.BigNumber) {
+    const abic = ethers.utils.defaultAbiCoder;
+    const data = abic.encode(
+        ["string", "uint256", "int64[][][]", "uint256"], 
+        [prompt, generate, states, seed]
+    );
 
-const evalPrice = ethers.utils.parseEther('0.01');
-const evalConfig = { value: evalPrice };
+    const tx = await interfaceContract.infer(data);
+    const rc = await tx.wait();
+    
+    console.log(`Used gas: `, rc.gasUsed);
+
+    const inferResultEvent = rc.events?.find(event => event.event === 'InferResult');
+    if (inferResultEvent) {
+        const result = inferResultEvent.args?.result;
+        const [ text, nextState, nextSeed ] = abic.decode(["string", "int64[][][]", "uint256"], result);
+        return { text, states: nextState, seed: nextSeed };
+    } else {
+        console.log("Infer result event not found");
+        return {};
+    }
+}
 
 task("generate-text", "generate text from RNN model")
     .addOptionalParam("contract", "contract address", "", types.string)
@@ -55,8 +58,11 @@ task("generate-text", "generate text from RNN model")
 
         const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await modelRegContract.modelAddr(tokenId);
-        const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
+        const interfaceAddress = await modelRegContract.modelAddr(tokenId);
+        const interfaceContract = await ethers.getContractAt(OnchainModelContractName, interfaceAddress, signer);        
+        
+        const implementAddress = await interfaceContract.implementation();
+        const implementContract = await ethers.getContractAt(EternalAIContractName, implementAddress, signer);
 
         let startTime = new Date().getTime();
         let seed = ethers.BigNumber.from("123");
@@ -69,20 +75,12 @@ task("generate-text", "generate text from RNN model")
             
             // console.log(prompt.substr(i, generate));
 
-            const tx = await modelContract.generateText(tokenId, prompt.substr(i, generate) + "[UNK]", 0, states, seed);
-            const rc = await tx.wait();
-
-            const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
-            if (textGeneratedEvent) {
-                states = textGeneratedEvent.args?.states;
-                seed = textGeneratedEvent.args?.seed;
-            }
-    
-            console.log(`Used gas: `, rc.gasUsed);
+            const inferResult = await inferModel(interfaceContract, prompt.substr(i, generate) + "[UNK]", 0, states, seed);
+            states = inferResult.states;
+            seed = inferResult.seed;
         }
 
         prompt = prompt.slice(prompt.length - 1);
-        console.log(prompt);
         let result = "";
         let text;
 //         result = `
@@ -98,20 +96,14 @@ task("generate-text", "generate text from RNN model")
         for(let i = 0; i < toGenerate; i += generatePerTx) {
             const generate = Math.min(toGenerate - i, generatePerTx);
             console.log(`Generating characters ${i+1}-${i+generate}`);
+            
+            const inferResult = await inferModel(interfaceContract, prompt, generate, states, seed);
+            text = inferResult.text;
+            states = inferResult.states;
+            seed = inferResult.seed;
 
-            const tx = await modelContract.generateText(tokenId, prompt, generate, states, seed);
-            const rc = await tx.wait();
-
-            const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
-            if (textGeneratedEvent) {
-                text = textGeneratedEvent.args?.result;
-                states = textGeneratedEvent.args?.states;
-                seed = textGeneratedEvent.args?.seed;
-            }
-    
             result += text;
             prompt = text.slice(text.length - 1);
-            console.log(`Used gas: `, rc.gasUsed);
 
             // const testRNNOutputEvents = rc.events?.filter(event => event.event === 'TestRNNOutput').map(event => event.args.data).map(arr => recursiveToString(arr));
             // const testEntropyEvents = rc.events?.filter(event => event.event === 'TestEntropy').map(event => event.args.data).map(arr => recursiveToString(arr));

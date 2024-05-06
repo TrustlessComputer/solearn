@@ -2,15 +2,15 @@
 pragma solidity ^0.8.0;
 
 import "./../lib/layers/Layers.sol";
-import { IOnchainModel } from "./IOnchainModel.sol";
+import { IOnchainImplementation } from "./IOnchainImplementation.sol";
 
-interface ITextRNN is IOnchainModel {
-    event TextGenerated(
-        uint256 indexed tokenId,
-        string result,
-        Float32x32[][][] states,
-        uint256 seed
-    );
+interface ITextRNN is IOnchainImplementation {
+    // event TextGenerated(
+    //     uint256 indexed tokenId,
+    //     string result,
+    //     Float32x32[][][] states,
+    //     uint256 seed
+    // );
 
     struct Model {
         string modelName;
@@ -41,7 +41,6 @@ interface ITextRNN is IOnchainModel {
         );
 
     function getDenseLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         external
@@ -54,7 +53,6 @@ interface ITextRNN is IOnchainModel {
         );
 
     function getLSTMLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         external
@@ -67,27 +65,23 @@ interface ITextRNN is IOnchainModel {
             Float32x32[] memory
         );
     
-    function generateText(
-        uint _modelId,
-        string memory prompt,
-        uint256 toGenerate,
-        Float32x32[][][] memory states,
-        uint256 seed
-    ) external;
+    // function generateText(
+    //     string memory prompt,
+    //     uint256 toGenerate,
+    //     Float32x32[][][] memory states,
+    //     uint256 seed
+    // ) external;
 
     function setOnchainModel(
-        uint256 _modelId,
         bytes[] calldata layers_config
     ) external;
-    
+
     function setVocabs(
-        uint256 _modelId,
         string[] memory vocabs,
         string memory unkToken
     ) external;
-
+    
     function appendWeights(
-        uint256 _modelId,
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType

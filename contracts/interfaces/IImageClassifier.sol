@@ -2,24 +2,24 @@
 pragma solidity ^0.8.0;
 
 import "./../lib/layers/Layers.sol";
-import { IOnchainModel } from "./IOnchainModel.sol";
+import { IOnchainImplementation } from "./IOnchainImplementation.sol";
 
-interface IImageClassifier is IOnchainModel {
-    event Classified(
-        uint256 indexed tokenId,
-        uint256 classIndex,
-        string className,
-        Float32x32[] outputs,
-        Float32x32 confidence
-    );
+interface IImageClassifier is IOnchainImplementation {
+    // event Classified(
+    //     uint256 indexed tokenId,
+    //     uint256 classIndex,
+    //     string className,
+    //     Float32x32[] outputs,
+    //     Float32x32 confidence
+    // );
 
-    event Forwarded(
-        uint256 indexed tokenId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        Float32x32[][][] outputs1,
-        Float32x32[] outputs2
-    );
+    // event Forwarded(
+    //     uint256 indexed tokenId,
+    //     uint256 fromLayerIndex,
+    //     uint256 toLayerIndex,
+    //     Float32x32[][][] outputs1,
+    //     Float32x32[] outputs2
+    // );
 
     struct Model {
         string modelName;
@@ -46,7 +46,6 @@ interface IImageClassifier is IOnchainModel {
         );
 
     function getDenseLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         external
@@ -59,7 +58,6 @@ interface IImageClassifier is IOnchainModel {
         );
 
     function getConv2DLayer(
-        uint256 _modelId,
         uint256 layerIdx
     )
         external
@@ -73,16 +71,7 @@ interface IImageClassifier is IOnchainModel {
             Float32x32[] memory b
         );
 
-    function classify(
-        uint256 _modelId,
-        uint256 fromLayerIndex,
-        uint256 toLayerIndex,
-        Float32x32[][][] calldata x1,
-        Float32x32[] calldata x2
-    ) external payable;
-
     function setOnchainModel(
-        uint256 _modelId,
         bytes[] calldata layers_config
     ) external;
 
@@ -91,7 +80,6 @@ interface IImageClassifier is IOnchainModel {
     ) external;
 
     function appendWeights(
-        uint256 _modelId,
         Float32x32[] memory weights,
         uint256 layerInd,
         Layers.LayerType layerType

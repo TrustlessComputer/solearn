@@ -8,7 +8,6 @@ import "./Tensors.sol";
 error InvalidMatrixDimensions();
 
 library Tensor1DMethods {
-	event TestMatMul(Float32x32[][] data);
 	function zerosTensor(uint n) internal pure returns (Tensors.Tensor1D memory ts) {
 		ts.n = n;
 		ts.mat = new Float32x32[](n);
@@ -39,8 +38,8 @@ library Tensor1DMethods {
 	}
 
 	function __apply_binary_op(
-		Tensors.Tensor1D memory a, 
-		Tensors.Tensor1D memory b, 
+		Tensors.Tensor1D memory a,
+		Tensors.Tensor1D memory b,
 		function(Float32x32, Float32x32) internal pure returns (Float32x32) op
 	) internal pure returns (Tensors.Tensor1D memory) {
 		Tensors.Tensor1D memory res = zerosTensor(a.n);
@@ -100,9 +99,6 @@ library Tensor1DMethods {
 				res.mat[j] = res.mat[j] + a.mat[k] * b.mat[k][j];
 			}
 		}
-		Float32x32[][] memory tmp = new Float32x32[][](1);
-		tmp[0] = res.mat;
-		emit TestMatMul(tmp); 
 		return res;
 	}
 
@@ -128,7 +124,7 @@ library Tensor1DMethods {
 
 
 	function loadPartial(Tensors.Tensor1D storage ts, Float32x32[] memory data, uint ptr, uint idx) internal returns (uint, uint) {
-		uint n = ts.n; 
+		uint n = ts.n;
 		while (idx < data.length && ptr < n) {
 			ts.mat.push(data[idx]);
 			ptr++;
