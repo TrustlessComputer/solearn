@@ -7,7 +7,7 @@ npx hardhat deploy --tags 1 --network anvil
 # ImageClassifier
 npx hardhat run scripts/deploy-image-model.ts
 
-npx hardhat eval-img --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --img 'sample-images/10x10/cryptoadz/000.png'
+npx hardhat eval-img --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --img 'sample-images/nft/cryptoadz/000.png'
 
 npx hardhat get-image-model --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'
 

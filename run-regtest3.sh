@@ -4,7 +4,7 @@ npx hardhat deploy --tags 1 --network regtest3
 # ImageClassifier
 npx hardhat run scripts/deploy-image-model.ts
 
-npx hardhat eval-img --network regtest3 --id '1' --contract '0x987c7F1f0e0cec104b18Ed16e0139dc77Fa18361' --img 'sample-images/10x10/cryptoadz/000.png'
+npx hardhat eval-img --network regtest3 --id '1' --contract '0x987c7F1f0e0cec104b18Ed16e0139dc77Fa18361' --img 'sample-images/nft/cryptoadz/000.png'
 
 npx hardhat get-image-model --network regtest3 --id '1' --contract '0x987c7F1f0e0cec104b18Ed16e0139dc77Fa18361'
 
@@ -18,8 +18,8 @@ npx hardhat get-textrnn-model --network regtest3 --id '1' --contract '0x987c7F1f
 # MelodyRNN
 npx hardhat run scripts/deploy-melody-model.ts
 
-npx hardhat generate-melody --network regtest3 --id '1' --contract '0x987c7F1f0e0cec104b18Ed16e0139dc77Fa18361' --count 50 --steplen 1 --output "outputs/vgm.mid"
-npx hardhat generate-melody --network regtest3 --id '1' --contract '0x987c7F1f0e0cec104b18Ed16e0139dc77Fa18361' --count 1 --steplen 50 --output "outputs/vgm_stateful.mid"
+npx hardhat generate-melody --network regtest3 --id '1' --contract '0x987c7F1f0e0cec104b18Ed16e0139dc77Fa18361' --count 50 --steplen 1 --output "_outputs/vgm.mid"
+npx hardhat generate-melody --network regtest3 --id '1' --contract '0x987c7F1f0e0cec104b18Ed16e0139dc77Fa18361' --count 1 --steplen 50 --output "_outputs/vgm_stateful.mid"
 
 npx hardhat get-melody-model --network regtest3 --id '1' --contract '0x987c7F1f0e0cec104b18Ed16e0139dc77Fa18361'
 
