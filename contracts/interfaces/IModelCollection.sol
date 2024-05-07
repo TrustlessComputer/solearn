@@ -27,6 +27,8 @@ IERC2981Upgradeable {
     event TokenModelUpdate(uint256 indexed tokenId, address model);
 
     error InsufficientFunds();
+    error InvalidModel();
+    error FailedTransfer();
 
     function version() external pure returns (string memory version);
     function nextModelId() external view returns (uint256 nextModelId);

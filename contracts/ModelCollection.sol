@@ -10,6 +10,7 @@ import {ERC721EnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/t
 import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
 import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
+import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 
 import {IModel} from "./interfaces/IModel.sol";
 
@@ -17,6 +18,7 @@ import {ModelCollectionStorage} from "./storages/ModelCollectionStorage.sol";
 
 contract ModelCollection is
 ModelCollectionStorage,
+EIP712Upgradeable,
 ERC721EnumerableUpgradeable,
 ERC721PausableUpgradeable,
 ERC721URIStorageUpgradeable,
@@ -34,7 +36,7 @@ OwnableUpgradeable {
         uint16 _royaltyPortion,
         uint256 _nextModelId
     ) external initializer {
-        __ERC721_init("Models", "MDL");
+        __ERC721_init(_name, _symbol);
         __ERC721Pausable_init();
         __Ownable_init();
 
@@ -71,13 +73,9 @@ OwnableUpgradeable {
         emit RoyaltyPortionUpdate(_royaltyPortion);
     }
 
-    function mint(address _to, string calldata _uri, address _model) external payable onlyOwner returns (uint256) {
+    function mint_(address _to, string calldata _uri, address _model, uint256 tokenId) internal returns (uint256) {
+        if (_model == address(0)) revert InvalidModel();
         if (msg.value < mintPrice) revert InsufficientFunds();
-
-        while (models[nextModelId] != address(0)) {
-            nextModelId++;
-        }
-        uint256 tokenId = nextModelId++;
 
         _safeMint(_to, tokenId);
         _setTokenURI(tokenId, _uri);
@@ -89,12 +87,57 @@ OwnableUpgradeable {
         return tokenId;
     }
 
+    function mint(address _to, string calldata _uri, address _model) external payable onlyOwner returns (uint256) {
+        while (models[nextModelId] != address(0)) {
+            nextModelId++;
+        }
+        uint256 tokenId = nextModelId++;
+
+        return mint_(_to, _uri, _model, tokenId);
+    }
+
+    function mintBySignature(
+        address _to,
+        string calldata _uri,
+        address _model,
+        uint256 _tokenId,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual returns (uint256) {
+        bytes32 hash = getHashToSign(_to, _uri, _model, _tokenId);
+
+        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
+        require(signer == owner(), "invalid signature");
+        require(models[_tokenId] == address(0), "token minted");
+
+        return mint_(_to, _uri, _model, _tokenId);
+    }
+
+    function getHashToSign(
+        address _to,
+        string calldata  _uri,
+        address _model,
+        uint256 _tokenId
+    ) public view virtual returns(bytes32) {
+        bytes32 structHash = keccak256(abi.encode(_to, _uri, _model, _tokenId));
+
+        return _hashTypedDataV4(structHash);
+    }
+
+    function withdraw(address _to, uint _value) external onlyOwner {
+        (bool success, ) = _to.call{value: _value}("");
+        if (!success) revert FailedTransfer();
+    }
+
     function updateTokenURI(uint256 _tokenId, string calldata _uri) external onlyOwner {
         _setTokenURI(_tokenId, _uri);
         emit TokenURIUpdate(_tokenId, _uri);
     }
 
     function updateTokenModel(uint256 _tokenId, address _model) external onlyOwner {
+        require(_model != address(0), "invalid token model");
+
         models[_tokenId] = _model;
         emit TokenModelUpdate(_tokenId, _model);
     }
@@ -104,6 +147,7 @@ OwnableUpgradeable {
     }
 
     function royaltyInfo(uint256 _tokenId, uint256 _salePrice) external view returns (address, uint256) {
+        _tokenId;
         return (royaltyReceiver, _salePrice * royaltyPortion / PORTION_DENOMINATOR);
     }
 
