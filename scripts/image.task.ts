@@ -9,7 +9,7 @@ import { pixelsToImage, fromInt, toFloat, recursiveToFloat, recursiveToString } 
 
 const ImageClassifierContractName = "ImageClassifier";
 const OnchainModelContractName = "OnchainModel";
-const ModelRegContractName = "ModelReg";
+const ModelCollectionContractName = "ModelCollection";
 
 async function inferModel(interfaceContract: ethers.Contract, pixels: ethers.BigNumber[][][]) {
     const abic = ethers.utils.defaultAbiCoder;
@@ -32,7 +32,7 @@ async function inferModel(interfaceContract: ethers.Contract, pixels: ethers.Big
 
 task("eval-img", "evaluate model for each layer")
     .addOptionalParam("img", "image file name", "image.png", types.string)
-    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("contract", "ModelCollection contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
@@ -42,13 +42,13 @@ task("eval-img", "evaluate model for each layer")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ModelRegContractName);
+            const baseContract = await deployments.get(ModelCollectionContractName);
             contractAddress = baseContract.address;
         }
 
-        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
+        const ModelCollectionContract = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const interfaceAddress = await modelRegContract.modelAddr(tokenId);
+        const interfaceAddress = await ModelCollectionContract.modelAddressOf(tokenId);
         const interfaceContract = await ethers.getContractAt(OnchainModelContractName, interfaceAddress, signer);        
         
         const implementAddress = await interfaceContract.implementation();
@@ -90,12 +90,12 @@ task("get-image-model", "get eternal AI model")
         const [signer] = await ethers.getSigners();
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ModelRegContractName);
+            const baseContract = await deployments.get(ModelCollectionContractName);
             contractAddress = baseContract.address;
         }
-        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
+        const ModelCollectionContract = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const interfaceAddress = await modelRegContract.modelAddr(tokenId);
+        const interfaceAddress = await ModelCollectionContract.modelAddressOf(tokenId);
         const interfaceContract = await ethers.getContractAt(OnchainModelContractName, interfaceAddress, signer);        
         
         const implementAddress = await interfaceContract.implementation();

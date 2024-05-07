@@ -11,24 +11,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await network.provider.send("evm_setIntervalMining", [3000]);
     }
 
-    // uint256 _mintPrice, uint256 _evalPrice, address _royaltyReceiver, uint256 _nextModelId
+    const name = "Models";
+    const symbol = "MDL";
     const mintPrice = ethers.utils.parseEther('0.1');
-    const evalPrice = ethers.utils.parseEther('0.01');
     const royaltyReceiver = deployer;
-    const nextModelId = 1000;
+    const royaltyPortion = 10;
+    const nextModelId = 1;
 
-    await deploy('ModelReg', {
+    await deploy('ModelCollection', {
         from: deployer,
         proxy: {
             proxyContract: 'OpenZeppelinTransparentProxy',
             execute: {
                 init: {
                     methodName: 'initialize',
-                    args: [mintPrice, evalPrice, royaltyReceiver],
+                    args: [name, symbol, mintPrice, royaltyReceiver, royaltyPortion, nextModelId],
                 },
                 // onUpgrade: {
                 //     methodName: 'afterUpgrade',
-                //     args: [mintPrice, evalPrice, royaltyReceiver, nextModelId],
+                //     args: [name, symbol, mintPrice, royaltyReceiver, royaltyPortion, nextModelId],
                 // }
             },
         },
@@ -38,5 +39,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 };
 
-func.tags = ['1', 'ModelReg'];
+func.tags = ['1', 'ModelCollection'];
 export default func;

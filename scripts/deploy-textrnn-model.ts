@@ -7,7 +7,7 @@ import { fromFloat } from './lib/utils';
 import { getModelConfig, uploadModelWeights, mintModel } from './lib/modelLib';
 dotenv.config();
 
-const ModelRegContractName = "ModelReg";
+const ModelCollectionContractName = "ModelCollection";
 const MaxWeightLen = 1000;
 const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
@@ -54,7 +54,7 @@ async function main() {
 
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
 
-    const modelReg = await ethers.getContractAt(ModelRegContractName, nftContractAddress);
+    const modelCollection = await ethers.getContractAt(ModelCollectionContractName, nftContractAddress);
 
     // deploy a TextRNN contract
     // TextRNN contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
@@ -91,7 +91,7 @@ async function main() {
     const onchainModel = await upgrades.deployProxy(
         OnchainModel,
         [
-            modelReg.address,
+            modelCollection.address,
             0,
             params.model_name,
             eai.address,
@@ -107,7 +107,7 @@ async function main() {
     console.log("tx:", tx.hash);
 
     console.log("Minting new model");
-    await mintModel(modelReg, onchainModel, MODEL_OWNER || signer.address, mintConfig);
+    await mintModel(modelCollection, onchainModel, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {
