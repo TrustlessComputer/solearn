@@ -169,7 +169,7 @@ ReentrancyGuardUpgradeable {
             minterPivot++;
             if (minterPivot > minterNumber) minterPivot = 1;
             uint256 assignmentId = ++mintingAssignmentNumber;
-            address minter = minterAddresses.values[minterPivot];
+            address minter = minterAddresses.values[minterPivot-1];
             mintingAssignments[assignmentId] = Assignment(
                 inferenceId,
                 minter,
@@ -198,6 +198,10 @@ ReentrancyGuardUpgradeable {
 
     function getInferenceOutput(uint256 _inferenceId) external view returns (bytes memory) {
         return inferences[_inferenceId].outputs[0];
+    }
+
+    function getInferenceInput(uint256 _inferenceId) external view returns (bytes memory) {
+        return inferences[_inferenceId].input;
     }
 
     function submitOutput(uint256 _assignmentId, bytes calldata _output) external {

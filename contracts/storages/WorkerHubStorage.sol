@@ -19,7 +19,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(address => Model) public models;
 
     uint256 public inferenceNumber;
-    mapping(uint256 => Inference) internal inferences;
+    mapping(uint256 => Inference) public inferences;
 
     mapping(address => Worker) public minters;
     mapping(address => Worker) public validators;

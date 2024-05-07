@@ -38,7 +38,7 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:8545/",
       timeout: 600_000,
       gas: 10_000_000_000,
-      gasPrice: "auto", 
+      gasPrice: "auto",
     },
     localhost: {
       url: "http://localhost:8545",
