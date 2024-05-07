@@ -26,6 +26,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     Set.AddressSet internal minterAddresses;
     Set.AddressSet internal validatorAddresses;
+    Set.AddressSet internal modelAddresses;
 
     uint256 public minterPivot;
     uint256 public validatorPivot;

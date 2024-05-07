@@ -141,6 +141,7 @@ ReentrancyGuardUpgradeable {
         model.modelId = modelId;
         model.minimumFee = _minimumFee;
         model.tier = _tier;
+        modelAddresses.insert(_model);
         emit ModelRegistration(_model, modelId, _tier, _minimumFee);
         return modelId;
     }
@@ -149,6 +150,8 @@ ReentrancyGuardUpgradeable {
         Model storage model = models[_model];
         if (model.modelId == 0) revert NotRegistered();
         model.modelId = 0;
+        model.tier = 0;
+        modelAddresses.erase(_model);
         emit ModelUnregistration(_model);
     }
 
@@ -178,12 +181,24 @@ ReentrancyGuardUpgradeable {
                 false
             );
             inference.minters.push(minter);
-            assignmentsByMinters[msg.sender].insert(assignmentId);
+            assignmentsByMinters[minter].insert(assignmentId);
         }
 
         emit NewInference(inferenceId, _creator, msg.value);
 
         return inferenceId;
+    }
+
+    function getMinterAddresses() external view returns (address[] memory) {
+        return minterAddresses.values;
+    }
+
+    function getValidatorAddresses() external view returns (address[] memory) {
+        return validatorAddresses.values;
+    }
+
+    function getModelAddresses() external view returns (address[] memory) {
+        return modelAddresses.values;
     }
 
     function getMinterAssignment() external view returns (uint256) {
@@ -197,7 +212,11 @@ ReentrancyGuardUpgradeable {
     }
 
     function getInferenceOutput(uint256 _inferenceId) external view returns (bytes memory) {
-        return inferences[_inferenceId].outputs[0];
+        bytes[] storage outputs = inferences[_inferenceId].outputs;
+        for (uint256 i = 0; i < outputs.length; ++i) {
+            if (outputs[i].length != 0) return inferences[_inferenceId].outputs[i];
+        }
+        return "";
     }
 
     function getInferenceInput(uint256 _inferenceId) external view returns (bytes memory) {
@@ -207,6 +226,7 @@ ReentrancyGuardUpgradeable {
     function submitOutput(uint256 _assignmentId, bytes calldata _output) external {
         Assignment storage assignment = mintingAssignments[_assignmentId];
         if (msg.sender != assignment.worker) revert Unauthorized();
-        inferences[assignment.inferenceId].outputs[assignment.index] = _output;
+        inferences[assignment.inferenceId].outputs[assignment.index-1] = _output;
+        assignmentsByMinters[msg.sender].erase(_assignmentId);
     }
 }
