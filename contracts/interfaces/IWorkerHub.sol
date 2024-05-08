@@ -51,6 +51,7 @@ interface IWorkerHub is IInferable, IHeapComparator {
         bytes input;
         address disputeAddress; // the first validator submit dispute request => punishment
         uint40 expiredAt;
+        uint8 firstSubmitterIndex;
         InferStatus status;
         address creator;
     }
