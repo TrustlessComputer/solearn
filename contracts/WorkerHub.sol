@@ -5,7 +5,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import {Heap} from "./lib/heap/Heap.sol";
+import {Set} from "./lib/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 
 import {WorkerHubStorage} from "./storages/WorkerHubStorage.sol";
@@ -15,43 +15,43 @@ WorkerHubStorage,
 OwnableUpgradeable,
 PausableUpgradeable,
 ReentrancyGuardUpgradeable {
-    using Heap for Heap.AddressHeap;
-    using Heap for Heap.Uint256Heap;
+    using Set for Set.AddressSet;
 
     string constant private VERSION = "v0.0.1";
+    uint256 constant private PERCENTAGE_DENOMINATOR = 100_00;
 
     receive() external payable {}
 
     function initialize(
         uint256 _minterMinimumStake,
-        uint8 _minterRequirement,
-        uint40 _mintingTimeLimit,
         uint256 _validatorMinimumStake,
-        uint8 _validatorRequirement,
+        uint40 _mintingTimeLimit,
         uint40 _validatingTimeLimit,
-        uint16 _maximumTier
+        uint40 _disputingTimeLimit,
+        uint8 _minterRequirement,
+        uint16 _maximumTier,
+        uint16 _disqualificationPercentage,
+        uint256 _blocksPerEpoch,
+        uint256 _rewardPerEpoch,
+        uint40 _penaltyDuration,
+        uint40 _unstakeDelayTime
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         minterMinimumStake = _minterMinimumStake;
-        minterRequirement = _minterRequirement;
-        mintingTimeLimit = _mintingTimeLimit;
-        mintingAssignmentsFront = 1;
-
         validatorMinimumStake = _validatorMinimumStake;
-        validatorRequirement = _validatorRequirement;
+        mintingTimeLimit = _mintingTimeLimit;
         validatingTimeLimit = _validatingTimeLimit;
-        validatingAssignmentsFront = 1;
-
+        disputingTimeLimit = _disputingTimeLimit;
+        minterRequirement = _minterRequirement;
         maximumTier = _maximumTier;
-        for (uint256 i = 0; i < _maximumTier; ++i) {
-            minterQueues[i].identifier = int64(uint64(i));
-            validatorQueues[i].identifier = -int64(uint64(i));
-        }
-        mintingTaskQueue.identifier = 1;
-        validatingTaskQueue.identifier = -1;
+        disqualificationPercentage = _disqualificationPercentage;
+        blocksPerEpoch = _blocksPerEpoch;
+        rewardPerEpoch = _rewardPerEpoch;
+        penaltyDuration = _penaltyDuration;
+        unstakeDelayTime = _unstakeDelayTime;
     }
 
     function version() external pure returns (string memory) {
@@ -64,6 +64,29 @@ ReentrancyGuardUpgradeable {
 
     function unpause() external onlyOwner whenPaused {
         _unpause();
+    }
+
+    function registerModel(address _model, uint16 _tier, uint256 _minimumFee) external onlyOwner returns (uint256) {
+        _updateEpoch();
+
+        Model storage model = models[_model];
+        if (model.modelId != 0) revert AlreadyRegistered();
+        uint256 modelId = ++modelNumber;
+        model.modelId = modelId;
+        model.minimumFee = _minimumFee;
+        model.tier = _tier;
+        modelAddresses.insert(_model);
+        emit ModelRegistration(_model, modelId, _tier, _minimumFee);
+        return modelId;
+    }
+
+    function unregisterModel(address _model) external onlyOwner {
+        Model storage model = models[_model];
+        if (model.modelId == 0) revert NotRegistered();
+        model.modelId = 0;
+        model.tier = 0;
+        modelAddresses.erase(_model);
+        emit ModelUnregistration(_model);
     }
 
     function registerMinter(uint16 tier) external payable {
@@ -142,26 +165,6 @@ ReentrancyGuardUpgradeable {
         if (validator.tier == 0) revert NotRegistered();
         validator.stake += msg.value;
         emit ValidatorExtraStake(msg.sender, msg.value);
-    }
-
-    function registerModel(address _model, uint16 _tier, uint256 _minimumFee) external onlyOwner returns (uint256) {
-        _updateEpoch();
-
-        Model storage model = models[_model];
-        if (model.modelId != 0) revert AlreadyRegistered();
-        uint256 modelId = ++modelNumber;
-        model.modelId = modelId;
-        model.minimumFee = _minimumFee;
-        model.tier = _tier;
-        emit ModelRegistration(_model, modelId, _tier, _minimumFee);
-        return modelId;
-    }
-
-    function unregisterModel(address _model) external {
-        Model storage model = models[_model];
-        if (model.modelId == 0) revert NotRegistered();
-        model.modelId = 0;
-        emit ModelUnregistration(_model);
     }
 
     function infer(bytes calldata _input, address _creator) external payable returns (uint256) {

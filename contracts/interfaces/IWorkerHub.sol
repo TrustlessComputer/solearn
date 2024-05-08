@@ -9,7 +9,7 @@ interface IWorkerHub is IInferable, IHeapComparator {
     enum InferStatus {
         None,
         Solving,
-        Dispute,
+        Disputed,
         Solved,
         Killed
     }
@@ -40,12 +40,6 @@ interface IWorkerHub is IInferable, IHeapComparator {
         address worker;
         uint8 disapproval; // 1 / 3 total val
         bytes data;
-    }
-
-    struct Task {
-        uint256 inferenceId;
-        uint256 value;
-        uint8 workerRequirement;
     }
 
     struct Inference {
