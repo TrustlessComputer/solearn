@@ -67,6 +67,8 @@ ReentrancyGuardUpgradeable {
     }
 
     function registerMinter(uint16 tier) external payable {
+        _updateEpoch();
+
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
         if (msg.value < minterMinimumStake) revert StakeTooLow();
 
@@ -80,6 +82,8 @@ ReentrancyGuardUpgradeable {
     }
 
     function unregisterMinter() external nonReentrant {
+        _updateEpoch();
+
         Worker storage minter = minters[msg.sender];
         if (minter.tier == 0) revert NotRegistered();
         if (minter.currentTaskId != 0) revert MintingSessionNotEnded();
@@ -93,6 +97,8 @@ ReentrancyGuardUpgradeable {
     }
 
     function increaseMinterStake() external payable {
+        _updateEpoch();
+
         Worker storage minter = minters[msg.sender];
         if (minter.tier == 0) revert NotRegistered();
         minter.stake += msg.value;
@@ -100,6 +106,8 @@ ReentrancyGuardUpgradeable {
     }
 
     function registerValidator(uint16 tier) external payable {
+        _updateEpoch();
+
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
         if (msg.value < validatorMinimumStake) revert StakeTooLow();
 
@@ -113,6 +121,8 @@ ReentrancyGuardUpgradeable {
     }
 
     function unregisterValidator() external nonReentrant {
+        _updateEpoch();
+
         Worker storage validator = validators[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
         if (validator.currentTaskId != 0) revert ValidatingSessionNotEnded();
@@ -126,6 +136,8 @@ ReentrancyGuardUpgradeable {
     }
 
     function increaseValidatorStake() external payable {
+        _updateEpoch();
+
         Worker storage validator = validators[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
         validator.stake += msg.value;
@@ -133,6 +145,8 @@ ReentrancyGuardUpgradeable {
     }
 
     function registerModel(address _model, uint16 _tier, uint256 _minimumFee) external onlyOwner returns (uint256) {
+        _updateEpoch();
+
         Model storage model = models[_model];
         if (model.modelId != 0) revert AlreadyRegistered();
         uint256 modelId = ++modelNumber;
@@ -175,6 +189,15 @@ ReentrancyGuardUpgradeable {
 
     function _processMintingTasks() private {}
 
+    // this internal function update new epoch
+    function _updateEpoch() private {
+        if (block.number - lastBlock >= blocksPerEpoch) {
+            currentEpoch++;
+            lastBlock = block.number;
+            rewardInEpoch[currentEpoch].totalReward = rewardPerEpoch;
+        }
+    }
+
     // todo: kouchou remove code
     // from here
     function compareAddress(address _a, address _b, int64 _identifier) external view returns (bool) {
@@ -189,13 +212,13 @@ ReentrancyGuardUpgradeable {
     // todo
     // minter submit result for specific infer
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual {
-
+        _updateEpoch();
     }
 
     // todo
     // validator notice result from minter incorrect and trigger dispute
     function disputeInfer(uint256 _assignmentId) public virtual {
-
+        _updateEpoch();
     }
 
     // todo
@@ -203,14 +226,37 @@ ReentrancyGuardUpgradeable {
     // update infer status
     // called by anyone
     function resolveInfer(uint256 _inferId) public virtual {
-
+        _updateEpoch();
     }
 
     // todo
     // validator withdraw unstaked token after 21 days
-    function withdrawUnstake() public virtual {}
+    function withdrawUnstake() public virtual {
+        _updateEpoch();
+    }
 
     // todo
     // minter claim reward
-    function claimReward() public virtual {}
+    function claimReward() public virtual {
+        _updateEpoch();
+    }
+
+    // todo
+    function setNewRewardInEpoch(uint256 _newRewardAmount) public virtual onlyOwner {
+        _updateEpoch();
+
+    }
+
+    // todo
+    function setBlocksPerEpoch(uint256 _blocks) public virtual onlyOwner {
+        _updateEpoch();
+    }
+
+    // sum reward of an minter since last claimed epoch
+    function getRewardToClaim(address _minter) public view virtual returns(uint256 totalReward) {
+        uint96 lastClaimed = minters[_minter].lastClaimedEpoch;
+        for (lastClaimed += 1; lastClaimed < currentEpoch; lastClaimed++) {
+            totalReward += rewardInEpoch[uint256(lastClaimed)].totalReward * minterTaskCompleted[_minter][uint256(lastClaimed)] / uint256(rewardInEpoch[uint256(lastClaimed)].totalTaskCompleted) ;
+        }
+    }
 }

@@ -42,5 +42,20 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // validator mapping validator => assigment id => boolean
     mapping(address => mapping(uint256 => bool)) public validatorDisputed;
 
+    // reward purpose
+    uint256 public blocksPerEpoch;
+    uint256 public currentEpoch;
+    uint256 public lastBlock;
+    uint256 public rewardPerEpoch;
+
+    // mapping total task completed in epoch and reward per epoch
+    // epoch index => total reward
+    mapping(uint256 => MinterEpochState) public rewardInEpoch;
+
+    // mapping detail minter completed how many request
+    // total task completed in epoch
+    // minter => epoch => total task completed
+    mapping(address => mapping(uint256 => uint256)) public minterTaskCompleted;
+
     uint256[50] private __gap;
 }

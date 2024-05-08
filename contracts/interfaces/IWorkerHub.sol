@@ -13,6 +13,11 @@ interface IWorkerHub is IInferable, IHeapComparator {
         Solved
     }
 
+    struct MinterEpochState {
+        uint256 totalReward;
+        uint96 totalTaskCompleted;
+    }
+
     struct Model {
         uint256 modelId;
         uint256 minimumFee;
@@ -24,7 +29,8 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 currentTaskId;
         uint256 commission;
         uint16 tier;
-        uint256 activeTime;
+        uint40 activeTime;
+        uint96 lastClaimedEpoch;
     }
 
     struct Assignment {
