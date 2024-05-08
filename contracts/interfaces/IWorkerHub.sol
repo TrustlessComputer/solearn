@@ -15,8 +15,9 @@ interface IWorkerHub is IInferable, IHeapComparator {
     }
 
     struct MinterEpochState {
-        uint256 totalReward;
-        uint96 totalTaskCompleted;
+        uint256 perfReward;
+        uint256 epochReward;
+        uint256 totalTaskCompleted;
     }
 
     struct Model {
