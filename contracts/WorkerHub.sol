@@ -265,17 +265,16 @@ ReentrancyGuardUpgradeable {
         _updateEpoch();
     }
 
-    // todo
     // minter claim reward
     function claimReward(address _minter) public virtual nonReentrant {
         _updateEpoch();
         uint256 rewardAmount = getRewardToClaim(_minter);
+        minters[msg.sender].lastClaimedEpoch = currentEpoch;
         if (rewardAmount > 0) {
             TransferHelper.safeTransferNative(_minter, rewardAmount);
 
             emit ClaimReward(_minter, rewardAmount);
         }
-        minters[msg.sender].lastClaimedEpoch = currentEpoch;
     }
 
     // @dev admin functions
@@ -307,7 +306,10 @@ ReentrancyGuardUpgradeable {
         } else {
             uint96 lastClaimed = minters[_minter].lastClaimedEpoch;
             for (; lastClaimed < currentEpoch; lastClaimed++) {
-                totalReward += rewardInEpoch[uint256(lastClaimed)].totalReward * minterTaskCompleted[_minter][uint256(lastClaimed)] / uint256(rewardInEpoch[uint256(lastClaimed)].totalTaskCompleted);
+                uint256 totalTaskCompleted = uint256(rewardInEpoch[uint256(lastClaimed)].totalTaskCompleted);
+                if (totalTaskCompleted != 0) {
+                    totalReward += rewardInEpoch[uint256(lastClaimed)].totalReward * minterTaskCompleted[_minter][uint256(lastClaimed)] / totalTaskCompleted;
+                }
             }
 
             if (rewardPerEpoch > 0) {
