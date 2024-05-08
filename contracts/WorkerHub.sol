@@ -218,6 +218,36 @@ ReentrancyGuardUpgradeable {
     // minter submit result for specific infer
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual {
         _updateEpoch();
+        //Check _assigmentId exist
+        Assignment storage assignment = mintingAssignments[_assigmentId];
+
+        if (msg.sender != assignment.worker) revert("Sender is invalid");
+
+        assignment.data = _data;
+
+        Inference storage inference = inferences[assignment.inferenceId];
+
+        // if inference.status is not None, the Tx will fail.
+        if (inference.status != InferStatus.None) {
+            revert("Assignment already submitted");
+        }
+
+        if (inference.expiredAt > block.timestamp) {
+            revert("Expire time");
+        }
+
+        inference.status = InferStatus.Solving;
+        uint256[] memory clonedAssignments = inference.assignments;
+        uint256 assignmentsLen = clonedAssignments.length;
+
+        for (uint8 i = 0; i < assignmentsLen; i++) {
+            if (clonedAssignments[i] == _assigmentId) {
+                inference.firstSubmitterIndex = i;
+                break;
+            }
+        }
+
+        emit SubmitSolution(msg.sender, _assigmentId);
     }
 
     function _handleDisputeSuccess(uint256 _inferId) internal {
