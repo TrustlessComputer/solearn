@@ -22,6 +22,9 @@ abstract contract WorkerHubStorage is IWorkerHub {
     Set.AddressSet internal minterAddresses;
     Set.AddressSet internal validatorAddresses;
 
+    mapping(address => Set.AddressSet) internal minterAddressesByModel;
+    mapping(address => Set.AddressSet) internal validatorAddressesByModel;
+
     uint256 public minterMinimumStake;
     uint256 public validatorMinimumStake;
     uint40 public mintingTimeLimit;
