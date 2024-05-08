@@ -39,8 +39,9 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     // reward purpose
     uint256 public blocksPerEpoch;
-    uint256 public currentEpoch;
+    uint96 public currentEpoch;
     uint256 public lastBlock;
+    uint256 public rewardPerEpochBasedOnPerf;
     uint256 public rewardPerEpoch;
 
     // mapping total task completed in epoch and reward per epoch

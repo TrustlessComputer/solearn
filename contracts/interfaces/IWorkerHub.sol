@@ -112,6 +112,21 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 _amount
     );
 
+    event RewardPerEpoch(
+        uint256 _oldReward,
+        uint256 _newReward
+    );
+
+    event RewardPerEpochBasedOnPerf(
+        uint256 _oldReward,
+        uint256 _newReward
+    );
+
+    event BlocksPerEpoch(
+        uint256 _oldBlocks,
+        uint256 _newBlocks
+    );
+
     error AlreadyRegistered();
     error NotRegistered();
     error Unauthorized();

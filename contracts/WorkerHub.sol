@@ -32,7 +32,7 @@ ReentrancyGuardUpgradeable {
         uint16 _maximumTier,
         uint16 _disqualificationPercentage,
         uint256 _blocksPerEpoch,
-        uint256 _rewardPerEpoch,
+        uint256 _rewardPerEpochBasedOnPerf,
         uint40 _penaltyDuration,
         uint40 _unstakeDelayTime
     ) external initializer {
@@ -49,7 +49,7 @@ ReentrancyGuardUpgradeable {
         maximumTier = _maximumTier;
         disqualificationPercentage = _disqualificationPercentage;
         blocksPerEpoch = _blocksPerEpoch;
-        rewardPerEpoch = _rewardPerEpoch;
+        rewardPerEpochBasedOnPerf = _rewardPerEpochBasedOnPerf;
         penaltyDuration = _penaltyDuration;
         unstakeDelayTime = _unstakeDelayTime;
     }
@@ -100,6 +100,7 @@ ReentrancyGuardUpgradeable {
 
         minter.stake = msg.value;
         minter.tier = tier;
+        minter.lastClaimedEpoch = currentEpoch;
 
         emit MinterRegistration(msg.sender, tier, msg.value, block.timestamp);
     }
@@ -115,6 +116,9 @@ ReentrancyGuardUpgradeable {
 
         TransferHelper.safeTransferNative(msg.sender, minter.stake);
         minter.stake = 0;
+
+        // claim reward
+        claimReward(msg.sender);
 
         emit MinterUnregistration(msg.sender);
     }
@@ -194,7 +198,7 @@ ReentrancyGuardUpgradeable {
         if (block.number - lastBlock >= blocksPerEpoch) {
             currentEpoch++;
             lastBlock = block.number;
-            rewardInEpoch[currentEpoch].totalReward = rewardPerEpoch;
+            rewardInEpoch[currentEpoch].totalReward = rewardPerEpochBasedOnPerf;
         }
     }
 
@@ -216,11 +220,33 @@ ReentrancyGuardUpgradeable {
         _updateEpoch();
     }
 
+    function _handleDisputeSuccess(uint256 _inferId) internal {
+        //
+
+    }
+
     // todo
     // validator notice result from minter incorrect and trigger dispute
     function disputeInfer(uint256 _assignmentId) public virtual {
-        _updateEpoch();
-
+//            _updateEpoch();
+//
+//            require(validators[msg.sender].stake != 0, "invalid validator");
+//
+//            // check infer in solving status or dispute
+//            Assignment storage assignment = validatingAssignments[_assignmentId];
+//            Inference storage infer = inferences[assignment.inferenceId];
+//
+//            require(infer.status == InferStatus.Dispute && block.timestamp < infer.expiredAt, "not in dispute phase or expired");
+//            require(!validatorDisputed[msg.sender][_assignmentId], "voted");
+//            validatorDisputed[msg.sender][_assignmentId] = true;
+//            assignment.disapproval++;
+//
+//            // handle vote > 1/3 total validator
+//            if (true) {
+//                _handleDisputeSuccess(assignment.inferenceId);
+//            }
+//
+//            emit DisputeInfer(msg.sender, _assignmentId);
     }
 
     // todo
@@ -241,26 +267,52 @@ ReentrancyGuardUpgradeable {
 
     // todo
     // minter claim reward
-    function claimReward() public virtual {
+    function claimReward(address _minter) public virtual nonReentrant {
         _updateEpoch();
+        uint256 rewardAmount = getRewardToClaim(_minter);
+        if (rewardAmount > 0) {
+            TransferHelper.safeTransferNative(_minter, rewardAmount);
+
+            emit ClaimReward(_minter, rewardAmount);
+        }
+        minters[msg.sender].lastClaimedEpoch = currentEpoch;
     }
 
-    // todo
+    // @dev admin functions
     function setNewRewardInEpoch(uint256 _newRewardAmount) public virtual onlyOwner {
         _updateEpoch();
+        emit RewardPerEpoch(rewardPerEpoch, _newRewardAmount);
 
+        rewardPerEpoch = _newRewardAmount;
     }
 
-    // todo
+    function setNewRewardInEpochBasedOnPerf(uint256 _newRewardAmount) public virtual onlyOwner {
+        _updateEpoch();
+        emit RewardPerEpochBasedOnPerf(rewardPerEpoch, _newRewardAmount);
+
+        rewardPerEpochBasedOnPerf = _newRewardAmount;
+    }
+
     function setBlocksPerEpoch(uint256 _blocks) public virtual onlyOwner {
         _updateEpoch();
+        emit BlocksPerEpoch(blocksPerEpoch, _blocks);
+
+        blocksPerEpoch = _blocks;
     }
 
     // sum reward of an minter since last claimed epoch
     function getRewardToClaim(address _minter) public view virtual returns(uint256 totalReward) {
-        uint96 lastClaimed = minters[_minter].lastClaimedEpoch;
-        for (lastClaimed += 1; lastClaimed < currentEpoch; lastClaimed++) {
-            totalReward += rewardInEpoch[uint256(lastClaimed)].totalReward * minterTaskCompleted[_minter][uint256(lastClaimed)] / uint256(rewardInEpoch[uint256(lastClaimed)].totalTaskCompleted) ;
+        if (minters[_minter].stake < minterMinimumStake || currentEpoch <= minters[_minter].lastClaimedEpoch) {
+            totalReward = 0;
+        } else {
+            uint96 lastClaimed = minters[_minter].lastClaimedEpoch;
+            for (; lastClaimed < currentEpoch; lastClaimed++) {
+                totalReward += rewardInEpoch[uint256(lastClaimed)].totalReward * minterTaskCompleted[_minter][uint256(lastClaimed)] / uint256(rewardInEpoch[uint256(lastClaimed)].totalTaskCompleted);
+            }
+
+            if (rewardPerEpoch > 0) {
+                totalReward += (currentEpoch - minters[_minter].lastClaimedEpoch) * rewardPerEpoch;
+            }
         }
     }
 }
