@@ -76,7 +76,7 @@ ReentrancyGuardUpgradeable {
         minter.stake = msg.value;
         minter.tier = tier;
 
-        emit MinterRegistration(msg.sender, tier, msg.value);
+        emit MinterRegistration(msg.sender, tier, msg.value, block.timestamp);
     }
 
     function unregisterMinter() external nonReentrant {
@@ -173,27 +173,44 @@ ReentrancyGuardUpgradeable {
         return inferenceId;
     }
 
+    function _processMintingTasks() private {}
+
+    // todo: kouchou remove code
+    // from here
     function compareAddress(address _a, address _b, int64 _identifier) external view returns (bool) {
-        return _identifier > 0 ? _compareMinter(_a, _b) : _compareValidator(_a, _b);
+        return true;
     }
 
     function compareUint256(uint256 _a, uint256 _b, int64 _identifier) external view returns (bool) {
-        return _compareTask(_a, _b);
+        return true;
     }
+    // end remove
 
-    function _compareMinter(address _minter1, address _minter2) private view returns (bool) {
-        return minters[_minter1].commission < minters[_minter2].commission;
-    }
-
-    function _compareValidator(address _validator1, address _validator2) private view returns (bool) {
-        return validators[_validator1].commission < validators[_validator2].commission;
-    }
-
-    function _compareTask(uint256 _taskId1, uint256 _taskId2) private view returns (bool) {
-        return tasks[_taskId1].value > tasks[_taskId2].value;
-    }
-
-    function _processMintingTasks() private {
+    // todo
+    // minter submit result for specific infer
+    function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual {
 
     }
+
+    // todo
+    // validator notice result from minter incorrect and trigger dispute
+    function disputeInfer(uint256 _assignmentId) public virtual {
+
+    }
+
+    // todo
+    // resolve pending inferences
+    // update infer status
+    // called by anyone
+    function resolveInfer(uint256 _inferId) public virtual {
+
+    }
+
+    // todo
+    // validator withdraw unstaked token after 21 days
+    function withdrawUnstake() public virtual {}
+
+    // todo
+    // minter claim reward
+    function claimReward() public virtual {}
 }

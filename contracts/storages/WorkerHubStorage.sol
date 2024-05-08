@@ -39,5 +39,8 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     uint16 public maximumTier;
 
+    // validator mapping validator => assigment id => boolean
+    mapping(address => mapping(uint256 => bool)) public validatorDisputed;
+
     uint256[50] private __gap;
 }

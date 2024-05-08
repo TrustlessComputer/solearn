@@ -6,6 +6,13 @@ import {IHeapComparator} from "../lib/heap/IHeapComparator.sol";
 import {IInferable} from "./IInferable.sol";
 
 interface IWorkerHub is IInferable, IHeapComparator {
+    enum InferStatus {
+        None,
+        Solving,
+        Dispute,
+        Solved
+    }
+
     struct Model {
         uint256 modelId;
         uint256 minimumFee;
@@ -17,13 +24,15 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 currentTaskId;
         uint256 commission;
         uint16 tier;
+        uint256 activeTime;
     }
 
     struct Assignment {
         uint256 inferenceId;
+        uint256 validationSubmissions;
         address worker;
-        uint40 expiredAt;
-        bool accomplished;
+        uint8 disapproval;
+        bytes data;
     }
 
     struct Task {
@@ -32,21 +41,16 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint8 workerRequirement;
     }
 
-    struct Output {
-        bytes data;
-        uint256 validationSubmissions;
-        address minter;
-        uint8 approval;
-    }
-
     struct Inference {
-        address[] minters;
+        uint256[] assignments; // assignment ids
         address[] validators;
-        Output[] outputs;
         address modelAddress;
         uint256 modelId;
         uint256 value;
         bytes input;
+        address disputeAddress; // the first validator submit dispute request
+        uint40 expiredAt;
+        InferStatus status;
         address creator;
     }
 
@@ -62,7 +66,8 @@ interface IWorkerHub is IInferable, IHeapComparator {
     event MinterRegistration(
         address indexed minter,
         uint16 indexed tier,
-        uint256 value
+        uint256 value,
+        uint256 activeTime
     );
     event MinterUnregistration(address indexed minter);
 
@@ -78,6 +83,31 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 indexed inferenceId,
         address indexed creator,
         uint256 value
+    );
+
+    event SubmitSolution(
+        address indexed _minter,
+        uint256 indexed _assigmentId
+    );
+
+    event DisputeInfer(
+        address indexed _validator,
+        uint256 indexed _assigmentId
+    );
+
+    event InferStatusUpdated(
+        uint256 indexed _inferId,
+        InferStatus _newStatus
+    );
+
+    event WithdrawUnstaked(
+        address indexed _validator,
+        uint256 _amount
+    );
+
+    event ClaimReward(
+        address indexed _minter,
+        uint256 _amount
     );
 
     error AlreadyRegistered();
