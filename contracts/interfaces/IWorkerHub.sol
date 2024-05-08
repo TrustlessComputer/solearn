@@ -10,7 +10,8 @@ interface IWorkerHub is IInferable, IHeapComparator {
         None,
         Solving,
         Dispute,
-        Solved
+        Solved,
+        Killed
     }
 
     struct MinterEpochState {
@@ -37,7 +38,7 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 inferenceId;
         uint256 validationSubmissions;
         address worker;
-        uint8 disapproval;
+        uint8 disapproval; // 1 / 3 total val
         bytes data;
     }
 
@@ -48,13 +49,12 @@ interface IWorkerHub is IInferable, IHeapComparator {
     }
 
     struct Inference {
-        uint256[] assignments; // assignment ids
-        address[] validators;
+        uint256[] assignments; // assignment ids solution submitter
         address modelAddress;
         uint256 modelId;
         uint256 value;
         bytes input;
-        address disputeAddress; // the first validator submit dispute request
+        address disputeAddress; // the first validator submit dispute request => punishment
         uint40 expiredAt;
         InferStatus status;
         address creator;

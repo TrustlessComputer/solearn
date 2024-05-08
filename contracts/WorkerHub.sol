@@ -187,7 +187,9 @@ ReentrancyGuardUpgradeable {
         return inferenceId;
     }
 
-    function _processMintingTasks() private {}
+    function _processMintingTasks() private {
+
+    }
 
     // this internal function update new epoch
     function _updateEpoch() private {
@@ -210,6 +212,7 @@ ReentrancyGuardUpgradeable {
     // end remove
 
     // todo
+    // kelvin
     // minter submit result for specific infer
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual {
         _updateEpoch();
@@ -219,6 +222,7 @@ ReentrancyGuardUpgradeable {
     // validator notice result from minter incorrect and trigger dispute
     function disputeInfer(uint256 _assignmentId) public virtual {
         _updateEpoch();
+
     }
 
     // todo
@@ -227,6 +231,8 @@ ReentrancyGuardUpgradeable {
     // called by anyone
     function resolveInfer(uint256 _inferId) public virtual {
         _updateEpoch();
+
+        // switch case
     }
 
     // todo
