@@ -178,11 +178,6 @@ ReentrancyGuardUpgradeable {
         inference.creator = _creator;
         inference.modelId = model.modelId;
 
-        uint256 taskId = ++taskNumber;
-        Task storage task = tasks[taskId];
-        task.inferenceId = inferenceId;
-        task.workerRequirement = minterRequirement;
-
         emit NewInference(inferenceId, _creator, msg.value);
 
         _processMintingTasks();

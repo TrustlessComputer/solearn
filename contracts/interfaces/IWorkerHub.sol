@@ -44,6 +44,7 @@ interface IWorkerHub is IInferable, IHeapComparator {
 
     struct Inference {
         uint256[] assignments; // assignment ids solution submitter
+        uint256 totalValidator;
         address modelAddress;
         uint256 modelId;
         uint256 value;
