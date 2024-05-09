@@ -47,7 +47,6 @@ interface IWorkerHub is IInferable {
         address disputingAddress;
         address modelAddress;
         uint40 expiredAt;
-        uint8 firstSubmitterIndex;
         InferenceStatus status;
         address creator;
     }
