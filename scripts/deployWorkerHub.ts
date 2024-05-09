@@ -24,10 +24,10 @@ async function deployWorkerHub() {
             // const collectionAddress = config.collectionAddress || ethers.constants.AddressZero;
 
             const feePercentage = 10_00;
-            const minnerMinimumStake = ethers.utils.parseEther("100");
+            const minerMinimumStake = ethers.utils.parseEther("100");
             const validatorMinimumStake = ethers.utils.parseEther("100");
             const miningTimeLimit = 300;
-            const minnerRequirement = 3;
+            const minerRequirement = 3;
             const blockPerEpoch = 600;
             const rewardPerEpochBasedOnPerf = ethers.utils.parseEther("0.5");
             const unstakeDelayTime = 12 * 24 * 3600;
@@ -37,10 +37,10 @@ async function deployWorkerHub() {
                 [
                     treasuryAddress,
                     feePercentage,
-                    minnerMinimumStake,
+                    minerMinimumStake,
                     validatorMinimumStake,
                     miningTimeLimit,
-                    minnerRequirement,
+                    minerRequirement,
                     blockPerEpoch,
                     rewardPerEpochBasedOnPerf,
                     unstakeDelayTime

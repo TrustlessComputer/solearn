@@ -12,11 +12,11 @@ interface IWorkerHub is IInferable {
         Killed
     }
 
-    struct MinnerEpochState {
+    struct MinerEpochState {
         uint256 perfReward;
         uint256 epochReward;
         uint256 totalTaskCompleted;
-        uint256 totalMinner;
+        uint256 totalMiner;
     }
 
     struct Model {
@@ -96,13 +96,13 @@ interface IWorkerHub is IInferable {
     );
     event ModelUnregistration(address indexed model);
 
-    event MinnerExtraStake(address indexed minner, uint256 value);
-    event MinnerRegistration(
-        address indexed minner,
+    event MinerExtraStake(address indexed miner, uint256 value);
+    event MinerRegistration(
+        address indexed miner,
         uint16 indexed tier,
         uint256 value
     );
-    event MinnerUnregistration(address indexed minner);
+    event MinerUnregistration(address indexed miner);
 
     event ValidatorExtraStake(address indexed validator, uint256 value);
     event ValidatorRegistration(
@@ -123,13 +123,15 @@ interface IWorkerHub is IInferable {
     event NewAssignment(
         uint256 indexed assignmentId,
         uint256 indexed inferenceId,
-        address indexed minner,
+        address indexed miner,
         uint40 expiredAt
     );
-    event SolutionSubmission(address indexed minner, uint256 indexed assigmentId);
+    event SolutionSubmission(address indexed miner, uint256 indexed assigmentId);
 
-    event MinnerUnstake(address indexed minner, uint256 stake);
+    event MinerUnstake(address indexed miner, uint256 stake);
+    event MinerJoin(address indexed miner);
     event ValidatorUnstake(address indexed validator, uint256 stake);
+    event ValidatorJoin(address indexed validator);
 
     event RewardClaim(address indexed worker, uint256 value);
 

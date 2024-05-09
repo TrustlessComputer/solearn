@@ -28,10 +28,10 @@ ReentrancyGuardUpgradeable {
     function initialize(
         address _treasury,
         uint16 _feePercentage,
-        uint256 _minnerMinimumStake,
+        uint256 _minerMinimumStake,
         uint256 _validatorMinimumStake,
         uint40 _miningTimeLimit,
-        uint8 _minnerRequirement,
+        uint8 _minerRequirement,
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpochBasedOnPerf,
         uint40 _unstakeDelayTime
@@ -42,10 +42,10 @@ ReentrancyGuardUpgradeable {
 
         treasury = _treasury;
         feePercentage = _feePercentage;
-        minnerMinimumStake = _minnerMinimumStake;
+        minerMinimumStake = _minerMinimumStake;
         validatorMinimumStake = _validatorMinimumStake;
         miningTimeLimit = _miningTimeLimit;
-        minnerRequirement = _minnerRequirement;
+        minerRequirement = _minerRequirement;
         blocksPerEpoch = _blocksPerEpoch;
         rewardPerEpochBasedOnPerf = _rewardPerEpochBasedOnPerf;
         unstakeDelayTime = _unstakeDelayTime;
@@ -70,7 +70,7 @@ ReentrancyGuardUpgradeable {
     }
 
     function getMiningAssignments() external view returns (AssignmentInfo[] memory) {
-        uint256[] memory assignmentIds = assignmentsByMinner[msg.sender].values;
+        uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
         uint256 assignmentNumber = assignmentIds.length;
 
         uint256 counter = 0;
@@ -97,24 +97,24 @@ ReentrancyGuardUpgradeable {
         return result;
     }
 
-    function getMinnerAddresses() external view returns (address[] memory) {
-        return minnerAddresses.values;
+    function getMinerAddresses() external view returns (address[] memory) {
+        return minerAddresses.values;
     }
 
-    function getMinners() external view returns (WorkerInfo[] memory) {
-        address[] memory addresses = minnerAddresses.values;
-        uint256 minnerNumber = addresses.length;
-        WorkerInfo[] memory result = new WorkerInfo[](minnerNumber);
-        for (uint256 i = 0; i < minnerNumber; ++i) {
-            Worker memory minner = minners[addresses[i]];
+    function getMiners() external view returns (WorkerInfo[] memory) {
+        address[] memory addresses = minerAddresses.values;
+        uint256 minerNumber = addresses.length;
+        WorkerInfo[] memory result = new WorkerInfo[](minerNumber);
+        for (uint256 i = 0; i < minerNumber; ++i) {
+            Worker memory miner = miners[addresses[i]];
             result[i] = WorkerInfo(
                 addresses[i],
-                minner.stake,
-                minner.commitment,
-                minner.modelAddress,
-                minner.lastClaimedEpoch,
-                minner.activeTime,
-                minner.tier
+                miner.stake,
+                miner.commitment,
+                miner.modelAddress,
+                miner.lastClaimedEpoch,
+                miner.activeTime,
+                miner.tier
             );
         }
         return result;
@@ -195,76 +195,90 @@ ReentrancyGuardUpgradeable {
         emit ModelUnregistration(_model);
     }
 
-    function registerMinner(uint16 tier) external payable whenNotPaused {
+    function registerMiner(uint16 tier) external payable whenNotPaused {
         _updateEpoch();
 
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
-        if (msg.value < minnerMinimumStake) revert StakeTooLow();
+        if (msg.value < minerMinimumStake) revert StakeTooLow();
 
-        Worker storage minner = minners[msg.sender];
-        if (minner.tier != 0) revert AlreadyRegistered();
+        Worker storage miner = miners[msg.sender];
+        if (miner.tier != 0) revert AlreadyRegistered();
 
-        minner.stake = msg.value;
-        minner.tier = tier;
-        minner.lastClaimedEpoch = currentEpoch;
+        miner.stake = msg.value;
+        miner.tier = tier;
+        miner.lastClaimedEpoch = currentEpoch;
 
         address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
-        minner.modelAddress = modelAddress;
-        minnerAddressesByModel[modelAddress].insert(msg.sender);
+        miner.modelAddress = modelAddress;
+        minerAddressesByModel[modelAddress].insert(msg.sender);
 
-        minnerAddresses.insert(msg.sender);
+        minerAddresses.insert(msg.sender);
 
-        emit MinnerRegistration(msg.sender, tier, msg.value);
+        emit MinerRegistration(msg.sender, tier, msg.value);
     }
 
-    function unregisterMinner() external nonReentrant {
+    function joinForMinting() external whenNotPaused {
         _updateEpoch();
 
-        Worker storage minner = minners[msg.sender];
-        if (minner.tier == 0) revert NotRegistered();
+        Worker storage miner = miners[msg.sender];
+        if (miner.tier == 0) revert NotRegistered();
 
-        minner.tier = 0;
+        address modelAddress = miner.modelAddress;
+        minerAddressesByModel[modelAddress].insert(msg.sender);
 
-        TransferHelper.safeTransferNative(msg.sender, minner.stake);
-        minner.stake = 0;
-        minner.commitment = 0;
+        minerAddresses.insert(msg.sender);
 
-        minnerAddresses.erase(msg.sender);
-        minnerAddressesByModel[minner.modelAddress].erase(msg.sender);
-        minner.modelAddress = address(0);
+        emit MinerJoin(msg.sender);
+    }
 
-        minnerUnstakeRequests[msg.sender] = UnstakeRequest(
-            minner.stake,
+    function unregisterMiner() external nonReentrant {
+        _updateEpoch();
+
+        Worker storage miner = miners[msg.sender];
+        if (miner.tier == 0) revert NotRegistered();
+
+        miner.tier = 0;
+
+        TransferHelper.safeTransferNative(msg.sender, miner.stake);
+        miner.stake = 0;
+        miner.commitment = 0;
+
+        minerAddresses.erase(msg.sender);
+        minerAddressesByModel[miner.modelAddress].erase(msg.sender);
+        miner.modelAddress = address(0);
+
+        minerUnstakeRequests[msg.sender] = UnstakeRequest(
+            miner.stake,
             uint40(block.timestamp + unstakeDelayTime)
         );
 
         _claimReward(msg.sender);
 
-        emit MinnerUnregistration(msg.sender);
+        emit MinerUnregistration(msg.sender);
     }
 
-    function increaseMinnerStake() external payable whenNotPaused {
+    function increaseMinerStake() external payable whenNotPaused {
         _updateEpoch();
 
-        Worker storage minner = minners[msg.sender];
-        if (minner.tier == 0) revert NotRegistered();
+        Worker storage miner = miners[msg.sender];
+        if (miner.tier == 0) revert NotRegistered();
 
-        minner.stake += msg.value;
+        miner.stake += msg.value;
 
-        emit MinnerExtraStake(msg.sender, msg.value);
+        emit MinerExtraStake(msg.sender, msg.value);
     }
 
-    function unstakeForMinner() external {
+    function unstakeForMiner() external {
         _updateEpoch();
 
-        UnstakeRequest storage unstakeRequest = minnerUnstakeRequests[msg.sender];
+        UnstakeRequest storage unstakeRequest = minerUnstakeRequests[msg.sender];
         if (block.timestamp < unstakeRequest.unlockAt) revert StillBeingLocked();
 
         uint256 stake = unstakeRequest.stake;
         if (stake == 0) revert NullStake();
         TransferHelper.safeTransferNative(msg.sender, stake);
 
-        emit MinnerUnstake(msg.sender, stake);
+        emit MinerUnstake(msg.sender, stake);
     }
 
     function registerValidator(uint16 tier) external payable whenNotPaused {
@@ -287,6 +301,20 @@ ReentrancyGuardUpgradeable {
         validatorAddresses.insert(msg.sender);
 
         emit ValidatorRegistration(msg.sender, tier, msg.value);
+    }
+
+    function joinForValidating() external whenNotPaused {
+        _updateEpoch();
+
+        Worker storage validator = miners[msg.sender];
+        if (validator.tier == 0) revert NotRegistered();
+
+        address modelAddress = validator.modelAddress;
+        validatorAddressesByModel[modelAddress].insert(msg.sender);
+
+        validatorAddresses.insert(msg.sender);
+
+        emit ValidatorJoin(msg.sender);
     }
 
     function unregisterValidator() external nonReentrant {
@@ -356,35 +384,35 @@ ReentrancyGuardUpgradeable {
 
         emit NewInference(inferenceId, _creator, value);
 
-        _assignMinners(inferenceId);
+        _assignMiners(inferenceId);
 
         return inferenceId;
     }
 
-    function _assignMinners(uint256 _inferenceId) private {
+    function _assignMiners(uint256 _inferenceId) private {
         uint40 expiredAt = uint40(block.timestamp + miningTimeLimit);
         inferences[_inferenceId].expiredAt = expiredAt;
         inferences[_inferenceId].status = InferenceStatus.Solving;
 
         address model = inferences[_inferenceId].modelAddress;
 
-        Set.AddressSet storage minners = minnerAddressesByModel[model];
-        uint256 n = minnerRequirement;
-        address[] memory selectedMinners = new address[](n);
+        Set.AddressSet storage miners = minerAddressesByModel[model];
+        uint256 n = minerRequirement;
+        address[] memory selectedMiners = new address[](n);
 
         for (uint256 i = 0; i < n; ++i) {
-            address minner = minners.values[randomizer.randomUint256() % minners.size()];
-            minners.erase(minner);
+            address miner = miners.values[randomizer.randomUint256() % miners.size()];
+            miners.erase(miner);
             uint256 assignmentId = ++assignmentNumber;
             assignments[assignmentId].inferenceId = _inferenceId;
-            assignments[assignmentId].worker = minner;
-            selectedMinners[i] = minner;
-            assignmentsByMinner[msg.sender].insert(assignmentId);
+            assignments[assignmentId].worker = miner;
+            selectedMiners[i] = miner;
+            assignmentsByMiner[msg.sender].insert(assignmentId);
             assignmentsByInference[_inferenceId].insert(assignmentId);
-            emit NewAssignment(assignmentId, _inferenceId, minner, expiredAt);
+            emit NewAssignment(assignmentId, _inferenceId, miner, expiredAt);
         }
 
-        for (uint256 i = 0; i < n; ++i) minners.insert(selectedMinners[i]);
+        for (uint256 i = 0; i < n; ++i) miners.insert(selectedMiners[i]);
     }
 
     // this internal function update new epoch
@@ -393,7 +421,7 @@ ReentrancyGuardUpgradeable {
             uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
                 for (; epochPassed > 0; epochPassed--) {
-                    rewardInEpoch[currentEpoch].totalMinner = minnerAddresses.size();
+                    rewardInEpoch[currentEpoch].totalMiner = minerAddresses.size();
                     currentEpoch++;
                     rewardInEpoch[currentEpoch].perfReward = rewardPerEpochBasedOnPerf;
                     rewardInEpoch[currentEpoch].epochReward = rewardPerEpoch;
@@ -419,7 +447,7 @@ ReentrancyGuardUpgradeable {
 
         if (clonedInference.expiredAt < block.timestamp) {
             if (clonedInference.assignments.length == 0) {
-                _assignMinners(clonedAssignments.inferenceId);
+                _assignMiners(clonedAssignments.inferenceId);
                 return;
             } else {
                 revert("Expire time");
@@ -434,7 +462,7 @@ ReentrancyGuardUpgradeable {
 
         if (inference.assignments.length == 1) {
             uint256 curEpoch = currentEpoch;
-            minnerTaskCompleted[_msgSender][curEpoch] += 1;
+            minerTaskCompleted[_msgSender][curEpoch] += 1;
             rewardInEpoch[curEpoch].totalTaskCompleted += 1;
             TransferHelper.safeTransferNative(_msgSender, clonedInference.value);
         }
@@ -461,23 +489,23 @@ ReentrancyGuardUpgradeable {
             for (uint256 i = 0; i < assignmentNumber; ++i) {
                 assignments[assignmentIds[i]].worker = address(0);
             }
-            _assignMinners(_inferenceId);
+            _assignMiners(_inferenceId);
         }
     }
 
-    function _claimReward(address _minner) internal whenNotPaused {
-        uint256 rewardAmount = rewardToClaim(_minner);
-        minners[_minner].lastClaimedEpoch = currentEpoch;
+    function _claimReward(address _miner) internal whenNotPaused {
+        uint256 rewardAmount = rewardToClaim(_miner);
+        miners[_miner].lastClaimedEpoch = currentEpoch;
         if (rewardAmount > 0) {
-            TransferHelper.safeTransferNative(_minner, rewardAmount);
+            TransferHelper.safeTransferNative(_miner, rewardAmount);
 
-            emit RewardClaim(_minner, rewardAmount);
+            emit RewardClaim(_miner, rewardAmount);
         }
     }
 
-    // minner claim reward
-    function claimReward(address _minner) public virtual nonReentrant {
-        _claimReward(_minner);
+    // miner claim reward
+    function claimReward(address _miner) public virtual nonReentrant {
+        _claimReward(_miner);
     }
 
     // @dev admin functions
@@ -504,30 +532,30 @@ ReentrancyGuardUpgradeable {
         blocksPerEpoch = _blocks;
     }
 
-    // sum reward of an minner since last claimed epoch
-    function rewardToClaim(address _minner) public virtual returns(uint256) {
+    // sum reward of an miner since last claimed epoch
+    function rewardToClaim(address _miner) public virtual returns(uint256) {
         _updateEpoch();
 
         uint256 totalReward;
         uint256 lastEpoch = currentEpoch;
-        if (minners[_minner].stake <= 0 || lastEpoch <= minners[_minner].lastClaimedEpoch) {
+        if (miners[_miner].stake <= 0 || lastEpoch <= miners[_miner].lastClaimedEpoch) {
             totalReward = 0;
         } else {
-            uint256 lastClaimed = uint256(minners[_minner].lastClaimedEpoch);
+            uint256 lastClaimed = uint256(miners[_miner].lastClaimedEpoch);
             uint256 perfReward;
             uint256 epochReward;
-            uint256 currentMinner;
+            uint256 currentMiner;
             for (; lastClaimed < lastEpoch; lastClaimed++) {
-                MinnerEpochState memory state = rewardInEpoch[lastClaimed];
+                MinerEpochState memory state = rewardInEpoch[lastClaimed];
                 uint256 totalTaskCompleted = state.totalTaskCompleted;
                 // reward at epoch
-                (perfReward, epochReward, currentMinner) = (state.perfReward, state.epochReward, state.totalMinner);
+                (perfReward, epochReward, currentMiner) = (state.perfReward, state.epochReward, state.totalMiner);
                 if (totalTaskCompleted > 0 && perfReward > 0) {
-                    totalReward += perfReward * minnerTaskCompleted[_minner][lastClaimed] / totalTaskCompleted;
+                    totalReward += perfReward * minerTaskCompleted[_miner][lastClaimed] / totalTaskCompleted;
                 }
 
-                if (currentMinner > 0 && epochReward > 0) {
-                    totalReward += epochReward / currentMinner;
+                if (currentMiner > 0 && epochReward > 0) {
+                    totalReward += epochReward / currentMiner;
                 }
             }
         }
