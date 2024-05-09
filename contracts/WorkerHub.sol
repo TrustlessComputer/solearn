@@ -421,16 +421,9 @@ ReentrancyGuardUpgradeable {
 
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
-        // if inference.status is not Solving, the Tx will fail.
-        if (clonedInference.status != InferenceStatus.Solving) revert AlreadySubmitted();
-        if (clonedInference.expiredAt > block.timestamp) {
-            _assignMinters(clonedAssignments.inferenceId);
-        }
-
         assignments[_assigmentId].output = _data; //Record the solution
         inference.status = InferenceStatus.Solved;
         inference.assignments.push(_assigmentId);
-
 
         if (inference.assignments.length == 1) {
             uint256 curEpoch = currentEpoch;
