@@ -28,7 +28,7 @@ async function deployWorkerHub() {
             const validatorMinimumStake = ethers.utils.parseEther("70000");
             const mintingTimeLimit = 300;
             const minterRequirement = 3;
-            const blockPerEpoch = 100;
+            const blockPerEpoch = 600;
             const rewardPerEpochBasedOnPerf = ethers.utils.parseEther("0.5");
             const unstakeDelayTime = 12 * 24 * 3600;
 
