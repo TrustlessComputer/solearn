@@ -9,7 +9,7 @@ dotenv.config();
 
 const ModelCollectionContractName = "ModelCollection";
 const MaxWeightLen = 1000;
-const mintPrice = ethers.utils.parseEther('0.1');
+const mintPrice = ethers.utils.parseEther('100');
 const mintConfig = { value: mintPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
@@ -62,6 +62,7 @@ async function main() {
     // ImageClassifier contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
     const ImageFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);    
     const imageImpl = await ImageFac.deploy();
+    await imageImpl.deployed();
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = ImageFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);

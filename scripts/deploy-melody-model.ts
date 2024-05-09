@@ -60,6 +60,7 @@ async function main() {
     // deploy a MelodyRNN contract
     const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
     const mldyImpl = await MelodyFac.deploy();
+    await mldyImpl.deployed();
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = MelodyFac.interface.encodeFunctionData("initialize", [params.model_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);

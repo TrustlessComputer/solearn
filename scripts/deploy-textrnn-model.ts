@@ -61,6 +61,7 @@ async function main() {
     const EaiFac = new ethers.ContractFactory(TextRNNArtifact.abi, TextRNNArtifact.bytecode, signer);
     
     const eaiImpl = await EaiFac.deploy();
+    await eaiImpl.deployed();
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = EaiFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
