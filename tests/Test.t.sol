@@ -53,9 +53,9 @@ contract WorkHubTest is Test {
         vm.deal(Miner1, 2e18);
         vm.deal(Miner2, 2e18);
         vm.deal(Miner3, 2e18);
-
+        assertEq(workerHub.lastBlock(), 1);
         // init block height
-        vm.roll(10);
+        vm.roll(11);
         vm.prank(Miner1);
         workerHub.registerMinter{value: 1e18}(1);
 
@@ -65,6 +65,7 @@ contract WorkHubTest is Test {
         vm.prank(Miner3);
         workerHub.registerMinter{value: 1e18}(1);
 
+        assertEq(workerHub.lastBlock(), 11);
         assertEq(workerHub.currentEpoch(), 1);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         assertEq(workerHub.rewardToClaim(Miner2), 0);
@@ -75,10 +76,9 @@ contract WorkHubTest is Test {
         assertEq(epochReward, 1e16);
         assertEq(totalTaskCompleted, 0);
         assertEq(workerHub.rewardPerEpoch(), 1e16);
-        assertEq(workerHub.lastBlock(), 10);
 
         // create some data for 2 epochs sequence
-        vm.roll(30);
+        vm.roll(31);
         assertEq(workerHub.rewardToClaim(Miner1), 6666666666666666);
         assertEq(workerHub.rewardToClaim(Miner2), 6666666666666666);
         assertEq(workerHub.rewardToClaim(Miner3), 6666666666666666);
@@ -136,7 +136,7 @@ contract WorkHubTest is Test {
         assertEq(Miner1.balance, 906666666666666666 + 2e18);
 
         vm.startPrank(Miner1);
-        vm.roll(50);
+        vm.roll(51);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 906666666666666666 + 2e18);
@@ -153,7 +153,7 @@ contract WorkHubTest is Test {
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 906666666666666666 + 1e18);
-        vm.roll(60);
+        vm.roll(61);
         assertEq(workerHub.rewardToClaim(Miner1), 3333333333333333);
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 906666666666666666 + 1e18 + 3333333333333333);

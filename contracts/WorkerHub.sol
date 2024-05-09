@@ -50,6 +50,7 @@ ReentrancyGuardUpgradeable {
         rewardPerEpochBasedOnPerf = _rewardPerEpochBasedOnPerf;
         unstakeDelayTime = _unstakeDelayTime;
         maximumTier = 1;
+        lastBlock = block.number;
     }
 
     function version() external pure returns (string memory) {
