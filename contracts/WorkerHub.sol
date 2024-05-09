@@ -301,37 +301,41 @@ ReentrancyGuardUpgradeable {
     // minter submit result for specific infer
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual {
         _updateEpoch();
+        address _msgSender = msg.sender;
 
-        //Check _assigmentId exist
-        Assignment storage assignment = assignments[_assigmentId];
+        Assignment memory clonedAssignments = assignments[_assigmentId];
 
-        if (msg.sender != assignment.worker) revert("Sender is invalid");
+        if (_msgSender != clonedAssignments.worker) revert("Sender is invalid");
+        if (clonedAssignments.output.length != 0) revert("Assignment already submitted");
 
-        assignment.output = _data;
+        assignments[_assigmentId].output = _data; //Record the solution
 
-        Inference storage inference = inferences[assignment.inferenceId];
+        Inference storage inference = inferences[clonedAssignments.inferenceId];
 
         // if inference.status is not None, the Tx will fail.
-        if (inference.status != InferStatus.None) {
+        if (inference.status != InferStatus.Solving) {
             revert("Assignment already submitted");
         }
-
         if (inference.expiredAt > block.timestamp) {
-            revert("Expire time");
+            _assignMinters(clonedAssignments.inferenceId);
         }
 
-        inference.status = InferStatus.Solving;
-        uint256[] memory clonedAssignments = inference.assignments;
-        uint256 assignmentsLen = clonedAssignments.length;
+        inference.status = InferStatus.Solved;
+        uint256[] memory inferAssignments = inference.assignments;
+        uint256 assignmentsLen = inferAssignments.length;
 
         for (uint8 i = 0; i < assignmentsLen; i++) {
-            if (clonedAssignments[i] == _assigmentId) {
+            if (inferAssignments[i] == _assigmentId) {
                 inference.firstSubmitterIndex = i;
                 break;
             }
         }
 
-        emit SubmitSolution(msg.sender, _assigmentId);
+        uint curEpoch = currentEpoch;
+        minterTaskCompleted[_msgSender][curEpoch] += 1;
+        rewardInEpoch[curEpoch].totalTaskCompleted += 1;
+
+        emit SubmitSolution(_msgSender, _assigmentId);
     }
 
     function _handleDisputeSuccess(uint256 _inferId) internal {
