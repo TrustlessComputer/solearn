@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 library TransferHelper {
-    bytes4 constant private APPROVE_SELECTOR = bytes4(keccak256(bytes('approve(address,uint256)')));
-    bytes4 constant private TRANSFER_SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
-    bytes4 constant private TRANSFER_FROM_SELECTOR = bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
+    bytes4 constant private SELECTOR_APPROVE = bytes4(keccak256(bytes('approve(address,uint256)')));
+    bytes4 constant private SELECTOR_TRANSFER = bytes4(keccak256(bytes('transfer(address,uint256)')));
+    bytes4 constant private SELECTOR_TRANSFER_FROM = bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
 
     error FailedApproval();
     error FailedTransfer();
@@ -16,7 +16,7 @@ library TransferHelper {
     ) internal {
         (bool success, bytes memory data) = _token.call(
             abi.encodeWithSelector(
-                TRANSFER_SELECTOR,
+                SELECTOR_TRANSFER,
                 _to,
                 _value
             )
@@ -33,7 +33,7 @@ library TransferHelper {
     ) internal {
         (bool success, bytes memory data) = _token.call(
             abi.encodeWithSelector(
-                TRANSFER_SELECTOR,
+                SELECTOR_TRANSFER,
                 _to,
                 _value
             )
@@ -51,7 +51,7 @@ library TransferHelper {
     ) internal {
         (bool success, bytes memory data) = _token.call(
             abi.encodeWithSelector(
-                TRANSFER_FROM_SELECTOR,
+                SELECTOR_TRANSFER_FROM,
                 _from,
                 _to,
                 _value
