@@ -81,8 +81,9 @@ ReentrancyGuardUpgradeable {
         for (uint256 i = 0; i < assignmentNumber; ++i)
             if (isAssignmentPending(assignmentIds[i])) counter++;
 
-        counter = 0;
         AssignmentInfo[] memory result = new AssignmentInfo[](counter);
+        counter = 0;
+        // todo: why not use i instead of counter
         for (uint256 i = 0; i < assignmentNumber; ++i)
             if (isAssignmentPending(assignmentIds[i])) {
                 Assignment storage assignment = assignments[assignmentIds[i]];
