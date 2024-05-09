@@ -5,6 +5,8 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
+import {Queue} from "./lib/Queue.sol";
+import {Random} from "./lib/Random.sol";
 import {Set} from "./lib/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 
@@ -15,6 +17,8 @@ WorkerHubStorage,
 OwnableUpgradeable,
 PausableUpgradeable,
 ReentrancyGuardUpgradeable {
+    using Queue for Queue.Uint256Queue;
+    using Random for Random.Randomizer;
     using Set for Set.AddressSet;
 
     string constant private VERSION = "v0.0.1";
@@ -66,24 +70,20 @@ ReentrancyGuardUpgradeable {
         _unpause();
     }
 
-    function registerModel(address _model, uint16 _tier, uint256 _minimumFee) external onlyOwner returns (uint256) {
+    function registerModel(address _model, uint16 _tier, uint256 _minimumFee) external onlyOwner {
         _updateEpoch();
 
         Model storage model = models[_model];
-        if (model.modelId != 0) revert AlreadyRegistered();
-        uint256 modelId = ++modelNumber;
-        model.modelId = modelId;
+        if (model.tier != 0) revert AlreadyRegistered();
         model.minimumFee = _minimumFee;
         model.tier = _tier;
         modelAddresses.insert(_model);
-        emit ModelRegistration(_model, modelId, _tier, _minimumFee);
-        return modelId;
+        emit ModelRegistration(_model, _tier, _minimumFee);
     }
 
     function unregisterModel(address _model) external onlyOwner {
         Model storage model = models[_model];
-        if (model.modelId == 0) revert NotRegistered();
-        model.modelId = 0;
+        if (model.tier == 0) revert NotRegistered();
         model.tier = 0;
         modelAddresses.erase(_model);
         emit ModelUnregistration(_model);
@@ -103,7 +103,14 @@ ReentrancyGuardUpgradeable {
         minter.lastClaimedEpoch = currentEpoch;
         minterNumber++;
 
-        emit MinterRegistration(msg.sender, tier, msg.value, block.timestamp);
+        address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
+        minter.modelAddress = modelAddress;
+        minterAddressesByModel[modelAddress].insert(msg.sender);
+
+        minterAddresses.insert(msg.sender);
+        assignmentsByMinter[msg.sender].init();
+
+        emit MinterRegistration(msg.sender, tier, msg.value);
     }
 
     function unregisterMinter() external nonReentrant {
@@ -111,13 +118,22 @@ ReentrancyGuardUpgradeable {
 
         Worker storage minter = minters[msg.sender];
         if (minter.tier == 0) revert NotRegistered();
-        if (minter.currentTaskId != 0) revert MintingSessionNotEnded();
 
         minter.tier = 0;
         minterNumber--;
 
         TransferHelper.safeTransferNative(msg.sender, minter.stake);
         minter.stake = 0;
+        minter.commitment = 0;
+
+        minterAddresses.erase(msg.sender);
+        minterAddressesByModel[minter.modelAddress].erase(msg.sender);
+        minter.modelAddress = address(0);
+
+        minterUnstakeRequests[msg.sender] = UnstakeRequest(
+            minter.stake,
+            uint40(block.timestamp + unstakeDelayTime)
+        );
 
         // claim reward
         _claimReward(msg.sender);
@@ -130,8 +146,23 @@ ReentrancyGuardUpgradeable {
 
         Worker storage minter = minters[msg.sender];
         if (minter.tier == 0) revert NotRegistered();
+
         minter.stake += msg.value;
+
         emit MinterExtraStake(msg.sender, msg.value);
+    }
+
+    function unstakeForMinter() external {
+        _updateEpoch();
+
+        UnstakeRequest storage unstakeRequest = minterUnstakeRequests[msg.sender];
+        if (block.timestamp < unstakeRequest.unlockAt) revert StillBeingLocked();
+
+        uint256 stake = unstakeRequest.stake;
+        if (stake == 0) revert NullStake();
+        TransferHelper.safeTransferNative(msg.sender, stake);
+
+        emit MinterUnstake(msg.sender, stake);
     }
 
     function registerValidator(uint16 tier) external payable {
@@ -145,6 +176,13 @@ ReentrancyGuardUpgradeable {
 
         validator.stake = msg.value;
         validator.tier = tier;
+        validator.lastClaimedEpoch = currentEpoch;
+
+        address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
+        validator.modelAddress = modelAddress;
+        validatorAddressesByModel[modelAddress].insert(msg.sender);
+
+        validatorAddresses.insert(msg.sender);
 
         emit ValidatorRegistration(msg.sender, tier, msg.value);
     }
@@ -154,12 +192,24 @@ ReentrancyGuardUpgradeable {
 
         Worker storage validator = validators[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
-        if (validator.currentTaskId != 0) revert ValidatingSessionNotEnded();
 
         validator.tier = 0;
 
         TransferHelper.safeTransferNative(msg.sender, validator.stake);
         validator.stake = 0;
+        validator.commitment = 0;
+
+        validatorAddresses.erase(msg.sender);
+        validatorAddressesByModel[validator.modelAddress].erase(msg.sender);
+        validator.modelAddress = address(0);
+
+        validatorUnstakeRequests[msg.sender] = UnstakeRequest(
+            validator.stake,
+            uint40(block.timestamp + unstakeDelayTime)
+        );
+
+        // claim reward
+        _claimReward(msg.sender);
 
         emit ValidatorUnregistration(msg.sender);
     }
@@ -169,8 +219,23 @@ ReentrancyGuardUpgradeable {
 
         Worker storage validator = validators[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
+
         validator.stake += msg.value;
+
         emit ValidatorExtraStake(msg.sender, msg.value);
+    }
+
+    function unstakeForValidator() external {
+        _updateEpoch();
+
+        UnstakeRequest storage unstakeRequest = validatorUnstakeRequests[msg.sender];
+        if (block.timestamp < unstakeRequest.unlockAt) revert StillBeingLocked();
+
+        uint256 stake = unstakeRequest.stake;
+        if (stake == 0) revert NullStake();
+        TransferHelper.safeTransferNative(msg.sender, stake);
+
+        emit ValidatorUnstake(msg.sender, stake);
     }
 
     function infer(bytes calldata _input, address _creator) external payable returns (uint256) {
@@ -182,17 +247,35 @@ ReentrancyGuardUpgradeable {
         inference.input = _input;
         inference.value = msg.value;
         inference.creator = _creator;
-        inference.modelId = model.modelId;
+        inference.modelAddress = msg.sender;
 
+
+        Set.AddressSet storage minters = minterAddressesByModel[msg.sender];
+        uint256 n = minterRequirement;
+        address[] memory selectedMinters = new address[](n);
         emit NewInference(inferenceId, _creator, msg.value);
 
-        _processMintingTasks();
+        for (uint256 i = 0; i < n; ++i) {
+            address minter = minters.values[randomizer.randomUint256() % minters.size()];
+            minters.erase(minter);
+            uint256 assignmentId = ++assignmentNumber;
+            assignments[assignmentId].inferenceId = inferenceId;
+            assignments[assignmentId].worker = minter;
+            selectedMinters[i] = minter;
+            assignmentsByMinter[msg.sender].push(assignmentId);
+            emit NewAssignment(assignmentId, inferenceId, minter);
+        }
+
+        for (uint256 i = 0; i < n; ++i) minters.insert(selectedMinters[i]);
 
         return inferenceId;
     }
 
-    function _processMintingTasks() private {
-
+    function getMintingAssignment() external view returns (uint256) {
+        Worker storage minter = minters[msg.sender];
+        if (minter.tier == 0) revert NotRegistered();
+        if (assignmentsByMinter[msg.sender].isEmpty()) return 0;
+        return assignmentsByMinter[msg.sender].front();
     }
 
     // this internal function update new epoch
@@ -213,28 +296,18 @@ ReentrancyGuardUpgradeable {
         }
     }
 
-    // todo: kouchou remove code
-    // from here
-    function compareAddress(address _a, address _b, int64 _identifier) external view returns (bool) {
-        return true;
-    }
-
-    function compareUint256(uint256 _a, uint256 _b, int64 _identifier) external view returns (bool) {
-        return true;
-    }
-    // end remove
-
     // todo
     // kelvin
     // minter submit result for specific infer
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual {
         _updateEpoch();
+
         //Check _assigmentId exist
-        Assignment storage assignment = mintingAssignments[_assigmentId];
+        Assignment storage assignment = assignments[_assigmentId];
 
         if (msg.sender != assignment.worker) revert("Sender is invalid");
 
-        assignment.data = _data;
+        assignment.output = _data;
 
         Inference storage inference = inferences[assignment.inferenceId];
 
@@ -262,32 +335,12 @@ ReentrancyGuardUpgradeable {
     }
 
     function _handleDisputeSuccess(uint256 _inferId) internal {
-        //
-
+        // TODO
     }
 
-    // todo
-    // validator notice result from minter incorrect and trigger dispute
+
     function disputeInfer(uint256 _assignmentId) public virtual {
-//            _updateEpoch();
-//
-//            require(validators[msg.sender].stake != 0, "invalid validator");
-//
-//            // check infer in solving status or dispute
-//            Assignment storage assignment = validatingAssignments[_assignmentId];
-//            Inference storage infer = inferences[assignment.inferenceId];
-//
-//            require(infer.status == InferStatus.Dispute && block.timestamp < infer.expiredAt, "not in dispute phase or expired");
-//            require(!validatorDisputed[msg.sender][_assignmentId], "voted");
-//            validatorDisputed[msg.sender][_assignmentId] = true;
-//            assignment.disapproval++;
-//
-//            // handle vote > 1/3 total validator
-//            if (true) {
-//                _handleDisputeSuccess(assignment.inferenceId);
-//            }
-//
-//            emit DisputeInfer(msg.sender, _assignmentId);
+        // TODO
     }
 
     // todo
@@ -298,12 +351,6 @@ ReentrancyGuardUpgradeable {
         _updateEpoch();
 
         // switch case
-    }
-
-    // todo
-    // validator withdraw unstaked token after 21 days
-    function withdrawUnstake() public virtual {
-        _updateEpoch();
     }
 
     function _claimReward(address _minter) internal {

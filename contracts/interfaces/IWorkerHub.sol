@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {IHeapComparator} from "../lib/heap/IHeapComparator.sol";
-
 import {IInferable} from "./IInferable.sol";
 
-interface IWorkerHub is IInferable, IHeapComparator {
+interface IWorkerHub is IInferable {
     enum InferStatus {
         None,
         Solving,
@@ -22,15 +20,14 @@ interface IWorkerHub is IInferable, IHeapComparator {
     }
 
     struct Model {
-        uint256 modelId;
         uint256 minimumFee;
         uint32 tier;
     }
 
     struct Worker {
         uint256 stake;
-        uint256 currentTaskId;
-        uint256 commission;
+        uint256 commitment;
+        address modelAddress;
         uint16 tier;
         uint40 activeTime;
         uint96 lastClaimedEpoch;
@@ -41,14 +38,12 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 validationSubmissions;
         address worker;
         uint8 disapproval; // 1 / 3 total val
-        bytes data;
+        bytes output;
     }
 
     struct Inference {
         uint256[] assignments; // assignment ids solution submitter
-        uint256 totalValidator;
         address modelAddress;
-        uint256 modelId;
         uint256 value;
         bytes input;
         address disputeAddress; // the first validator submit dispute request => punishment
@@ -58,9 +53,13 @@ interface IWorkerHub is IInferable, IHeapComparator {
         address creator;
     }
 
+    struct UnstakeRequest {
+        uint256 stake;
+        uint40 unlockAt;
+    }
+
     event ModelRegistration(
         address indexed model,
-        uint256 indexed modelId,
         uint16 indexed tier,
         uint256 minimumFee
     );
@@ -70,8 +69,7 @@ interface IWorkerHub is IInferable, IHeapComparator {
     event MinterRegistration(
         address indexed minter,
         uint16 indexed tier,
-        uint256 value,
-        uint256 activeTime
+        uint256 value
     );
     event MinterUnregistration(address indexed minter);
 
@@ -87,6 +85,12 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 indexed inferenceId,
         address indexed creator,
         uint256 value
+    );
+
+    event NewAssignment(
+        uint256 indexed assignmentId,
+        uint256 indexed inferenceId,
+        address indexed worker
     );
 
     event SubmitSolution(
@@ -129,16 +133,22 @@ interface IWorkerHub is IInferable, IHeapComparator {
         uint256 _newBlocks
     );
 
+    event MinterUnstake(address minter, uint256 stake);
+    event ValidatorUnstake(address validator, uint256 stake);
+
     error AlreadyRegistered();
     error NotRegistered();
     error Unauthorized();
+    error StillBeingLocked();
 
     error InvalidModel();
     error InvalidTier();
 
     error FeeTooLow();
     error StakeTooLow();
+    error NullStake();
 
     error MintingSessionNotEnded();
     error ValidatingSessionNotEnded();
+
 }

@@ -3,14 +3,17 @@ pragma solidity ^0.8.0;
 
 import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 
-import {Heap} from "../lib/heap/Heap.sol";
+import {Queue} from "../lib/Queue.sol";
+import {Random} from "../lib/Random.sol";
 import {Set} from "../lib/Set.sol";
 
 abstract contract WorkerHubStorage is IWorkerHub {
-    uint256 public mintingAssignmentNumber;
-    mapping(uint256 => Assignment) internal mintingAssignments;
+    Random.Randomizer internal randomizer;
 
-    uint256 public modelNumber;
+    uint256 public assignmentNumber;
+    mapping(uint256 => Assignment) internal assignments;
+    mapping(address => Queue.Uint256Queue) internal assignmentsByMinter;
+
     mapping(address => Model) public models;
     uint256 public minterNumber;
     mapping(address => Worker) public minters;
@@ -25,6 +28,9 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     mapping(address => Set.AddressSet) internal minterAddressesByModel;
     mapping(address => Set.AddressSet) internal validatorAddressesByModel;
+
+    mapping(address => UnstakeRequest) public minterUnstakeRequests;
+    mapping(address => UnstakeRequest) public validatorUnstakeRequests;
 
     uint256 public minterMinimumStake;
     uint256 public validatorMinimumStake;
