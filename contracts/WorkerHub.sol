@@ -65,6 +65,10 @@ ReentrancyGuardUpgradeable {
         _unpause();
     }
 
+    function getModelAddresses() external view returns (address[] memory) {
+        return modelAddresses.values;
+    }
+
     function getMintingAssignments() external view returns (AssignmentInfo[] memory) {
         uint256[] memory assignmentIds = assignmentsByMinter[msg.sender].values;
         uint256 assignmentNumber = assignmentIds.length;
@@ -82,8 +86,10 @@ ReentrancyGuardUpgradeable {
                 result[counter++] = AssignmentInfo(
                     assignmentIds[i],
                     assignment.inferenceId,
-                    inference.modelAddress,
+                    inference.value,
                     inference.input,
+                    inference.modelAddress,
+                    inference.creator,
                     inference.expiredAt
                 );
             }
@@ -399,7 +405,7 @@ ReentrancyGuardUpgradeable {
         }
     }
 
-    
+
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual whenNotPaused {
         _updateEpoch();
         address _msgSender = msg.sender;
@@ -422,16 +428,9 @@ ReentrancyGuardUpgradeable {
 
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
-        // if inference.status is not Solving, the Tx will fail.
-        if (clonedInference.status != InferenceStatus.Solving) revert AlreadySubmitted();
-        if (clonedInference.expiredAt > block.timestamp) {
-            _assignMinters(clonedAssignments.inferenceId);
-        }
-
         assignments[_assigmentId].output = _data; //Record the solution
         inference.status = InferenceStatus.Solved;
         inference.assignments.push(_assigmentId);
-
 
         if (inference.assignments.length == 1) {
             uint256 curEpoch = currentEpoch;

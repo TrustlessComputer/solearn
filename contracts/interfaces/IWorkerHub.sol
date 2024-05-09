@@ -53,8 +53,10 @@ interface IWorkerHub is IInferable {
     struct AssignmentInfo {
         uint256 assignmentId;
         uint256 inferenceId;
-        address modelAddress;
+        uint256 value;
         bytes input;
+        address modelAddress;
+        address creator;
         uint40 expiredAt;
     }
 
