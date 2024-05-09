@@ -302,8 +302,6 @@ ReentrancyGuardUpgradeable {
         }
     }
 
-    // todo
-    // kelvin
     // minter submit result for specific infer
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual whenNotPaused {
         _updateEpoch();
@@ -314,35 +312,30 @@ ReentrancyGuardUpgradeable {
         if (_msgSender != clonedAssignments.worker) revert("Sender is invalid");
         if (clonedAssignments.output.length != 0) revert("Assignment already submitted");
 
-        assignments[_assigmentId].output = _data; //Record the solution
-
         Inference memory clonedInference = inferences[clonedAssignments.inferenceId];
-        Inference storage inference = inferences[clonedAssignments.inferenceId];
 
-        // if inference.status is not Solving, the Tx will fail.
-        if (clonedInference.status != InferenceStatus.Solving) {
-            revert("Assignment already submitted");
-        }
-        if (clonedInference.expiredAt > block.timestamp) {
-            _assignMinters(clonedAssignments.inferenceId);
-        }
-
-        inference.status = InferenceStatus.Solved;
-        uint256[] memory inferAssignments = clonedInference.assignments;
-        uint256 assignmentsLen = inferAssignments.length;
-
-        for (uint8 i = 0; i < assignmentsLen; i++) {
-            if (inferAssignments[i] == _assigmentId) {
-                inference.firstSubmitterIndex = i;
-                break;
+        if (clonedInference.expiredAt < block.timestamp) {
+            if (clonedInference.assignments.length == 0) {
+                _assignMinters(clonedAssignments.inferenceId);
+                return;
+            } else {
+                revert("Expire time");
             }
         }
+
+        Inference storage inference = inferences[clonedAssignments.inferenceId];
+
+        assignments[_assigmentId].output = _data; //Record the solution
+        inference.status = InferenceStatus.Solved;
+        inference.assignments.push(_assigmentId);
 
         uint curEpoch = currentEpoch;
         minterTaskCompleted[_msgSender][curEpoch] += 1;
         rewardInEpoch[curEpoch].totalTaskCompleted += 1;
 
-        TransferHelper.safeTransferNative(_msgSender, clonedInference.value);
+        if (clonedInference.assignments.length == 1) {
+            TransferHelper.safeTransferNative(_msgSender, clonedInference.value);
+        }
 
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
