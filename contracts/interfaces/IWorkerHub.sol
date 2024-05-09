@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import {IInferable} from "./IInferable.sol";
 
 interface IWorkerHub is IInferable {
-    enum InferStatus {
-        None,
+    enum InferenceStatus {
+        Nil,
         Solving,
-        Disputed,
+        Disputing,
         Solved,
         Killed
     }
@@ -28,28 +28,27 @@ interface IWorkerHub is IInferable {
         uint256 stake;
         uint256 commitment;
         address modelAddress;
-        uint16 tier;
+        uint40 lastClaimedEpoch;
         uint40 activeTime;
-        uint96 lastClaimedEpoch;
+        uint16 tier;
     }
 
     struct Assignment {
         uint256 inferenceId;
-        uint256 validationSubmissions;
-        address worker;
-        uint8 disapproval; // 1 / 3 total val
         bytes output;
+        address worker;
+        uint8 disapprovalCount;
     }
 
     struct Inference {
-        uint256[] assignments; // assignment ids solution submitter
-        address modelAddress;
-        uint256 value;
+        uint256[] assignments;
         bytes input;
-        address disputeAddress; // the first validator submit dispute request => punishment
+        uint256 value;
+        address disputingAddress;
+        address modelAddress;
         uint40 expiredAt;
         uint8 firstSubmitterIndex;
-        InferStatus status;
+        InferenceStatus status;
         address creator;
     }
 
@@ -86,62 +85,31 @@ interface IWorkerHub is IInferable {
         address indexed creator,
         uint256 value
     );
+    event InferenceDisputation(address indexed validator, uint256 indexed assigmentId);
+    event InferenceStatusUpdate(uint256 indexed inferenceId, InferenceStatus newStatus);
 
     event NewAssignment(
         uint256 indexed assignmentId,
         uint256 indexed inferenceId,
-        address indexed worker
+        address indexed minter,
+        uint40 expiredAt
     );
+    event SolutionSubmission(address indexed minter, uint256 indexed assigmentId);
 
-    event SubmitSolution(
-        address indexed _minter,
-        uint256 indexed _assigmentId
-    );
+    event MinterUnstake(address indexed minter, uint256 stake);
+    event ValidatorUnstake(address indexed validator, uint256 stake);
 
-    event DisputeInfer(
-        address indexed _validator,
-        uint256 indexed _assigmentId
-    );
+    event RewardClaim(address indexed worker, uint256 value);
 
-    event InferStatusUpdated(
-        uint256 indexed _inferId,
-        InferStatus _newStatus
-    );
-
-    event WithdrawUnstaked(
-        address indexed _validator,
-        uint256 _amount
-    );
-
-    event ClaimReward(
-        address indexed _minter,
-        uint256 _amount
-    );
-
-    event RewardPerEpoch(
-        uint256 _oldReward,
-        uint256 _newReward
-    );
-
-    event RewardPerEpochBasedOnPerf(
-        uint256 _oldReward,
-        uint256 _newReward
-    );
-
-    event BlocksPerEpoch(
-        uint256 _oldBlocks,
-        uint256 _newBlocks
-    );
-
-    event MinterUnstake(address minter, uint256 stake);
-    event ValidatorUnstake(address validator, uint256 stake);
+    event RewardPerEpoch(uint256 oldReward, uint256 newReward);
+    event RewardPerEpochBasedOnPerf(uint256 oldReward, uint256 newReward);
+    event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
 
     error AlreadyRegistered();
     error NotRegistered();
     error Unauthorized();
     error StillBeingLocked();
 
-    error InvalidModel();
     error InvalidTier();
 
     error FeeTooLow();

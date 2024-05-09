@@ -5,7 +5,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import {Queue} from "./lib/Queue.sol";
 import {Random} from "./lib/Random.sol";
 import {Set} from "./lib/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
@@ -17,9 +16,9 @@ WorkerHubStorage,
 OwnableUpgradeable,
 PausableUpgradeable,
 ReentrancyGuardUpgradeable {
-    using Queue for Queue.Uint256Queue;
     using Random for Random.Randomizer;
     using Set for Set.AddressSet;
+    using Set for Set.Uint256Set;
 
     string constant private VERSION = "v0.0.1";
     uint256 constant private PERCENTAGE_DENOMINATOR = 100_00;
@@ -27,35 +26,30 @@ ReentrancyGuardUpgradeable {
     receive() external payable {}
 
     function initialize(
+        address _treasury,
+        uint16 _feePercentage,
         uint256 _minterMinimumStake,
         uint256 _validatorMinimumStake,
         uint40 _mintingTimeLimit,
-        uint40 _validatingTimeLimit,
-        uint40 _disputingTimeLimit,
         uint8 _minterRequirement,
-        uint16 _maximumTier,
-        uint16 _disqualificationPercentage,
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpochBasedOnPerf,
-        uint40 _penaltyDuration,
         uint40 _unstakeDelayTime
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
+        treasury = _treasury;
+        feePercentage = _feePercentage;
         minterMinimumStake = _minterMinimumStake;
         validatorMinimumStake = _validatorMinimumStake;
         mintingTimeLimit = _mintingTimeLimit;
-        validatingTimeLimit = _validatingTimeLimit;
-        disputingTimeLimit = _disputingTimeLimit;
         minterRequirement = _minterRequirement;
-        maximumTier = _maximumTier;
-        disqualificationPercentage = _disqualificationPercentage;
         blocksPerEpoch = _blocksPerEpoch;
         rewardPerEpochBasedOnPerf = _rewardPerEpochBasedOnPerf;
-        penaltyDuration = _penaltyDuration;
         unstakeDelayTime = _unstakeDelayTime;
+        maximumTier = 1;
     }
 
     function version() external pure returns (string memory) {
@@ -75,17 +69,23 @@ ReentrancyGuardUpgradeable {
 
         Model storage model = models[_model];
         if (model.tier != 0) revert AlreadyRegistered();
+
         model.minimumFee = _minimumFee;
         model.tier = _tier;
         modelAddresses.insert(_model);
+
         emit ModelRegistration(_model, _tier, _minimumFee);
     }
 
     function unregisterModel(address _model) external onlyOwner {
+        _updateEpoch();
+
         Model storage model = models[_model];
         if (model.tier == 0) revert NotRegistered();
+
         model.tier = 0;
         modelAddresses.erase(_model);
+
         emit ModelUnregistration(_model);
     }
 
@@ -101,14 +101,12 @@ ReentrancyGuardUpgradeable {
         minter.stake = msg.value;
         minter.tier = tier;
         minter.lastClaimedEpoch = currentEpoch;
-        minterNumber++;
 
         address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
         minter.modelAddress = modelAddress;
         minterAddressesByModel[modelAddress].insert(msg.sender);
 
         minterAddresses.insert(msg.sender);
-        assignmentsByMinter[msg.sender].init();
 
         emit MinterRegistration(msg.sender, tier, msg.value);
     }
@@ -120,7 +118,6 @@ ReentrancyGuardUpgradeable {
         if (minter.tier == 0) revert NotRegistered();
 
         minter.tier = 0;
-        minterNumber--;
 
         TransferHelper.safeTransferNative(msg.sender, minter.stake);
         minter.stake = 0;
@@ -135,7 +132,6 @@ ReentrancyGuardUpgradeable {
             uint40(block.timestamp + unstakeDelayTime)
         );
 
-        // claim reward
         _claimReward(msg.sender);
 
         emit MinterUnregistration(msg.sender);
@@ -208,9 +204,6 @@ ReentrancyGuardUpgradeable {
             uint40(block.timestamp + unstakeDelayTime)
         );
 
-        // claim reward
-        _claimReward(msg.sender);
-
         emit ValidatorUnregistration(msg.sender);
     }
 
@@ -238,44 +231,57 @@ ReentrancyGuardUpgradeable {
         emit ValidatorUnstake(msg.sender, stake);
     }
 
-    function infer(bytes calldata _input, address _creator) external payable returns (uint256) {
+    function infer(bytes calldata _input, address _creator) external payable whenNotPaused returns (uint256) {
         Model storage model = models[msg.sender];
         if (model.tier == 0) revert Unauthorized();
         if (msg.value < model.minimumFee) revert FeeTooLow();
         uint256 inferenceId = ++inferenceNumber;
         Inference storage inference = inferences[inferenceId];
+
+        uint256 fee = msg.value * feePercentage / PERCENTAGE_DENOMINATOR;
+        uint256 value = msg.value - fee;
+
         inference.input = _input;
-        inference.value = msg.value;
+        inference.value = value;
         inference.creator = _creator;
         inference.modelAddress = msg.sender;
+
+        TransferHelper.safeTransferNative(treasury, fee);
+
+        emit NewInference(inferenceId, _creator, value);
+
+        _assignMinters(inferenceId);
+
+        return inferenceId;
+    }
+
+    function _assignMinters(uint256 _inferenceId) private {
+        uint40 expiredAt = uint40(block.timestamp + mintingTimeLimit);
+        inferences[_inferenceId].expiredAt = expiredAt;
+        inferences[_inferenceId].status = InferenceStatus.Solving;
 
 
         Set.AddressSet storage minters = minterAddressesByModel[msg.sender];
         uint256 n = minterRequirement;
         address[] memory selectedMinters = new address[](n);
-        emit NewInference(inferenceId, _creator, msg.value);
 
         for (uint256 i = 0; i < n; ++i) {
             address minter = minters.values[randomizer.randomUint256() % minters.size()];
             minters.erase(minter);
             uint256 assignmentId = ++assignmentNumber;
-            assignments[assignmentId].inferenceId = inferenceId;
+            assignments[assignmentId].inferenceId = _inferenceId;
             assignments[assignmentId].worker = minter;
             selectedMinters[i] = minter;
-            assignmentsByMinter[msg.sender].push(assignmentId);
-            emit NewAssignment(assignmentId, inferenceId, minter);
+            assignmentsByMinter[msg.sender].insert(assignmentId);
+            assignmentsByInference[_inferenceId].insert(assignmentId);
+            emit NewAssignment(assignmentId, _inferenceId, minter, expiredAt);
         }
 
         for (uint256 i = 0; i < n; ++i) minters.insert(selectedMinters[i]);
-
-        return inferenceId;
     }
 
-    function getMintingAssignment() external view returns (uint256) {
-        Worker storage minter = minters[msg.sender];
-        if (minter.tier == 0) revert NotRegistered();
-        if (assignmentsByMinter[msg.sender].isEmpty()) return 0;
-        return assignmentsByMinter[msg.sender].front();
+    function getMintingAssignments() external view returns (uint256[] memory) {
+        return assignmentsByMinter[msg.sender].values;
     }
 
     // this internal function update new epoch
@@ -284,7 +290,7 @@ ReentrancyGuardUpgradeable {
             uint epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
                 for (; epochPassed > 0; epochPassed--) {
-                    rewardInEpoch[currentEpoch].totalMinter = minterNumber;
+                    rewardInEpoch[currentEpoch].totalMinter = minterAddresses.size();
                     currentEpoch++;
                     rewardInEpoch[currentEpoch].perfReward = rewardPerEpochBasedOnPerf;
                     rewardInEpoch[currentEpoch].epochReward = rewardPerEpoch;
@@ -314,14 +320,14 @@ ReentrancyGuardUpgradeable {
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
         // if inference.status is not Solving, the Tx will fail.
-        if (clonedInference.status != InferStatus.Solving) {
+        if (clonedInference.status != InferenceStatus.Solving) {
             revert("Assignment already submitted");
         }
         if (clonedInference.expiredAt > block.timestamp) {
             _assignMinters(clonedAssignments.inferenceId);
         }
 
-        inference.status = InferStatus.Solved;
+        inference.status = InferenceStatus.Solved;
         uint256[] memory inferAssignments = clonedInference.assignments;
         uint256 assignmentsLen = inferAssignments.length;
 
@@ -338,7 +344,7 @@ ReentrancyGuardUpgradeable {
 
         TransferHelper.safeTransferNative(_msgSender, clonedInference.value);
 
-        emit SubmitSolution(_msgSender, _assigmentId);
+        emit SolutionSubmission(_msgSender, _assigmentId);
     }
 
     function _handleDisputeSuccess(uint256 _inferId) internal {
@@ -350,14 +356,18 @@ ReentrancyGuardUpgradeable {
         // TODO
     }
 
-    // todo
-    // resolve pending inferences
-    // update infer status
-    // called by anyone
-    function resolveInfer(uint256 _inferId) public virtual {
+    function resolveInference(uint256 _inferenceId) public virtual {
         _updateEpoch();
 
-        // switch case
+        Inference storage inference = inferences[_inferenceId];
+        if (inference.status == InferenceStatus.Solving && block.timestamp > inference.expiredAt) {
+            uint256[] storage assignmentIds = assignmentsByInference[_inferenceId].values;
+            uint256 assignmentNumber = assignmentIds.length;
+            for (uint256 i = 0; i < assignmentNumber; ++i) {
+                assignments[assignmentIds[i]].worker = address(0);
+            }
+            _assignMinters(_inferenceId);
+        }
     }
 
     function _claimReward(address _minter) internal {
@@ -366,7 +376,7 @@ ReentrancyGuardUpgradeable {
         if (rewardAmount > 0) {
             TransferHelper.safeTransferNative(_minter, rewardAmount);
 
-            emit ClaimReward(_minter, rewardAmount);
+            emit RewardClaim(_minter, rewardAmount);
         }
     }
 
