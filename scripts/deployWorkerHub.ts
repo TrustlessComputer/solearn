@@ -30,6 +30,7 @@ async function deployWorkerHub() {
             const minerRequirement = 3;
             const blockPerEpoch = 600;
             const rewardPerEpochBasedOnPerf = ethers.utils.parseEther("0.5");
+            const rewardPerEpoch = ethers.utils.parseEther('1');
             const unstakeDelayTime = 12 * 24 * 3600;
 
             const workerHub = await upgrades.deployProxy(
@@ -43,12 +44,11 @@ async function deployWorkerHub() {
                     minerRequirement,
                     blockPerEpoch,
                     rewardPerEpochBasedOnPerf,
+                    rewardPerEpoch,
                     unstakeDelayTime
                 ]
             );
             await workerHub.deployed();
-
-            await (await workerHub.setNewRewardInEpoch(ethers.utils.parseEther('1'))).wait();
 
             const tx = {
                 to: workerHub.address,

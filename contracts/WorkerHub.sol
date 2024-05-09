@@ -214,9 +214,6 @@ ReentrancyGuardUpgradeable {
 
         address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
         miner.modelAddress = modelAddress;
-        minerAddressesByModel[modelAddress].insert(msg.sender);
-
-        minerAddresses.insert(msg.sender);
 
         emit MinerRegistration(msg.sender, tier, msg.value);
     }
@@ -300,9 +297,6 @@ ReentrancyGuardUpgradeable {
 
         address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
         validator.modelAddress = modelAddress;
-        validatorAddressesByModel[modelAddress].insert(msg.sender);
-
-        validatorAddresses.insert(msg.sender);
 
         emit ValidatorRegistration(msg.sender, tier, msg.value);
     }
@@ -408,7 +402,7 @@ ReentrancyGuardUpgradeable {
             assignments[assignmentId].inferenceId = _inferenceId;
             assignments[assignmentId].worker = miner;
             selectedMiners[i] = miner;
-            assignmentsByMiner[msg.sender].insert(assignmentId);
+            assignmentsByMiner[miner].insert(assignmentId);
             assignmentsByInference[_inferenceId].insert(assignmentId);
             emit NewAssignment(assignmentId, _inferenceId, miner, expiredAt);
         }
