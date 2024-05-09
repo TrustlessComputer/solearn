@@ -299,7 +299,7 @@ ReentrancyGuardUpgradeable {
     // todo
     // kelvin
     // minter submit result for specific infer
-    function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual {
+    function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual whenNotPaused {
         _updateEpoch();
         address _msgSender = msg.sender;
 
@@ -310,18 +310,19 @@ ReentrancyGuardUpgradeable {
 
         assignments[_assigmentId].output = _data; //Record the solution
 
+        Inference memory clonedInference = inferences[clonedAssignments.inferenceId];
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
-        // if inference.status is not None, the Tx will fail.
-        if (inference.status != InferStatus.Solving) {
+        // if inference.status is not Solving, the Tx will fail.
+        if (clonedInference.status != InferStatus.Solving) {
             revert("Assignment already submitted");
         }
-        if (inference.expiredAt > block.timestamp) {
+        if (clonedInference.expiredAt > block.timestamp) {
             _assignMinters(clonedAssignments.inferenceId);
         }
 
         inference.status = InferStatus.Solved;
-        uint256[] memory inferAssignments = inference.assignments;
+        uint256[] memory inferAssignments = clonedInference.assignments;
         uint256 assignmentsLen = inferAssignments.length;
 
         for (uint8 i = 0; i < assignmentsLen; i++) {
@@ -334,6 +335,8 @@ ReentrancyGuardUpgradeable {
         uint curEpoch = currentEpoch;
         minterTaskCompleted[_msgSender][curEpoch] += 1;
         rewardInEpoch[curEpoch].totalTaskCompleted += 1;
+
+        TransferHelper.safeTransferNative(_msgSender, clonedInference.value);
 
         emit SubmitSolution(_msgSender, _assigmentId);
     }
