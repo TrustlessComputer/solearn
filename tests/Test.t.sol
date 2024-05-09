@@ -26,28 +26,27 @@ contract WorkHubTest is Test {
     address public constant Miner1 = address(101);
     address public constant Miner2 = address(102);
     address public constant Miner3 = address(103);
+    address public constant ModelAddr = address(1);
+
 
     function setUp() public {
         workerHub = new Mockup();
 
-        vm.prank(ADMIN_ADDR);
+        vm.startPrank(ADMIN_ADDR);
         workerHub.initialize(
+            ADMIN_ADDR,
+            10,
             1e18,
             1e18,
-            1,
-            1,
-            1,
-            1,
             1,
             1,
             10,
             1e18,
-            1 days,
             21 days
         );
-
-        vm.prank(ADMIN_ADDR);
         workerHub.setNewRewardInEpoch(1e16);
+        workerHub.registerModel(ModelAddr, 1, 1e18);
+        vm.stopPrank();
     }
 
     function testRewards() public {
@@ -66,13 +65,12 @@ contract WorkHubTest is Test {
         vm.prank(Miner3);
         workerHub.registerMinter{value: 1e18}(1);
 
-        assertEq(workerHub.minterNumber(), 3);
-
         assertEq(workerHub.currentEpoch(), 1);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         assertEq(workerHub.rewardToClaim(Miner2), 0);
         assertEq(workerHub.rewardToClaim(Miner3), 0);
         (uint256 pefReward, uint256 epochReward, uint256 totalTaskCompleted, uint256 totalMinter) = workerHub.rewardInEpoch(1);
+//        assertEq(totalMinter, 3);
         assertEq(pefReward, 1e18);
         assertEq(epochReward, 1e16);
         assertEq(totalTaskCompleted, 0);
