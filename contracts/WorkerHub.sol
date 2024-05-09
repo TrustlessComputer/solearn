@@ -333,7 +333,7 @@ ReentrancyGuardUpgradeable {
         minterTaskCompleted[_msgSender][curEpoch] += 1;
         rewardInEpoch[curEpoch].totalTaskCompleted += 1;
 
-        if (clonedInference.assignments.length == 1) {
+        if (inference.assignments.length == 1) {
             TransferHelper.safeTransferNative(_msgSender, clonedInference.value);
         }
 
