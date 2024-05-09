@@ -12,6 +12,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     uint256 public modelNumber;
     mapping(address => Model) public models;
+    uint256 public minterNumber;
     mapping(address => Worker) public minters;
     mapping(address => Worker) public validators;
 

@@ -101,6 +101,7 @@ ReentrancyGuardUpgradeable {
         minter.stake = msg.value;
         minter.tier = tier;
         minter.lastClaimedEpoch = currentEpoch;
+        minterNumber++;
 
         emit MinterRegistration(msg.sender, tier, msg.value, block.timestamp);
     }
@@ -113,6 +114,7 @@ ReentrancyGuardUpgradeable {
         if (minter.currentTaskId != 0) revert MintingSessionNotEnded();
 
         minter.tier = 0;
+        minterNumber--;
 
         TransferHelper.safeTransferNative(msg.sender, minter.stake);
         minter.stake = 0;
@@ -199,6 +201,7 @@ ReentrancyGuardUpgradeable {
             uint epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
                 for (; epochPassed > 0; epochPassed--) {
+                    rewardInEpoch[currentEpoch].totalMinter = minterNumber;
                     currentEpoch++;
                     rewardInEpoch[currentEpoch].perfReward = rewardPerEpochBasedOnPerf;
                     rewardInEpoch[currentEpoch].epochReward = rewardPerEpoch;
@@ -304,7 +307,7 @@ ReentrancyGuardUpgradeable {
     }
 
     function _claimReward(address _minter) internal {
-        uint256 rewardAmount = getRewardToClaim(_minter);
+        uint256 rewardAmount = rewardToClaim(_minter);
         minters[_minter].lastClaimedEpoch = currentEpoch;
         if (rewardAmount > 0) {
             TransferHelper.safeTransferNative(_minter, rewardAmount);
@@ -315,7 +318,6 @@ ReentrancyGuardUpgradeable {
 
     // minter claim reward
     function claimReward(address _minter) public virtual nonReentrant {
-        _updateEpoch();
         _claimReward(_minter);
     }
 
@@ -336,29 +338,37 @@ ReentrancyGuardUpgradeable {
 
     function setBlocksPerEpoch(uint256 _blocks) public virtual onlyOwner {
         _updateEpoch();
+        require(_blocks > 0, "invalid blocks value");
+
         emit BlocksPerEpoch(blocksPerEpoch, _blocks);
 
         blocksPerEpoch = _blocks;
     }
 
     // sum reward of an minter since last claimed epoch
-    function getRewardToClaim(address _minter) public view virtual returns(uint256 totalReward) {
-        uint lastEpoch = (blocksPerEpoch != 0 ? (block.number - lastBlock) / blocksPerEpoch : 0) + currentEpoch;
+    function rewardToClaim(address _minter) public virtual returns(uint256 totalReward) {
+        _updateEpoch();
+
+        uint lastEpoch = currentEpoch;
         if (minters[_minter].stake <= 0 || lastEpoch <= minters[_minter].lastClaimedEpoch) {
             totalReward = 0;
         } else {
             uint256 lastClaimed = uint256(minters[_minter].lastClaimedEpoch);
             uint perfReward;
             uint epochReward;
+            uint currentMinter;
             for (; lastClaimed < lastEpoch; lastClaimed++) {
-                uint256 totalTaskCompleted = rewardInEpoch[lastClaimed].totalTaskCompleted;
+                MinterEpochState memory state = rewardInEpoch[lastClaimed];
+                uint256 totalTaskCompleted = state.totalTaskCompleted;
                 // reward at epoch
-                (perfReward, epochReward) = lastClaimed > currentEpoch ? (rewardPerEpochBasedOnPerf, rewardPerEpoch) :
-                    (rewardInEpoch[lastClaimed].perfReward, rewardInEpoch[lastClaimed].epochReward);
-                if (totalTaskCompleted > 0) {
+                (perfReward, epochReward, currentMinter) = (state.perfReward, state.epochReward, state.totalMinter);
+                if (totalTaskCompleted > 0 && perfReward > 0) {
                     totalReward += perfReward * minterTaskCompleted[_minter][lastClaimed] / totalTaskCompleted;
                 }
-                totalReward += epochReward;
+
+                if (currentMinter > 0 && epochReward > 0) {
+                    totalReward += epochReward / currentMinter;
+                }
             }
         }
     }
