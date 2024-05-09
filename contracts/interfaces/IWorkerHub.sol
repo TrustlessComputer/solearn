@@ -12,11 +12,11 @@ interface IWorkerHub is IInferable {
         Killed
     }
 
-    struct MinterEpochState {
+    struct MinnerEpochState {
         uint256 perfReward;
         uint256 epochReward;
         uint256 totalTaskCompleted;
-        uint256 totalMinter;
+        uint256 totalMinner;
     }
 
     struct Model {
@@ -96,13 +96,13 @@ interface IWorkerHub is IInferable {
     );
     event ModelUnregistration(address indexed model);
 
-    event MinterExtraStake(address indexed minter, uint256 value);
-    event MinterRegistration(
-        address indexed minter,
+    event MinnerExtraStake(address indexed minner, uint256 value);
+    event MinnerRegistration(
+        address indexed minner,
         uint16 indexed tier,
         uint256 value
     );
-    event MinterUnregistration(address indexed minter);
+    event MinnerUnregistration(address indexed minner);
 
     event ValidatorExtraStake(address indexed validator, uint256 value);
     event ValidatorRegistration(
@@ -123,12 +123,12 @@ interface IWorkerHub is IInferable {
     event NewAssignment(
         uint256 indexed assignmentId,
         uint256 indexed inferenceId,
-        address indexed minter,
+        address indexed minner,
         uint40 expiredAt
     );
-    event SolutionSubmission(address indexed minter, uint256 indexed assigmentId);
+    event SolutionSubmission(address indexed minner, uint256 indexed assigmentId);
 
-    event MinterUnstake(address indexed minter, uint256 stake);
+    event MinnerUnstake(address indexed minner, uint256 stake);
     event ValidatorUnstake(address indexed validator, uint256 stake);
 
     event RewardClaim(address indexed worker, uint256 value);
@@ -150,7 +150,7 @@ interface IWorkerHub is IInferable {
     error StakeTooLow();
     error NullStake();
 
-    error MintingSessionNotEnded();
+    error MiningSessionNotEnded();
     error ValidatingSessionNotEnded();
 
 }
