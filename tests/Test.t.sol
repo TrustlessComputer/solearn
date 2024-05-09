@@ -42,9 +42,10 @@ contract WorkHubTest is Test {
             1,
             10,
             1e18,
+            1e16,
             21 days
         );
-        workerHub.setNewRewardInEpoch(1e16);
+//        workerHub.setNewRewardInEpoch(1e16);
         workerHub.registerModel(ModelAddr, 1, 1e18);
         vm.stopPrank();
     }

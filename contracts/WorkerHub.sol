@@ -34,6 +34,7 @@ ReentrancyGuardUpgradeable {
         uint8 _minerRequirement,
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpochBasedOnPerf,
+        uint256 _rewardPerEpoch,
         uint40 _unstakeDelayTime
     ) external initializer {
         __Ownable_init();
@@ -48,9 +49,12 @@ ReentrancyGuardUpgradeable {
         minerRequirement = _minerRequirement;
         blocksPerEpoch = _blocksPerEpoch;
         rewardPerEpochBasedOnPerf = _rewardPerEpochBasedOnPerf;
+        rewardPerEpoch = _rewardPerEpoch;
         unstakeDelayTime = _unstakeDelayTime;
         maximumTier = 1;
         lastBlock = block.number;
+        rewardInEpoch[currentEpoch].perfReward = rewardPerEpochBasedOnPerf;
+        rewardInEpoch[currentEpoch].epochReward = rewardPerEpoch;
     }
 
     function version() external pure returns (string memory) {
@@ -372,15 +376,12 @@ ReentrancyGuardUpgradeable {
         uint256 inferenceId = ++inferenceNumber;
         Inference storage inference = inferences[inferenceId];
 
-        uint256 fee = msg.value * feePercentage / PERCENTAGE_DENOMINATOR;
-        uint256 value = msg.value - fee;
+        uint256 value = msg.value;
 
         inference.input = _input;
         inference.value = value;
         inference.creator = _creator;
         inference.modelAddress = msg.sender;
-
-        TransferHelper.safeTransferNative(treasury, fee);
 
         emit NewInference(inferenceId, _creator, value);
 
@@ -447,7 +448,7 @@ ReentrancyGuardUpgradeable {
 
         if (clonedInference.expiredAt < block.timestamp) {
             if (clonedInference.assignments.length == 0) {
-                _assignMiners(clonedAssignments.inferenceId);
+                resolveInference(clonedAssignments.inferenceId);
                 return;
             } else {
                 revert("Expire time");
@@ -464,7 +465,11 @@ ReentrancyGuardUpgradeable {
             uint256 curEpoch = currentEpoch;
             minerTaskCompleted[_msgSender][curEpoch] += 1;
             rewardInEpoch[curEpoch].totalTaskCompleted += 1;
-            TransferHelper.safeTransferNative(_msgSender, clonedInference.value);
+
+            uint256 fee = clonedInference.value * feePercentage / PERCENTAGE_DENOMINATOR;
+            uint256 value = clonedInference.value - fee;
+            TransferHelper.safeTransferNative(treasury, fee);
+            TransferHelper.safeTransferNative(_msgSender, value);
         }
 
         emit SolutionSubmission(_msgSender, _assigmentId);
@@ -484,12 +489,8 @@ ReentrancyGuardUpgradeable {
 
         Inference storage inference = inferences[_inferenceId];
         if (inference.status == InferenceStatus.Solving && block.timestamp > inference.expiredAt) {
-            uint256[] storage assignmentIds = assignmentsByInference[_inferenceId].values;
-            uint256 assignmentNumber = assignmentIds.length;
-            for (uint256 i = 0; i < assignmentNumber; ++i) {
-                assignments[assignmentIds[i]].worker = address(0);
-            }
-            _assignMiners(_inferenceId);
+            inference.status = InferenceStatus.Killed;
+            TransferHelper.safeTransferNative(inference.creator, inference.value);
         }
     }
 
