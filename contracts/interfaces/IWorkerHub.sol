@@ -33,11 +33,29 @@ interface IWorkerHub is IInferable {
         uint16 tier;
     }
 
+    struct WorkerInfo {
+        address workerAddress;
+        uint256 stake;
+        uint256 commitment;
+        address modelAddress;
+        uint40 lastClaimedEpoch;
+        uint40 activeTime;
+        uint16 tier;
+    }
+
     struct Assignment {
         uint256 inferenceId;
         bytes output;
         address worker;
         uint8 disapprovalCount;
+    }
+
+    struct AssignmentInfo {
+        uint256 assignmentId;
+        uint256 inferenceId;
+        address modelAddress;
+        bytes input;
+        uint40 expiredAt;
     }
 
     struct Inference {
@@ -47,7 +65,19 @@ interface IWorkerHub is IInferable {
         address disputingAddress;
         address modelAddress;
         uint40 expiredAt;
-        uint8 firstSubmitterIndex;
+        uint8 firstSubmissionId;
+        InferenceStatus status;
+        address creator;
+    }
+
+    struct InferenceInfo {
+        uint256 inferenceId;
+        bytes input;
+        bytes output;
+        uint256 value;
+        address disputingAddress;
+        address modelAddress;
+        uint40 expiredAt;
         InferenceStatus status;
         address creator;
     }
@@ -106,10 +136,12 @@ interface IWorkerHub is IInferable {
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
 
     error AlreadyRegistered();
+    error AlreadySubmitted();
     error NotRegistered();
     error Unauthorized();
     error StillBeingLocked();
 
+    error InvalidBlockValue();
     error InvalidTier();
 
     error FeeTooLow();

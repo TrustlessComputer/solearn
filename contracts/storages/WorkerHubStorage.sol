@@ -63,5 +63,5 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public rewardPerEpochBasedOnPerf;
     uint256 public rewardPerEpoch;
 
-    uint256[50] private __gap;
+    uint256[100] private __gap;
 }

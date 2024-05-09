@@ -64,6 +64,105 @@ ReentrancyGuardUpgradeable {
         _unpause();
     }
 
+    function getMintingAssignments() external view returns (AssignmentInfo[] memory) {
+        uint256[] memory assignmentIds = assignmentsByMinter[msg.sender].values;
+        uint256 assignmentNumber = assignmentIds.length;
+
+        uint256 counter = 0;
+        for (uint256 i = 0; i < assignmentNumber; ++i)
+            if (isAssignmentPending(assignmentIds[i])) counter++;
+
+        counter = 0;
+        AssignmentInfo[] memory result = new AssignmentInfo[](counter);
+        for (uint256 i = 0; i < assignmentNumber; ++i)
+            if (isAssignmentPending(assignmentIds[i])) {
+                Assignment storage assignment = assignments[assignmentIds[i]];
+                Inference storage inference = inferences[assignment.inferenceId];
+                result[counter++] = AssignmentInfo(
+                    assignmentIds[i],
+                    assignment.inferenceId,
+                    inference.modelAddress,
+                    inference.input,
+                    inference.expiredAt
+                );
+            }
+
+        return result;
+    }
+
+    function getMinterAddresses() external view returns (address[] memory) {
+        return minterAddresses.values;
+    }
+
+    function getMinters() external view returns (WorkerInfo[] memory) {
+        address[] memory addresses = minterAddresses.values;
+        uint256 minterNumber = addresses.length;
+        WorkerInfo[] memory result = new WorkerInfo[](minterNumber);
+        for (uint256 i = 0; i < minterNumber; ++i) {
+            Worker memory minter = minters[addresses[i]];
+            result[i] = WorkerInfo(
+                addresses[i],
+                minter.stake,
+                minter.commitment,
+                minter.modelAddress,
+                minter.lastClaimedEpoch,
+                minter.activeTime,
+                minter.tier
+            );
+        }
+        return result;
+    }
+
+    function getValidatorAddresses() external view returns (address[] memory) {
+        return validatorAddresses.values;
+    }
+
+    function getValidators() external view returns (WorkerInfo[] memory) {
+        address[] memory addresses = validatorAddresses.values;
+        uint256 validatorNumber = addresses.length;
+        WorkerInfo[] memory result = new WorkerInfo[](validatorNumber);
+        for (uint256 i = 0; i < validatorNumber; ++i) {
+            Worker memory validator = validators[addresses[i]];
+            result[i] = WorkerInfo(
+                addresses[i],
+                validator.stake,
+                validator.commitment,
+                validator.modelAddress,
+                validator.lastClaimedEpoch,
+                validator.activeTime,
+                validator.tier
+            );
+        }
+        return result;
+    }
+
+    function isAssignmentPending(uint256 _assignmentId) public view returns (bool) {
+        return assignments[_assignmentId].output.length == 0
+            && block.timestamp < inferences[assignments[_assignmentId].inferenceId].expiredAt;
+    }
+
+    function getInferences(uint256[] calldata _inferenceIds) external view returns (InferenceInfo[] memory) {
+        uint256 inferenceNumber = _inferenceIds.length;
+        InferenceInfo[] memory result = new InferenceInfo[](inferenceNumber);
+        for (uint256 i = 0; i < inferenceNumber; ++i) {
+            Inference storage inference = inferences[_inferenceIds[i]];
+            result[i] = InferenceInfo(
+                _inferenceIds[i],
+                inference.input,
+                inference.status == InferenceStatus.Solved
+                    ? assignments[inference.assignments[inference.firstSubmissionId]].output
+                    : bytes(""),
+                inference.value,
+                inference.disputingAddress,
+                inference.modelAddress,
+                inference.expiredAt,
+                inference.status,
+                inference.creator
+            );
+        }
+        return result;
+    }
+
     function registerModel(address _model, uint16 _tier, uint256 _minimumFee) external onlyOwner {
         _updateEpoch();
 
@@ -89,7 +188,7 @@ ReentrancyGuardUpgradeable {
         emit ModelUnregistration(_model);
     }
 
-    function registerMinter(uint16 tier) external payable {
+    function registerMinter(uint16 tier) external payable whenNotPaused {
         _updateEpoch();
 
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
@@ -137,7 +236,7 @@ ReentrancyGuardUpgradeable {
         emit MinterUnregistration(msg.sender);
     }
 
-    function increaseMinterStake() external payable {
+    function increaseMinterStake() external payable whenNotPaused {
         _updateEpoch();
 
         Worker storage minter = minters[msg.sender];
@@ -161,7 +260,7 @@ ReentrancyGuardUpgradeable {
         emit MinterUnstake(msg.sender, stake);
     }
 
-    function registerValidator(uint16 tier) external payable {
+    function registerValidator(uint16 tier) external payable whenNotPaused {
         _updateEpoch();
 
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
@@ -207,7 +306,7 @@ ReentrancyGuardUpgradeable {
         emit ValidatorUnregistration(msg.sender);
     }
 
-    function increaseValidatorStake() external payable {
+    function increaseValidatorStake() external payable whenNotPaused {
         _updateEpoch();
 
         Worker storage validator = validators[msg.sender];
@@ -260,8 +359,9 @@ ReentrancyGuardUpgradeable {
         inferences[_inferenceId].expiredAt = expiredAt;
         inferences[_inferenceId].status = InferenceStatus.Solving;
 
+        address model = inferences[_inferenceId].modelAddress;
 
-        Set.AddressSet storage minters = minterAddressesByModel[msg.sender];
+        Set.AddressSet storage minters = minterAddressesByModel[model];
         uint256 n = minterRequirement;
         address[] memory selectedMinters = new address[](n);
 
@@ -280,14 +380,10 @@ ReentrancyGuardUpgradeable {
         for (uint256 i = 0; i < n; ++i) minters.insert(selectedMinters[i]);
     }
 
-    function getMintingAssignments() external view returns (uint256[] memory) {
-        return assignmentsByMinter[msg.sender].values;
-    }
-
     // this internal function update new epoch
     function _updateEpoch() internal {
         if (blocksPerEpoch > 0) {
-            uint epochPassed = (block.number - lastBlock) / blocksPerEpoch;
+            uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
                 for (; epochPassed > 0; epochPassed--) {
                     rewardInEpoch[currentEpoch].totalMinter = minterAddresses.size();
@@ -302,17 +398,14 @@ ReentrancyGuardUpgradeable {
         }
     }
 
-    // todo
-    // kelvin
-    // minter submit result for specific infer
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual whenNotPaused {
         _updateEpoch();
         address _msgSender = msg.sender;
 
         Assignment memory clonedAssignments = assignments[_assigmentId];
 
-        if (_msgSender != clonedAssignments.worker) revert("Sender is invalid");
-        if (clonedAssignments.output.length != 0) revert("Assignment already submitted");
+        if (_msgSender != clonedAssignments.worker) revert Unauthorized();
+        if (clonedAssignments.output.length != 0) revert AlreadySubmitted();
 
         assignments[_assigmentId].output = _data; //Record the solution
 
@@ -320,9 +413,7 @@ ReentrancyGuardUpgradeable {
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
         // if inference.status is not Solving, the Tx will fail.
-        if (clonedInference.status != InferenceStatus.Solving) {
-            revert("Assignment already submitted");
-        }
+        if (clonedInference.status != InferenceStatus.Solving) revert AlreadySubmitted();
         if (clonedInference.expiredAt > block.timestamp) {
             _assignMinters(clonedAssignments.inferenceId);
         }
@@ -333,12 +424,12 @@ ReentrancyGuardUpgradeable {
 
         for (uint8 i = 0; i < assignmentsLen; i++) {
             if (inferAssignments[i] == _assigmentId) {
-                inference.firstSubmitterIndex = i;
+                inference.firstSubmissionId = i;
                 break;
             }
         }
 
-        uint curEpoch = currentEpoch;
+        uint256 curEpoch = currentEpoch;
         minterTaskCompleted[_msgSender][curEpoch] += 1;
         rewardInEpoch[curEpoch].totalTaskCompleted += 1;
 
@@ -370,7 +461,7 @@ ReentrancyGuardUpgradeable {
         }
     }
 
-    function _claimReward(address _minter) internal {
+    function _claimReward(address _minter) internal whenNotPaused {
         uint256 rewardAmount = rewardToClaim(_minter);
         minters[_minter].lastClaimedEpoch = currentEpoch;
         if (rewardAmount > 0) {
@@ -402,7 +493,7 @@ ReentrancyGuardUpgradeable {
 
     function setBlocksPerEpoch(uint256 _blocks) public virtual onlyOwner {
         _updateEpoch();
-        require(_blocks > 0, "invalid blocks value");
+        if (_blocks == 0) revert InvalidBlockValue();
 
         emit BlocksPerEpoch(blocksPerEpoch, _blocks);
 
@@ -410,17 +501,18 @@ ReentrancyGuardUpgradeable {
     }
 
     // sum reward of an minter since last claimed epoch
-    function rewardToClaim(address _minter) public virtual returns(uint256 totalReward) {
+    function rewardToClaim(address _minter) public virtual returns(uint256) {
         _updateEpoch();
 
-        uint lastEpoch = currentEpoch;
+        uint256 totalReward;
+        uint256 lastEpoch = currentEpoch;
         if (minters[_minter].stake <= 0 || lastEpoch <= minters[_minter].lastClaimedEpoch) {
             totalReward = 0;
         } else {
             uint256 lastClaimed = uint256(minters[_minter].lastClaimedEpoch);
-            uint perfReward;
-            uint epochReward;
-            uint currentMinter;
+            uint256 perfReward;
+            uint256 epochReward;
+            uint256 currentMinter;
             for (; lastClaimed < lastEpoch; lastClaimed++) {
                 MinterEpochState memory state = rewardInEpoch[lastClaimed];
                 uint256 totalTaskCompleted = state.totalTaskCompleted;
@@ -435,5 +527,7 @@ ReentrancyGuardUpgradeable {
                 }
             }
         }
+
+        return totalReward;
     }
 }
