@@ -161,5 +161,6 @@ interface IWorkerHub is IInferable {
 
     error MiningSessionNotEnded();
     error ValidatingSessionNotEnded();
+    error MiningSessionEnded();
 
 }

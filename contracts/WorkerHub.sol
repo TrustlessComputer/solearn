@@ -472,12 +472,12 @@ ReentrancyGuardUpgradeable {
 
         Inference memory clonedInference = inferences[clonedAssignments.inferenceId];
 
-        if (clonedInference.expiredAt < block.timestamp) {
+        if (clonedInference.status == InferenceStatus.Solving && clonedInference.expiredAt < block.timestamp) {
             if (clonedInference.assignments.length == 0) {
                 resolveInference(clonedAssignments.inferenceId);
                 return;
             } else {
-                revert("Expire time");
+                revert MiningSessionEnded();
             }
         }
 
@@ -500,6 +500,7 @@ ReentrancyGuardUpgradeable {
             emit TransferFee(_msgSender, value, treasury, fee);
         }
 
+        emit InferenceStatusUpdate(clonedAssignments.inferenceId, InferenceStatus.Solved);
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
 
@@ -520,6 +521,8 @@ ReentrancyGuardUpgradeable {
             inference.status = InferenceStatus.Killed;
             TransferHelper.safeTransferNative(inference.creator, inference.value);
         }
+
+        emit InferenceStatusUpdate(_inferenceId, InferenceStatus.Killed);
     }
 
     function _claimReward(address _miner) internal whenNotPaused {
