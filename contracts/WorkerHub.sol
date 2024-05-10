@@ -241,7 +241,8 @@ ReentrancyGuardUpgradeable {
 
         miner.tier = 0;
 
-        TransferHelper.safeTransferNative(msg.sender, miner.stake);
+        // @kouchou review code
+        // TransferHelper.safeTransferNative(msg.sender, miner.stake);
         miner.stake = 0;
         miner.commitment = 0;
 
@@ -249,8 +250,9 @@ ReentrancyGuardUpgradeable {
         minerAddressesByModel[miner.modelAddress].erase(msg.sender);
         miner.modelAddress = address(0);
 
+        uint currentUnstake = minerUnstakeRequests[msg.sender].stake;
         minerUnstakeRequests[msg.sender] = UnstakeRequest(
-            miner.stake,
+            miner.stake + currentUnstake,
             uint40(block.timestamp + unstakeDelayTime)
         );
 
@@ -278,6 +280,7 @@ ReentrancyGuardUpgradeable {
 
         uint256 stake = unstakeRequest.stake;
         if (stake == 0) revert NullStake();
+        unstakeRequest.stake = 0;
         TransferHelper.safeTransferNative(msg.sender, stake);
 
         emit MinerUnstake(msg.sender, stake);
@@ -324,7 +327,8 @@ ReentrancyGuardUpgradeable {
 
         validator.tier = 0;
 
-        TransferHelper.safeTransferNative(msg.sender, validator.stake);
+        // @koucho review code
+        // TransferHelper.safeTransferNative(msg.sender, validator.stake);
         validator.stake = 0;
         validator.commitment = 0;
 
@@ -332,8 +336,9 @@ ReentrancyGuardUpgradeable {
         validatorAddressesByModel[validator.modelAddress].erase(msg.sender);
         validator.modelAddress = address(0);
 
+        uint currentUnstake = validatorUnstakeRequests[msg.sender].stake;
         validatorUnstakeRequests[msg.sender] = UnstakeRequest(
-            validator.stake,
+            validator.stake + currentUnstake,
             uint40(block.timestamp + unstakeDelayTime)
         );
 
@@ -359,6 +364,7 @@ ReentrancyGuardUpgradeable {
 
         uint256 stake = unstakeRequest.stake;
         if (stake == 0) revert NullStake();
+        unstakeRequest.stake = 0;
         TransferHelper.safeTransferNative(msg.sender, stake);
 
         emit ValidatorUnstake(msg.sender, stake);
