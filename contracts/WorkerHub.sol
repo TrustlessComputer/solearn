@@ -473,6 +473,8 @@ ReentrancyGuardUpgradeable {
             uint256 value = clonedInference.value - fee;
             TransferHelper.safeTransferNative(treasury, fee);
             TransferHelper.safeTransferNative(_msgSender, value);
+
+            emit TransferFee(_msgSender, value, treasury, fee);
         }
 
         emit SolutionSubmission(_msgSender, _assigmentId);

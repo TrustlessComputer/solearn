@@ -127,6 +127,12 @@ interface IWorkerHub is IInferable {
         uint40 expiredAt
     );
     event SolutionSubmission(address indexed miner, uint256 indexed assigmentId);
+    event TransferFee(
+        address indexed miner,
+        uint256 mingingFee,
+        address indexed treasury,
+        uint256 protocolFee
+    );
 
     event MinerUnstake(address indexed miner, uint256 stake);
     event MinerJoin(address indexed miner);
