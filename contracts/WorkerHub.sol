@@ -200,6 +200,8 @@ ReentrancyGuardUpgradeable {
     function registerModel(address _model, uint16 _tier, uint256 _minimumFee) external onlyOwner {
         _updateEpoch();
 
+        if (_tier == 0) revert InvalidTier();
+
         Model storage model = models[_model];
         if (model.tier != 0) revert AlreadyRegistered();
 
@@ -220,6 +222,30 @@ ReentrancyGuardUpgradeable {
         modelAddresses.erase(_model);
 
         emit ModelUnregistration(_model);
+    }
+
+    function updateModelTier(address _model, uint32 _tier) external onlyOwner {
+        _updateEpoch();
+
+        if (_tier == 0) revert InvalidTier();
+
+        Model storage model = models[_model];
+        if (model.tier == 0) revert InvalidModel();
+
+        model.tier = _tier;
+
+        emit ModelTierUpdate(_model, _tier);
+    }
+
+    function updateModelMinimumFee(address _model, uint256 _minimumFee) external onlyOwner {
+        _updateEpoch();
+
+        Model storage model = models[_model];
+        if (model.tier == 0) revert InvalidModel();
+
+        model.minimumFee = _minimumFee;
+
+        emit ModelMinimumFeeUpdate(_model, _minimumFee);
     }
 
     function registerMiner(uint16 tier) external payable whenNotPaused {
@@ -520,9 +546,8 @@ ReentrancyGuardUpgradeable {
         if (inference.status == InferenceStatus.Solving && block.timestamp > inference.expiredAt) {
             inference.status = InferenceStatus.Killed;
             TransferHelper.safeTransferNative(inference.creator, inference.value);
+            emit InferenceStatusUpdate(_inferenceId, InferenceStatus.Killed);
         }
-
-        emit InferenceStatusUpdate(_inferenceId, InferenceStatus.Killed);
     }
 
     function _claimReward(address _miner) internal whenNotPaused {

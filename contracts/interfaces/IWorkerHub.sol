@@ -95,6 +95,8 @@ interface IWorkerHub is IInferable {
         uint256 minimumFee
     );
     event ModelUnregistration(address indexed model);
+    event ModelTierUpdate(address indexed model, uint32 tier);
+    event ModelMinimumFeeUpdate(address indexed model, uint256 minimumFee);
 
     event MinerExtraStake(address indexed miner, uint256 value);
     event MinerRegistration(
@@ -153,6 +155,7 @@ interface IWorkerHub is IInferable {
     error StillBeingLocked();
 
     error InvalidBlockValue();
+    error InvalidModel();
     error InvalidTier();
 
     error FeeTooLow();
