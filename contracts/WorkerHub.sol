@@ -243,6 +243,7 @@ ReentrancyGuardUpgradeable {
 
         // @kouchou review code
         // TransferHelper.safeTransferNative(msg.sender, miner.stake);
+        uint stakeAmount = miner.stake;
         miner.stake = 0;
         miner.commitment = 0;
 
@@ -252,7 +253,7 @@ ReentrancyGuardUpgradeable {
 
         uint currentUnstake = minerUnstakeRequests[msg.sender].stake;
         minerUnstakeRequests[msg.sender] = UnstakeRequest(
-            miner.stake + currentUnstake,
+            stakeAmount + currentUnstake,
             uint40(block.timestamp + unstakeDelayTime)
         );
 
@@ -329,6 +330,7 @@ ReentrancyGuardUpgradeable {
 
         // @koucho review code
         // TransferHelper.safeTransferNative(msg.sender, validator.stake);
+        uint stakeAmount = validator.stake;
         validator.stake = 0;
         validator.commitment = 0;
 
@@ -338,7 +340,7 @@ ReentrancyGuardUpgradeable {
 
         uint currentUnstake = validatorUnstakeRequests[msg.sender].stake;
         validatorUnstakeRequests[msg.sender] = UnstakeRequest(
-            validator.stake + currentUnstake,
+            stakeAmount + currentUnstake,
             uint40(block.timestamp + unstakeDelayTime)
         );
 
