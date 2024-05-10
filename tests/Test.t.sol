@@ -41,8 +41,8 @@ contract WorkHubTest is Test {
             1,
             1,
             10,
-            1e18,
-            1e16,
+            9000, // 90%
+            1229997 * 1e16, // reward 1 worker in one year
             21 days
         );
 //        workerHub.setNewRewardInEpoch(1e16);
@@ -79,23 +79,25 @@ contract WorkHubTest is Test {
         assertEq(workerHub.rewardToClaim(Miner3), 0);
         (uint256 pefReward, uint256 epochReward, uint256 totalTaskCompleted, uint256 totalMiner) = workerHub.rewardInEpoch(0);
         //        assertEq(totalMiner, 3);
-        assertEq(pefReward, 1e18);
-        assertEq(epochReward, 1e16);
+        assertEq(pefReward, 0);
+        assertEq(epochReward, 0);
         assertEq(totalTaskCompleted, 0);
-        assertEq(workerHub.rewardPerEpoch(), 1e16);
+        assertEq(workerHub.rewardPerEpoch(), 12299970000000000000000);
 
         // create some data for 2 epochs sequence
         vm.roll(31);
         workerHub.rewardToClaim(ADMIN_ADDR);
         ( pefReward, epochReward, totalTaskCompleted, totalMiner) = workerHub.rewardInEpoch(1);
-        assertEq(pefReward, 1e18);
+        assertEq(pefReward, 21061592465753424);
+        assertEq(epochReward, 2340176940639270);
 
         ( pefReward, epochReward, totalTaskCompleted, totalMiner) = workerHub.rewardInEpoch(2);
-        assertEq(pefReward, 1e18);
+        assertEq(pefReward, 21061592465753424);
+        assertEq(epochReward, 2340176940639270);
 
-        assertEq(workerHub.rewardToClaim(Miner1), 6666666666666666);
-        assertEq(workerHub.rewardToClaim(Miner2), 6666666666666666);
-        assertEq(workerHub.rewardToClaim(Miner3), 6666666666666666);
+        assertEq(workerHub.rewardToClaim(Miner1), 1560117960426180);
+        assertEq(workerHub.rewardToClaim(Miner2), 1560117960426180);
+        assertEq(workerHub.rewardToClaim(Miner3), 1560117960426180);
 
         // setup task totalTaskCompleted
         // epoch 1

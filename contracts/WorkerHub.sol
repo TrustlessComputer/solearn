@@ -22,6 +22,7 @@ ReentrancyGuardUpgradeable {
 
     string constant private VERSION = "v0.0.1";
     uint256 constant private PERCENTAGE_DENOMINATOR = 100_00;
+    uint256 constant private BLOCK_PER_YEAR = 365 days / 2; // 2s per block
 
     receive() external payable {}
 
@@ -470,10 +471,16 @@ ReentrancyGuardUpgradeable {
         if (blocksPerEpoch > 0) {
             uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
+                // reward for this epoch
+                // rewardPerEpoch * total miner * blocker per epoch / blocks per year
+                uint256 rewardInCurrentEpoch = rewardPerEpoch * minerAddresses.size() * blocksPerEpoch / BLOCK_PER_YEAR;
+                uint256 perfReward = rewardInCurrentEpoch * rewardPerEpochBasedOnPerf / PERCENTAGE_DENOMINATOR;
+                uint256 equalReward = rewardInCurrentEpoch - perfReward;
+
                 for (; epochPassed > 0; epochPassed--) {
                     rewardInEpoch[currentEpoch].totalMiner = minerAddresses.size();
-                    rewardInEpoch[currentEpoch].perfReward = rewardPerEpochBasedOnPerf;
-                    rewardInEpoch[currentEpoch].epochReward = rewardPerEpoch;
+                    rewardInEpoch[currentEpoch].perfReward = perfReward;
+                    rewardInEpoch[currentEpoch].epochReward = equalReward;
                     currentEpoch++;
                 }
                 lastBlock = block.number;
