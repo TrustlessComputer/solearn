@@ -17,10 +17,10 @@ async function deployModelCollection() {
         await (async () => {
             const name = "Model"
             const symbol = "MDL"
-            const mintPrice = ethers.utils.parseEther('100');
+            const mintPrice = ethers.utils.parseEther('0');
             const royaltyReceiver = (await ethers.getSigners())[0].address
             const royalPortion = 20_00;
-            const nextModelId = 1000001;
+            const nextModelId = 100001;
 
             const modelCollection = await upgrades.deployProxy(
                 ModelCollection,

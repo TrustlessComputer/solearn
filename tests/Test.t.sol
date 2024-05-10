@@ -9,7 +9,7 @@ contract Mockup is WorkerHub {
     function setMinerTaskCompleteInEpoch(address miner, uint epoch, uint totalCompleted) public {
         _updateEpoch();
 
-        minterTaskCompleted[miner][epoch] = totalCompleted;
+        minerTaskCompleted[miner][epoch] = totalCompleted;
     }
 
     function setTotalTaskCompleteInEpoch(uint epoch, uint totalCompleted) public {
@@ -42,9 +42,10 @@ contract WorkHubTest is Test {
             1,
             10,
             1e18,
+            1e16,
             21 days
         );
-        workerHub.setNewRewardInEpoch(1e16);
+//        workerHub.setNewRewardInEpoch(1e16);
         workerHub.registerModel(ModelAddr, 1, 1e18);
         vm.stopPrank();
     }
@@ -53,32 +54,32 @@ contract WorkHubTest is Test {
         vm.deal(Miner1, 2e18);
         vm.deal(Miner2, 2e18);
         vm.deal(Miner3, 2e18);
-
+        assertEq(workerHub.lastBlock(), 1);
         // init block height
-        vm.roll(10);
+        vm.roll(11);
         vm.prank(Miner1);
-        workerHub.registerMinter{value: 1e18}(1);
+        workerHub.registerMiner{value: 1e18}(1);
 
         vm.prank(Miner2);
-        workerHub.registerMinter{value: 1e18}(1);
+        workerHub.registerMiner{value: 1e18}(1);
 
         vm.prank(Miner3);
-        workerHub.registerMinter{value: 1e18}(1);
+        workerHub.registerMiner{value: 1e18}(1);
 
+        assertEq(workerHub.lastBlock(), 11);
         assertEq(workerHub.currentEpoch(), 1);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         assertEq(workerHub.rewardToClaim(Miner2), 0);
         assertEq(workerHub.rewardToClaim(Miner3), 0);
-        (uint256 pefReward, uint256 epochReward, uint256 totalTaskCompleted, uint256 totalMinter) = workerHub.rewardInEpoch(1);
-//        assertEq(totalMinter, 3);
+        (uint256 pefReward, uint256 epochReward, uint256 totalTaskCompleted, uint256 totalMiner) = workerHub.rewardInEpoch(1);
+//        assertEq(totalMiner, 3);
         assertEq(pefReward, 1e18);
         assertEq(epochReward, 1e16);
         assertEq(totalTaskCompleted, 0);
         assertEq(workerHub.rewardPerEpoch(), 1e16);
-        assertEq(workerHub.lastBlock(), 10);
 
         // create some data for 2 epochs sequence
-        vm.roll(30);
+        vm.roll(31);
         assertEq(workerHub.rewardToClaim(Miner1), 6666666666666666);
         assertEq(workerHub.rewardToClaim(Miner2), 6666666666666666);
         assertEq(workerHub.rewardToClaim(Miner3), 6666666666666666);
@@ -90,7 +91,7 @@ contract WorkHubTest is Test {
         workerHub.setMinerTaskCompleteInEpoch(Miner3, 1, 3);
         workerHub.setTotalTaskCompleteInEpoch(1, 10);
 
-        (pefReward, epochReward, totalTaskCompleted, totalMinter) = workerHub.rewardInEpoch(1);
+        (pefReward, epochReward, totalTaskCompleted, totalMiner) = workerHub.rewardInEpoch(1);
         assertEq(pefReward, 1e18);
         assertEq(totalTaskCompleted, 10);
 
@@ -100,7 +101,7 @@ contract WorkHubTest is Test {
         workerHub.setMinerTaskCompleteInEpoch(Miner3, 2, 7);
         workerHub.setTotalTaskCompleteInEpoch(2, 10);
 
-        (pefReward, epochReward, totalTaskCompleted, totalMinter) = workerHub.rewardInEpoch(2);
+        (pefReward, epochReward, totalTaskCompleted, totalMiner) = workerHub.rewardInEpoch(2);
         assertEq(pefReward, 1e18);
         assertEq(totalTaskCompleted, 10);
 
@@ -132,28 +133,28 @@ contract WorkHubTest is Test {
 
         // test miner request unstake
         vm.prank(Miner1);
-        workerHub.unregisterMinter();
+        workerHub.unregisterMiner();
         assertEq(Miner1.balance, 906666666666666666 + 2e18);
 
         vm.startPrank(Miner1);
-        vm.roll(50);
+        vm.roll(51);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 906666666666666666 + 2e18);
-        workerHub.registerMinter{value: 1e18}(1);
+        workerHub.registerMiner{value: 1e18}(1);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 906666666666666666 + 1e18);
-        workerHub.unregisterMinter();
+        workerHub.unregisterMiner();
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 906666666666666666 + 2e18);
-        workerHub.registerMinter{value: 1e18}(1);
+        workerHub.registerMiner{value: 1e18}(1);
         vm.roll(55);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 906666666666666666 + 1e18);
-        vm.roll(60);
+        vm.roll(61);
         assertEq(workerHub.rewardToClaim(Miner1), 3333333333333333);
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 906666666666666666 + 1e18 + 3333333333333333);

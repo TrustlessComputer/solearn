@@ -24,12 +24,13 @@ async function deployWorkerHub() {
             // const collectionAddress = config.collectionAddress || ethers.constants.AddressZero;
 
             const feePercentage = 10_00;
-            const minterMinimumStake = ethers.utils.parseEther("70000");
-            const validatorMinimumStake = ethers.utils.parseEther("70000");
-            const mintingTimeLimit = 300;
-            const minterRequirement = 3;
+            const minerMinimumStake = ethers.utils.parseEther("100");
+            const validatorMinimumStake = ethers.utils.parseEther("100");
+            const miningTimeLimit = 300;
+            const minerRequirement = 3;
             const blockPerEpoch = 600;
             const rewardPerEpochBasedOnPerf = ethers.utils.parseEther("0.5");
+            const rewardPerEpoch = ethers.utils.parseEther('1');
             const unstakeDelayTime = 12 * 24 * 3600;
 
             const workerHub = await upgrades.deployProxy(
@@ -37,18 +38,17 @@ async function deployWorkerHub() {
                 [
                     treasuryAddress,
                     feePercentage,
-                    minterMinimumStake,
+                    minerMinimumStake,
                     validatorMinimumStake,
-                    mintingTimeLimit,
-                    minterRequirement,
+                    miningTimeLimit,
+                    minerRequirement,
                     blockPerEpoch,
                     rewardPerEpochBasedOnPerf,
+                    rewardPerEpoch,
                     unstakeDelayTime
                 ]
             );
             await workerHub.deployed();
-
-            await (await workerHub.setNewRewardInEpoch(ethers.utils.parseEther('1'))).wait();
 
             const tx = {
                 to: workerHub.address,

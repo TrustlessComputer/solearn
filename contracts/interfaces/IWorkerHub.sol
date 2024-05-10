@@ -12,11 +12,11 @@ interface IWorkerHub is IInferable {
         Killed
     }
 
-    struct MinterEpochState {
+    struct MinerEpochState {
         uint256 perfReward;
         uint256 epochReward;
         uint256 totalTaskCompleted;
-        uint256 totalMinter;
+        uint256 totalMiner;
     }
 
     struct Model {
@@ -95,14 +95,16 @@ interface IWorkerHub is IInferable {
         uint256 minimumFee
     );
     event ModelUnregistration(address indexed model);
+    event ModelTierUpdate(address indexed model, uint32 tier);
+    event ModelMinimumFeeUpdate(address indexed model, uint256 minimumFee);
 
-    event MinterExtraStake(address indexed minter, uint256 value);
-    event MinterRegistration(
-        address indexed minter,
+    event MinerExtraStake(address indexed miner, uint256 value);
+    event MinerRegistration(
+        address indexed miner,
         uint16 indexed tier,
         uint256 value
     );
-    event MinterUnregistration(address indexed minter);
+    event MinerUnregistration(address indexed miner);
 
     event ValidatorExtraStake(address indexed validator, uint256 value);
     event ValidatorRegistration(
@@ -123,34 +125,47 @@ interface IWorkerHub is IInferable {
     event NewAssignment(
         uint256 indexed assignmentId,
         uint256 indexed inferenceId,
-        address indexed minter,
+        address indexed miner,
         uint40 expiredAt
     );
-    event SolutionSubmission(address indexed minter, uint256 indexed assigmentId);
+    event SolutionSubmission(address indexed miner, uint256 indexed assigmentId);
+    event TransferFee(
+        address indexed miner,
+        uint256 mingingFee,
+        address indexed treasury,
+        uint256 protocolFee
+    );
 
-    event MinterUnstake(address indexed minter, uint256 stake);
+    event MinerUnstake(address indexed miner, uint256 stake);
+    event MinerJoin(address indexed miner);
     event ValidatorUnstake(address indexed validator, uint256 stake);
+    event ValidatorJoin(address indexed validator);
 
     event RewardClaim(address indexed worker, uint256 value);
 
     event RewardPerEpoch(uint256 oldReward, uint256 newReward);
     event RewardPerEpochBasedOnPerf(uint256 oldReward, uint256 newReward);
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
+    event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
 
     error AlreadyRegistered();
     error AlreadySubmitted();
     error NotRegistered();
+    error NotEnoughMiners();
     error Unauthorized();
     error StillBeingLocked();
 
     error InvalidBlockValue();
+    error InvalidModel();
     error InvalidTier();
+    error InvalidInferenceStatus();
 
     error FeeTooLow();
     error StakeTooLow();
     error NullStake();
 
-    error MintingSessionNotEnded();
+    error MiningSessionNotEnded();
     error ValidatingSessionNotEnded();
+    error MiningSessionEnded();
 
 }

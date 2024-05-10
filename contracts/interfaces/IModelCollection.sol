@@ -26,8 +26,10 @@ IERC2981Upgradeable {
     event TokenURIUpdate(uint256 indexed tokenId, string uri);
     event TokenModelUpdate(uint256 indexed tokenId, address model);
 
+    error AlreadyMinted();
     error InsufficientFunds();
     error InvalidModel();
+    error InvalidSignature();
     error FailedTransfer();
 
     function version() external pure returns (string memory version);

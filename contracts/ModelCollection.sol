@@ -108,8 +108,8 @@ OwnableUpgradeable {
         bytes32 hash = getHashToSign(_to, _uri, _model, _tokenId);
 
         address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-        require(signer == owner(), "invalid signature");
-        require(models[_tokenId] == address(0), "token minted");
+        if (signer != owner()) revert InvalidSignature();
+        if (models[_tokenId] != address(0)) revert AlreadyMinted();
 
         return mint_(_to, _uri, _model, _tokenId);
     }

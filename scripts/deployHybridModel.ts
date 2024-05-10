@@ -1,3 +1,4 @@
+import assert from 'assert';
 import { ethers, network, upgrades } from 'hardhat';
 
 async function deployHybridModel() {
@@ -5,6 +6,13 @@ async function deployHybridModel() {
     const networkName = network.name.toUpperCase();
     const HybridModel = await ethers.getContractFactory('HybridModel');
     const WorkerHub = await ethers.getContractFactory('WorkerHub');
+    const ModelCollection = await ethers.getContractFactory('ModelCollection');
+
+    const collectionAddress = config.collectionAddress;
+    assert.ok(
+        collectionAddress,
+        `Missing ${networkName}_COLLECTION_ADDRESS from environment variables!`
+    );
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
@@ -30,6 +38,13 @@ async function deployHybridModel() {
         ]
     );
     await hybridModel.deployed();
+
+    const collection = ModelCollection.attach(config.collectionAddress);
+    await (await collection.mint(
+        (await ethers.getSigners())[0].address,
+        metadata,
+        hybridModel.address
+    )).wait();
 
     const workerHub = WorkerHub.attach(workerHubAddress);
     await workerHub.registerModel(hybridModel.address, 1, ethers.utils.parseEther('100'));
