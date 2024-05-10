@@ -127,6 +127,15 @@ ReentrancyGuardUpgradeable {
         return minerAddresses.values;
     }
 
+    function getMinerAddressesOfModel(address _model) external view returns (address[] memory) {
+        return minerAddressesByModel[_model].values;
+    }
+
+    function getValidatorAddressesOfModel(address _model) external view returns (address[] memory) {
+        return validatorAddressesByModel[_model].values;
+    }
+
+
     function getMiners() external view returns (WorkerInfo[] memory) {
         address[] memory addresses = minerAddresses.values;
         uint256 minerNumber = addresses.length;

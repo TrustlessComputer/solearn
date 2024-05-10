@@ -15,23 +15,16 @@ async function deployWorkerHub() {
             return config.workerHubAddress;
         })() :
         await (async () => {
-            const treasuryAddress = config.treasuryAddress;
-            assert.ok(
-                treasuryAddress,
-                `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
-            );
-
-            // const collectionAddress = config.collectionAddress || ethers.constants.AddressZero;
-
+            const treasuryAddress = '0x451064E5B968858cD54f227Dba7b7F419eAC5BA9';
             const feePercentage = 10_00;
-            const minerMinimumStake = ethers.utils.parseEther("100");
-            const validatorMinimumStake = ethers.utils.parseEther("100");
-            const miningTimeLimit = 300;
+            const minerMinimumStake = ethers.utils.parseEther("25000");
+            const validatorMinimumStake = ethers.utils.parseEther("40000");
+            const miningTimeLimit = 10 * 60;
             const minerRequirement = 3;
             const blockPerEpoch = 600;
-            const rewardPerEpochBasedOnPerf = ethers.utils.parseEther("0.5");
-            const rewardPerEpoch = ethers.utils.parseEther('1');
-            const unstakeDelayTime = 12 * 24 * 3600;
+            const rewardPerEpochBasedOnPerf = ethers.utils.parseEther("0");
+            const rewardPerEpoch = ethers.utils.parseEther('0');
+            const unstakeDelayTime = 21 * 24 * 3600;
 
             const workerHub = await upgrades.deployProxy(
                 WorkerHub,
@@ -50,12 +43,12 @@ async function deployWorkerHub() {
             );
             await workerHub.deployed();
 
-            const tx = {
-                to: workerHub.address,
-                value: ethers.utils.parseEther('1000')
-            }
-
-            await (await ethers.getSigners())[0].sendTransaction(tx);
+            // const tx = {
+            //     to: workerHub.address,
+            //     value: ethers.utils.parseEther('1000')
+            // }
+            //
+            // await (await ethers.getSigners())[0].sendTransaction(tx);
 
             console.log(`Contract WorkerHub has been deployed to address ${workerHub.address}`);
             return workerHub.address;

@@ -15,12 +15,12 @@ async function deployModelCollection() {
             return config.collectionAddress;
         })() :
         await (async () => {
-            const name = "Model"
-            const symbol = "MDL"
+            const name = "Eternal AI"
+            const symbol = ""
             const mintPrice = ethers.utils.parseEther('0');
-            const royaltyReceiver = (await ethers.getSigners())[0].address
-            const royalPortion = 20_00;
-            const nextModelId = 100001;
+            const royaltyReceiver = '0x451064E5B968858cD54f227Dba7b7F419eAC5BA9'
+            const royalPortion = 5_00;
+            const nextModelId = 100_001;
 
             const modelCollection = await upgrades.deployProxy(
                 ModelCollection,
