@@ -498,9 +498,9 @@ ReentrancyGuardUpgradeable {
             TransferHelper.safeTransferNative(_msgSender, value);
 
             emit TransferFee(_msgSender, value, treasury, fee);
+            emit InferenceStatusUpdate(clonedAssignments.inferenceId, InferenceStatus.Solved);
         }
 
-        emit InferenceStatusUpdate(clonedAssignments.inferenceId, InferenceStatus.Solved);
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
 
