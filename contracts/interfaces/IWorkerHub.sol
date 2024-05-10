@@ -138,6 +138,7 @@ interface IWorkerHub is IInferable {
     event RewardPerEpoch(uint256 oldReward, uint256 newReward);
     event RewardPerEpochBasedOnPerf(uint256 oldReward, uint256 newReward);
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
+    event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
 
     error AlreadyRegistered();
     error AlreadySubmitted();

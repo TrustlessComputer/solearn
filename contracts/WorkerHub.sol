@@ -536,6 +536,16 @@ ReentrancyGuardUpgradeable {
         blocksPerEpoch = _blocks;
     }
 
+    function setUnstakDelayTime(uint40 _newUnstakeDelayTime) public virtual onlyOwner {
+        _updateEpoch();
+
+        require(_newUnstakeDelayTime != 0, "invalid unstake delay time");
+
+        emit UnstakeDelayTime(unstakeDelayTime, _newUnstakeDelayTime);
+
+        unstakeDelayTime = _newUnstakeDelayTime;
+    }
+
     // sum reward of an miner since last claimed epoch
     function rewardToClaim(address _miner) public virtual returns(uint256) {
         _updateEpoch();
