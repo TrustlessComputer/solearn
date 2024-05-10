@@ -83,7 +83,7 @@ ReentrancyGuardUpgradeable {
 
         AssignmentInfo[] memory result = new AssignmentInfo[](counter);
         counter = 0;
-        // todo: why not use i instead of counter
+
         for (uint256 i = 0; i < assignmentNumber; ++i)
             if (isAssignmentPending(assignmentIds[i])) {
                 Assignment storage assignment = assignments[assignmentIds[i]];
@@ -289,14 +289,14 @@ ReentrancyGuardUpgradeable {
 
         miner.tier = 0;
 
-        // @kouchou review code
-        // TransferHelper.safeTransferNative(msg.sender, miner.stake);
         uint stakeAmount = miner.stake;
         miner.stake = 0;
         miner.commitment = 0;
 
-        minerAddresses.erase(msg.sender);
-        minerAddressesByModel[miner.modelAddress].erase(msg.sender);
+        if (minerAddresses.hasValue(msg.sender)) {
+            minerAddresses.erase(msg.sender);
+            minerAddressesByModel[miner.modelAddress].erase(msg.sender);
+        }
         miner.modelAddress = address(0);
 
         uint currentUnstake = minerUnstakeRequests[msg.sender].stake;
@@ -377,8 +377,6 @@ ReentrancyGuardUpgradeable {
 
         validator.tier = 0;
 
-        // @koucho review code
-        // TransferHelper.safeTransferNative(msg.sender, validator.stake);
         uint stakeAmount = validator.stake;
         validator.stake = 0;
         validator.commitment = 0;
@@ -448,6 +446,7 @@ ReentrancyGuardUpgradeable {
         inferences[_inferenceId].status = InferenceStatus.Solving;
 
         address model = inferences[_inferenceId].modelAddress;
+        if (minerAddressesByModel[model].size() < minerRequirement) revert NotEnoughMiners();
 
         Set.AddressSet storage miners = minerAddressesByModel[model];
         uint256 n = minerRequirement;
@@ -498,8 +497,8 @@ ReentrancyGuardUpgradeable {
 
         Inference memory clonedInference = inferences[clonedAssignments.inferenceId];
 
-        if (clonedInference.status != InferenceStatus.Solving && 
-            clonedInference.status != InferenceStatus.Solved) 
+        if (clonedInference.status != InferenceStatus.Solving &&
+            clonedInference.status != InferenceStatus.Solved)
         {
             revert InvalidInferenceStatus();
         }

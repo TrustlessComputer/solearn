@@ -151,6 +151,7 @@ interface IWorkerHub is IInferable {
     error AlreadyRegistered();
     error AlreadySubmitted();
     error NotRegistered();
+    error NotEnoughMiners();
     error Unauthorized();
     error StillBeingLocked();
 
