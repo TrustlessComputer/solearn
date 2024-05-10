@@ -47,7 +47,7 @@ async function deployHybridModel() {
     )).wait();
 
     const workerHub = WorkerHub.attach(workerHubAddress);
-    await workerHub.registerModel(hybridModel.address, 1, ethers.utils.parseEther('100'));
+    await workerHub.registerModel(hybridModel.address, 1, ethers.utils.parseEther('0.2'));
 
     console.log(`Contract HybridModel has been deployed to address ${hybridModel.address}`);
 
