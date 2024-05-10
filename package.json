@@ -16,7 +16,12 @@
     "console:cudatest": "npx hardhat console --network cudatest",
     "deployModelCollection:cudatest": "npx hardhat run scripts/deployModelCollection.ts --network cudatest",
     "deployWorkerHub:cudatest": "npx hardhat run scripts/deployWorkerHub.ts --network cudatest",
-    "deployHybridModel:cudatest": "npx hardhat run scripts/deployHyrbidModel.ts --network cudatest"
+    "deployHybridModel:cudatest": "npx hardhat run scripts/deployHyrbidModel.ts --network cudatest",
+    "console:mainnet": "npx hardhat console --network cudatest",
+    "deployModelCollection:mainnet": "npx hardhat run scripts/deployModelCollection.ts --network mainnet",
+    "deployWorkerHub:mainnet": "npx hardhat run scripts/deployWorkerHub.ts --network mainnet",
+    "deployHybridModel:mainnet": "npx hardhat run scripts/deployHyrbidModel.ts --network mainnet"
+
   },
   "devDependencies": {
     "@ericxstone/hardhat-blockscout-verify": "^1.0.2",

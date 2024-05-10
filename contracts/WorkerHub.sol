@@ -22,6 +22,7 @@ ReentrancyGuardUpgradeable {
 
     string constant private VERSION = "v0.0.1";
     uint256 constant private PERCENTAGE_DENOMINATOR = 100_00;
+    uint256 constant private BLOCK_PER_YEAR = 365 days / 2; // 2s per block
 
     receive() external payable {}
 
@@ -53,8 +54,6 @@ ReentrancyGuardUpgradeable {
         unstakeDelayTime = _unstakeDelayTime;
         maximumTier = 1;
         lastBlock = block.number;
-        rewardInEpoch[currentEpoch].perfReward = rewardPerEpochBasedOnPerf;
-        rewardInEpoch[currentEpoch].epochReward = rewardPerEpoch;
     }
 
     function version() external pure returns (string memory) {
@@ -127,6 +126,15 @@ ReentrancyGuardUpgradeable {
     function getMinerAddresses() external view returns (address[] memory) {
         return minerAddresses.values;
     }
+
+    function getMinerAddressesOfModel(address _model) external view returns (address[] memory) {
+        return minerAddressesByModel[_model].values;
+    }
+
+    function getValidatorAddressesOfModel(address _model) external view returns (address[] memory) {
+        return validatorAddressesByModel[_model].values;
+    }
+
 
     function getMiners() external view returns (WorkerInfo[] memory) {
         address[] memory addresses = minerAddresses.values;
@@ -472,11 +480,17 @@ ReentrancyGuardUpgradeable {
         if (blocksPerEpoch > 0) {
             uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
+                // reward for this epoch
+                // rewardPerEpoch * total miner * blocker per epoch / blocks per year
+                uint256 rewardInCurrentEpoch = rewardPerEpoch * minerAddresses.size() * blocksPerEpoch / BLOCK_PER_YEAR;
+                uint256 perfReward = rewardInCurrentEpoch * rewardPerEpochBasedOnPerf / PERCENTAGE_DENOMINATOR;
+                uint256 equalReward = rewardInCurrentEpoch - perfReward;
+
                 for (; epochPassed > 0; epochPassed--) {
                     rewardInEpoch[currentEpoch].totalMiner = minerAddresses.size();
+                    rewardInEpoch[currentEpoch].perfReward = perfReward;
+                    rewardInEpoch[currentEpoch].epochReward = equalReward;
                     currentEpoch++;
-                    rewardInEpoch[currentEpoch].perfReward = rewardPerEpochBasedOnPerf;
-                    rewardInEpoch[currentEpoch].epochReward = rewardPerEpoch;
                 }
                 lastBlock = block.number;
             }
@@ -610,7 +624,7 @@ ReentrancyGuardUpgradeable {
 
         uint256 totalReward;
         uint256 lastEpoch = currentEpoch;
-        if (miners[_miner].stake <= 0 || lastEpoch <= miners[_miner].lastClaimedEpoch) {
+        if (!minerAddresses.hasValue(_miner) || lastEpoch <= miners[_miner].lastClaimedEpoch) {
             totalReward = 0;
         } else {
             uint256 lastClaimed = uint256(miners[_miner].lastClaimedEpoch);
