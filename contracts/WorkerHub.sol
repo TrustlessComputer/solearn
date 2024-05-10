@@ -102,6 +102,28 @@ ReentrancyGuardUpgradeable {
         return result;
     }
 
+    function getMintingAssignmentsOfInference(uint256 _inferenceId) external view returns (AssignmentInfo[] memory) {
+        uint256[] memory assignmentIds = assignmentsByInference[_inferenceId].values;
+        uint256 assignmentNumber = assignmentIds.length;
+
+        AssignmentInfo[] memory result = new AssignmentInfo[](assignmentNumber);
+        for (uint256 i = 0; i < assignmentNumber; ++i) {
+            Assignment storage assignment = assignments[assignmentIds[i]];
+            Inference storage inference = inferences[assignment.inferenceId];
+            result[i] = AssignmentInfo(
+                assignmentIds[i],
+                assignment.inferenceId,
+                inference.value,
+                inference.input,
+                inference.modelAddress,
+                inference.creator,
+                inference.expiredAt
+            );
+        }
+
+        return result;
+    }
+
     function getMinerAddresses() external view returns (address[] memory) {
         return minerAddresses.values;
     }
@@ -297,6 +319,7 @@ ReentrancyGuardUpgradeable {
         if (validator.tier != 0) revert AlreadyRegistered();
 
         validator.stake = msg.value;
+        validator.tier = tier;
         validator.tier = tier;
         validator.lastClaimedEpoch = currentEpoch;
 
