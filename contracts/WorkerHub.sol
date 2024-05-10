@@ -498,7 +498,13 @@ ReentrancyGuardUpgradeable {
 
         Inference memory clonedInference = inferences[clonedAssignments.inferenceId];
 
-        if (clonedInference.status == InferenceStatus.Solving && clonedInference.expiredAt < block.timestamp) {
+        if (clonedInference.status != InferenceStatus.Solving && 
+            clonedInference.status != InferenceStatus.Solved) 
+        {
+            revert InvalidInferenceStatus();
+        }
+
+        if (clonedInference.expiredAt < block.timestamp) {
             if (clonedInference.assignments.length == 0) {
                 resolveInference(clonedAssignments.inferenceId);
                 return;

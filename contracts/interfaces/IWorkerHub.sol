@@ -157,6 +157,7 @@ interface IWorkerHub is IInferable {
     error InvalidBlockValue();
     error InvalidModel();
     error InvalidTier();
+    error InvalidInferenceStatus();
 
     error FeeTooLow();
     error StakeTooLow();
