@@ -481,6 +481,7 @@ ReentrancyGuardUpgradeable {
             uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
                 // reward for this epoch
+                // rewardPerEpoch (reward one year for 1 miner)
                 // rewardPerEpoch * total miner * blocker per epoch / blocks per year
                 uint256 rewardInCurrentEpoch = rewardPerEpoch * minerAddresses.size() * blocksPerEpoch / BLOCK_PER_YEAR;
                 uint256 perfReward = rewardInCurrentEpoch * rewardPerEpochBasedOnPerf / PERCENTAGE_DENOMINATOR;
