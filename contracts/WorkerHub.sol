@@ -302,6 +302,7 @@ ReentrancyGuardUpgradeable {
         miner.commitment = 0;
 
         if (minerAddresses.hasValue(msg.sender)) {
+            _claimReward(msg.sender);
             minerAddresses.erase(msg.sender);
             minerAddressesByModel[miner.modelAddress].erase(msg.sender);
         }
@@ -312,8 +313,6 @@ ReentrancyGuardUpgradeable {
             stakeAmount + currentUnstake,
             uint40(block.timestamp + unstakeDelayTime)
         );
-
-        _claimReward(msg.sender);
 
         emit MinerUnregistration(msg.sender);
     }
