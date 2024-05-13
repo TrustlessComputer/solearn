@@ -84,6 +84,21 @@ interface IWorkerHub is IInferable {
         address creator;
     }
 
+    struct DisputedAssignment {
+        uint256 inferenceId;
+        address creator;
+        uint16 totalValidator;
+        uint16 votedValidator;
+        bool isValid;
+        uint40 validatingExpireAt;
+        uint40 disputingExpireAt;
+    }
+
+    struct DisputingQueueElement {
+        uint256 id;
+        uint40 expiredAt;
+    }
+
     struct UnstakeRequest {
         uint256 stake;
         uint40 unlockAt;
@@ -147,6 +162,12 @@ interface IWorkerHub is IInferable {
     event RewardPerEpochBasedOnPerf(uint256 oldReward, uint256 newReward);
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
+
+    event MinerSlashed(address indexed miner, uint40 activeTime, uint256 fine);
+    event ValidatorSlashed(address indexed validator, uint40 activeTime, uint256 fine);
+    event DisputeResolving(uint256 indexed assignmentId, InferenceStatus status);
+
+
 
     error AlreadyRegistered();
     error AlreadySubmitted();
