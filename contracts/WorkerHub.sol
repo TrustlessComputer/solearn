@@ -447,6 +447,16 @@ ReentrancyGuardUpgradeable {
         return inferenceId;
     }
 
+    function topUpInfer(uint256 _inferenceId) external payable whenNotPaused {
+        if (msg.value == 0) revert ZeroValue();
+
+        Inference storage inference = inferences[_inferenceId];
+        if (inference.status != InferenceStatus.Solving) revert InferMustBeSolvingState();
+        inference.value += msg.value;
+
+        emit TopUpInfer(_inferenceId, inference.creator, inference.value);
+    }
+
     function _assignMiners(uint256 _inferenceId) private {
         uint40 expiredAt = uint40(block.timestamp + miningTimeLimit);
         inferences[_inferenceId].expiredAt = expiredAt;

@@ -136,6 +136,12 @@ interface IWorkerHub is IInferable {
         uint256 protocolFee
     );
 
+    event TopUpInfer(
+        uint256 indexed inferenceId,
+        address indexed creator,
+        uint256 value
+    );
+
     event MinerUnstake(address indexed miner, uint256 stake);
     event MinerJoin(address indexed miner);
     event ValidatorUnstake(address indexed validator, uint256 stake);
@@ -168,4 +174,6 @@ interface IWorkerHub is IInferable {
     error ValidatingSessionNotEnded();
     error MiningSessionEnded();
 
+    error InferMustBeSolvingState();
+    error ZeroValue();
 }
