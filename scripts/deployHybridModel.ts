@@ -16,17 +16,17 @@ async function deployHybridModel() {
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
-    const name = 'Max Multi';//`Model ${identifier}`;
+    const name = 'Fantasy Map';//`Model ${identifier}`;
     const modelOwnerAddress = '0x10919C7A907DAAFcBF581cf5aBBb877DD6675D77';
     const metadata = '{\n' +
         '\t"version": 1,\n' +
-        '\t"model_name": "MaxMulti",\n' +
+        '\t"model_name": "FantasyMap",\n' +
         '\t"model_type": "image",\n' +
-        '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmcFYMYpVodkpT6t1fVmWNjPnUnnQbXvwpqyheXvPGKUr8",\n' +
-        '\t"model_file_hash": "7f1f29cb884c5b2f4d072b99afcb87f32cbe4adc88cffedab15ffc9fd30887ae",\n' +
+        '\t"model_url": "https://gateway.lighthouse.storage/ipfs/Qmaz3AgnZVH1DVqXdciac6G8FUnungDTkBXDo2Dx1FtXx5",\n' +
+        '\t"model_file_hash": "2c25f12639d4821f6bb04d853c36a383bd99234b1bb3bcd80e0ac6c98d34247d",\n' +
         '\t"min_hardware": 1,\n' +
-        '\t"verifier_url": "https://gateway.lighthouse.storage/ipfs/QmdkKEjx2fauzbPh1j5bUiQXrUG5Ft36pJGHS8awrN89Dc",\n' +
-        '\t"verifier_file_hash": "492b2b3dea3003d359fe1b2cee77a22777d8a9faf942ab6dee81e6bfadaadec4"\n' +
+        '\t"verifier_url": "",\n' +
+        '\t"verifier_file_hash": ""\n' +
         '}'
 
     const hybridModel = await upgrades.deployProxy(
@@ -41,7 +41,7 @@ async function deployHybridModel() {
     await hybridModel.deployed();
 
     const collection = ModelCollection.attach(config.collectionAddress);
-    await (await collection.mint(
+    const mintReceipt = await (await collection.mint(
         modelOwnerAddress,
         metadata,
         hybridModel.address
@@ -51,6 +51,10 @@ async function deployHybridModel() {
     await workerHub.registerModel(hybridModel.address, 1, ethers.utils.parseEther('0.2'));
 
     console.log(`Contract HybridModel has been deployed to address ${hybridModel.address}`);
+    const newTokenEvent = mintReceipt.events?.find((event: ethers.Event) => event.event === 'NewToken');
+    if (newTokenEvent) {
+        console.log("tokenId:", newTokenEvent.args?.tokenId);
+    }
 
     console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.address}`);
 }
