@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
+import "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 
 import {Random} from "../lib/Random.sol";
@@ -30,8 +30,14 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(uint256 => Assignment) public assignments;
     mapping(address => Set.Uint256Set) internal assignmentsByMiner;
     mapping(uint256 => Set.Uint256Set) internal assignmentsByInference;
-
-    mapping(address => mapping(uint256 => bool)) public validatorDisputed;
+    
+    //Dispute structures
+    Set.Uint256Set internal disputedAssignmentIds;
+    DoubleEndedQueue.Bytes32Deque disputingQueue;
+    mapping(uint256 => DisputedAssignment) internal disputedAssignments; // assignmentId => DisputedAssignment
+    mapping(address => Set.Uint256Set) disputedAssignmentsOf; //voter's address => disputed assignments
+    mapping(uint256 => Set.AddressSet) votersOf; // disputed assignment ID => voters's address
+    // mapping(address => mapping(uint256 => bool)) public validatorDisputed;
 
     // mapping total task completed in epoch and reward per epoch
     // epoch index => total reward
@@ -62,6 +68,10 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public lastBlock;
     uint256 public rewardPerEpochBasedOnPerf; // percentage for workers completed task
     uint256 public rewardPerEpoch; // 12299.97 reward EAI for 1 worker per year
+
+    //Slashing
+    uint40 public slashingMinerTimeLimit;
+    uint40 public slashingValidatorTimeLimit;
 
     uint256[100] private __gap;
 }
