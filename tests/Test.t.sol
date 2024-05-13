@@ -107,7 +107,7 @@ contract WorkHubTest is Test {
         workerHub.setTotalTaskCompleteInEpoch(1, 10);
 
         (pefReward, epochReward, totalTaskCompleted, totalMiner) = workerHub.rewardInEpoch(1);
-        assertEq(pefReward, 1e18);
+        assertEq(pefReward, 21061592465753424);
         assertEq(totalTaskCompleted, 10);
 
         // epoch 2
@@ -117,12 +117,12 @@ contract WorkHubTest is Test {
         workerHub.setTotalTaskCompleteInEpoch(2, 10);
 
         (pefReward, epochReward, totalTaskCompleted, totalMiner) = workerHub.rewardInEpoch(2);
-        assertEq(pefReward, 1e18);
+        assertEq(pefReward, 21061592465753424);
         assertEq(totalTaskCompleted, 10);
 
-        assertEq(workerHub.rewardToClaim(Miner1), 906666666666666666);
-        assertEq(workerHub.rewardToClaim(Miner2), 106666666666666666);
-        assertEq(workerHub.rewardToClaim(Miner3), 1006666666666666666);
+        assertEq(workerHub.rewardToClaim(Miner1), 20515551179604261);
+        assertEq(workerHub.rewardToClaim(Miner2), 3666277207001522);
+        assertEq(workerHub.rewardToClaim(Miner3), 22621710426179603);
 
         vm.deal(address(workerHub), address(workerHub).balance + 2e18);
         // claim reward
@@ -130,9 +130,9 @@ contract WorkHubTest is Test {
         workerHub.claimReward(Miner2);
         workerHub.claimReward(Miner3);
 
-        assertEq(Miner1.balance, 906666666666666666 + 1e18);
-        assertEq(Miner2.balance, 106666666666666666 + 1e18);
-        assertEq(Miner3.balance, 1006666666666666666 + 1e18);
+        assertEq(Miner1.balance, 20515551179604261 + 1e18);
+        assertEq(Miner2.balance, 3666277207001522 + 1e18);
+        assertEq(Miner3.balance, 22621710426179603 + 1e18);
 
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         assertEq(workerHub.rewardToClaim(Miner2), 0);
@@ -142,40 +142,40 @@ contract WorkHubTest is Test {
         workerHub.claimReward(Miner2);
         workerHub.claimReward(Miner3);
 
-        assertEq(Miner1.balance, 906666666666666666 + 1e18);
-        assertEq(Miner2.balance, 106666666666666666 + 1e18);
-        assertEq(Miner3.balance, 1006666666666666666 + 1e18);
+        assertEq(Miner1.balance, 20515551179604261 + 1e18);
+        assertEq(Miner2.balance, 3666277207001522 + 1e18);
+        assertEq(Miner3.balance, 22621710426179603 + 1e18);
 
         // test miner request unstake
         vm.startPrank(Miner1);
         workerHub.unregisterMiner();
         vm.warp(block.timestamp + 21 days);
         workerHub.unstakeForMiner();
-        assertEq(Miner1.balance, 906666666666666666 + 2e18);
+        assertEq(Miner1.balance, 2020515551179604261);
 
         vm.roll(51);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(Miner1.balance, 906666666666666666 + 2e18);
+        assertEq(Miner1.balance, 2020515551179604261);
         workerHub.registerMiner{value: 1e18}(1);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(Miner1.balance, 906666666666666666 + 1e18);
+        assertEq(Miner1.balance, 2020515551179604261 - 1e18);
         workerHub.unregisterMiner();
         vm.warp(block.timestamp + 21 days);
         workerHub.unstakeForMiner();
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(Miner1.balance, 906666666666666666 + 2e18);
+        assertEq(Miner1.balance, 2020515551179604261);
         workerHub.registerMiner{value: 1e18}(1);
         vm.roll(55);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(Miner1.balance, 906666666666666666 + 1e18);
+        assertEq(Miner1.balance, 2020515551179604261 - 1e18);
         vm.roll(61);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(Miner1.balance, 906666666666666666 + 1e18);
+        assertEq(Miner1.balance, 2020515551179604261 - 1e18);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         vm.stopPrank();
     }
