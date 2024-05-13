@@ -9,6 +9,10 @@
     "blockscout:verify": "npx hardhat blockscout-verify",
     "ts:run": "npx ts-node",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "console:anvil": "npx hardhat console --network anvil",
+    "deployModelCollection:anvil": "npx hardhat run scripts/deployModelCollection.ts --network anvil",
+    "deployWorkerHub:anvil": "npx hardhat run scripts/deployWorkerHub.ts --network anvil",
+    "deployHybridModel:anvil": "npx hardhat run scripts/deployHybridModel.ts --network anvil",
     "console:regtest3": "npx hardhat console --network regtest3",
     "deployModelCollection:regtest3": "npx hardhat run scripts/deployModelCollection.ts --network regtest3",
     "deployWorkerHub:regtest3": "npx hardhat run scripts/deployWorkerHub.ts --network regtest3",
@@ -16,11 +20,11 @@
     "console:cudatest": "npx hardhat console --network cudatest",
     "deployModelCollection:cudatest": "npx hardhat run scripts/deployModelCollection.ts --network cudatest",
     "deployWorkerHub:cudatest": "npx hardhat run scripts/deployWorkerHub.ts --network cudatest",
-    "deployHybridModel:cudatest": "npx hardhat run scripts/deployHyrbidModel.ts --network cudatest",
+    "deployHybridModel:cudatest": "npx hardhat run scripts/deployHybridModel.ts --network cudatest",
     "console:mainnet": "npx hardhat console --network cudatest",
     "deployModelCollection:mainnet": "npx hardhat run scripts/deployModelCollection.ts --network mainnet",
     "deployWorkerHub:mainnet": "npx hardhat run scripts/deployWorkerHub.ts --network mainnet",
-    "deployHybridModel:mainnet": "npx hardhat run scripts/deployHyrbidModel.ts --network mainnet"
+    "deployHybridModel:mainnet": "npx hardhat run scripts/deployHybridModel.ts --network mainnet"
 
   },
   "devDependencies": {

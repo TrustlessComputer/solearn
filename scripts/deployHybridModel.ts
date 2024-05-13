@@ -17,6 +17,7 @@ async function deployHybridModel() {
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
     const name = 'Max Multi';//`Model ${identifier}`;
+    const modelOwnerAddress = '0x10919C7A907DAAFcBF581cf5aBBb877DD6675D77';
     const metadata = '{\n' +
         '\t"version": 1,\n' +
         '\t"model_name": "MaxMulti",\n' +
@@ -41,7 +42,7 @@ async function deployHybridModel() {
 
     const collection = ModelCollection.attach(config.collectionAddress);
     await (await collection.mint(
-        (await ethers.getSigners())[0].address,
+        modelOwnerAddress,
         metadata,
         hybridModel.address
     )).wait();
