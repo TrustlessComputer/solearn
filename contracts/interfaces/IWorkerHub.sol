@@ -84,6 +84,21 @@ interface IWorkerHub is IInferable {
         address creator;
     }
 
+    struct DisputedAssignment {
+        uint256 inferenceId;
+        address creator;
+        uint16 totalValidator;
+        uint16 votedValidator;
+        bool isValid;
+        uint40 validatingExpireAt;
+        uint40 disputingExpireAt;
+    }
+
+    struct DisputingQueueElement {
+        uint256 id;
+        uint40 expiredAt;
+    }
+
     struct UnstakeRequest {
         uint256 stake;
         uint40 unlockAt;
