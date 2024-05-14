@@ -267,7 +267,6 @@ ReentrancyGuardUpgradeable {
 
         miner.stake = msg.value;
         miner.tier = tier;
-        miner.lastClaimedEpoch = currentEpoch;
 
         address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
         miner.modelAddress = modelAddress;
@@ -284,8 +283,8 @@ ReentrancyGuardUpgradeable {
 
         address modelAddress = miner.modelAddress;
         minerAddressesByModel[modelAddress].insert(msg.sender);
-
         minerAddresses.insert(msg.sender);
+        miner.lastClaimedEpoch = currentEpoch;
 
         emit MinerJoin(msg.sender);
     }
@@ -352,10 +351,6 @@ ReentrancyGuardUpgradeable {
         unstakeRequest.stake = 0;
 
         Worker storage miner = miners[msg.sender];
-        if (rewardToClaim(msg.sender) == 0) {
-            miner.lastClaimedEpoch = currentEpoch;
-        }
-
         miner.stake += unstakeAmount;
         if (miner.tier == 0) {
             if (tier == 0 || tier > maximumTier) revert InvalidTier();
