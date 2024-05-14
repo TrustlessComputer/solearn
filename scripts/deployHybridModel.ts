@@ -16,18 +16,19 @@ async function deployHybridModel() {
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
-    const name = 'Fantasy Map';//`Model ${identifier}`;
-    const modelOwnerAddress = '0x10919C7A907DAAFcBF581cf5aBBb877DD6675D77';
+    const name = 'Animated Concept - SDXL LoRA';//`Model ${identifier}`;
+    const minHardware = 1;
+    const modelOwnerAddress = '0xBb380912A2E0c83628935f98a5a1b08b8588Ae76';
     const metadata = '{\n' +
         '\t"version": 1,\n' +
-        '\t"model_name": "FantasyMap",\n' +
+        '\t"model_name": "Animated Concept - SDXL LoRA",\n' +
         '\t"model_type": "image",\n' +
-        '\t"model_url": "https://gateway.lighthouse.storage/ipfs/Qmaz3AgnZVH1DVqXdciac6G8FUnungDTkBXDo2Dx1FtXx5",\n' +
-        '\t"model_file_hash": "2c25f12639d4821f6bb04d853c36a383bd99234b1bb3bcd80e0ac6c98d34247d",\n' +
+        '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmaG6DJstjfgVuBRDi6Ma66o9SMaReMse1S75nDDwwErM3",\n' +
+        '\t"model_file_hash": "dc881c939ff3078b59d9bf2a6fc83db2caf7b0780ee563d3a6fc09ea5a1b35a1",\n' +
         '\t"min_hardware": 1,\n' +
         '\t"verifier_url": "",\n' +
         '\t"verifier_file_hash": ""\n' +
-        '}'
+        '}'    
 
     const hybridModel = await upgrades.deployProxy(
         HybridModel,
@@ -48,7 +49,7 @@ async function deployHybridModel() {
     )).wait();
 
     const workerHub = WorkerHub.attach(workerHubAddress);
-    await workerHub.registerModel(hybridModel.address, 1, ethers.utils.parseEther('0.2'));
+    await workerHub.registerModel(hybridModel.address, minHardware, ethers.utils.parseEther('0.2'));
 
     console.log(`Contract HybridModel has been deployed to address ${hybridModel.address}`);
     const newTokenEvent = mintReceipt.events?.find((event: ethers.Event) => event.event === 'NewToken');

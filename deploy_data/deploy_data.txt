@@ -1,4 +1,5 @@
 const name = 'Max Multi';//`Model ${identifier}`;
+const minHardware = 1;
 const modelOwnerAddress = '';
 const metadata = '{\n' +
     '\t"version": 1,\n' +
@@ -12,6 +13,7 @@ const metadata = '{\n' +
     '}'
 
 const name = 'SDXL-Lightning';//`Model ${identifier}`;
+const minHardware = 1;
 const modelOwnerAddress = '0x5D6429703D747805920D596E15427B08083e3D2c';
 const metadata = '{\n' +
     '\t"version": 1,\n' +
@@ -25,6 +27,7 @@ const metadata = '{\n' +
     '}'
 
 const name = 'Fantasy Map';//`Model ${identifier}`;
+const minHardware = 1;
 const modelOwnerAddress = '0x10919C7A907DAAFcBF581cf5aBBb877DD6675D77';
 const metadata = '{\n' +
     '\t"version": 1,\n' +
@@ -37,27 +40,29 @@ const metadata = '{\n' +
     '\t"verifier_file_hash": ""\n' +
     '}'
 
-const name = 'Animated Concept - SDXL LoRA';//`Model ${identifier}`;
-const modelOwnerAddress = '';
+const name = 'DreamShaper XL';//`Model ${identifier}`;
+const minHardware = 1;
+const modelOwnerAddress = '0x71E73197b9868f7aE530Cb3b12B04e31f521525F';
 const metadata = '{\n' +
     '\t"version": 1,\n' +
-    '\t"model_name": "Animated Concept - SDXL LoRA",\n' +
+    '\t"model_name": "DreamShaper XL",\n' +
     '\t"model_type": "image",\n' +
-    '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmcYLMm3X9KVkozZJoVEJRoSHDXpfhwyQJpiPTZTEcNz8T",\n' +
-    '\t"model_file_hash": "49694d4077e0f007c8b49ed8a8a3a877f70dd6fbbb19ae230cba76b68451f7b0",\n' +
+    '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmfKxyFbvTEF3XyyeYzEq7ysUqTJbVM5QxGYbEts8AJjRX",\n' +
+    '\t"model_file_hash": "2ee8c8d423f5ad46034359f5d04825a44018a93689a4fd88ce7ec3287f1e7cf4",\n' +
     '\t"min_hardware": 1,\n' +
     '\t"verifier_url": "",\n' +
     '\t"verifier_file_hash": ""\n' +
     '}'
 
-const name = 'DreamShaper';//`Model ${identifier}`;
-const modelOwnerAddress = '';
+const name = 'Animated Concept - SDXL LoRA';//`Model ${identifier}`;
+const minHardware = 1;
+const modelOwnerAddress = '0xBb380912A2E0c83628935f98a5a1b08b8588Ae76';
 const metadata = '{\n' +
     '\t"version": 1,\n' +
-    '\t"model_name": "DreamShaper",\n' +
+    '\t"model_name": "Animated Concept - SDXL LoRA",\n' +
     '\t"model_type": "image",\n' +
-    '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmcYLMm3X9KVkozZJoVEJRoSHDXpfhwyQJpiPTZTEcNz8T",\n' +
-    '\t"model_file_hash": "49694d4077e0f007c8b49ed8a8a3a877f70dd6fbbb19ae230cba76b68451f7b0",\n' +
+    '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmaG6DJstjfgVuBRDi6Ma66o9SMaReMse1S75nDDwwErM3",\n' +
+    '\t"model_file_hash": "dc881c939ff3078b59d9bf2a6fc83db2caf7b0780ee563d3a6fc09ea5a1b35a1",\n' +
     '\t"min_hardware": 1,\n' +
     '\t"verifier_url": "",\n' +
     '\t"verifier_file_hash": ""\n' +
