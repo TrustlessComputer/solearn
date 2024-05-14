@@ -280,6 +280,7 @@ ReentrancyGuardUpgradeable {
 
         Worker storage miner = miners[msg.sender];
         if (miner.tier == 0) revert NotRegistered();
+        if (miner.stake < minerMinimumStake) revert StakeTooLow();
 
         address modelAddress = miner.modelAddress;
         minerAddressesByModel[modelAddress].insert(msg.sender);
@@ -340,6 +341,33 @@ ReentrancyGuardUpgradeable {
         TransferHelper.safeTransferNative(msg.sender, stake);
 
         emit MinerUnstake(msg.sender, stake);
+    }
+
+    function restakeForMiner(uint16 tier) external {
+        _updateEpoch();
+
+        UnstakeRequest storage unstakeRequest = minerUnstakeRequests[msg.sender];
+        if (unstakeRequest.stake == 0) revert ZeroValue();
+        uint unstakeAmount = unstakeRequest.stake;
+        unstakeRequest.stake = 0;
+
+        Worker storage miner = miners[msg.sender];
+        if (miner.stake < minerMinimumStake) {
+            miner.lastClaimedEpoch = currentEpoch;
+        }
+
+        miner.stake += unstakeAmount;
+        if (miner.tier == 0) {
+            if (tier == 0 || tier > maximumTier) revert InvalidTier();
+            miner.tier = tier;
+        }
+
+        if (miner.modelAddress == address(0)) {
+            address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
+            miner.modelAddress = modelAddress;
+        }
+
+        emit Restake(msg.sender, unstakeAmount, miner.modelAddress);
     }
 
     function registerValidator(uint16 tier) external payable whenNotPaused {
