@@ -352,7 +352,7 @@ ReentrancyGuardUpgradeable {
         unstakeRequest.stake = 0;
 
         Worker storage miner = miners[msg.sender];
-        if (miner.stake < minerMinimumStake) {
+        if (rewardToClaim(msg.sender) == 0) {
             miner.lastClaimedEpoch = currentEpoch;
         }
 
