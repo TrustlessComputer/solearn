@@ -440,7 +440,7 @@ ReentrancyGuardUpgradeable {
         inference.creator = _creator;
         inference.modelAddress = msg.sender;
 
-        emit NewInference(inferenceId, _creator, value);
+        emit NewInference(inferenceId, msg.sender, _creator, value);
 
         _assignMiners(inferenceId);
 

@@ -116,6 +116,7 @@ interface IWorkerHub is IInferable {
 
     event NewInference(
         uint256 indexed inferenceId,
+        address indexed model,
         address indexed creator,
         uint256 value
     );
