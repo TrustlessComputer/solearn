@@ -68,6 +68,11 @@ ReentrancyGuardUpgradeable {
         _unpause();
     }
 
+    function updateMiningTimeLimit(uint40 _miningTimeLimit) external onlyOwner {
+        miningTimeLimit = _miningTimeLimit;
+        emit MiningTimeLimitUpdate(_miningTimeLimit);
+    }
+
     function getModelAddresses() external view returns (address[] memory) {
         return modelAddresses.values;
     }
@@ -626,14 +631,14 @@ ReentrancyGuardUpgradeable {
     }
 
     function setNewRewardInEpochBasedOnPerf(uint256 _newRewardAmount) public virtual onlyOwner {
-        _updateEpoch();
+        // _updateEpoch();
         emit RewardPerEpochBasedOnPerf(rewardPerEpoch, _newRewardAmount);
 
         rewardPerEpochBasedOnPerf = _newRewardAmount;
     }
 
     function setBlocksPerEpoch(uint256 _blocks) public virtual onlyOwner {
-        _updateEpoch();
+        // _updateEpoch();
         if (_blocks == 0) revert InvalidBlockValue();
 
         emit BlocksPerEpoch(blocksPerEpoch, _blocks);
