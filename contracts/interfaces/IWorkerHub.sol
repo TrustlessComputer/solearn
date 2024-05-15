@@ -116,6 +116,7 @@ interface IWorkerHub is IInferable {
 
     event NewInference(
         uint256 indexed inferenceId,
+        address indexed model,
         address indexed creator,
         uint256 value
     );
@@ -136,6 +137,12 @@ interface IWorkerHub is IInferable {
         uint256 protocolFee
     );
 
+    event TopUpInfer(
+        uint256 indexed inferenceId,
+        address indexed creator,
+        uint256 value
+    );
+
     event MinerUnstake(address indexed miner, uint256 stake);
     event MinerJoin(address indexed miner);
     event ValidatorUnstake(address indexed validator, uint256 stake);
@@ -147,6 +154,7 @@ interface IWorkerHub is IInferable {
     event RewardPerEpochBasedOnPerf(uint256 oldReward, uint256 newReward);
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
+    event Restake(address indexed miner, uint256 restake, address indexed model);
 
     error AlreadyRegistered();
     error AlreadySubmitted();
@@ -168,4 +176,6 @@ interface IWorkerHub is IInferable {
     error ValidatingSessionNotEnded();
     error MiningSessionEnded();
 
+    error InferMustBeSolvingState();
+    error ZeroValue();
 }
