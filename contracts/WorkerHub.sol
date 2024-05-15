@@ -775,6 +775,10 @@ ReentrancyGuardUpgradeable {
         } else {
             _slashValidator(inference.disputingAddress);
         }
+
+        inferences[_inferId].status = InferenceStatus.Solved;
+        
+        emit InferenceStatusUpdate(_inferId, InferenceStatus.Solved);
     }
 
     // Pruning when validator lazy to vote
