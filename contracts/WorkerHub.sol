@@ -515,6 +515,7 @@ ReentrancyGuardUpgradeable {
         if (blocksPerEpoch > 0) {
             uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
+                lastBlock += blocksPerEpoch * epochPassed;
                 // reward for this epoch
                 // rewardPerEpoch (reward one year for 1 miner)
                 // rewardPerEpoch * total miner * blocker per epoch / blocks per year
@@ -528,7 +529,6 @@ ReentrancyGuardUpgradeable {
                     rewardInEpoch[currentEpoch].epochReward = equalReward;
                     currentEpoch++;
                 }
-                lastBlock = block.number;
             }
         } else {
             lastBlock = block.number;
