@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
+import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 
 import {Random} from "../lib/Random.sol";
@@ -30,14 +30,9 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(uint256 => Assignment) public assignments;
     mapping(address => Set.Uint256Set) internal assignmentsByMiner;
     mapping(uint256 => Set.Uint256Set) internal assignmentsByInference;
-    
-    //Dispute structures
-    Set.Uint256Set internal disputedAssignmentIds;
-    DoubleEndedQueue.Bytes32Deque disputingQueue;
-    mapping(uint256 => DisputedAssignment) internal disputedAssignments; // assignmentId => DisputedAssignment
-    mapping(address => Set.Uint256Set) disputedAssignmentsOf; //voter's address => disputed assignments
-    mapping(uint256 => Set.AddressSet) votersOf; // disputed assignment ID => voters's address
-    // mapping(address => mapping(uint256 => bool)) public validatorDisputed;
+
+    mapping(address => mapping(uint256 => bool)) public validatorDisputed; //Do know the need
+
 
     // mapping total task completed in epoch and reward per epoch
     // epoch index => total reward
@@ -72,6 +67,13 @@ abstract contract WorkerHubStorage is IWorkerHub {
     //Slashing
     uint40 public slashingMinerTimeLimit;
     uint40 public slashingValidatorTimeLimit;
+    
+    //Dispute structures
+    Set.Uint256Set internal disputedInferIds;
+    mapping(uint256 => DisputedInfer) internal disputedInfers; // inferId => DisputedInfer
+    mapping(uint256 => Set.AddressSet) internal votersOf; // disputed inference ID => voters's address
+    // mapping(address => Set.Uint256Set) internal disputedInfersOf; //voter's address => disputed inference id
+    // DoubleEndedQueue.Bytes32Deque internal disputingQueue;
 
     uint256[100] private __gap;
 }
