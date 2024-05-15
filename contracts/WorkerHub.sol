@@ -771,6 +771,9 @@ ReentrancyGuardUpgradeable {
                 _slashMiner(fraudMiners[i]);
             }
 
+            uint256 value = inference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
+            TransferHelper.safeTransferNative(inference.disputingAddress, value);
+
             emit DisputeResolving(_inferId, inference.modelAddress, isDisputeValid);
         } else {
             _slashValidator(inference.disputingAddress);
@@ -813,7 +816,7 @@ ReentrancyGuardUpgradeable {
     function _deactivateValidator(address _validator) internal {
         Worker storage validator = validators[_validator];
 
-        if (!validatorAddresses.hasValue(_validator)) revert ("Validator does not exist");
+        if (!validatorAddresses.hasValue(_validator)) revert InvalidValidator();
 
         address modelAddress = validator.modelAddress;
 
@@ -823,9 +826,27 @@ ReentrancyGuardUpgradeable {
             validatorAddresses.erase(_validator);
         }
 
-        validator.activeTime = uint40(block.timestamp + slashingValidatorTimeLimit);
+        validator.activeTime = uint40(block.timestamp + penaltyDuration);
 
         emit ValidatorDeactivated(_validator, modelAddress, validator.activeTime);
+    }
+
+    function _deactivateMiner(address _miner) internal {
+        Worker storage miner = miners[_miner];
+
+        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
+
+        address modelAddress = miner.modelAddress;
+
+        // Double check hasValue
+        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
+            minerAddressesByModel[modelAddress].erase(_miner);
+            minerAddresses.erase(_miner);
+        }
+
+        miner.activeTime = uint40(block.timestamp + penaltyDuration);
+
+        emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
     }
 
     function _slashValidator(address _validator) internal {
@@ -840,8 +861,8 @@ ReentrancyGuardUpgradeable {
             validatorAddresses.erase(_validator);
         }
 
-        validator.activeTime = uint40(block.timestamp + slashingValidatorTimeLimit);
-        uint256 fine = validator.stake * 5 / 100;
+        validator.activeTime = uint40(block.timestamp + penaltyDuration);
+        uint256 fine = validator.stake * finePercentage / PERCENTAGE_DENOMINATOR;
         validator.stake -= fine;
 
         TransferHelper.safeTransferNative(treasury, fine);
@@ -863,8 +884,8 @@ ReentrancyGuardUpgradeable {
         }
 
         // Set the time miner can join again
-        miner.activeTime = uint40(block.timestamp + slashingMinerTimeLimit);
-        uint256 fine = miner.stake * 5 / 100; // Fine = stake * 5%
+        miner.activeTime = uint40(block.timestamp + penaltyDuration);
+        uint256 fine = miner.stake * finePercentage / PERCENTAGE_DENOMINATOR; // Fine = stake * 5%
         miner.stake -= fine;
 
         TransferHelper.safeTransferNative(treasury, fine);
@@ -937,6 +958,15 @@ ReentrancyGuardUpgradeable {
             inference.status = InferenceStatus.Killed;
             TransferHelper.safeTransferNative(inference.creator, inference.value);
             emit InferenceStatusUpdate(_inferenceId, InferenceStatus.Killed);
+
+            // Deactivate inactive miners.
+            // Deactivate all 3 miners because this inference has solving status. This mean there is no submission.
+            uint256[] memory assignmentIds = inference.assignments;
+            uint256 assignmentsLen = assignmentIds.length;
+
+            for (uint256 i = 0; i < assignmentsLen; i++) {
+                _deactivateMiner(assignments[assignmentIds[i]].worker); 
+            }
         }
     }
 
