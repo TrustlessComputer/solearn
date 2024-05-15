@@ -64,11 +64,12 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public rewardPerEpoch; // 12299.97 reward EAI for 1 worker per year
 
     // Tx Fee
-    uint16 public minerFeePercentage;
+    uint16 public minerFeePercentage; // Percentage of inference value allocated to miner
+    uint16 public finePercentage; 
 
     //Slashing
-    uint40 public slashingMinerTimeLimit;
-    uint40 public slashingValidatorTimeLimit;
+    // uint40 public slashingMinerTimeLimit;
+    // uint40 public slashingValidatorTimeLimit;
     
     //Dispute structures
     Set.Uint256Set internal disputedInferIds;
