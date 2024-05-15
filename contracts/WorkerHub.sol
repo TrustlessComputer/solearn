@@ -593,7 +593,7 @@ ReentrancyGuardUpgradeable {
 
         if (inference.assignments.length == 1) {
             uint256 fee = clonedInference.value * feePercentage / PERCENTAGE_DENOMINATOR;
-            uint256 value = clonedInference.value - fee;
+            uint256 value = clonedInference.value * minerFeePercentage / PERCENTAGE_DENOMINATOR;
             TransferHelper.safeTransferNative(treasury, fee);
             TransferHelper.safeTransferNative(_msgSender, value);
 
@@ -608,6 +608,7 @@ ReentrancyGuardUpgradeable {
         // TODO
     }
 
+
     //Check whether a worker is available (the worker had previously joined).
     function _checkAvailableWorker() internal view {
         if (!validatorAddresses.hasValue(msg.sender)) {
@@ -621,10 +622,7 @@ ReentrancyGuardUpgradeable {
         if (!validatorAddressesByModel[modelAddrOfValidator].hasValue(msg.sender)) revert InvalidValidator();
     }
 
-    function disputeInfer(uint256 _inferId) public virtual {
-        _updateEpoch();
-        _checkAvailableWorker();
-
+    function _beforeDispute(uint256 _inferId) internal view returns(uint40, uint40){
         Inference memory clonedInference = inferences[_inferId];
         uint256[] memory assignmentIds = clonedInference.assignments;
 
@@ -643,6 +641,30 @@ ReentrancyGuardUpgradeable {
         if (block.timestamp < clonedInference.expiredAt) revert PrematureValidate();
         if (validateExpireTimestamp < block.timestamp) revert ValidateTimeout();
 
+        return (validateExpireTimestamp, disputeExpiredTimestamp);
+    }
+
+    function noDispute(uint256 _inferId) public {
+        _updateEpoch();
+        _checkAvailableWorker();
+        // TODO: following new logic, we must check the msg.sender has been assigned the task.
+
+        (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);
+
+        Inference memory clonedInference = inferences[_inferId];
+        uint256 value = clonedInference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
+
+        TransferHelper.safeTransferNative(msg.sender, value);
+
+        emit NoDisputeInference(msg.sender, _inferId, uint40(block.timestamp), value);
+    }
+
+    function disputeInfer(uint256 _inferId) public virtual {
+        _updateEpoch();
+        _checkAvailableWorker();
+
+        (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);
+
         disputedInferIds.insert(_inferId);
         // disputedInfersOf[msg.sender].insert(_inferId);
 
@@ -656,6 +678,7 @@ ReentrancyGuardUpgradeable {
         inference.disputingAddress = msg.sender;
         inference.status = InferenceStatus.Disputing;
 
+        emit InferenceStatusUpdate(_inferId, InferenceStatus.Disputing);
         emit DisputeInference(msg.sender, _inferId, uint40(block.timestamp), validateExpireTimestamp, disputeExpiredTimestamp);
     }
 
@@ -703,6 +726,8 @@ ReentrancyGuardUpgradeable {
     }
 
     function resolveDispute(uint256 _inferId) public {
+        _updateEpoch();
+
         // Verify if this assignment has been disputed.
         if (!disputedInferIds.hasValue(_inferId)) revert InferenceNotDisputed();
 
@@ -755,7 +780,6 @@ ReentrancyGuardUpgradeable {
     // Pruning when validator lazy to vote
     function _cullInactiveValidator(uint256 _inferId) internal {
         address modelAddr = inferences[_inferId].modelAddress;
-
 
         address[] memory validators = validatorAddressesByModel[modelAddr].values;
         uint256 validatorsLen = validators.length;
@@ -820,8 +844,6 @@ ReentrancyGuardUpgradeable {
 
         emit FraudulentValidatorPenalized(_validator, modelAddress, treasury, fine);
     }
-
-    
 
     function _slashMiner(address _miner) internal {
         Worker storage miner = miners[_miner];

@@ -65,6 +65,8 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     // Tx Fee
     uint16 public finePercentage;
+    uint16 public minerFeePercentage;
+
     //Slashing
     uint40 public slashingMinerTimeLimit;
     uint40 public slashingValidatorTimeLimit;
