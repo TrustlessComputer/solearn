@@ -644,7 +644,7 @@ ReentrancyGuardUpgradeable {
         return (validateExpireTimestamp, disputeExpiredTimestamp);
     }
 
-    function noDispute(uint256 _inferId) public {
+    function noDisputeInfer(uint256 _inferId) public {
         _updateEpoch();
         _checkAvailableWorker();
         // TODO: following new logic, we must check the msg.sender has been assigned the task.
@@ -662,6 +662,7 @@ ReentrancyGuardUpgradeable {
     function disputeInfer(uint256 _inferId) public virtual {
         _updateEpoch();
         _checkAvailableWorker();
+        // TODO: following new logic, we must check the msg.sender has been assigned the task.
 
         (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);
 
@@ -776,7 +777,13 @@ ReentrancyGuardUpgradeable {
 
             emit DisputeResolving(_inferId, inference.modelAddress, isDisputeValid);
         } else {
-            _slashValidator(inference.disputingAddress);
+            // disputing address can be miner or validator
+            address disputer = inference.disputingAddress;
+            if (minerAddresses.hasValue(disputer)) {
+                _slashMiner(disputer);
+            } else if (validatorAddresses.hasValue(disputer)) {
+                _slashValidator(disputer);
+            }
         }
 
         inferences[_inferId].status = InferenceStatus.Solved;
