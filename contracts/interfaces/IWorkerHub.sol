@@ -86,7 +86,6 @@ interface IWorkerHub is IInferable {
 
     struct DisputedInfer {
         uint16 totalValidator;
-        // uint16 votedValidator;
         bool isValid;
         uint40 validatingExpireAt;
         uint40 disputingExpireAt;
@@ -95,11 +94,6 @@ interface IWorkerHub is IInferable {
     struct Ballot {
         uint256 assignmentId;
         bool result;
-    }
-
-    struct DisputingQueueElement {
-        uint256 id;
-        uint40 expiredAt;
     }
 
     struct UnstakeRequest {

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 
 import {Random} from "../lib/Random.sol";
@@ -75,7 +74,6 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(uint256 => DisputedInfer) internal disputedInfers; // inferId => DisputedInfer
     mapping(uint256 => Set.AddressSet) internal votersOf; // disputed inference ID => voters's address
     // mapping(address => Set.Uint256Set) internal disputedInfersOf; //voter's address => disputed inference id
-    // DoubleEndedQueue.Bytes32Deque internal disputingQueue;
 
     // mapping tracking reward
     mapping(address => uint256) internal minerRewards;

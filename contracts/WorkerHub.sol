@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 
 import {Random} from "./lib/Random.sol";
 import {Set} from "./lib/Set.sol";
@@ -20,7 +19,6 @@ ReentrancyGuardUpgradeable {
     using Random for Random.Randomizer;
     using Set for Set.AddressSet;
     using Set for Set.Uint256Set;
-    using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
 
     string constant private VERSION = "v0.0.1";
     uint256 constant private PERCENTAGE_DENOMINATOR = 100_00;
@@ -659,11 +657,6 @@ ReentrancyGuardUpgradeable {
         inference.status = InferenceStatus.Disputing;
 
         emit DisputeInference(msg.sender, _inferId, uint40(block.timestamp), validateExpireTimestamp, disputeExpiredTimestamp);
-
-        //disputing queue
-        // DisputingQueueElement memory disputingEl = DisputingQueueElement(assignmentId, disputingExpiredAt);
-        // bytes32 encodedEl = bytes32(abi.encode(pair));
-        // disputingQueue.pushBack(encodedEl);
     }
 
     function upvoteDispute(uint256 _inferId, Ballot[] calldata ballots) public virtual {
