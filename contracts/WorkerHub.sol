@@ -280,6 +280,7 @@ ReentrancyGuardUpgradeable {
         Worker storage miner = miners[msg.sender];
         if (miner.tier == 0) revert NotRegistered();
         if (miner.stake < minerMinimumStake) revert StakeTooLow();
+        if (block.timestamp < miner.activeTime) revert ("Miner in slashing time");
 
         address modelAddress = miner.modelAddress;
         minerAddressesByModel[modelAddress].insert(msg.sender);
@@ -388,8 +389,10 @@ ReentrancyGuardUpgradeable {
     function joinForValidating() external whenNotPaused {
         _updateEpoch();
 
+
         Worker storage validator = miners[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
+        if (block.timestamp < validator.activeTime) revert ("Validator in slashing time");
 
         address modelAddress = validator.modelAddress;
         validatorAddressesByModel[modelAddress].insert(msg.sender);
@@ -533,12 +536,13 @@ ReentrancyGuardUpgradeable {
     }
 
 
-    function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual whenNotPaused {
+    function submitSolution(uint256 _assignmentId, bytes calldata _data) public virtual whenNotPaused {
         _updateEpoch();
         address _msgSender = msg.sender;
 
-        Assignment memory clonedAssignments = assignments[_assigmentId];
+        Assignment memory clonedAssignments = assignments[_assignmentId];
 
+        // check msgSender is miner
         if (_msgSender != clonedAssignments.worker) revert Unauthorized();
         if (clonedAssignments.output.length != 0) revert AlreadySubmitted();
 
@@ -561,9 +565,9 @@ ReentrancyGuardUpgradeable {
 
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
-        assignments[_assigmentId].output = _data; //Record the solution
+        assignments[_assignmentId].output = _data; //Record the solution
         inference.status = InferenceStatus.Solved;
-        inference.assignments.push(_assigmentId);
+        inference.assignments.push(_assignmentId);
 
         if (inference.assignments.length == 1) {
             uint256 curEpoch = currentEpoch;
@@ -579,16 +583,249 @@ ReentrancyGuardUpgradeable {
             emit InferenceStatusUpdate(clonedAssignments.inferenceId, InferenceStatus.Solved);
         }
 
-        emit SolutionSubmission(_msgSender, _assigmentId);
+        emit SolutionSubmission(_msgSender, _assignmentId);
     }
 
     function _handleDisputeSuccess(uint256 _inferId) internal {
         // TODO
     }
 
+    //Check whether a worker is available (the worker had previously joined).
+    function _checkAvailableWorker() internal view {
+        if (!validatorAddresses.hasValue(msg.sender)) {
+            if (!minerAddresses.hasValue(msg.sender)) revert  InvalidMiner();
 
-    function disputeInfer(uint256 _assignmentId) public virtual {
-        // TODO
+            address modelAddrOfMiner = miners[msg.sender].modelAddress;
+            if (!minerAddressesByModel[modelAddrOfMiner].hasValue(msg.sender)) revert InvalidMiner();
+        }
+
+        address modelAddrOfValidator = validators[msg.sender].modelAddress;
+        if (!validatorAddressesByModel[modelAddrOfValidator].hasValue(msg.sender)) revert InvalidValidator();
+    }
+
+    function disputeInfer(uint256 _inferId) public virtual {
+        _updateEpoch();
+        _checkAvailableWorker();
+
+        Inference memory clonedInference = inferences[_inferId];
+        uint256[] memory assignmentIds = clonedInference.assignments;
+
+        // Check case: There is only one submission. TODO: handle (kelvin)
+        if (assignmentIds.length == 1) revert LoneSubmissionNoDispute();
+        if (assignmentIds.length == 0) revert SubmissionsEmpty();
+        if (clonedInference.status != InferenceStatus.Solved) revert InvalidInferenceStatus();
+
+        // Verify if this inference has been disputed
+        if(disputedInferIds.hasValue(_inferId)) revert InferenceAlreadyDisputed();
+
+        uint40 validateExpireTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit);
+        uint40 disputeExpiredTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit + disputingTimeLimit);
+
+        // Verify whether the dispute is raised within the permitted time window
+        if (block.timestamp < clonedInference.expiredAt) revert PrematureValidate();
+        if (validateExpireTimestamp < block.timestamp) revert ValidateTimeout();
+
+        disputedInferIds.insert(_inferId);
+        // disputedInfersOf[msg.sender].insert(_inferId);
+
+        DisputedInfer storage disputedInfer = disputedInfers[_inferId];
+        disputedInfer.totalValidator = uint16(validatorAddresses.values.length);
+        disputedInfer.validatingExpireAt = validateExpireTimestamp;
+        disputedInfer.disputingExpireAt = disputeExpiredTimestamp;
+
+        //inference
+        Inference storage inference = inferences[_inferId];
+        inference.disputingAddress = msg.sender;
+        inference.status = InferenceStatus.Disputing;
+
+        emit DisputeInference(msg.sender, _inferId, uint40(block.timestamp), validateExpireTimestamp, disputeExpiredTimestamp);
+    }
+
+    function upvoteDispute(uint256 _inferId, Ballot[] calldata ballots) public virtual {
+        _updateEpoch();
+
+        if (ballots.length == 0) revert BallotEmpty();
+
+        // Check whether a validator is available (the validator had previously joined).
+        if (!validatorAddresses.hasValue(msg.sender)) revert InvalidValidator();
+        address modelAddr = validators[msg.sender].modelAddress;
+        if (!validatorAddressesByModel[modelAddr].hasValue(msg.sender)) revert InvalidValidator();
+
+        Inference memory clonedInference = inferences[_inferId];
+        DisputedInfer memory disputedInfer = disputedInfers[_inferId];
+
+        if (clonedInference.assignments.length == 0) revert SubmissionsEmpty();
+        if (clonedInference.status != InferenceStatus.Disputing) revert InvalidInferenceStatus();
+
+        // Verify if this assignment has been disputed.
+        if (!disputedInferIds.hasValue(_inferId)) revert InferenceNotDisputed();
+
+        // Verify if the dispute period has ended
+        if (block.timestamp < disputedInfer.disputingExpireAt) revert PrematureDispute();
+        if (disputedInfer.disputingExpireAt < block.timestamp) revert DisputeTimeout();
+
+        // Each person is only allowed to vote once.
+        if (votersOf[_inferId].hasValue(msg.sender)) revert ValidatorVoteExists();
+
+        uint256 ballotsLen = ballots.length;
+
+        for (uint256 i = 0; i < ballotsLen; i++) {
+            if (!ballots[i].result) {
+                assignments[ballots[i].assignmentId].disapprovalCount++;
+            }
+        }
+
+        // disputedInfersOf[msg.sender].insert(_inferId);
+        votersOf[_inferId].insert(msg.sender);
+
+        emit DisputeUpvote(msg.sender, _inferId, uint40(block.timestamp));
+
+        //TODO: If the reaction time expires but the number of ballots is less than 2/3, 
+        // should we extend the waiting time for validators or slash inactive validators and initiate a new vote?
+    }
+
+    function resolveDispute(uint256 _inferId) public {
+        // Verify if this assignment has been disputed.
+        if (!disputedInferIds.hasValue(_inferId)) revert InferenceNotDisputed();
+
+        Inference memory inference = inferences[_inferId];
+        DisputedInfer memory disputedInfer = disputedInfers[_inferId];
+
+        if (block.timestamp < disputedInfer.disputingExpireAt) revert PrematureDispute();
+        if (inference.status != InferenceStatus.Disputing) revert InvalidInferenceStatus();
+
+        // TODO: Handling the 'No voter' edge case
+        // votersOf[_inferId].values == 0
+
+        uint16 totalValidator = disputedInfer.totalValidator;
+
+        uint256[] memory assignmentIds = inference.assignments;
+        uint256 assignmentsLen = assignmentIds.length;
+        address[] memory fraudMiners = new address[](minerRequirement);
+
+        uint256 counter = 0;
+        bool isDisputeValid = true;
+
+        for (uint256 i = 0; i < assignmentsLen; i++){
+            Assignment memory assignment = assignments[assignmentIds[i]];
+            // A dispute will be invalid if the disapproval count for a submission falls outside the range of 1/3 to 2/3 of the total number of validators.
+            if (totalValidator <= assignment.disapprovalCount * 3  && assignment.disapprovalCount * 3 <= totalValidator * 2) {
+                isDisputeValid = false;
+            } else if ( totalValidator * 2 < assignment.disapprovalCount * 3 ) {
+                fraudMiners[counter++] = assignment.worker;
+            }
+        }
+
+        //deactivate and slash 
+        _cullInactiveValidator(_inferId);
+
+        if (isDisputeValid) {
+            // Slash the fraud miners
+            uint256 fraudMinersLen = fraudMiners.length;
+
+            for (uint256 i = 0; i < fraudMinersLen; i++) {
+                if (fraudMiners[i] == address(0)) break;
+                _slashMiner(fraudMiners[i]);
+            }
+
+            emit DisputeResolving(_inferId, inference.modelAddress, isDisputeValid);
+        } else {
+            _slashValidator(inference.disputingAddress);
+        }
+    }
+
+    // Pruning when validator lazy to vote
+    function _cullInactiveValidator(uint256 _inferId) internal {
+        address modelAddr = inferences[_inferId].modelAddress;
+
+
+        address[] memory validators = validatorAddressesByModel[modelAddr].values;
+        uint256 validatorsLen = validators.length;
+        if (validatorsLen == 0) return;
+
+        Set.AddressSet storage votersSet = votersOf[_inferId];
+        uint256 votersLen = votersSet.values.length;
+
+        if (votersLen == validatorsLen) return;
+
+        address[] memory inactiveValidators = new address[](validatorsLen - votersLen);
+        uint16 counter = 0;
+
+        for (uint256 i = 0; i < validatorsLen; i++) {
+            if (!votersSet.hasValue(validators[i])) {
+                inactiveValidators[counter++] = validators[i];
+            }
+        }
+
+        uint256 len = inactiveValidators.length;
+
+        for (uint256 i = 0; i < len; i++) {
+            _deactivateValidator(inactiveValidators[i]);
+        }
+    }
+
+    function _deactivateValidator(address _validator) internal {
+        Worker storage validator = validators[_validator];
+
+        if (!validatorAddresses.hasValue(_validator)) revert ("Validator does not exist");
+
+        address modelAddress = validator.modelAddress;
+
+        // Double check hasValue
+        if (validatorAddressesByModel[modelAddress].hasValue(_validator)) {
+            validatorAddressesByModel[modelAddress].erase(_validator);
+            validatorAddresses.erase(_validator);
+        }
+
+        validator.activeTime = uint40(block.timestamp + slashingValidatorTimeLimit);
+
+        emit ValidatorDeactivated(_validator, modelAddress, validator.activeTime);
+    }
+
+    function _slashValidator(address _validator) internal {
+        Worker storage validator = validators[_validator];
+
+        if (!validatorAddresses.hasValue(_validator)) revert InvalidValidator();
+
+        address modelAddress = validator.modelAddress;
+
+        if (validatorAddressesByModel[modelAddress].hasValue(_validator)) {
+            validatorAddressesByModel[modelAddress].erase(_validator);
+            validatorAddresses.erase(_validator);
+        }
+
+        validator.activeTime = uint40(block.timestamp + slashingValidatorTimeLimit);
+        uint256 fine = validator.stake * 5 / 100;
+        validator.stake -= fine;
+
+        TransferHelper.safeTransferNative(treasury, fine);
+
+        emit FraudulentValidatorPenalized(_validator, modelAddress, treasury, fine);
+    }
+
+    
+
+    function _slashMiner(address _miner) internal {
+        Worker storage miner = miners[_miner];
+
+        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
+
+        address modelAddress = miner.modelAddress;
+
+        // Remove miner from available miner
+        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
+            minerAddressesByModel[modelAddress].erase(_miner);
+            minerAddresses.erase(_miner);
+        }
+
+        // Set the time miner can join again
+        miner.activeTime = uint40(block.timestamp + slashingMinerTimeLimit);
+        uint256 fine = miner.stake * 5 / 100; // Fine = stake * 5%
+        miner.stake -= fine;
+
+        TransferHelper.safeTransferNative(treasury, fine);
+
+        emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
     }
 
     function resolveInference(uint256 _inferenceId) public virtual {

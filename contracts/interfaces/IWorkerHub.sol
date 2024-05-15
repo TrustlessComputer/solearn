@@ -84,6 +84,18 @@ interface IWorkerHub is IInferable {
         address creator;
     }
 
+    struct DisputedInfer {
+        uint16 totalValidator;
+        bool isValid;
+        uint40 validatingExpireAt;
+        uint40 disputingExpireAt;
+    }
+
+    struct Ballot {
+        uint256 assignmentId;
+        bool result;
+    }
+
     struct UnstakeRequest {
         uint256 stake;
         uint40 unlockAt;
@@ -156,6 +168,14 @@ interface IWorkerHub is IInferable {
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
     event Restake(address indexed miner, uint256 restake, address indexed model);
 
+    event MinerDeactivated(address indexed miner, uint40 activeTime, uint256 fine);
+    event FraudulentMinerPenalized(address indexed miner, address indexed modelAddress, address indexed treasury, uint256 fine);
+    event ValidatorDeactivated(address indexed validator, address indexed modelAddress, uint40 activeTime);
+    event FraudulentValidatorPenalized(address indexed validator, address indexed modelAddress, address indexed treasury,  uint256 fine);
+    event DisputeInference(address indexed caller, uint256 indexed inferId, uint40 now, uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp);
+    event DisputeUpvote(address indexed caller, uint256 indexed inferId, uint40 now);
+    event DisputeResolving(uint256 indexed inferId, address indexed modelAddress, bool status);
+
     error AlreadyRegistered();
     error AlreadySubmitted();
     error NotRegistered();
@@ -178,4 +198,20 @@ interface IWorkerHub is IInferable {
 
     error InferMustBeSolvingState();
     error ZeroValue();
+    error InvalidValidator();
+    error InvalidMiner();
+
+    error InferenceAlreadyDisputed();
+    error InferenceNotDisputed();
+
+    error PrematureValidate();
+    error ValidateTimeout();
+    error PrematureDispute();
+    error DisputeTimeout();
+
+    error ValidatorVoteExists();
+    error SubmissionsEmpty();
+    error LoneSubmissionNoDispute();
+    error BallotEmpty();
+
 }
