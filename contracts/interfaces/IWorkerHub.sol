@@ -173,6 +173,7 @@ interface IWorkerHub is IInferable {
     event ValidatorDeactivated(address indexed validator, address indexed modelAddress, uint40 activeTime);
     event FraudulentValidatorPenalized(address indexed validator, address indexed modelAddress, address indexed treasury,  uint256 fine);
     event DisputeInference(address indexed caller, uint256 indexed inferId, uint40 now, uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp);
+    event NoDisputeInference(address indexed caller, uint256 indexed inferId, uint40 now, uint256 value);
     event DisputeUpvote(address indexed caller, uint256 indexed inferId, uint40 now);
     event DisputeResolving(uint256 indexed inferId, address indexed modelAddress, bool status);
 
