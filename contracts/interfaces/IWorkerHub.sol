@@ -101,6 +101,8 @@ interface IWorkerHub is IInferable {
         uint40 unlockAt;
     }
 
+    event MiningTimeLimitUpdate(uint40 newValue);
+
     event ModelRegistration(
         address indexed model,
         uint16 indexed tier,
