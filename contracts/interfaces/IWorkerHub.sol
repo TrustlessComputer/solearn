@@ -153,7 +153,6 @@ interface IWorkerHub is IInferable {
     event RewardClaim(address indexed worker, uint256 value);
 
     event RewardPerEpoch(uint256 oldReward, uint256 newReward);
-    event RewardPerEpochBasedOnPerf(uint256 oldReward, uint256 newReward);
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
     event Restake(address indexed miner, uint256 restake, address indexed model);

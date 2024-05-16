@@ -623,15 +623,8 @@ ReentrancyGuardUpgradeable {
         rewardPerEpoch = _newRewardAmount;
     }
 
-    function setNewRewardInEpochBasedOnPerf(uint256 _newRewardAmount) public virtual onlyOwner {
-        // _updateEpoch();
-        emit RewardPerEpochBasedOnPerf(rewardPerEpoch, _newRewardAmount);
-
-        rewardPerEpochBasedOnPerf = _newRewardAmount;
-    }
-
     function setBlocksPerEpoch(uint256 _blocks) public virtual onlyOwner {
-        // _updateEpoch();
+        _updateEpoch();
         if (_blocks == 0) revert InvalidBlockValue();
 
         emit BlocksPerEpoch(blocksPerEpoch, _blocks);
