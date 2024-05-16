@@ -522,13 +522,10 @@ ReentrancyGuardUpgradeable {
                 // rewardPerEpoch (reward one year for 1 miner)
                 // rewardPerEpoch * total miner * blocker per epoch / blocks per year
                 uint256 rewardInCurrentEpoch = rewardPerEpoch * minerAddresses.size() * blocksPerEpoch / BLOCK_PER_YEAR;
-                uint256 perfReward = rewardInCurrentEpoch * rewardPerEpochBasedOnPerf / PERCENTAGE_DENOMINATOR;
-                uint256 equalReward = rewardInCurrentEpoch - perfReward;
 
                 for (; epochPassed > 0; epochPassed--) {
                     rewardInEpoch[currentEpoch].totalMiner = minerAddresses.size();
-                    rewardInEpoch[currentEpoch].perfReward = perfReward;
-                    rewardInEpoch[currentEpoch].epochReward = equalReward;
+                    rewardInEpoch[currentEpoch].epochReward = rewardInCurrentEpoch;
                     currentEpoch++;
                 }
             }
@@ -571,10 +568,6 @@ ReentrancyGuardUpgradeable {
         inference.assignments.push(_assigmentId);
 
         if (inference.assignments.length == 1) {
-            uint256 curEpoch = currentEpoch;
-            minerTaskCompleted[_msgSender][curEpoch] += 1;
-            rewardInEpoch[curEpoch].totalTaskCompleted += 1;
-
             uint256 fee = clonedInference.value * feePercentage / PERCENTAGE_DENOMINATOR;
             uint256 value = clonedInference.value - fee;
             TransferHelper.safeTransferNative(treasury, fee);
@@ -666,18 +659,12 @@ ReentrancyGuardUpgradeable {
             totalReward = 0;
         } else {
             uint256 lastClaimed = uint256(miners[_miner].lastClaimedEpoch);
-            uint256 perfReward;
             uint256 epochReward;
             uint256 currentMiner;
             for (; lastClaimed < lastEpoch; lastClaimed++) {
                 MinerEpochState memory state = rewardInEpoch[lastClaimed];
-                uint256 totalTaskCompleted = state.totalTaskCompleted;
                 // reward at epoch
-                (perfReward, epochReward, currentMiner) = (state.perfReward, state.epochReward, state.totalMiner);
-                if (totalTaskCompleted > 0 && perfReward > 0) {
-                    totalReward += perfReward * minerTaskCompleted[_miner][lastClaimed] / totalTaskCompleted;
-                }
-
+                (epochReward, currentMiner) = (state.epochReward, state.totalMiner);
                 if (currentMiner > 0 && epochReward > 0) {
                     totalReward += epochReward / currentMiner;
                 }
