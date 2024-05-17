@@ -32,7 +32,6 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     mapping(address => mapping(uint256 => bool)) public validatorDisputed; //Do know the need
 
-
     // mapping total task completed in epoch and reward per epoch
     // epoch index => total reward
     mapping(uint256 => MinerEpochState) public rewardInEpoch;
@@ -64,24 +63,23 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public rewardPerEpoch; // 12299.97 reward EAI for 1 worker per year
 
     // Tx Fee
-    uint16 public minerFeePercentage; // Percentage of inference value allocated to miner
     uint16 public finePercentage; 
 
-    //Slashing
-    // uint40 public slashingMinerTimeLimit;
-    // uint40 public slashingValidatorTimeLimit;
-    
+    // mapping tracking reward
+    mapping(address => uint256) internal minerRewards;
+
+    // tracking time miner join the network to
+    // determine multiplier value
+    mapping(address => Boost) internal boost;
+
+    // Tx Fee
+    uint16 public minerFeePercentage; // Percentage of inference value allocated to miner
+
     //Dispute structures
     Set.Uint256Set internal disputedInferIds;
     mapping(uint256 => DisputedInfer) internal disputedInfers; // inferId => DisputedInfer
     mapping(uint256 => Set.AddressSet) internal votersOf; // disputed inference ID => voters's address
     // mapping(address => Set.Uint256Set) internal disputedInfersOf; //voter's address => disputed inference id
 
-    // mapping tracking reward
-    mapping(address => uint256) internal minerRewards;
-    // tracking time miner join the network to
-    // determine multiplier value
-    mapping(address => Boost) internal boost;
-
-    uint256[97] private __gap;
+    uint256[93] private __gap;
 }

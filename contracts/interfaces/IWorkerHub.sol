@@ -179,6 +179,7 @@ interface IWorkerHub is IInferable {
 
     event PenaltyDurationUpdated(uint40 oldDuration, uint40 newDuration);
     event FinePercentageUpdated(uint16 oldPercent, uint16 newPercent);
+    
     event MinerDeactivated(address indexed miner, address indexed modelAddress, uint40 activeTime);
     event FraudulentMinerPenalized(address indexed miner, address indexed modelAddress, address indexed treasury, uint256 fine);
     event ValidatorDeactivated(address indexed validator, address indexed modelAddress, uint40 activeTime);
@@ -226,7 +227,7 @@ interface IWorkerHub is IInferable {
     error LoneSubmissionNoDispute();
     error BallotEmpty();
 
-    error MinerInSlashingTime();
-    error ValidatorInSlashingTime();
+    error MinerInDeactivationTime();
+    error ValidatorInDeactivationTime();
 
 }

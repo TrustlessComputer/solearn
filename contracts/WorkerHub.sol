@@ -405,7 +405,6 @@ ReentrancyGuardUpgradeable {
     function joinForValidating() external whenNotPaused {
         _updateEpoch();
 
-
         Worker storage validator = miners[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
         if (block.timestamp < validator.activeTime) revert ValidatorInDeactivationTime();
@@ -430,8 +429,11 @@ ReentrancyGuardUpgradeable {
         validator.stake = 0;
         validator.commitment = 0;
 
-        validatorAddresses.erase(msg.sender);
-        validatorAddressesByModel[validator.modelAddress].erase(msg.sender);
+        if (validatorAddresses.hasValue(msg.sender)) {
+            _claimReward(msg.sender, false);
+            validatorAddresses.erase(msg.sender);
+            validatorAddressesByModel[validator.modelAddress].erase(msg.sender);
+        }
         validator.modelAddress = address(0);
 
         uint currentUnstake = validatorUnstakeRequests[msg.sender].stake;
@@ -550,7 +552,6 @@ ReentrancyGuardUpgradeable {
 
     function submitSolution(uint256 _assignmentId, bytes calldata _data) public virtual whenNotPaused {
         _updateEpoch();
-        address _msgSender = msg.sender;
 
         // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
         if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
@@ -560,11 +561,8 @@ ReentrancyGuardUpgradeable {
 
         Assignment memory clonedAssignments = assignments[_assignmentId];
 
-
-        Assignment memory clonedAssignments = assignments[_assignmentId];
-
         // check msgSender is miner
-        if (_msgSender != clonedAssignments.worker) revert Unauthorized();
+        if (msg.sender != clonedAssignments.worker) revert Unauthorized();
         if (clonedAssignments.output.length != 0) revert AlreadySubmitted(); 
 
         Inference memory clonedInference = inferences[clonedAssignments.inferenceId];
@@ -592,13 +590,13 @@ ReentrancyGuardUpgradeable {
             uint256 fee = clonedInference.value * feePercentage / PERCENTAGE_DENOMINATOR;
             uint256 value = clonedInference.value * minerFeePercentage / PERCENTAGE_DENOMINATOR;
             TransferHelper.safeTransferNative(treasury, fee);
-            TransferHelper.safeTransferNative(_msgSender, value);
+            TransferHelper.safeTransferNative(msg.sender, value);
 
-            emit TransferFee(_msgSender, value, treasury, fee);
+            emit TransferFee(msg.sender, value, treasury, fee);
             emit InferenceStatusUpdate(clonedAssignments.inferenceId, InferenceStatus.Solving);
         }
 
-        emit SolutionSubmission(_msgSender, _assignmentId);
+        emit SolutionSubmission(msg.sender, _assignmentId);
     }
 
     function _handleDisputeSuccess(uint256 _inferId) internal {
@@ -776,7 +774,7 @@ ReentrancyGuardUpgradeable {
 
             for (uint256 i = 0; i < fraudMinersLen; i++) {
                 if (fraudMiners[i] == address(0)) break;
-                _slashMiner(fraudMiners[i]);
+                _slashMiner(fraudMiners[i], true);
             }
 
             uint256 value = inference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
@@ -790,9 +788,9 @@ ReentrancyGuardUpgradeable {
             // disputing address can be miner or validator
             address disputer = inference.disputingAddress;
             if (minerAddresses.hasValue(disputer)) {
-                _slashMiner(disputer);
+                _slashMiner(disputer, true);
             } else if (validatorAddresses.hasValue(disputer)) {
-                _slashValidator(disputer);
+                _slashValidator(disputer, true);
             }
 
             inferences[_inferId].status = InferenceStatus.Solved;
@@ -826,88 +824,45 @@ ReentrancyGuardUpgradeable {
         uint256 len = inactiveValidators.length;
 
         for (uint256 i = 0; i < len; i++) {
-            _deactivateValidator(inactiveValidators[i]);
+            _slashValidator(inactiveValidators[i], false);
         }
     }
 
-    function _deactivateValidator(address _validator) internal {
+    function slashValidator(address _validator, bool _isFined) public virtual onlyOwner {
+        _updateEpoch();
+
+        if (_validator == address(0)) revert InvalidValidator();
+
+        _slashMiner(_validator, _isFined);
+    }
+
+    function _slashValidator(address _validator, bool _isFined) internal {
         Worker storage validator = validators[_validator];
 
         if (!validatorAddresses.hasValue(_validator)) revert InvalidValidator();
 
+        _claimReward(_validator, false);
+
         address modelAddress = validator.modelAddress;
 
-        // Double check hasValue
         if (validatorAddressesByModel[modelAddress].hasValue(_validator)) {
             validatorAddressesByModel[modelAddress].erase(_validator);
             validatorAddresses.erase(_validator);
         }
 
         validator.activeTime = uint40(block.timestamp + penaltyDuration);
+
+        if (_isFined) {
+            uint256 fine = validator.stake * finePercentage / PERCENTAGE_DENOMINATOR;
+            validator.stake -= fine;
+
+            TransferHelper.safeTransferNative(treasury, fine);
+
+            emit FraudulentValidatorPenalized(_validator, modelAddress, treasury, fine);
+            return;
+        }
 
         emit ValidatorDeactivated(_validator, modelAddress, validator.activeTime);
-    }
-
-    function _deactivateMiner(address _miner) internal {
-        Worker storage miner = miners[_miner];
-
-        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
-
-        address modelAddress = miner.modelAddress;
-
-        // Double check hasValue
-        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
-            minerAddressesByModel[modelAddress].erase(_miner);
-            minerAddresses.erase(_miner);
-        }
-
-        miner.activeTime = uint40(block.timestamp + penaltyDuration);
-
-        emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
-    }
-
-    function _slashValidator(address _validator) internal {
-        Worker storage validator = validators[_validator];
-
-        if (!validatorAddresses.hasValue(_validator)) revert InvalidValidator();
-
-        address modelAddress = validator.modelAddress;
-
-        if (validatorAddressesByModel[modelAddress].hasValue(_validator)) {
-            validatorAddressesByModel[modelAddress].erase(_validator);
-            validatorAddresses.erase(_validator);
-        }
-
-        validator.activeTime = uint40(block.timestamp + penaltyDuration);
-        uint256 fine = validator.stake * finePercentage / PERCENTAGE_DENOMINATOR;
-        validator.stake -= fine;
-
-        TransferHelper.safeTransferNative(treasury, fine);
-
-        emit FraudulentValidatorPenalized(_validator, modelAddress, treasury, fine);
-    }
-
-    function _slashMiner(address _miner) internal {
-        Worker storage miner = miners[_miner];
-
-        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
-
-        address modelAddress = miner.modelAddress;
-
-        // Remove miner from available miner
-        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
-            minerAddressesByModel[modelAddress].erase(_miner);
-            minerAddresses.erase(_miner);
-        }
-
-        // Set the time miner can join again
-        miner.activeTime = uint40(block.timestamp + penaltyDuration);
-        uint256 fine = miner.stake * finePercentage / PERCENTAGE_DENOMINATOR; // Fine = stake * 5%
-        miner.stake -= fine;
-
-        TransferHelper.safeTransferNative(treasury, fine);
-
-        emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
     }
 
     function slashMiner(address _miner, bool _isFined) public virtual onlyOwner {
@@ -981,7 +936,7 @@ ReentrancyGuardUpgradeable {
             uint256 assignmentsLen = assignmentIds.length;
 
             for (uint256 i = 0; i < assignmentsLen; i++) {
-                _deactivateMiner(assignments[assignmentIds[i]].worker); 
+                _slashMiner(assignments[assignmentIds[i]].worker, false); 
             }
 
             //TODO: If the validator who was assigned an inference has not called dispute() or no_dispute(), he will be deactivated
