@@ -595,34 +595,10 @@ ReentrancyGuardUpgradeable {
         // TODO
     }
 
-    function deactivateValidator(address _validator) public virtual onlyOwner {
-        if (_validator == address(0)) revert InvalidValidator();
-
-        _deactivateValidator(_validator);
-    }
-
     function deactivateMiner(address _miner) public virtual onlyOwner {
         if (_miner == address(0)) revert InvalidMiner();
 
         _deactivateMiner(_miner);
-    }
-
-    function _deactivateValidator(address _validator) internal {
-        Worker storage validator = validators[_validator];
-
-        if (!validatorAddresses.hasValue(_validator)) revert InvalidValidator();
-
-        address modelAddress = validator.modelAddress;
-
-        // Double check hasValue
-        if (validatorAddressesByModel[modelAddress].hasValue(_validator)) {
-            validatorAddressesByModel[modelAddress].erase(_validator);
-            validatorAddresses.erase(_validator);
-        }
-
-        validator.activeTime = uint40(block.timestamp + penaltyDuration);
-
-        emit ValidatorDeactivated(_validator, modelAddress, validator.activeTime);
     }
 
     function _deactivateMiner(address _miner) internal {
@@ -643,37 +619,10 @@ ReentrancyGuardUpgradeable {
         emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
     }
 
-    function slashValidator(address _validator) public virtual onlyOwner {
-        if (_validator == address(0)) revert InvalidValidator();
-
-        _slashValidator(_validator);
-    }
-
     function slashMiner(address _miner) public virtual onlyOwner {
         if (_miner == address(0)) revert InvalidMiner();
 
         _slashMiner(_miner);
-    }
-
-    function _slashValidator(address _validator) internal {
-        Worker storage validator = validators[_validator];
-
-        if (!validatorAddresses.hasValue(_validator)) revert InvalidValidator();
-
-        address modelAddress = validator.modelAddress;
-
-        if (validatorAddressesByModel[modelAddress].hasValue(_validator)) {
-            validatorAddressesByModel[modelAddress].erase(_validator);
-            validatorAddresses.erase(_validator);
-        }
-
-        validator.activeTime = uint40(block.timestamp + penaltyDuration);
-        uint256 fine = validator.stake * finePercentage / PERCENTAGE_DENOMINATOR;
-        validator.stake -= fine;
-
-        TransferHelper.safeTransferNative(treasury, fine);
-
-        emit FraudulentValidatorPenalized(_validator, modelAddress, treasury, fine);
     }
 
     function _slashMiner(address _miner) internal {
