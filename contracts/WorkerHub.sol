@@ -614,7 +614,7 @@ ReentrancyGuardUpgradeable {
 
         if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
         // update reward
-        _claimReward(msg.sender, false);
+        _claimReward(_miner, false);
 
         address modelAddress = miner.modelAddress;
 
