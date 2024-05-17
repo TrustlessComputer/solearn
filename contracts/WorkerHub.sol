@@ -312,7 +312,7 @@ ReentrancyGuardUpgradeable {
         miner.commitment = 0;
 
         if (minerAddresses.hasValue(msg.sender)) {
-            _claimReward(msg.sender);
+            _claimReward(msg.sender, false);
             minerAddresses.erase(msg.sender);
             minerAddressesByModel[miner.modelAddress].erase(msg.sender);
         }
@@ -607,6 +607,8 @@ ReentrancyGuardUpgradeable {
         Worker storage miner = miners[_miner];
 
         if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
+        // update reward
+        _claimReward(msg.sender, false);
 
         address modelAddress = miner.modelAddress;
 
@@ -659,19 +661,22 @@ ReentrancyGuardUpgradeable {
         }
     }
 
-    function _claimReward(address _miner) internal whenNotPaused {
+    function _claimReward(address _miner, bool _isTransfer) internal whenNotPaused {
         uint256 rewardAmount = rewardToClaim(_miner);
         miners[_miner].lastClaimedEpoch = currentEpoch;
-        if (rewardAmount > 0) {
+        if (rewardAmount > 0 && _isTransfer) {
+            minerRewards[_miner] = 0;
             TransferHelper.safeTransferNative(_miner, rewardAmount);
 
             emit RewardClaim(_miner, rewardAmount);
+        } else if (rewardAmount > 0) {
+            minerRewards[_miner] = rewardAmount;
         }
     }
 
     // miner claim reward
     function claimReward(address _miner) public virtual nonReentrant {
-        _claimReward(_miner);
+        _claimReward(_miner, true);
     }
 
     // @dev admin functions
@@ -723,6 +728,6 @@ ReentrancyGuardUpgradeable {
             }
         }
 
-        return totalReward;
+        return totalReward + minerRewards[_miner];
     }
 }

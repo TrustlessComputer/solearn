@@ -40,7 +40,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // mapping detail miner completed how many request
     // total task completed in epoch
     // miner => epoch => total task completed
-    mapping(address => mapping(uint256 => uint256)) public minerTaskCompleted;
+    mapping(address => mapping(uint256 => uint256)) internal minerTaskCompleted;
 
     uint256 public minerMinimumStake;
     uint256 public validatorMinimumStake;
@@ -60,11 +60,14 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint40 public currentEpoch;
     uint256 public blocksPerEpoch;
     uint256 public lastBlock;
-    uint256 public rewardPerEpochBasedOnPerf; // percentage for workers completed task
+    uint256 internal rewardPerEpochBasedOnPerf; // percentage for workers completed task
     uint256 public rewardPerEpoch; // 12299.97 reward EAI for 1 worker per year
 
     // Tx Fee
-    uint16 public finePercentage; 
+    uint16 public finePercentage;
 
-    uint256[99] private __gap;
+    // mapping tracking reward
+    mapping(address => uint256) internal minerRewards;
+
+    uint256[98] private __gap;
 }

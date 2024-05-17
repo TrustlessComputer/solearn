@@ -27,7 +27,9 @@ contract WorkHubTest is Test {
             10,
             9000, // 90%
             1229997 * 1e16, // reward 1 worker in one year
-            21 days
+            21 days,
+            0,
+            0
         );
 //        workerHub.setNewRewardInEpoch(1e16);
         workerHub.registerModel(ModelAddr, 1, 1e18);
@@ -153,6 +155,33 @@ contract WorkHubTest is Test {
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 15601179604261796 + 2e18 - 1e18);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
+
+        // test case miner active then unregis but no claim reward
+        workerHub.joinForMinting();
+        vm.roll(71);
+        assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898);
+        vm.roll(81);
+        assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
+        workerHub.unregisterMiner();
+        vm.warp(block.timestamp + 21 days);
+        workerHub.unstakeForMiner();
+        assertEq(Miner1.balance, 15601179604261796 + 2e18);
+        assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
+
+        vm.roll(91);
+        assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
+        workerHub.registerMiner{value: 1e18}(1);
+        workerHub.joinForMinting();
+        vm.roll(101);
+        assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 3);
+
+        // claim reward
+        workerHub.claimReward(Miner1);
+        assertEq(workerHub.rewardToClaim(Miner1), 0);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18 - 1e18 + 7800589802130898 * 3);
+        vm.roll(109);
+        assertEq(workerHub.rewardToClaim(Miner1), 0);
+
         vm.stopPrank();
     }
 }
