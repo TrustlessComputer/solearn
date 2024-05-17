@@ -66,5 +66,5 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // Tx Fee
     uint16 public finePercentage; 
 
-    uint256[100] private __gap;
+    uint256[99] private __gap;
 }
