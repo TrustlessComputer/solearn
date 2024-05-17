@@ -36,7 +36,9 @@ ReentrancyGuardUpgradeable {
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpochBasedOnPerf,
         uint256 _rewardPerEpoch,
-        uint40 _unstakeDelayTime
+        uint40 _unstakeDelayTime,
+        uint40 _penaltyDuration,
+        uint16 _finePercentage
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
@@ -54,6 +56,8 @@ ReentrancyGuardUpgradeable {
         unstakeDelayTime = _unstakeDelayTime;
         maximumTier = 1;
         lastBlock = block.number;
+        penaltyDuration = _penaltyDuration;
+        finePercentage = _finePercentage;
     }
 
     function version() external pure returns (string memory) {
@@ -285,6 +289,7 @@ ReentrancyGuardUpgradeable {
         Worker storage miner = miners[msg.sender];
         if (miner.tier == 0) revert NotRegistered();
         if (miner.stake < minerMinimumStake) revert StakeTooLow();
+        if (block.timestamp < miner.activeTime) revert MinerInDeactivationTime();
 
         address modelAddress = miner.modelAddress;
         minerAddressesByModel[modelAddress].insert(msg.sender);
@@ -395,6 +400,7 @@ ReentrancyGuardUpgradeable {
 
         Worker storage validator = miners[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
+        if (block.timestamp < validator.activeTime) revert ValidatorInDeactivationTime();
 
         address modelAddress = validator.modelAddress;
         validatorAddressesByModel[modelAddress].insert(msg.sender);
@@ -587,6 +593,110 @@ ReentrancyGuardUpgradeable {
 
     function disputeInfer(uint256 _assignmentId) public virtual {
         // TODO
+    }
+
+    function deactivateValidator(address _validator) public virtual onlyOwner {
+        if (_validator == address(0)) revert InvalidValidator();
+
+        _deactivateValidator(_validator);
+    }
+
+    function deactivateMiner(address _miner) public virtual onlyOwner {
+        if (_miner == address(0)) revert InvalidMiner();
+
+        _deactivateMiner(_miner);
+    }
+
+    function _deactivateValidator(address _validator) internal {
+        Worker storage validator = validators[_validator];
+
+        if (!validatorAddresses.hasValue(_validator)) revert InvalidValidator();
+
+        address modelAddress = validator.modelAddress;
+
+        // Double check hasValue
+        if (validatorAddressesByModel[modelAddress].hasValue(_validator)) {
+            validatorAddressesByModel[modelAddress].erase(_validator);
+            validatorAddresses.erase(_validator);
+        }
+
+        validator.activeTime = uint40(block.timestamp + penaltyDuration);
+
+        emit ValidatorDeactivated(_validator, modelAddress, validator.activeTime);
+    }
+
+    function _deactivateMiner(address _miner) internal {
+        Worker storage miner = miners[_miner];
+
+        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
+
+        address modelAddress = miner.modelAddress;
+
+        // Double check hasValue
+        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
+            minerAddressesByModel[modelAddress].erase(_miner);
+            minerAddresses.erase(_miner);
+        }
+
+        miner.activeTime = uint40(block.timestamp + penaltyDuration);
+
+        emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
+    }
+
+    function slashValidator(address _validator) public virtual onlyOwner {
+        if (_validator == address(0)) revert InvalidValidator();
+
+        _slashValidator(_validator);
+    }
+
+    function slashMiner(address _miner) public virtual onlyOwner {
+        if (_miner == address(0)) revert InvalidMiner();
+
+        _slashMiner(_miner);
+    }
+
+    function _slashValidator(address _validator) internal {
+        Worker storage validator = validators[_validator];
+
+        if (!validatorAddresses.hasValue(_validator)) revert InvalidValidator();
+
+        address modelAddress = validator.modelAddress;
+
+        if (validatorAddressesByModel[modelAddress].hasValue(_validator)) {
+            validatorAddressesByModel[modelAddress].erase(_validator);
+            validatorAddresses.erase(_validator);
+        }
+
+        validator.activeTime = uint40(block.timestamp + penaltyDuration);
+        uint256 fine = validator.stake * finePercentage / PERCENTAGE_DENOMINATOR;
+        validator.stake -= fine;
+
+        TransferHelper.safeTransferNative(treasury, fine);
+
+        emit FraudulentValidatorPenalized(_validator, modelAddress, treasury, fine);
+    }
+
+    function _slashMiner(address _miner) internal {
+        Worker storage miner = miners[_miner];
+
+        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
+
+        address modelAddress = miner.modelAddress;
+
+        // Remove miner from available miner
+        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
+            minerAddressesByModel[modelAddress].erase(_miner);
+            minerAddresses.erase(_miner);
+        }
+
+        // Set the time miner can join again
+        miner.activeTime = uint40(block.timestamp + penaltyDuration);
+        uint256 fine = miner.stake * finePercentage / PERCENTAGE_DENOMINATOR; // Fine = stake * 5%
+        miner.stake -= fine;
+
+        TransferHelper.safeTransferNative(treasury, fine);
+
+        emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
     }
 
     function resolveInference(uint256 _inferenceId) public virtual {

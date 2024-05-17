@@ -63,5 +63,8 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public rewardPerEpochBasedOnPerf; // percentage for workers completed task
     uint256 public rewardPerEpoch; // 12299.97 reward EAI for 1 worker per year
 
+    // Tx Fee
+    uint16 public finePercentage; 
+
     uint256[100] private __gap;
 }
