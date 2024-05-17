@@ -545,6 +545,12 @@ ReentrancyGuardUpgradeable {
         _updateEpoch();
         address _msgSender = msg.sender;
 
+        // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
+        if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
+
+        address modelAddrOfMiner = miners[msg.sender].modelAddress;
+        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(msg.sender)) revert InvalidMiner();
+
         Assignment memory clonedAssignments = assignments[_assigmentId];
 
         if (_msgSender != clonedAssignments.worker) revert Unauthorized();
