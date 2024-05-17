@@ -595,37 +595,15 @@ ReentrancyGuardUpgradeable {
         // TODO
     }
 
-    function deactivateMiner(address _miner) public virtual onlyOwner {
+    function slashMiner(address _miner, bool _isFined) public virtual onlyOwner {
+        _updateEpoch();
+
         if (_miner == address(0)) revert InvalidMiner();
 
-        _deactivateMiner(_miner);
+        _slashMiner(_miner, _isFined);
     }
 
-    function _deactivateMiner(address _miner) internal {
-        Worker storage miner = miners[_miner];
-
-        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
-
-        address modelAddress = miner.modelAddress;
-
-        // Double check hasValue
-        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
-            minerAddressesByModel[modelAddress].erase(_miner);
-            minerAddresses.erase(_miner);
-        }
-
-        miner.activeTime = uint40(block.timestamp + penaltyDuration);
-
-        emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
-    }
-
-    function slashMiner(address _miner) public virtual onlyOwner {
-        if (_miner == address(0)) revert InvalidMiner();
-
-        _slashMiner(_miner);
-    }
-
-    function _slashMiner(address _miner) internal {
+    function _slashMiner(address _miner, bool _isFined) internal {
         Worker storage miner = miners[_miner];
 
         if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
@@ -640,12 +618,34 @@ ReentrancyGuardUpgradeable {
 
         // Set the time miner can join again
         miner.activeTime = uint40(block.timestamp + penaltyDuration);
-        uint256 fine = miner.stake * finePercentage / PERCENTAGE_DENOMINATOR; // Fine = stake * 5%
-        miner.stake -= fine;
 
-        TransferHelper.safeTransferNative(treasury, fine);
+        if (_isFined) {
+            uint256 fine = miner.stake * finePercentage / PERCENTAGE_DENOMINATOR; // Fine = stake * 5%
+            miner.stake -= fine;
 
-        emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
+            TransferHelper.safeTransferNative(treasury, fine);
+
+            emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
+            return;
+        }
+
+        emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
+    }
+
+    function setFinePercentage(uint16 _finePercentage) public virtual onlyOwner {
+        _updateEpoch();
+
+        emit FinePercentageUpdated(finePercentage, _finePercentage);
+
+        finePercentage = _finePercentage;
+    }
+
+    function setPenaltyDuration(uint40 _penaltyDuration) public virtual onlyOwner {
+        _updateEpoch();
+
+        emit PenaltyDurationUpdated(penaltyDuration, _penaltyDuration);
+
+        penaltyDuration = _penaltyDuration;
     }
 
     function resolveInference(uint256 _inferenceId) public virtual {
