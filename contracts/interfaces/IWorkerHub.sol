@@ -8,6 +8,7 @@ interface IWorkerHub is IInferable {
         Nil,
         Solving,
         Disputing,
+        Voting,
         Solved,
         Killed
     }

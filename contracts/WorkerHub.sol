@@ -548,7 +548,6 @@ ReentrancyGuardUpgradeable {
         }
     }
 
-
     function submitSolution(uint256 _assignmentId, bytes calldata _data) public virtual whenNotPaused {
         _updateEpoch();
         address _msgSender = msg.sender;
@@ -566,12 +565,11 @@ ReentrancyGuardUpgradeable {
 
         // check msgSender is miner
         if (_msgSender != clonedAssignments.worker) revert Unauthorized();
-        if (clonedAssignments.output.length != 0) revert AlreadySubmitted();
+        if (clonedAssignments.output.length != 0) revert AlreadySubmitted(); 
 
         Inference memory clonedInference = inferences[clonedAssignments.inferenceId];
 
-        if (clonedInference.status != InferenceStatus.Solving &&
-            clonedInference.status != InferenceStatus.Solved)
+        if (clonedInference.status != InferenceStatus.Solving)
         {
             revert InvalidInferenceStatus();
         }
@@ -588,7 +586,6 @@ ReentrancyGuardUpgradeable {
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
         assignments[_assignmentId].output = _data; //Record the solution
-        inference.status = InferenceStatus.Solved;
         inference.assignments.push(_assignmentId);
 
         if (inference.assignments.length == 1) {
@@ -598,7 +595,7 @@ ReentrancyGuardUpgradeable {
             TransferHelper.safeTransferNative(_msgSender, value);
 
             emit TransferFee(_msgSender, value, treasury, fee);
-            emit InferenceStatusUpdate(clonedAssignments.inferenceId, InferenceStatus.Solved);
+            emit InferenceStatusUpdate(clonedAssignments.inferenceId, InferenceStatus.Solving);
         }
 
         emit SolutionSubmission(_msgSender, _assignmentId);
@@ -629,7 +626,7 @@ ReentrancyGuardUpgradeable {
         // Check case: There is only one submission. TODO: handle (kelvin)
         if (assignmentIds.length == 1) revert LoneSubmissionNoDispute();
         if (assignmentIds.length == 0) revert SubmissionsEmpty();
-        if (clonedInference.status != InferenceStatus.Solved) revert InvalidInferenceStatus();
+        if (clonedInference.status != InferenceStatus.Solving) revert InvalidInferenceStatus();
 
         // Verify if this inference has been disputed
         if(disputedInferIds.hasValue(_inferId)) revert InferenceAlreadyDisputed();
@@ -649,13 +646,17 @@ ReentrancyGuardUpgradeable {
         _checkAvailableWorker();
         // TODO: following new logic, we must check the msg.sender has been assigned the task.
 
+        //TODO: must check this infer is still disputed , no_disputed 
+
         (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);
 
-        Inference memory clonedInference = inferences[_inferId];
-        uint256 value = clonedInference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
+        Inference storage inference = inferences[_inferId];
+        inference.status = InferenceStatus.Solved;
+        uint256 value = inference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
 
         TransferHelper.safeTransferNative(msg.sender, value);
 
+        emit InferenceStatusUpdate(_inferId, InferenceStatus.Solved);
         emit NoDisputeInference(msg.sender, _inferId, uint40(block.timestamp), value);
     }
 
@@ -664,6 +665,7 @@ ReentrancyGuardUpgradeable {
         _checkAvailableWorker();
         // TODO: following new logic, we must check the msg.sender has been assigned the task.
 
+        //TODO: must check this infer is still disputed , no_disputed 
         (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);
 
         disputedInferIds.insert(_inferId);
@@ -708,6 +710,11 @@ ReentrancyGuardUpgradeable {
 
         // Each person is only allowed to vote once.
         if (votersOf[_inferId].hasValue(msg.sender)) revert ValidatorVoteExists();
+
+        if (votersOf[_inferId].values.length == 0) {
+            inferences[_inferId].status = InferenceStatus.Voting;
+            emit InferenceStatusUpdate(_inferId, InferenceStatus.Voting);
+        }
 
         uint256 ballotsLen = ballots.length;
 
@@ -775,6 +782,9 @@ ReentrancyGuardUpgradeable {
             uint256 value = inference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
             TransferHelper.safeTransferNative(inference.disputingAddress, value);
 
+            inferences[_inferId].status = InferenceStatus.Killed;
+
+            emit InferenceStatusUpdate(_inferId, InferenceStatus.Killed);
             emit DisputeResolving(_inferId, inference.modelAddress, isDisputeValid);
         } else {
             // disputing address can be miner or validator
@@ -784,11 +794,11 @@ ReentrancyGuardUpgradeable {
             } else if (validatorAddresses.hasValue(disputer)) {
                 _slashValidator(disputer);
             }
-        }
 
-        inferences[_inferId].status = InferenceStatus.Solved;
-        
-        emit InferenceStatusUpdate(_inferId, InferenceStatus.Solved);
+            inferences[_inferId].status = InferenceStatus.Solved;
+
+            emit InferenceStatusUpdate(_inferId, InferenceStatus.Solved);
+        }        
     }
 
     // Pruning when validator lazy to vote
@@ -964,7 +974,6 @@ ReentrancyGuardUpgradeable {
         if (inference.status == InferenceStatus.Solving && block.timestamp > inference.expiredAt) {
             inference.status = InferenceStatus.Killed;
             TransferHelper.safeTransferNative(inference.creator, inference.value);
-            emit InferenceStatusUpdate(_inferenceId, InferenceStatus.Killed);
 
             // Deactivate inactive miners.
             // Deactivate all 3 miners because this inference has solving status. This mean there is no submission.
@@ -974,6 +983,11 @@ ReentrancyGuardUpgradeable {
             for (uint256 i = 0; i < assignmentsLen; i++) {
                 _deactivateMiner(assignments[assignmentIds[i]].worker); 
             }
+
+            //TODO: If the validator who was assigned an inference has not called dispute() or no_dispute(), he will be deactivated
+
+            emit InferenceStatusUpdate(_inferenceId, InferenceStatus.Killed);
+
         }
     }
 
