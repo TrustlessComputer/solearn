@@ -617,17 +617,20 @@ ReentrancyGuardUpgradeable {
         if (!validatorAddressesByModel[modelAddrOfValidator].hasValue(msg.sender)) revert InvalidValidator();
     }
 
+    function _checkAvailableValidator() internal view {
+        if (!validatorAddresses.hasValue(msg.sender)) revert InvalidValidator();
+
+        address modelAddrOfValidator = validators[msg.sender].modelAddress;
+        if (!validatorAddressesByModel[modelAddrOfValidator].hasValue(msg.sender)) revert InvalidValidator();
+    }
+
     function _beforeDispute(uint256 _inferId) internal view returns(uint40, uint40){
         Inference memory clonedInference = inferences[_inferId];
         uint256[] memory assignmentIds = clonedInference.assignments;
 
-        // Check case: There is only one submission. TODO: handle (kelvin)
         if (assignmentIds.length == 1) revert LoneSubmissionNoDispute();
         if (assignmentIds.length == 0) revert SubmissionsEmpty();
         if (clonedInference.status != InferenceStatus.Solving) revert InvalidInferenceStatus();
-
-        // Verify if this inference has been disputed
-        if(disputedInferIds.hasValue(_inferId)) revert InferenceAlreadyDisputed();
 
         uint40 validateExpireTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit);
         uint40 disputeExpiredTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit + disputingTimeLimit);
@@ -639,32 +642,72 @@ ReentrancyGuardUpgradeable {
         return (validateExpireTimestamp, disputeExpiredTimestamp);
     }
 
-    function noDisputeInfer(uint256 _inferId) public {
-        _updateEpoch();
-        _checkAvailableWorker();
-        // TODO: following new logic, we must check the msg.sender has been assigned the task.
+    // If the inference has only one submission, we allow it to be no_disputed
+    function _beforeNoDispute(uint256 _inferId) internal view returns(uint40, uint40) {
+        Inference memory clonedInference = inferences[_inferId];
+        uint256[] memory assignmentIds = clonedInference.assignments;
 
-        //TODO: must check this infer is still disputed , no_disputed 
+        if (assignmentIds.length == 0) revert SubmissionsEmpty();
+        if (clonedInference.status != InferenceStatus.Solving) revert InvalidInferenceStatus();
 
-        (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);
+        // Verify if this inference has been disputed
+        if(disputedInferIds.hasValue(_inferId)) revert InferenceAlreadyDisputed();
 
-        Inference storage inference = inferences[_inferId];
-        inference.status = InferenceStatus.Solved;
-        uint256 value = inference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
+        //TODO check only assigned validator call this function
+        if (validatingAssignments[_inferId].assignedValidator != msg.sender) revert InvalidValidator();
 
-        TransferHelper.safeTransferNative(msg.sender, value);
+        // Verify the msg.sender has already been dispute/no_disputed
+        if (validatingAssignments[_inferId].result != ValidationResult.Nil) revert ("Do not allowed to re-submit the validation task");
 
-        emit InferenceStatusUpdate(_inferId, InferenceStatus.Solved);
-        emit NoDisputeInference(msg.sender, _inferId, uint40(block.timestamp), value);
+        //TODO: Check whether msg.sender is the assigned validator
+
+        uint40 validateExpireTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit);
+        uint40 disputeExpiredTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit + disputingTimeLimit);
+
+        // Verify whether the dispute is raised within the permitted time window
+        if (block.timestamp < clonedInference.expiredAt) revert PrematureValidate();
+        if (validateExpireTimestamp < block.timestamp) revert ValidateTimeout();
+
+        return (validateExpireTimestamp, disputeExpiredTimestamp);
     }
 
-    function disputeInfer(uint256 _inferId) public virtual {
+    // Only validator is allowed to call noDisputeIsnfer()
+    function noDisputeInfer(uint256 _inferId) public {
+        _updateEpoch();
+        _checkAvailableValidator();
+        _beforeNoDispute(_inferId);
+
+        validatingAssignments[_inferId].result != ValidationResult.NoDispute; //Record the no_dispute request from the assigned validator
+
+        // Inference storage inference = inferences[_inferId];
+        // inference.status = InferenceStatus.Solved;
+        // uint256 value = inference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
+
+        // TransferHelper.safeTransferNative(msg.sender, value);
+
+        // emit InferenceStatusUpdate(_inferId, InferenceStatus.Solved);
+        emit NoDisputeInference(msg.sender, _inferId);
+    }
+
+    function disputeInfer(uint256 _inferId, bool useValidatorRole) public virtual {
         _updateEpoch();
         _checkAvailableWorker();
-        // TODO: following new logic, we must check the msg.sender has been assigned the task.
 
-        //TODO: must check this infer is still disputed , no_disputed 
-        (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);
+        (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);    
+
+        // TODO: if the msg.sender is the assigned validator, we have to record this request
+        if (validatingAssignments[_inferId].assignedValidator == msg.sender && 
+            validatingAssignments[_inferId].result != ValidationResult.Nil) revert ("Do not allowed to re-submit the validation task");
+
+        if (validatingAssignments[_inferId].assignedValidator == msg.sender) {
+            validatingAssignments[_inferId].result = ValidationResult.Dispute;
+
+            if (disputedInferIds.hasValue(_inferId)) {
+                return;
+            }
+        } else if (disputedInferIds.hasValue(_inferId)) {
+            revert InferenceAlreadyDisputed();
+        }
 
         disputedInferIds.insert(_inferId);
         // disputedInfersOf[msg.sender].insert(_inferId);
@@ -673,6 +716,7 @@ ReentrancyGuardUpgradeable {
         disputedInfer.totalValidator = uint16(validatorAddresses.values.length);
         disputedInfer.validatingExpireAt = validateExpireTimestamp;
         disputedInfer.disputingExpireAt = disputeExpiredTimestamp;
+        disputedInfer.isValidatorDispute = useValidatorRole;
 
         //inference
         Inference storage inference = inferences[_inferId];
@@ -741,7 +785,7 @@ ReentrancyGuardUpgradeable {
         DisputedInfer memory disputedInfer = disputedInfers[_inferId];
 
         if (block.timestamp < disputedInfer.disputingExpireAt) revert PrematureDispute();
-        if (inference.status != InferenceStatus.Disputing) revert InvalidInferenceStatus();
+        if (inference.status != InferenceStatus.Disputing || inference.status != InferenceStatus.Voting) revert InvalidInferenceStatus();
 
         // TODO: Handling the 'No voter' edge case
         // votersOf[_inferId].values == 0
@@ -767,6 +811,7 @@ ReentrancyGuardUpgradeable {
 
         //deactivate and slash 
         _cullInactiveValidator(_inferId);
+        _checkAssignedValidatorSubmit(_inferId, isDisputeValid);
 
         if (isDisputeValid) {
             // Slash the fraud miners
@@ -778,7 +823,8 @@ ReentrancyGuardUpgradeable {
             }
 
             uint256 value = inference.value * (PERCENTAGE_DENOMINATOR - feePercentage - minerFeePercentage) / PERCENTAGE_DENOMINATOR;
-            TransferHelper.safeTransferNative(inference.disputingAddress, value);
+            TransferHelper.safeTransferNative(inference.disputingAddress, value); //Transfer 30% fee to the honest disputer
+            TransferHelper.safeTransferNative(inference.creator, inference.value); //Refund to user
 
             inferences[_inferId].status = InferenceStatus.Killed;
 
@@ -787,9 +833,9 @@ ReentrancyGuardUpgradeable {
         } else {
             // disputing address can be miner or validator
             address disputer = inference.disputingAddress;
-            if (minerAddresses.hasValue(disputer)) {
+            if (minerAddresses.hasValue(disputer) && !disputedInfer.isValidatorDispute) {
                 _slashMiner(disputer, true);
-            } else if (validatorAddresses.hasValue(disputer)) {
+            } else if (validatorAddresses.hasValue(disputer) && disputedInfer.isValidatorDispute) {
                 _slashValidator(disputer, true);
             }
 
@@ -797,6 +843,14 @@ ReentrancyGuardUpgradeable {
 
             emit InferenceStatusUpdate(_inferId, InferenceStatus.Solved);
         }        
+    }
+
+    function _checkAssignedValidatorSubmit(uint256 _inferId, bool _isDisputeValid) internal virtual {
+        if (validatingAssignments[_inferId].result == ValidationResult.Nil) {
+            _slashValidator(validatingAssignments[_inferId].assignedValidator, false);
+        } else if (_isDisputeValid && validatingAssignments[_inferId].result == ValidationResult.NoDispute) {
+            _slashValidator(validatingAssignments[_inferId].assignedValidator, true);
+        }
     }
 
     // Pruning when validator lazy to vote

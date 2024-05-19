@@ -13,6 +13,12 @@ interface IWorkerHub is IInferable {
         Killed
     }
 
+    enum ValidationResult{
+        Nil, 
+        Dispute,
+        NoDispute
+    }
+
     struct MinerEpochState {
         uint256 perfReward;
         uint256 epochReward;
@@ -90,6 +96,7 @@ interface IWorkerHub is IInferable {
         bool isValid;
         uint40 validatingExpireAt;
         uint40 disputingExpireAt;
+        bool isValidatorDispute; //Validator or Miner call cal dispute()
     }
 
     struct Ballot {
@@ -105,8 +112,11 @@ interface IWorkerHub is IInferable {
     struct Boost {
         uint40 minerTimestamp;
         uint40 validatorTimestamp;
-        uint48 reserved1;
+        uint4s8 reserved1;
         uint128 reserved2;
+    struct ValidatingAssignment {
+        address assignedValidator;
+        ValidationResult result;
     }
 
     event MiningTimeLimitUpdate(uint40 newValue);
@@ -185,7 +195,7 @@ interface IWorkerHub is IInferable {
     event ValidatorDeactivated(address indexed validator, address indexed modelAddress, uint40 activeTime);
     event FraudulentValidatorPenalized(address indexed validator, address indexed modelAddress, address indexed treasury,  uint256 fine);
     event DisputeInference(address indexed caller, uint256 indexed inferId, uint40 now, uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp);
-    event NoDisputeInference(address indexed caller, uint256 indexed inferId, uint40 now, uint256 value);
+    event NoDisputeInference(address indexed caller, uint256 indexed inferId);
     event DisputeUpvote(address indexed caller, uint256 indexed inferId, uint40 now);
     event DisputeResolving(uint256 indexed inferId, address indexed modelAddress, bool status);
 
