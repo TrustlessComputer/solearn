@@ -31,9 +31,11 @@ contract WorkHubTest is Test {
             0,
             0
         );
-//        workerHub.setNewRewardInEpoch(1e16);
+
         workerHub.registerModel(ModelAddr, 1, 1e18);
         vm.stopPrank();
+        // Sunday, May 19, 2024 4:14:11 PM
+        vm.warp(1716135251);
     }
 
     function testRewards() public {
@@ -131,6 +133,8 @@ contract WorkHubTest is Test {
         workerHub.unstakeForMiner();
         assertEq(Miner1.balance, 15601179604261796 + 2e18);
 
+        assertEq(workerHub.multiplier(Miner1), 1e4);
+
         vm.roll(51);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
@@ -155,9 +159,13 @@ contract WorkHubTest is Test {
         workerHub.claimReward(Miner1);
         assertEq(Miner1.balance, 15601179604261796 + 2e18 - 1e18);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
-
+        assertEq(workerHub.multiplier(Miner1), 1e4);
         // test case miner active then unregis but no claim reward
         workerHub.joinForMinting();
+
+        // assertEq(workerHub.test(Miner1), block.timestamp);
+        assertEq(workerHub.multiplier(Miner1), 1e4);
+
         vm.roll(71);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898);
         vm.roll(81);
@@ -168,12 +176,18 @@ contract WorkHubTest is Test {
         assertEq(Miner1.balance, 15601179604261796 + 2e18);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
 
+        // assertEq(workerHub.test(Miner1) + 21 days, block.timestamp);
+
         vm.roll(91);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
         workerHub.registerMiner{value: 1e18}(1);
         workerHub.joinForMinting();
+
+        // assertEq(workerHub.test(Miner1), block.timestamp);
+
         vm.roll(101);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 3);
+        // assertEq(workerHub.test(Miner1), block.timestamp);
 
         // claim reward
         workerHub.claimReward(Miner1);
@@ -181,7 +195,34 @@ contract WorkHubTest is Test {
         assertEq(Miner1.balance, 15601179604261796 + 2e18 - 1e18 + 7800589802130898 * 3);
         vm.roll(109);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
-
         vm.stopPrank();
+
+        // test boost reward
+        assertEq(workerHub.rewardToClaim(Miner1), 0);
+        // add 2 epochs
+        vm.roll(121);
+        assertEq(workerHub.multiplier(Miner2), 11000);
+        assertEq(workerHub.multiplier(Miner1), 1e4);
+        assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
+        // assertEq(workerHub.test(Miner1), block.timestamp);
+        vm.warp(block.timestamp + 30 days);
+        uint boostReward = 7800589802130898 * 2 * 10500 / uint256(1e4);
+        assertEq(workerHub.rewardToClaim(Miner1), boostReward);
+
+        vm.warp(block.timestamp + 30 days);
+        boostReward = 7800589802130898 * 2 * 11000 / uint256(1e4);
+        assertEq(workerHub.rewardToClaim(Miner1), boostReward);
+
+        vm.warp(block.timestamp + 365 days);
+        boostReward = 7800589802130898 * 2 * 16000 / uint256(1e4);
+        assertEq(workerHub.rewardToClaim(Miner1), boostReward);
+
+        workerHub.claimReward(Miner1);
+        assertEq(workerHub.rewardToClaim(Miner1), 0);
+
+        // unregis reset boost
+        vm.startPrank(Miner1);
+        workerHub.unregisterMiner();
+        assertEq(workerHub.multiplier(Miner1), 1e4);
     }
 }

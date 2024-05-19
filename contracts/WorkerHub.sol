@@ -295,6 +295,7 @@ ReentrancyGuardUpgradeable {
         minerAddressesByModel[modelAddress].insert(msg.sender);
         minerAddresses.insert(msg.sender);
         miner.lastClaimedEpoch = currentEpoch;
+        boost[msg.sender].minerTimestamp = uint40(block.timestamp);
 
         emit MinerJoin(msg.sender);
     }
@@ -313,6 +314,8 @@ ReentrancyGuardUpgradeable {
 
         if (minerAddresses.hasValue(msg.sender)) {
             _claimReward(msg.sender, false);
+            boost[msg.sender].minerTimestamp = uint40(block.timestamp);
+
             minerAddresses.erase(msg.sender);
             minerAddressesByModel[miner.modelAddress].erase(msg.sender);
         }
@@ -631,6 +634,8 @@ ReentrancyGuardUpgradeable {
             uint256 fine = miner.stake * finePercentage / PERCENTAGE_DENOMINATOR; // Fine = stake * 5%
             miner.stake -= fine;
 
+            // reset boost
+            boost[msg.sender].minerTimestamp = uint40(block.timestamp);
             TransferHelper.safeTransferNative(treasury, fine);
 
             emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
@@ -722,18 +727,21 @@ ReentrancyGuardUpgradeable {
             totalReward = 0;
         } else {
             uint256 lastClaimed = uint256(miners[_miner].lastClaimedEpoch);
-            uint256 epochReward;
-            uint256 currentMiner;
-            for (; lastClaimed < lastEpoch; lastClaimed++) {
-                MinerEpochState memory state = rewardInEpoch[lastClaimed];
-                // reward at epoch
-                (epochReward, currentMiner) = (state.epochReward, state.totalMiner);
-                if (currentMiner > 0 && epochReward > 0) {
-                    totalReward += epochReward / currentMiner;
-                }
-            }
+            uint256 epochReward = rewardPerEpoch * blocksPerEpoch / BLOCK_PER_YEAR; // reward per miner in 1 epoch
+            totalReward += (lastEpoch - lastClaimed) * epochReward * multiplier(_miner) / PERCENTAGE_DENOMINATOR;
         }
 
         return totalReward + minerRewards[_miner];
+    }
+
+    function multiplier(address _miner) public view returns(uint256) {
+        if (!minerAddresses.hasValue(_miner)) {
+            return PERCENTAGE_DENOMINATOR;
+        }
+
+        uint256 minerLastTimestamp = minerAddresses.hasValue(_miner) && boost[_miner].minerTimestamp == 0 ?
+            1716046859 : boost[_miner].minerTimestamp;
+        uint256 multiplierRes = (block.timestamp - minerLastTimestamp) / 30 days;
+        return PERCENTAGE_DENOMINATOR + 500 * (multiplierRes >= 12 ? 12 : multiplierRes);
     }
 }
