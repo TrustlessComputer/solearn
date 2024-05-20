@@ -89,6 +89,13 @@ interface IWorkerHub is IInferable {
         uint40 unlockAt;
     }
 
+    struct Boost {
+        uint40 minerTimestamp;
+        uint40 validatorTimestamp;
+        uint48 reserved1;
+        uint128 reserved2;
+    }
+
     event MiningTimeLimitUpdate(uint40 newValue);
 
     event ModelRegistration(

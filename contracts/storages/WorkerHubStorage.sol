@@ -68,6 +68,9 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     // mapping tracking reward
     mapping(address => uint256) internal minerRewards;
+    // tracking time miner join the network to
+    // determine multiplier value
+    mapping(address => Boost) internal boost;
 
-    uint256[98] private __gap;
+    uint256[97] private __gap;
 }
