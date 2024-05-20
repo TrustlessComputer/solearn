@@ -224,5 +224,7 @@ contract WorkHubTest is Test {
         vm.startPrank(Miner1);
         workerHub.unregisterMiner();
         assertEq(workerHub.multiplier(Miner1), 1e4);
+
+        assertEq(workerHub.getNOMiner(), 2);
     }
 }

@@ -132,6 +132,10 @@ ReentrancyGuardUpgradeable {
         return result;
     }
 
+    function getNOMiner() external view returns (uint) {
+        return minerAddresses.values.length;
+    }
+
     function getMinerAddresses() external view returns (address[] memory) {
         return minerAddresses.values;
     }
