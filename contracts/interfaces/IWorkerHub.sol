@@ -92,7 +92,7 @@ interface IWorkerHub is IInferable {
     struct Boost {
         uint40 minerTimestamp;
         uint40 validatorTimestamp;
-        uint48 reserved1;
+        uint48 reserved1; // accumulated active time
         uint128 reserved2;
     }
 
