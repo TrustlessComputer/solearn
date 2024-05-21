@@ -316,6 +316,7 @@ ReentrancyGuardUpgradeable {
             _claimReward(msg.sender, false);
             // reset boost
             boost[msg.sender].reserved1 = 0;
+            boost[msg.sender].minerTimestamp = uint40(block.timestamp);
 
             minerAddresses.erase(msg.sender);
             minerAddressesByModel[miner.modelAddress].erase(msg.sender);
