@@ -624,6 +624,35 @@ ReentrancyGuardUpgradeable {
         if (!validatorAddressesByModel[modelAddrOfValidator].hasValue(msg.sender)) revert InvalidValidator();
     }
 
+    // If the inference has only one submission, we allow it to be no_disputed
+    function _beforeNoDispute(uint256 _inferId) internal view returns(uint40, uint40) {
+        Inference memory clonedInference = inferences[_inferId];
+        uint256[] memory assignmentIds = clonedInference.assignments;
+
+        if (assignmentIds.length == 0) revert SubmissionsEmpty();
+        if (clonedInference.status != InferenceStatus.Solving) revert InvalidInferenceStatus();
+
+        // Verify if this inference has been disputed
+        if(disputedInferIds.hasValue(_inferId)) revert InferenceAlreadyDisputed();
+
+        //TODO check only assigned validator call this function // TODO: mr. @kochou assign assignedValidator in the assign validator func.
+        if (validatingAssignments[_inferId].assignedValidator != msg.sender) revert InvalidValidator();
+
+        // Verify the msg.sender has already been dispute/no_disputed
+        if (validatingAssignments[_inferId].result != ValidationResult.Nil) revert ("Do not allowed to re-submit the validation task");
+
+        //TODO: Check whether msg.sender is the assigned validator
+
+        uint40 validateExpireTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit);
+        uint40 disputeExpiredTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit + disputingTimeLimit);
+
+        // Verify whether the dispute is raised within the permitted time window
+        if (block.timestamp < clonedInference.expiredAt) revert PrematureValidate();
+        if (validateExpireTimestamp < block.timestamp) revert ValidateTimeout();
+
+        return (validateExpireTimestamp, disputeExpiredTimestamp);
+    }
+
     function _beforeDispute(uint256 _inferId) internal view returns(uint40, uint40){
         Inference memory clonedInference = inferences[_inferId];
         uint256[] memory assignmentIds = clonedInference.assignments;
@@ -642,42 +671,13 @@ ReentrancyGuardUpgradeable {
         return (validateExpireTimestamp, disputeExpiredTimestamp);
     }
 
-    // If the inference has only one submission, we allow it to be no_disputed
-    function _beforeNoDispute(uint256 _inferId) internal view returns(uint40, uint40) {
-        Inference memory clonedInference = inferences[_inferId];
-        uint256[] memory assignmentIds = clonedInference.assignments;
-
-        if (assignmentIds.length == 0) revert SubmissionsEmpty();
-        if (clonedInference.status != InferenceStatus.Solving) revert InvalidInferenceStatus();
-
-        // Verify if this inference has been disputed
-        if(disputedInferIds.hasValue(_inferId)) revert InferenceAlreadyDisputed();
-
-        //TODO check only assigned validator call this function
-        if (validatingAssignments[_inferId].assignedValidator != msg.sender) revert InvalidValidator();
-
-        // Verify the msg.sender has already been dispute/no_disputed
-        if (validatingAssignments[_inferId].result != ValidationResult.Nil) revert ("Do not allowed to re-submit the validation task");
-
-        //TODO: Check whether msg.sender is the assigned validator
-
-        uint40 validateExpireTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit);
-        uint40 disputeExpiredTimestamp = uint40(clonedInference.expiredAt + validatingTimeLimit + disputingTimeLimit);
-
-        // Verify whether the dispute is raised within the permitted time window
-        if (block.timestamp < clonedInference.expiredAt) revert PrematureValidate();
-        if (validateExpireTimestamp < block.timestamp) revert ValidateTimeout();
-
-        return (validateExpireTimestamp, disputeExpiredTimestamp);
-    }
-
     // Only validator is allowed to call noDisputeIsnfer()
     function noDisputeInfer(uint256 _inferId) public {
         _updateEpoch();
         _checkAvailableValidator();
         _beforeNoDispute(_inferId);
 
-        validatingAssignments[_inferId].result != ValidationResult.NoDispute; //Record the no_dispute request from the assigned validator
+        validatingAssignments[_inferId].result = ValidationResult.NoDispute; //Record the no_dispute request from the assigned validator
 
         // Inference storage inference = inferences[_inferId];
         // inference.status = InferenceStatus.Solved;
@@ -692,10 +692,11 @@ ReentrancyGuardUpgradeable {
     function disputeInfer(uint256 _inferId, bool useValidatorRole) public virtual {
         _updateEpoch();
         _checkAvailableWorker();
+        _beforeDispute(_inferId);
 
         (uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp) = _beforeDispute(_inferId);    
 
-        // TODO: if the msg.sender is the assigned validator, we have to record this request
+        // if the msg.sender is the assigned validator, we have to record this request
         if (validatingAssignments[_inferId].assignedValidator == msg.sender && 
             validatingAssignments[_inferId].result != ValidationResult.Nil) revert ("Do not allowed to re-submit the validation task");
 
@@ -771,7 +772,7 @@ ReentrancyGuardUpgradeable {
 
         emit DisputeUpvote(msg.sender, _inferId, uint40(block.timestamp));
 
-        //TODO: If the reaction time expires but the number of ballots is less than 2/3, 
+        //TODO: (out of date) If the reaction time expires but the number of ballots is less than 2/3, 
         // should we extend the waiting time for validators or slash inactive validators and initiate a new vote?
     }
 

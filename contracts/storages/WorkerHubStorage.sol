@@ -79,7 +79,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     Set.Uint256Set internal disputedInferIds;
     mapping(uint256 => DisputedInfer) internal disputedInfers; // inferId => DisputedInfer
     mapping(uint256 => Set.AddressSet) internal votersOf; // disputed inference ID => voters's address
-    mapping(uint256 => ValidatingAssignment) internal validatingAssignments; // infer ID => the address of validator call no_dispute
+    mapping(uint256 => ValidatingAssignment) internal validatingAssignments; // infer ID => the submission record of the assigned validator
     // mapping(address => Set.Uint256Set) internal disputedInfersOf; //voter's address => disputed inference id
 
     uint256[93] private __gap;
