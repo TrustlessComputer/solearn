@@ -318,6 +318,8 @@ ReentrancyGuardUpgradeable {
 
         if (minerAddresses.hasValue(msg.sender)) {
             _claimReward(msg.sender, false);
+            // reset boost
+            boost[msg.sender].reserved1 = 0;
             boost[msg.sender].minerTimestamp = uint40(block.timestamp);
 
             minerAddresses.erase(msg.sender);
@@ -622,7 +624,8 @@ ReentrancyGuardUpgradeable {
         if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
         // update reward
         _claimReward(_miner, false);
-
+        boost[_miner].reserved1 += uint48(block.timestamp) - uint48(boost[_miner].minerTimestamp == 0 ? 1716046859 : boost[_miner].minerTimestamp);
+        boost[_miner].minerTimestamp = uint40(block.timestamp);
         address modelAddress = miner.modelAddress;
 
         // Remove miner from available miner
@@ -639,7 +642,7 @@ ReentrancyGuardUpgradeable {
             miner.stake -= fine;
 
             // reset boost
-            boost[msg.sender].minerTimestamp = uint40(block.timestamp);
+            boost[_miner].reserved1 = 0;
             TransferHelper.safeTransferNative(treasury, fine);
 
             emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
@@ -739,13 +742,17 @@ ReentrancyGuardUpgradeable {
     }
 
     function multiplier(address _miner) public view returns(uint256) {
-        if (!minerAddresses.hasValue(_miner)) {
-            return PERCENTAGE_DENOMINATOR;
-        }
+        uint256 minerLastTimestamp;
 
-        uint256 minerLastTimestamp = minerAddresses.hasValue(_miner) && boost[_miner].minerTimestamp == 0 ?
-            1716046859 : boost[_miner].minerTimestamp;
-        uint256 multiplierRes = (block.timestamp - minerLastTimestamp) / 30 days;
+        if (minerAddresses.hasValue(_miner) && boost[_miner].minerTimestamp == 0) {
+            minerLastTimestamp = 1716046859;
+        } else if (!minerAddresses.hasValue(_miner)) {
+            minerLastTimestamp = block.timestamp;
+        } else {
+            minerLastTimestamp = boost[_miner].minerTimestamp;
+        }
+        uint256 multiplierRes = (boost[_miner].reserved1 + block.timestamp - minerLastTimestamp) / 30 days;
+
         return PERCENTAGE_DENOMINATOR + 500 * (multiplierRes >= 12 ? 12 : multiplierRes);
     }
 }
