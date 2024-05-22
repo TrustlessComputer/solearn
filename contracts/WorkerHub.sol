@@ -620,8 +620,8 @@ ReentrancyGuardUpgradeable {
         if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
         // update reward
         _claimReward(_miner, false);
-        boost[msg.sender].reserved1 += uint48(block.timestamp) - uint48(boost[msg.sender].minerTimestamp == 0 ? 1716046859 : boost[msg.sender].minerTimestamp);
-        boost[msg.sender].minerTimestamp = uint40(block.timestamp);
+        boost[_miner].reserved1 += uint48(block.timestamp) - uint48(boost[_miner].minerTimestamp == 0 ? 1716046859 : boost[_miner].minerTimestamp);
+        boost[_miner].minerTimestamp = uint40(block.timestamp);
         address modelAddress = miner.modelAddress;
 
         // Remove miner from available miner
@@ -638,7 +638,7 @@ ReentrancyGuardUpgradeable {
             miner.stake -= fine;
 
             // reset boost
-            boost[msg.sender].reserved1 = 0;
+            boost[_miner].reserved1 = 0;
             TransferHelper.safeTransferNative(treasury, fine);
 
             emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
@@ -747,8 +747,6 @@ ReentrancyGuardUpgradeable {
         } else {
             minerLastTimestamp = boost[_miner].minerTimestamp;
         }
-
-
         uint256 multiplierRes = (boost[_miner].reserved1 + block.timestamp - minerLastTimestamp) / 30 days;
 
         return PERCENTAGE_DENOMINATOR + 500 * (multiplierRes >= 12 ? 12 : multiplierRes);
