@@ -112,8 +112,10 @@ interface IWorkerHub is IInferable {
     struct Boost {
         uint40 minerTimestamp;
         uint40 validatorTimestamp;
-        uint4s8 reserved1;
+        uint48 reserved1;
         uint128 reserved2;
+    }
+
     struct ValidatingAssignment {
         address assignedValidator;
         ValidationResult result;
