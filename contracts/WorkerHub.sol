@@ -20,7 +20,7 @@ ReentrancyGuardUpgradeable {
     using Set for Set.AddressSet;
     using Set for Set.Uint256Set;
 
-    string constant private VERSION = "v0.0.1";
+    string constant private VERSION = "v0.0.2";
     uint256 constant private PERCENTAGE_DENOMINATOR = 100_00;
     uint256 constant private BLOCK_PER_YEAR = 365 days / 2; // 2s per block
 
