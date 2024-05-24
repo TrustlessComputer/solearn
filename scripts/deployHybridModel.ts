@@ -16,18 +16,18 @@ async function deployHybridModel() {
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
-    const name = 'Animated Concept - SDXL LoRA';//`Model ${identifier}`;
+    const name = 'Juggernaut XL';//`Model ${identifier}`;
     const minHardware = 1;
-    const modelOwnerAddress = '0xBb380912A2E0c83628935f98a5a1b08b8588Ae76';
+    const modelOwnerAddress = '0xB0D0c3C59B9101D0C98cD2235c03C43F1294cb95';
     const metadata = '{\n' +
         '\t"version": 1,\n' +
-        '\t"model_name": "Animated Concept - SDXL LoRA",\n' +
+        '\t"model_name": "Juggernaut XL",\n' +
         '\t"model_type": "image",\n' +
-        '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmaG6DJstjfgVuBRDi6Ma66o9SMaReMse1S75nDDwwErM3",\n' +
-        '\t"model_file_hash": "dc881c939ff3078b59d9bf2a6fc83db2caf7b0780ee563d3a6fc09ea5a1b35a1",\n' +
+        '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmcFYMYpVodkpT6t1fVmWNjPnUnnQbXvwpqyheXvPGKUr8",\n' +
+        '\t"model_file_hash": "7f1f29cb884c5b2f4d072b99afcb87f32cbe4adc88cffedab15ffc9fd30887ae",\n' +
         '\t"min_hardware": 1,\n' +
-        '\t"verifier_url": "",\n' +
-        '\t"verifier_file_hash": ""\n' +
+        '\t"verifier_url": "https://gateway.lighthouse.storage/ipfs/QmdkKEjx2fauzbPh1j5bUiQXrUG5Ft36pJGHS8awrN89Dc",\n' +
+        '\t"verifier_file_hash": "492b2b3dea3003d359fe1b2cee77a22777d8a9faf942ab6dee81e6bfadaadec4"\n' +
         '}'    
 
     const hybridModel = await upgrades.deployProxy(
