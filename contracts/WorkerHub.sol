@@ -20,7 +20,7 @@ ReentrancyGuardUpgradeable {
     using Set for Set.AddressSet;
     using Set for Set.Uint256Set;
 
-    string constant private VERSION = "v0.0.1";
+    string constant private VERSION = "v0.0.2";
     uint256 constant private PERCENTAGE_DENOMINATOR = 100_00;
     uint256 constant private BLOCK_PER_YEAR = 365 days / 2; // 2s per block
 
@@ -36,7 +36,9 @@ ReentrancyGuardUpgradeable {
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpochBasedOnPerf,
         uint256 _rewardPerEpoch,
-        uint40 _unstakeDelayTime
+        uint40 _unstakeDelayTime,
+        uint40 _penaltyDuration,
+        uint16 _finePercentage
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
@@ -54,6 +56,8 @@ ReentrancyGuardUpgradeable {
         unstakeDelayTime = _unstakeDelayTime;
         maximumTier = 1;
         lastBlock = block.number;
+        penaltyDuration = _penaltyDuration;
+        finePercentage = _finePercentage;
     }
 
     function version() external pure returns (string memory) {
@@ -66,6 +70,11 @@ ReentrancyGuardUpgradeable {
 
     function unpause() external onlyOwner whenPaused {
         _unpause();
+    }
+
+    function updateMiningTimeLimit(uint40 _miningTimeLimit) external onlyOwner {
+        miningTimeLimit = _miningTimeLimit;
+        emit MiningTimeLimitUpdate(_miningTimeLimit);
     }
 
     function getModelAddresses() external view returns (address[] memory) {
@@ -121,6 +130,10 @@ ReentrancyGuardUpgradeable {
         }
 
         return result;
+    }
+
+    function getNOMiner() external view returns (uint) {
+        return minerAddresses.values.length;
     }
 
     function getMinerAddresses() external view returns (address[] memory) {
@@ -280,11 +293,13 @@ ReentrancyGuardUpgradeable {
         Worker storage miner = miners[msg.sender];
         if (miner.tier == 0) revert NotRegistered();
         if (miner.stake < minerMinimumStake) revert StakeTooLow();
+        if (block.timestamp < miner.activeTime) revert MinerInDeactivationTime();
 
         address modelAddress = miner.modelAddress;
         minerAddressesByModel[modelAddress].insert(msg.sender);
         minerAddresses.insert(msg.sender);
         miner.lastClaimedEpoch = currentEpoch;
+        boost[msg.sender].minerTimestamp = uint40(block.timestamp);
 
         emit MinerJoin(msg.sender);
     }
@@ -302,7 +317,11 @@ ReentrancyGuardUpgradeable {
         miner.commitment = 0;
 
         if (minerAddresses.hasValue(msg.sender)) {
-            _claimReward(msg.sender);
+            _claimReward(msg.sender, false);
+            // reset boost
+            boost[msg.sender].reserved1 = 0;
+            boost[msg.sender].minerTimestamp = uint40(block.timestamp);
+
             minerAddresses.erase(msg.sender);
             minerAddressesByModel[miner.modelAddress].erase(msg.sender);
         }
@@ -390,6 +409,7 @@ ReentrancyGuardUpgradeable {
 
         Worker storage validator = miners[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
+        if (block.timestamp < validator.activeTime) revert ValidatorInDeactivationTime();
 
         address modelAddress = validator.modelAddress;
         validatorAddressesByModel[modelAddress].insert(msg.sender);
@@ -512,20 +532,17 @@ ReentrancyGuardUpgradeable {
         if (blocksPerEpoch > 0) {
             uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
+                lastBlock += blocksPerEpoch * epochPassed;
                 // reward for this epoch
                 // rewardPerEpoch (reward one year for 1 miner)
                 // rewardPerEpoch * total miner * blocker per epoch / blocks per year
                 uint256 rewardInCurrentEpoch = rewardPerEpoch * minerAddresses.size() * blocksPerEpoch / BLOCK_PER_YEAR;
-                uint256 perfReward = rewardInCurrentEpoch * rewardPerEpochBasedOnPerf / PERCENTAGE_DENOMINATOR;
-                uint256 equalReward = rewardInCurrentEpoch - perfReward;
 
                 for (; epochPassed > 0; epochPassed--) {
                     rewardInEpoch[currentEpoch].totalMiner = minerAddresses.size();
-                    rewardInEpoch[currentEpoch].perfReward = perfReward;
-                    rewardInEpoch[currentEpoch].epochReward = equalReward;
+                    rewardInEpoch[currentEpoch].epochReward = rewardInCurrentEpoch;
                     currentEpoch++;
                 }
-                lastBlock = block.number;
             }
         } else {
             lastBlock = block.number;
@@ -536,6 +553,12 @@ ReentrancyGuardUpgradeable {
     function submitSolution(uint256 _assigmentId, bytes calldata _data) public virtual whenNotPaused {
         _updateEpoch();
         address _msgSender = msg.sender;
+
+        // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
+        if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
+
+        address modelAddrOfMiner = miners[msg.sender].modelAddress;
+        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(msg.sender)) revert InvalidMiner();
 
         Assignment memory clonedAssignments = assignments[_assigmentId];
 
@@ -566,10 +589,6 @@ ReentrancyGuardUpgradeable {
         inference.assignments.push(_assigmentId);
 
         if (inference.assignments.length == 1) {
-            uint256 curEpoch = currentEpoch;
-            minerTaskCompleted[_msgSender][curEpoch] += 1;
-            rewardInEpoch[curEpoch].totalTaskCompleted += 1;
-
             uint256 fee = clonedInference.value * feePercentage / PERCENTAGE_DENOMINATOR;
             uint256 value = clonedInference.value - fee;
             TransferHelper.safeTransferNative(treasury, fee);
@@ -591,6 +610,64 @@ ReentrancyGuardUpgradeable {
         // TODO
     }
 
+    function slashMiner(address _miner, bool _isFined) public virtual onlyOwner {
+        _updateEpoch();
+
+        if (_miner == address(0)) revert InvalidMiner();
+
+        _slashMiner(_miner, _isFined);
+    }
+
+    function _slashMiner(address _miner, bool _isFined) internal {
+        Worker storage miner = miners[_miner];
+
+        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
+        // update reward
+        _claimReward(_miner, false);
+        boost[_miner].reserved1 += uint48(block.timestamp) - uint48(boost[_miner].minerTimestamp == 0 ? 1716046859 : boost[_miner].minerTimestamp);
+        boost[_miner].minerTimestamp = uint40(block.timestamp);
+        address modelAddress = miner.modelAddress;
+
+        // Remove miner from available miner
+        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
+            minerAddressesByModel[modelAddress].erase(_miner);
+            minerAddresses.erase(_miner);
+        }
+
+        // Set the time miner can join again
+        miner.activeTime = uint40(block.timestamp + penaltyDuration);
+
+        if (_isFined) {
+            uint256 fine = miner.stake * finePercentage / PERCENTAGE_DENOMINATOR; // Fine = stake * 5%
+            miner.stake -= fine;
+
+            // reset boost
+            boost[_miner].reserved1 = 0;
+            TransferHelper.safeTransferNative(treasury, fine);
+
+            emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
+            return;
+        }
+
+        emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
+    }
+
+    function setFinePercentage(uint16 _finePercentage) public virtual onlyOwner {
+        _updateEpoch();
+
+        emit FinePercentageUpdated(finePercentage, _finePercentage);
+
+        finePercentage = _finePercentage;
+    }
+
+    function setPenaltyDuration(uint40 _penaltyDuration) public virtual onlyOwner {
+        _updateEpoch();
+
+        emit PenaltyDurationUpdated(penaltyDuration, _penaltyDuration);
+
+        penaltyDuration = _penaltyDuration;
+    }
+
     function resolveInference(uint256 _inferenceId) public virtual {
         _updateEpoch();
 
@@ -602,19 +679,22 @@ ReentrancyGuardUpgradeable {
         }
     }
 
-    function _claimReward(address _miner) internal whenNotPaused {
+    function _claimReward(address _miner, bool _isTransfer) internal whenNotPaused {
         uint256 rewardAmount = rewardToClaim(_miner);
         miners[_miner].lastClaimedEpoch = currentEpoch;
-        if (rewardAmount > 0) {
+        if (rewardAmount > 0 && _isTransfer) {
+            minerRewards[_miner] = 0;
             TransferHelper.safeTransferNative(_miner, rewardAmount);
 
             emit RewardClaim(_miner, rewardAmount);
+        } else if (rewardAmount > 0) {
+            minerRewards[_miner] = rewardAmount;
         }
     }
 
     // miner claim reward
     function claimReward(address _miner) public virtual nonReentrant {
-        _claimReward(_miner);
+        _claimReward(_miner, true);
     }
 
     // @dev admin functions
@@ -623,13 +703,6 @@ ReentrancyGuardUpgradeable {
         emit RewardPerEpoch(rewardPerEpoch, _newRewardAmount);
 
         rewardPerEpoch = _newRewardAmount;
-    }
-
-    function setNewRewardInEpochBasedOnPerf(uint256 _newRewardAmount) public virtual onlyOwner {
-        _updateEpoch();
-        emit RewardPerEpochBasedOnPerf(rewardPerEpoch, _newRewardAmount);
-
-        rewardPerEpochBasedOnPerf = _newRewardAmount;
     }
 
     function setBlocksPerEpoch(uint256 _blocks) public virtual onlyOwner {
@@ -661,24 +734,25 @@ ReentrancyGuardUpgradeable {
             totalReward = 0;
         } else {
             uint256 lastClaimed = uint256(miners[_miner].lastClaimedEpoch);
-            uint256 perfReward;
-            uint256 epochReward;
-            uint256 currentMiner;
-            for (; lastClaimed < lastEpoch; lastClaimed++) {
-                MinerEpochState memory state = rewardInEpoch[lastClaimed];
-                uint256 totalTaskCompleted = state.totalTaskCompleted;
-                // reward at epoch
-                (perfReward, epochReward, currentMiner) = (state.perfReward, state.epochReward, state.totalMiner);
-                if (totalTaskCompleted > 0 && perfReward > 0) {
-                    totalReward += perfReward * minerTaskCompleted[_miner][lastClaimed] / totalTaskCompleted;
-                }
-
-                if (currentMiner > 0 && epochReward > 0) {
-                    totalReward += epochReward / currentMiner;
-                }
-            }
+            uint256 epochReward = rewardPerEpoch * blocksPerEpoch / BLOCK_PER_YEAR; // reward per miner in 1 epoch
+            totalReward += (lastEpoch - lastClaimed) * epochReward * multiplier(_miner) / PERCENTAGE_DENOMINATOR;
         }
 
-        return totalReward;
+        return totalReward + minerRewards[_miner];
+    }
+
+    function multiplier(address _miner) public view returns(uint256) {
+        uint256 minerLastTimestamp;
+
+        if (minerAddresses.hasValue(_miner) && boost[_miner].minerTimestamp == 0) {
+            minerLastTimestamp = 1716046859;
+        } else if (!minerAddresses.hasValue(_miner)) {
+            minerLastTimestamp = block.timestamp;
+        } else {
+            minerLastTimestamp = boost[_miner].minerTimestamp;
+        }
+        uint256 multiplierRes = (boost[_miner].reserved1 + block.timestamp - minerLastTimestamp) / 30 days;
+
+        return PERCENTAGE_DENOMINATOR + 500 * (multiplierRes >= 12 ? 12 : multiplierRes);
     }
 }

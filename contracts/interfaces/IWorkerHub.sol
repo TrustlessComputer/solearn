@@ -89,6 +89,15 @@ interface IWorkerHub is IInferable {
         uint40 unlockAt;
     }
 
+    struct Boost {
+        uint40 minerTimestamp;
+        uint40 validatorTimestamp;
+        uint48 reserved1; // accumulated active time
+        uint128 reserved2;
+    }
+
+    event MiningTimeLimitUpdate(uint40 newValue);
+
     event ModelRegistration(
         address indexed model,
         uint16 indexed tier,
@@ -151,10 +160,14 @@ interface IWorkerHub is IInferable {
     event RewardClaim(address indexed worker, uint256 value);
 
     event RewardPerEpoch(uint256 oldReward, uint256 newReward);
-    event RewardPerEpochBasedOnPerf(uint256 oldReward, uint256 newReward);
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
     event Restake(address indexed miner, uint256 restake, address indexed model);
+
+    event MinerDeactivated(address indexed miner, address indexed modelAddress, uint40 activeTime);
+    event FraudulentMinerPenalized(address indexed miner, address indexed modelAddress, address indexed treasury, uint256 fine);
+    event PenaltyDurationUpdated(uint40 oldDuration, uint40 newDuration);
+    event FinePercentageUpdated(uint16 oldPercent, uint16 newPercent);
 
     error AlreadyRegistered();
     error AlreadySubmitted();
@@ -178,4 +191,9 @@ interface IWorkerHub is IInferable {
 
     error InferMustBeSolvingState();
     error ZeroValue();
+    error InvalidValidator();
+    error InvalidMiner();
+
+    error MinerInDeactivationTime();
+    error ValidatorInDeactivationTime();
 }
