@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { version } from 'chai';
 import { ethers, network, upgrades } from 'hardhat';
 
 async function deployHybridModel() {
@@ -19,16 +20,19 @@ async function deployHybridModel() {
     const name = 'Juggernaut XL';//`Model ${identifier}`;
     const minHardware = 1;
     const modelOwnerAddress = '0xB0D0c3C59B9101D0C98cD2235c03C43F1294cb95';
-    const metadata = '{\n' +
-        '\t"version": 1,\n' +
-        '\t"model_name": "Juggernaut XL",\n' +
-        '\t"model_type": "image",\n' +
-        '\t"model_url": "https://gateway.lighthouse.storage/ipfs/QmcFYMYpVodkpT6t1fVmWNjPnUnnQbXvwpqyheXvPGKUr8",\n' +
-        '\t"model_file_hash": "7f1f29cb884c5b2f4d072b99afcb87f32cbe4adc88cffedab15ffc9fd30887ae",\n' +
-        '\t"min_hardware": 1,\n' +
-        '\t"verifier_url": "https://gateway.lighthouse.storage/ipfs/QmdkKEjx2fauzbPh1j5bUiQXrUG5Ft36pJGHS8awrN89Dc",\n' +
-        '\t"verifier_file_hash": "492b2b3dea3003d359fe1b2cee77a22777d8a9faf942ab6dee81e6bfadaadec4"\n' +
-        '}'    
+    const metadataObj = {
+        "version": 1,
+        "model_name": "Juggernaut XL",
+        "model_type": "image",
+        "model_url": "https://gateway.lighthouse.storage/ipfs/QmcFYMYpVodkpT6t1fVmWNjPnUnnQbXvwpqyheXvPGKUr8",
+        "model_file_hash": "7f1f29cb884c5b2f4d072b99afcb87f32cbe4adc88cffedab15ffc9fd30887ae",
+        "min_hardware": 1,
+        "verifier_url": "https://gateway.lighthouse.storage/ipfs/QmdkKEjx2fauzbPh1j5bUiQXrUG5Ft36pJGHS8awrN89Dc",
+        "verifier_file_hash": "492b2b3dea3003d359fe1b2cee77a22777d8a9faf942ab6dee81e6bfadaadec4",
+    }
+
+    const metadata = JSON.stringify(metadataObj, null, "\t");
+    console.log(metadata);
 
     const hybridModel = await upgrades.deployProxy(
         HybridModel,
