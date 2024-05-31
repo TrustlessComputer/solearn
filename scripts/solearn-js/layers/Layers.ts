@@ -46,7 +46,10 @@ export class DenseLayer {
   }
 
   forward(x: Tensor1D) {
-    // console.log("Dense");
+    console.log("Dense");
+    // console.log(x);
+    // console.log(this.w);
+    // console.log(this.b);
     const y = Tensor1D.add(Tensor1D.matMul(x, this.w), this.b);
     const z = Tensor1D.activation(y, this.activation);
     return z;

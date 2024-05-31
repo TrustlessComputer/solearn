@@ -5,14 +5,20 @@ export class Tensor2D {
   m: number;
   mat: number[][];
 
-  constructor(mat: number[][]) {
-    this.n = mat.length;
-    this.m = mat[0].length;
-    this.mat = mat;
+  constructor(mat?: number[][]) {
+    if (mat) {
+      this.n = mat.length;
+      this.m = mat[0].length;
+      this.mat = mat;
+    } else {
+      this.n = 0;
+      this.m = 0;
+      this.mat = [];
+    }
   }
 
   static emptyTensor(n: number, m: number): Tensor2D {
-    const ts = new Tensor2D([]);
+    const ts = new Tensor2D();
     ts.n = n;
     ts.m = m;
     for(let i = 0; i < n; ++i) {

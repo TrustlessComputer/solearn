@@ -33,7 +33,13 @@ class SequentialModel {
   }
 }
 
-export function loadModel(layersConfig: any, weights_b64: string) {
+export class ImageClassifier extends SequentialModel {
+  forward(x: Tensor3D): Tensor1D {
+    return super.forward(x);
+  }
+}
+
+export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new(...args : any[]): T ;}): { model: T, inputDim: any } {
   const layers = [];
 
   const weights = base64ToFloatArray(weights_b64);
@@ -118,10 +124,10 @@ export function loadModel(layersConfig: any, weights_b64: string) {
       
       const w_size = inputDim * outputDim;
 
-      const w_array = weights.subarray(p, p + w_size);
+      const w_array = Array.from(weights.subarray(p, p + w_size));
       p += w_size;
 
-      const w_tensor = new Tensor2D(w_array, inputDim, outputDim);
+      const w_tensor = Tensor2D.load(w_array, inputDim, outputDim);
 
       // console.log(w_tensor);
       // console.log(b_tensor);
@@ -135,19 +141,19 @@ export function loadModel(layersConfig: any, weights_b64: string) {
       const inputDim = dim[0];
 
       const wx_size = inputDim * units;
-      const wx_array = weights.subarray(p, p + wx_size);
+      const wx_array = Array.from(weights.subarray(p, p + wx_size));
       p += wx_size;
-      const wx_tensor = new Tensor2D(wx_array, inputDim, units);
+      const wx_tensor = Tensor2D.load(wx_array, inputDim, units);
 
       const wh_size = units * units;
-      const wh_array = weights.subarray(p, p + wh_size);
+      const wh_array = Array.from(weights.subarray(p, p + wh_size));
       p += wh_size;
-      const wh_tensor = new Tensor2D(wh_array, units, units);
+      const wh_tensor = Tensor2D.load(wh_array, units, units);
 
       const b_size = units;
-      const b_array = weights.subarray(p, p + b_size);
+      const b_array = Array.from(weights.subarray(p, p + b_size));
       p += b_size;
-      const b_tensor = new Tensor1D(b_array, units);
+      const b_tensor = Tensor1D.load(b_array, units);
 
       // console.log(w_tensor);
       // console.log(b_tensor);
@@ -158,7 +164,7 @@ export function loadModel(layersConfig: any, weights_b64: string) {
     }
     // console.log(dim);
   }
-  const model = new SequentialModel(layers);
+  const model = new type(layers);
 
   return { model, inputDim };
 }

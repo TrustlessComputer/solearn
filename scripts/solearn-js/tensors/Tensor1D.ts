@@ -5,13 +5,18 @@ export class Tensor1D {
   n: number;
   mat: number[];
 
-  constructor(mat: number[]) {
-    this.n = mat.length;
-    this.mat = mat;
+  constructor(mat?: number[]) {
+    if (mat) {
+      this.n = mat.length;
+      this.mat = mat;
+    } else {
+      this.n = 0;
+      this.mat = [];
+    }
   }
 
   static emptyTensor(n: number): Tensor1D {
-    const ts = new Tensor1D([]);
+    const ts = new Tensor1D();
     ts.n = n;
     return ts;
   }

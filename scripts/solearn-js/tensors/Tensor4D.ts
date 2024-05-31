@@ -9,16 +9,24 @@ export class Tensor4D {
   q: number;
   mat: number[][][][];
 
-  constructor(mat: number[][][][]) {
-    this.n = mat.length;
-    this.m = mat[0].length;
-    this.p = mat[0][0].length;
-    this.q = mat[0][0][0].length;
-    this.mat = mat;
+  constructor(mat?: number[][][][]) {
+    if (mat) {
+      this.n = mat.length;
+      this.m = mat[0].length;
+      this.p = mat[0][0].length;
+      this.q = mat[0][0][0].length;
+      this.mat = mat;
+    } else {
+      this.n = 0;
+      this.m = 0;
+      this.p = 0;
+      this.q = 0;
+      this.mat = [];
+    }
   }
 
   static emptyTensor(n: number, m: number, p: number, q: number): Tensor4D {
-    const ts = new Tensor4D([]);
+    const ts = new Tensor4D();
     ts.n = n;
     ts.m = m;
     ts.p = p;
