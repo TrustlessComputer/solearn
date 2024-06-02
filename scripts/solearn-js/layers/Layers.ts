@@ -36,17 +36,17 @@ export class DenseLayer {
   w: Tensor2D;
   b: Tensor1D;
 
-  constructor(input_dim: number, out_dim: number, activation: string, bias: boolean, w: Tensor2D, b: Tensor1D) {
+  constructor(input_dim: number, out_dim: number, activation: string, bias: boolean, data: number[], dim: number[]) {
     this.input_dim = input_dim;
     this.out_dim = out_dim;
     this.activation = activation;
     this.bias = bias;
-    this.w = w;
-    this.b = b;
+    this.w = Tensor2D.load(data.splice(0, input_dim * out_dim), input_dim, out_dim);
+    this.b = Tensor1D.load(data.splice(0, out_dim), out_dim);
   }
 
   forward(x: Tensor1D) {
-    console.log("Dense");
+    // console.log("Dense");
     // console.log(x);
     // console.log(this.w);
     // console.log(this.b);
@@ -83,20 +83,20 @@ export class Conv2DLayer {
   w: Tensor4D;
   b: Tensor1D;
   
-  constructor(filters: number, size: number[], stride: number[], padding: string, activation: string, w: Tensor4D, b: Tensor1D) {
+  constructor(filters: number, size: number[], stride: number[], padding: string, activation: string, data: number[], dim: number[]) {
     this.filters = filters;
     this.size = size;
     this.stride = stride;
     this.padding = padding;
     this.activation = activation;
-    this.w = w;
-    this.b = b;
+    this.w = Tensor4D.load(data.splice(0, size[0] * size[1] * dim[2] * filters), size[0], size[1], dim[2], filters);
+    this.b = Tensor1D.load(data.splice(0, filters), filters);
   }
 
   forward(x: Tensor3D): Tensor3D {
     // console.log("Conv2D");
     const y = Tensor3D.conv2D(x, this.w, this.stride, this.padding);
-    const z = Tensor3D.add(y, this.b);
+    const z = Tensor3D.add_vector(y, this.b);
     const t = Tensor3D.activation(z, this.activation);
     return t;
   }
@@ -107,10 +107,10 @@ export class EmbeddingLayer {
   outputDim: number;
   w: Tensor2D;
 
-  constructor(inputDim: number, outputDim: number, w: Tensor2D) {
+  constructor(inputDim: number, outputDim: number, w: number[]) {
     this.inputDim = inputDim;
     this.outputDim = outputDim;
-    this.w = w;
+    this.w = Tensor2D.load(w.splice(0, inputDim * outputDim), inputDim, outputDim);
   }
 
   forward(x: number): Tensor1D {
@@ -126,12 +126,12 @@ export class SimpleRNNLayer {
   b: Tensor1D;
   states: Tensor1D;
   
-  constructor(units: number, activation: string, w_h: Tensor2D, w_x: Tensor2D, b: Tensor1D) {
+  constructor(units: number, activation: string, data: number[], dim: number[]) {
     this.units = units;
     this.activation = activation;
-    this.w_h = w_h;
-    this.w_x = w_x;
-    this.b = b;
+    this.w_x = Tensor2D.load(data.splice(0, dim[0] * units), dim[0], units);
+    this.w_h = Tensor2D.load(data.splice(0, units * units), units, units);
+    this.b = Tensor1D.load(data.splice(0, units), units);
     this.states = Tensor1D.zerosTensor(this.units);
   }
 

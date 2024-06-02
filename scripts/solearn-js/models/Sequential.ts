@@ -39,10 +39,16 @@ export class ImageClassifier extends SequentialModel {
   }
 }
 
+export class TextGenerator extends SequentialModel {
+  forward(x: number): Tensor1D {
+    return super.forward(x);
+  }
+}
+
 export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new(...args : any[]): T ;}): { model: T, inputDim: any } {
   const layers = [];
 
-  const weights = base64ToFloatArray(weights_b64);
+  const weights = Array.from(base64ToFloatArray(weights_b64));
 
   let dim: any = null;
   let p = 0;
@@ -65,19 +71,11 @@ export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new
       const w_size = dim[0] * nxt_dim[0];
       const b_size = nxt_dim[0];
 
-      const w_array = Array.from(weights.subarray(p, p + w_size));
-      p += w_size;
-      const b_array = Array.from(weights.subarray(p, p + b_size));
-      p += b_size;
-
-      const w_tensor = Tensor2D.load(w_array, dim[0], nxt_dim[0]);
-      const b_tensor = Tensor1D.load(b_array, nxt_dim[0]);
+      const data = weights.splice(0, w_size + b_size);
+    
       const activation = info.config.activation;
 
-      // console.log(w_tensor);
-      // console.log(b_tensor);
-
-      layers.push(new DenseLayer(dim, nxt_dim[0], activation, true, w_tensor, b_tensor));
+      layers.push(new DenseLayer(dim, nxt_dim[0], activation, true, data, dim));
 
       dim = nxt_dim;
     } else if (info.class_name == "MaxPooling2D") {
@@ -102,18 +100,9 @@ export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new
       const w_size = f_w * f_h * d * filters;
       const b_size = filters;
 
-      const w_array = Array.from(weights.subarray(p, p + w_size));
-      p += w_size;
-      const b_array = Array.from(weights.subarray(p, p + b_size));
-      p += b_size;
+      const data = weights.splice(0, w_size + b_size);
 
-      const w_tensor = Tensor4D.load(w_array, f_w, f_h, d, filters);
-      const b_tensor = Tensor1D.load(b_array, filters);
-
-      // console.log(w_tensor);
-      // console.log(b_tensor);
-
-      layers.push(new Conv2DLayer(filters, [f_w, f_h], [s_w, s_h], padding, activation, w_tensor, b_tensor));
+      layers.push(new Conv2DLayer(filters, [f_w, f_h], [s_w, s_h], padding, activation, data, dim));
 
       const { out } = Tensors.getConvSize([w, h], [f_w, f_h], [s_w, s_h], padding);
       dim = [out[0], out[1], filters];
@@ -124,15 +113,9 @@ export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new
       
       const w_size = inputDim * outputDim;
 
-      const w_array = Array.from(weights.subarray(p, p + w_size));
-      p += w_size;
+      const data = weights.splice(0, w_size);
 
-      const w_tensor = Tensor2D.load(w_array, inputDim, outputDim);
-
-      // console.log(w_tensor);
-      // console.log(b_tensor);
-
-      layers.push(new EmbeddingLayer(inputDim, outputDim, w_tensor));
+      layers.push(new EmbeddingLayer(inputDim, outputDim, data));
 
       dim = [outputDim];
     } else if (info.class_name == "SimpleRNN") {
@@ -141,24 +124,12 @@ export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new
       const inputDim = dim[0];
 
       const wx_size = inputDim * units;
-      const wx_array = Array.from(weights.subarray(p, p + wx_size));
-      p += wx_size;
-      const wx_tensor = Tensor2D.load(wx_array, inputDim, units);
-
       const wh_size = units * units;
-      const wh_array = Array.from(weights.subarray(p, p + wh_size));
-      p += wh_size;
-      const wh_tensor = Tensor2D.load(wh_array, units, units);
-
       const b_size = units;
-      const b_array = Array.from(weights.subarray(p, p + b_size));
-      p += b_size;
-      const b_tensor = Tensor1D.load(b_array, units);
 
-      // console.log(w_tensor);
-      // console.log(b_tensor);
+      const data = weights.splice(0, wx_size + wh_size + b_size);
 
-      layers.push(new SimpleRNNLayer(units, activation, wh_tensor, wx_tensor, b_tensor));
+      layers.push(new SimpleRNNLayer(units, activation, data, dim));
 
       dim = [units];
     }

@@ -102,20 +102,40 @@ export class Tensor3D {
     return res;
   }
 
+  static __apply_binary_op_scalar = (a: Tensor3D, b: number, op: (x: number, y: number) => number): Tensor3D => {
+    const res = Tensor3D.emptyTensor(a.n, a.m, a.p);
+    for(let i = 0; i < res.n; ++i) {
+      for(let j = 0; j < res.m; ++j) {
+        for(let k = 0; k < res.p; ++k) {
+          res.mat[i][j][k] = op(a.mat[i][j][k], b);
+        }
+      }
+    }
+    return res;
+  }
+
+  static __apply_binary_op_vector = (a: Tensor3D, b: Tensor1D, op: (x: number, y: number) => number): Tensor3D => {
+    const res = Tensor3D.emptyTensor(a.n, a.m, a.p);
+    for(let i = 0; i < res.n; ++i) {
+      for(let j = 0; j < res.m; ++j) {
+        for(let k = 0; k < res.p; ++k) {
+          res.mat[i][j][k] = op(a.mat[i][j][k], b.mat[k]);
+        }
+      }
+    }
+    return res;
+  }
+
   static add(a: Tensor3D, b: Tensor3D): Tensor3D {
     return Tensor3D.__apply_binary_op(a, b, Tensors.__add);
   }
 
   static add_scalar(a: Tensor3D, num: number): Tensor3D {
-    const res = Tensor3D.zerosTensor(a.n, a.m, a.p);
-    for(let i = 0; i < res.n; ++i) {
-      for(let j = 0; j < res.m; ++j) {
-        for(let k = 0; k < res.p; ++k) {
-          res.mat[i][j][k] = a.mat[i][j][k] + num;
-        }
-      }
-    }
-    return res;
+    return Tensor3D.__apply_binary_op_scalar(a, num, Tensors.__add);
+  }
+
+  static add_vector(a: Tensor3D, b: Tensor1D): Tensor3D {
+    return Tensor3D.__apply_binary_op_vector(a, b, Tensors.__add);
   }
 
   static mul(a: Tensor3D, b: Tensor3D): Tensor3D {
@@ -123,15 +143,11 @@ export class Tensor3D {
   }
 
   static mul_scalar(a: Tensor3D, num: number): Tensor3D {
-    const res = Tensor3D.zerosTensor(a.n, a.m, a.p);
-    for(let i = 0; i < res.n; ++i) {
-      for(let j = 0; j < res.m; ++j) {
-        for(let k = 0; k < res.p; ++k) {
-          res.mat[i][j][k] = a.mat[i][j][k] * num;
-        }
-      }
-    }
-    return res;
+    return Tensor3D.__apply_binary_op_scalar(a, num, Tensors.__mul);
+  }
+
+  static mul_vector(a: Tensor3D, b: Tensor1D): Tensor3D {
+    return Tensor3D.__apply_binary_op_vector(a, b, Tensors.__mul);
   }
 
   static rescale(a: Tensor3D, scale: number, offset: number): Tensor3D {

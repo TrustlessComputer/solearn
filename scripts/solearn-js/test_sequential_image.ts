@@ -5,6 +5,8 @@ import { ImageClassifier, loadModel } from "./models/Sequential";
 import { Tensor3D } from "./tensors/Tensor3D";
 import { Tensor1D } from "./tensors/Tensor1D";
 
+var gen = require('random-seed').create(123); // create a generator
+ 
 export function pixelsToImage(pixels: number[], h: number, w: number, c: number): number[][][] {
   let ptr = 0;
   let img: number[][][] = [];
@@ -22,8 +24,7 @@ export function pixelsToImage(pixels: number[], h: number, w: number, c: number)
 }
 
 async function main() {
-  const modelPath = 'sample-models/nft_mlp_10x10.json';
-  const imgPath = 'sample-images/nft/cryptoadz/000.png';
+  const modelPath = 'sample-models/nft_cnn_32x32.json';
 
   const modelJson = fs.readFileSync(modelPath).toString();
   const modelObj = JSON.parse(modelJson);
@@ -34,24 +35,29 @@ async function main() {
   
   const { model, inputDim } = loadModel(layersConfig, weight_b64, ImageClassifier);
 
-  const imgRaw = fs.readFileSync(imgPath);
-  console.log("imgRaw: ", imgRaw);
+  const classes = ['cryptoadz', 'cryptopunks', 'moonbirds', 'nouns'];
+  for (const className of classes) {
+    const imgPath = `sample-images/nft/${className}/000.png`;
 
-  const h = inputDim[0];
-  const w = inputDim[1];
-
-  const img = sharp(imgRaw);
-  const imgBuffer = await img.removeAlpha().resize(w, h).raw().toBuffer();
-  const imgArray = [...imgBuffer];
-  const pixels = pixelsToImage(imgArray, h, w, 3);
-
-  const pixelsTensor = new Tensor3D(pixels)
-
-  const logits = model.forward(pixelsTensor);
-  const probs = Tensor1D.softmax(logits).mat;
-
-  const prediction = probs.indexOf(Math.max(...probs))
-  console.log(classesName[prediction], probs[prediction]);
+    const imgRaw = fs.readFileSync(imgPath);
+    // console.log("imgRaw: ", imgRaw);
+  
+    const h = inputDim[0];
+    const w = inputDim[1];
+  
+    const img = sharp(imgRaw);
+    const imgBuffer = await img.removeAlpha().resize(w, h).raw().toBuffer();
+    const imgArray = [...imgBuffer];
+    const pixels = pixelsToImage(imgArray, h, w, 3);
+  
+    const pixelsTensor = new Tensor3D(pixels)
+  
+    const logits = model.forward(pixelsTensor);
+    const probs = Tensor1D.softmax(logits).mat;
+  
+    const prediction = probs.indexOf(Math.max(...probs))
+    console.log(classesName[prediction], probs[prediction]);  
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
