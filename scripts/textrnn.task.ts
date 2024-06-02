@@ -8,7 +8,7 @@ import { runeToText, isRune } from "./rune.task";
 
 const EternalAIContractName = "TextRNN";
 const OnchainModelContractName = "OnchainModel";
-const ModelRegContractName = "ModelReg";
+const ModelCollectionContractName = "ModelCollection";
 
 async function inferModel(interfaceContract: ethers.Contract, prompt: string, generate: number, states: ethers.BigNumber[][][], seed: ethers.BigNumber) {
     const abic = ethers.utils.defaultAbiCoder;
@@ -34,7 +34,7 @@ async function inferModel(interfaceContract: ethers.Contract, prompt: string, ge
 }
 
 task("generate-text", "generate text from RNN model")
-    .addOptionalParam("contract", "contract address", "", types.string)
+    .addOptionalParam("contract", "ModelCollection contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
     .addOptionalParam("prompt", "input prompt", "", types.string)
     .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
@@ -48,7 +48,7 @@ task("generate-text", "generate text from RNN model")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ModelRegContractName);
+            const baseContract = await deployments.get(ModelCollectionContractName);
             contractAddress = baseContract.address;
         }
 
@@ -56,9 +56,9 @@ task("generate-text", "generate text from RNN model")
         const toGenerate = taskArgs.togenerate;
         const generatePerTx = (taskArgs.generatepertx == -1) ? toGenerate : taskArgs.generatepertx;
 
-        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
+        const modelCollectionContract = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const interfaceAddress = await modelRegContract.modelAddr(tokenId);
+        const interfaceAddress = await modelCollectionContract.modelAddressOf(tokenId);
         const interfaceContract = await ethers.getContractAt(OnchainModelContractName, interfaceAddress, signer);        
         
         const implementAddress = await interfaceContract.implementation();
@@ -147,12 +147,12 @@ task("get-textrnn-model", "get eternal AI model")
         const [signer] = await ethers.getSigners();
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ModelRegContractName);
+            const baseContract = await deployments.get(ModelCollectionContractName);
             contractAddress = baseContract.address;
         }
-        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
+        const modelCollectionContract = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await modelRegContract.modelAddr(tokenId);
+        const modelAddress = await modelCollectionContract.modelAddressOf(tokenId);
         const modelContract = await ethers.getContractAt(EternalAIContractName, modelAddress, signer);
         const model = await modelContract.getInfo();
 

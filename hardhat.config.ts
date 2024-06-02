@@ -70,9 +70,10 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.REGTEST3_TREASURY_ADDRESS,
       collectionAddress: process.env.REGTEST3_COLLECTION_ADDRESS,
       workerHubAddress: process.env.REGTEST3_WORKER_HUB_ADDRESS,
-      timeout: 500_000,
-      gasPrice: 1_000_000_000,
-      blockGasLimit: 100_000_000_000,
+      timeout: 600_000,
+      gas: 10_000_000_000,
+      gasPrice: "auto", 
+      blockGasLimit: 100_000_000_000
     } as any,
     cudatest: {
       url: "http://34.124.187.213:8545",

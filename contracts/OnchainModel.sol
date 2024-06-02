@@ -46,7 +46,7 @@ ReentrancyGuardUpgradeable {
         address _implementation,
         uint256 _inferenceCost
     ) external initializer nonReentrant {
-        // if (!IOnchainImplementation(_implementation).isReady()) revert ModelNotReady();
+        if (!IOnchainImplementation(_implementation).isReady()) revert ModelNotReady();
 
         __Ownable_init();
         __Pausable_init();

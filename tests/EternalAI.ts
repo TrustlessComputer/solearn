@@ -317,7 +317,7 @@ describe("TextRNN", function () {
       const { eternalAI, owner, abic } = await loadDeployedContract();
 
       const tokenId = BigNumber.from("2");
-      const imgPath = "sample-images/10x10/cryptoadz/000.png"
+      const imgPath = "sample-images/nft/cryptoadz/000.png"
       // const imgPath = "sample-images/cifar10/airplane/0000.jpg"
       const offline = false;
 
