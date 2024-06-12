@@ -50,6 +50,18 @@ export class Tensor3D {
     return ts;
   }
 
+	loadPartial(data: number[], ptr: number, idx: number): { ptr: number, idx: number, cnt: number } {
+		let m = this.m;
+		let p = this.p;
+		let cnt = this.n * m * p;
+		while (idx < data.length && ptr < cnt) {
+			this.mat[ptr / (m * p)][ptr / p % m].push(data[idx]);
+			ptr++;
+			idx++;
+		}
+		return { ptr, idx, cnt };
+	}
+
   static zerosTensor(n: number, m: number, p: number): Tensor3D {
     return Tensor3D.load([], n, m, p);
   }

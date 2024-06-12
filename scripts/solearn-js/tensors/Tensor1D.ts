@@ -31,6 +31,16 @@ export class Tensor1D {
     return ts;
   }
   
+	loadPartial(data: number[], ptr: number, idx: number): { ptr: number, idx: number, cnt: number } {
+		let n = this.n;
+		while (idx < data.length && ptr < n) {
+			this.mat.push(data[idx]);
+			ptr++;
+			idx++;
+		}
+		return { ptr, idx };
+	}
+
   static zerosTensor(n: number): Tensor1D {
     return Tensor1D.load([], n);
   }

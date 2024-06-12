@@ -4,13 +4,24 @@ import { Tensor2D } from "../tensors/Tensor2D";
 import { Tensor3D } from "../tensors/Tensor3D";
 import { Tensor4D } from "../tensors/Tensor4D";
 
+export enum LayerType {
+  InputLayer,
+  Dense,
+  Flatten,
+  Rescaling,
+  MaxPooling2D,
+  Conv2D,
+  Embedding,
+  SimpleRNN,
+  LSTM,
+};
+
 export class RescaleLayer {
   scale: number;
   offset: number;
 
-  constructor(scale: number, offset: number) {
-    this.scale = scale;
-    this.offset = offset;
+  constructor(config: any[]) {
+    [ this.scale, this.offset ] = config;
   }
 
   forward(x: Tensor3D): Tensor3D {
@@ -20,7 +31,7 @@ export class RescaleLayer {
 }
 
 export class FlattenLayer {
-  constructor() {}
+  constructor(config: any) {}
 
   forward(x: Tensor3D): Tensor1D {
     // console.log("Flatten");
@@ -35,14 +46,32 @@ export class DenseLayer {
   bias: boolean;
   w: Tensor2D;
   b: Tensor1D;
+  ptrTensor: number;
+  ptr: number;
 
-  constructor(input_dim: number, out_dim: number, activation: string, bias: boolean, data: number[], dim: number[]) {
-    this.input_dim = input_dim;
-    this.out_dim = out_dim;
-    this.activation = activation;
-    this.bias = bias;
-    this.w = Tensor2D.load(data.splice(0, input_dim * out_dim), input_dim, out_dim);
-    this.b = Tensor1D.load(data.splice(0, out_dim), out_dim);
+  constructor(config: any[]) {
+    [ this.input_dim, this.out_dim, this.activation, this.bias ] = config;
+    this.w = Tensor2D.emptyTensor(this.input_dim, this.out_dim);
+    this.b = Tensor1D.emptyTensor(this.out_dim);
+    this.ptrTensor = 0;
+    this.ptr = 0;
+  }
+
+  appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
+		let ptrTensor = this.ptrTensor;
+		let ptr = this.ptr;
+    let cnt;
+    if (ptrTensor == 0) {
+      ({ ptr, idx, cnt } = this.w.loadPartial(data, ptr, idx));
+      if (ptr == cnt) { ++ptrTensor; ptr = 0; }
+    }
+    if (ptrTensor == 1) {
+      ({ ptr, idx, cnt } = this.b.loadPartial(data, ptr, idx));
+      if (ptr == cnt) { ++ptrTensor; ptr = 0; }
+    }
+    this.ptrTensor = ptrTensor;
+    this.ptr = ptr;
+    return { idx, isDone: ptrTensor == 2 };
   }
 
   forward(x: Tensor1D) {
@@ -61,10 +90,8 @@ export class MaxPooling2DLayer {
   stride: number[];
   padding: string;
 
-  constructor(size: number[], stride: number[], padding: string) {
-    this.size = size;
-    this.stride = stride;
-    this.padding = padding;
+  constructor(config: any[]) {
+    [this.size, this.stride, this.padding] = config;
   }
 
   forward(x: Tensor3D): Tensor3D {
@@ -75,6 +102,7 @@ export class MaxPooling2DLayer {
 }
 
 export class Conv2DLayer {
+  inputDim: number;
   filters: number;
   size: number[];
   stride: number[];
@@ -82,15 +110,32 @@ export class Conv2DLayer {
   activation: string;
   w: Tensor4D;
   b: Tensor1D;
-  
-  constructor(filters: number, size: number[], stride: number[], padding: string, activation: string, data: number[], dim: number[]) {
-    this.filters = filters;
-    this.size = size;
-    this.stride = stride;
-    this.padding = padding;
-    this.activation = activation;
-    this.w = Tensor4D.load(data.splice(0, size[0] * size[1] * dim[2] * filters), size[0], size[1], dim[2], filters);
-    this.b = Tensor1D.load(data.splice(0, filters), filters);
+  ptrTensor: number;
+  ptr: number;
+
+  constructor(config: any[]) { 
+    [this.inputDim, this.filters, this.size, this.stride, this.padding, this.activation] = config;
+    this.w = Tensor4D.emptyTensor(this.size[0], this.size[1], this.inputDim, this.filters);
+    this.b = Tensor1D.emptyTensor(this.filters);
+    this.ptrTensor = 0;
+    this.ptr = 0;
+  }
+
+  appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
+		let ptrTensor = this.ptrTensor;
+		let ptr = this.ptr;
+    let cnt;
+    if (ptrTensor == 0) {
+      ({ ptr, idx, cnt } = this.w.loadPartial(data, ptr, idx));
+      if (ptr == cnt) { ++ptrTensor; ptr = 0; }
+    }
+    if (ptrTensor == 1) {
+      ({ ptr, idx, cnt } = this.b.loadPartial(data, ptr, idx));
+      if (ptr == cnt) { ++ptrTensor; ptr = 0; }
+    }
+    this.ptrTensor = ptrTensor;
+    this.ptr = ptr;
+    return { idx, isDone: ptrTensor == 2 };
   }
 
   forward(x: Tensor3D): Tensor3D {
@@ -106,11 +151,27 @@ export class EmbeddingLayer {
   inputDim: number;
   outputDim: number;
   w: Tensor2D;
+  ptrTensor: number;
+  ptr: number;
 
-  constructor(inputDim: number, outputDim: number, w: number[]) {
-    this.inputDim = inputDim;
-    this.outputDim = outputDim;
-    this.w = Tensor2D.load(w.splice(0, inputDim * outputDim), inputDim, outputDim);
+  constructor(config: any[]) {
+    [this.inputDim, this.outputDim] = config;
+    this.w = Tensor2D.emptyTensor(this.inputDim, this.outputDim);
+    this.ptrTensor = 0;
+    this.ptr = 0;
+  }
+  
+  appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
+		let ptrTensor = this.ptrTensor;
+		let ptr = this.ptr;
+    let cnt;
+    if (ptrTensor == 0) {
+      ({ ptr, idx, cnt } = this.w.loadPartial(data, ptr, idx));
+      if (ptr == cnt) { ++ptrTensor; ptr = 0; }
+    }
+    this.ptrTensor = ptrTensor;
+    this.ptr = ptr;
+    return { idx, isDone: ptrTensor == 1 };
   }
 
   forward(x: number): Tensor1D {
@@ -119,23 +180,48 @@ export class EmbeddingLayer {
 }
 
 export class SimpleRNNLayer {
+  inputDim: number;
   units: number;
   activation: string;
   w_h: Tensor2D;
   w_x: Tensor2D;
   b: Tensor1D;
   states: Tensor1D;
+  ptr: number;
+  ptrTensor: number;
   
-  constructor(units: number, activation: string, data: number[], dim: number[]) {
-    this.units = units;
-    this.activation = activation;
-    this.w_x = Tensor2D.load(data.splice(0, dim[0] * units), dim[0], units);
-    this.w_h = Tensor2D.load(data.splice(0, units * units), units, units);
-    this.b = Tensor1D.load(data.splice(0, units), units);
+  constructor(config: any[]) {
+    [this.inputDim, this.units, this.activation] = config;
+    this.w_x = Tensor2D.emptyTensor(this.inputDim, this.units);
+    this.w_h = Tensor2D.emptyTensor(this.units, this.units);
+    this.b = Tensor1D.emptyTensor(this.units);
     this.states = Tensor1D.zerosTensor(this.units);
+    this.ptr = 0;
+    this.ptrTensor = 0;
   }
 
-  reset_state() {
+  appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
+		let ptrTensor = this.ptrTensor;
+		let ptr = this.ptr;
+    let cnt;
+    if (ptrTensor == 0) {
+      ({ ptr, idx, cnt } = this.w_x.loadPartial(data, ptr, idx));
+      if (ptr == cnt) { ++ptrTensor; ptr = 0; }
+    }
+    if (ptrTensor == 1) {
+      ({ ptr, idx, cnt } = this.w_h.loadPartial(data, ptr, idx));
+      if (ptr == cnt) { ++ptrTensor; ptr = 0; }
+    }
+    if (ptrTensor == 2) {
+      ({ ptr, idx, cnt } = this.b.loadPartial(data, ptr, idx));
+      if (ptr == cnt) { ++ptrTensor; ptr = 0; }
+    }
+    this.ptrTensor = ptrTensor;
+    this.ptr = ptr;
+    return { idx, isDone: ptrTensor == 3 };
+  }
+
+  resetState() {
     this.states = Tensor1D.zerosTensor(this.units);    
   }
 

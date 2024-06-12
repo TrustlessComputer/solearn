@@ -1,7 +1,8 @@
 import {
-  RescaleLayer,
-  FlattenLayer,
+  LayerType,
   DenseLayer,
+  FlattenLayer,
+  RescaleLayer,
   MaxPooling2DLayer,
   Conv2DLayer,
   EmbeddingLayer,
@@ -18,9 +19,44 @@ import { base64ToFloatArray } from '../utils/utils';
 
 class SequentialModel {
   layers: any[];
+  ptrLayer: number;
 
-  constructor(layers: any[]) {
-    this.layers = layers;
+  constructor(config: any[]) {
+    this.layers = [];
+    const type = config[0];
+    config = config.slice(1);
+    if (type == LayerType.Dense) {
+      this.layers.push(new DenseLayer(config));
+    } else if (type == LayerType.Flatten) {
+      this.layers.push(new FlattenLayer(config));
+    } else if (type == LayerType.Rescaling) {
+      this.layers.push(new RescaleLayer(config));
+    } else if (type == LayerType.MaxPooling2D) {
+      this.layers.push(new MaxPooling2DLayer(config));
+    } else if (type == LayerType.Conv2D) {
+      this.layers.push(new Conv2DLayer(config));
+    } else if (type == LayerType.Embedding) {
+      this.layers.push(new EmbeddingLayer(config));
+    } else if (type == LayerType.SimpleRNN) {
+      this.layers.push(new SimpleRNNLayer(config));
+    }
+    this.ptrLayer = 0;
+  }
+
+  appendWeights(data: number[]) {
+    let ptrLayer = this.ptrLayer;
+    let idx = 0;
+    let isDone: boolean;
+    while (idx < data.length) {
+      if ('appendWeights' in this.layers[ptrLayer]) {
+        ({ idx, isDone } = this.layers[ptrLayer].appendWeights(data, idx));
+        if (isDone) {
+          ++ptrLayer;
+        }  
+      } else {
+        ++ptrLayer;
+      }
+    }
   }
 
   forward(x: any) {
@@ -45,13 +81,11 @@ export class TextGenerator extends SequentialModel {
   }
 }
 
-export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new(...args : any[]): T ;}): { model: T, inputDim: any } {
-  const layers = [];
-
+export function loadModel<T extends SequentialModel>(layersConfig: any, weights_b64: string, type: { new(...args : any[]): T ;}): { model: T, inputDim: any } {
   const weights = Array.from(base64ToFloatArray(weights_b64));
+  const configs: any[][] = [];
 
   let dim: any = null;
-  let p = 0;
   let inputDim = [];
   for(const info of layersConfig.config.layers) {
     // console.log(info.class_name);
@@ -62,21 +96,15 @@ export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new
       }
       inputDim = dim;
     } else if (info.class_name == "Rescaling") {
-      layers.push(new RescaleLayer(info.config.scale, info.config.offset))
+      configs.push([LayerType.Rescaling, info.config.scale, info.config.offset])
     } else if (info.class_name == "Flatten") {
-      layers.push(new FlattenLayer())
+      configs.push([LayerType.Flatten]);
       dim = [dim.reduce((a: number, b: number) => a * b)]
     } else if (info.class_name == "Dense") {
-      const nxt_dim = [info.config.units];
-      const w_size = dim[0] * nxt_dim[0];
-      const b_size = nxt_dim[0];
-
-      const data = weights.splice(0, w_size + b_size);
-    
+      const nxt_dim = [info.config.units];   
       const activation = info.config.activation;
 
-      layers.push(new DenseLayer(dim, nxt_dim[0], activation, true, data, dim));
-
+      configs.push([LayerType.Dense, dim[2], nxt_dim[0], activation, true]);
       dim = nxt_dim;
     } else if (info.class_name == "MaxPooling2D") {
       const [w, h, d] = dim;
@@ -84,8 +112,7 @@ export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new
       const [s_w, s_h] = info.config.strides;
       const padding = info.config.padding;
 
-      layers.push(new MaxPooling2DLayer([f_w, f_h], [s_w, s_h], padding));
-
+      configs.push([LayerType.MaxPooling2D, [f_w, f_h], [s_w, s_h], padding]);
       const { out } = Tensors.getConvSize([w, h], [f_w, f_h], [s_w, s_h], padding);
       dim = [out[0], out[1], d];
       // console.log(L, R, T, B);
@@ -97,45 +124,31 @@ export function loadModel<T>(layersConfig: any, weights_b64: string, type: { new
       const padding = info.config.padding;
       const activation = info.config.activation;
 
-      const w_size = f_w * f_h * d * filters;
-      const b_size = filters;
-
-      const data = weights.splice(0, w_size + b_size);
-
-      layers.push(new Conv2DLayer(filters, [f_w, f_h], [s_w, s_h], padding, activation, data, dim));
-
+      configs.push([LayerType.Conv2D, d, filters, [f_w, f_h], [s_w, s_h], padding, activation]);
       const { out } = Tensors.getConvSize([w, h], [f_w, f_h], [s_w, s_h], padding);
       dim = [out[0], out[1], filters];
       // console.log(L, R, T, B);
     } else if (info.class_name == "Embedding") {
       const inputDim = info.config.input_dim;
       const outputDim = info.config.output_dim;
-      
-      const w_size = inputDim * outputDim;
 
-      const data = weights.splice(0, w_size);
-
-      layers.push(new EmbeddingLayer(inputDim, outputDim, data));
-
+      configs.push([LayerType.Embedding, inputDim, outputDim]);
       dim = [outputDim];
     } else if (info.class_name == "SimpleRNN") {
       const units = info.config.units;
       const activation = info.config.activation;
-      const inputDim = dim[0];
 
-      const wx_size = inputDim * units;
-      const wh_size = units * units;
-      const b_size = units;
-
-      const data = weights.splice(0, wx_size + wh_size + b_size);
-
-      layers.push(new SimpleRNNLayer(units, activation, data, dim));
-
+      configs.push([LayerType.SimpleRNN, dim[0], units, activation]);
       dim = [units];
     }
     // console.log(dim);
   }
-  const model = new type(layers);
+  const model = new type(configs);
+  console.log(configs);
+  const txSize = 10000;
+  while (weights.length > 0) {
+    model.appendWeights(weights.splice(0, txSize));
+  }
 
   return { model, inputDim };
 }

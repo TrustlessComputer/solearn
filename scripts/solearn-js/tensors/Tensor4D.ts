@@ -59,6 +59,18 @@ export class Tensor4D {
     return ts;
   }
 
+	loadPartial(data: number[], ptr: number, idx: number): { ptr: number, idx: number, cnt: number } {
+		let m = this.m;
+		let p = this.p;
+		let q = this.q;
+		let cnt = this.n * m * p * q;
+		while (idx < data.length && ptr < cnt) {
+			this.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p].push(data[idx]);
+			ptr++;
+			idx++;
+		}
+		return { ptr, idx, cnt };
+	}
 
   static zerosTensor(n: number, m: number, p: number, q: number): Tensor4D {
     return Tensor4D.load([], n, m, p, q);

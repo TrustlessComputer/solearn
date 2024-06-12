@@ -39,6 +39,17 @@ export class Tensor2D {
     return ts;
   }
 
+	loadPartial(data: number[], ptr: number, idx: number): { ptr: number, idx: number, cnt: number } {
+    let m = this.m;
+		let cnt = this.n * m;
+		while (idx < data.length && ptr < cnt) {
+			this.mat[ptr / m].push(data[idx]);
+			ptr++;
+			idx++;
+		}
+		return {ptr, idx, cnt};
+	}
+
   static zerosTensor(n: number, m: number): Tensor2D {
     return Tensor2D.load([], n, m);
   }
