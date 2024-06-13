@@ -55,7 +55,7 @@ export class Tensor3D {
 		let p = this.p;
 		let cnt = this.n * m * p;
 		while (idx < data.length && ptr < cnt) {
-			this.mat[ptr / (m * p)][ptr / p % m].push(data[idx]);
+			this.mat[Math.floor(ptr / (m * p))][Math.floor(ptr / p) % m].push(data[idx]);
 			ptr++;
 			idx++;
 		}

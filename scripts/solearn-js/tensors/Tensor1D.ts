@@ -38,7 +38,7 @@ export class Tensor1D {
 			ptr++;
 			idx++;
 		}
-		return { ptr, idx };
+		return { ptr, idx, cnt: n };
 	}
 
   static zerosTensor(n: number): Tensor1D {

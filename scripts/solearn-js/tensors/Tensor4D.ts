@@ -65,7 +65,7 @@ export class Tensor4D {
 		let q = this.q;
 		let cnt = this.n * m * p * q;
 		while (idx < data.length && ptr < cnt) {
-			this.mat[ptr / (m * p * q)][ptr / (p * q) % m][ptr / q % p].push(data[idx]);
+			this.mat[Math.floor(ptr / (m * p * q))][Math.floor(ptr / (p * q)) % m][Math.floor(ptr / q) % p].push(data[idx]);
 			ptr++;
 			idx++;
 		}

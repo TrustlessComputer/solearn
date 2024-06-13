@@ -43,7 +43,7 @@ export class Tensor2D {
     let m = this.m;
 		let cnt = this.n * m;
 		while (idx < data.length && ptr < cnt) {
-			this.mat[ptr / m].push(data[idx]);
+			this.mat[Math.floor(ptr / m)].push(data[idx]);
 			ptr++;
 			idx++;
 		}

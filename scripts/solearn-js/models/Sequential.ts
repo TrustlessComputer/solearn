@@ -21,24 +21,26 @@ class SequentialModel {
   layers: any[];
   ptrLayer: number;
 
-  constructor(config: any[]) {
+  constructor(configs: any[]) {
     this.layers = [];
-    const type = config[0];
-    config = config.slice(1);
-    if (type == LayerType.Dense) {
-      this.layers.push(new DenseLayer(config));
-    } else if (type == LayerType.Flatten) {
-      this.layers.push(new FlattenLayer(config));
-    } else if (type == LayerType.Rescaling) {
-      this.layers.push(new RescaleLayer(config));
-    } else if (type == LayerType.MaxPooling2D) {
-      this.layers.push(new MaxPooling2DLayer(config));
-    } else if (type == LayerType.Conv2D) {
-      this.layers.push(new Conv2DLayer(config));
-    } else if (type == LayerType.Embedding) {
-      this.layers.push(new EmbeddingLayer(config));
-    } else if (type == LayerType.SimpleRNN) {
-      this.layers.push(new SimpleRNNLayer(config));
+    for(let config of configs) {
+      const type = config[0];
+      config = config.slice(1);
+      if (type == LayerType.Dense) {
+        this.layers.push(new DenseLayer(config));
+      } else if (type == LayerType.Flatten) {
+        this.layers.push(new FlattenLayer(config));
+      } else if (type == LayerType.Rescaling) {
+        this.layers.push(new RescaleLayer(config));
+      } else if (type == LayerType.MaxPooling2D) {
+        this.layers.push(new MaxPooling2DLayer(config));
+      } else if (type == LayerType.Conv2D) {
+        this.layers.push(new Conv2DLayer(config));
+      } else if (type == LayerType.Embedding) {
+        this.layers.push(new EmbeddingLayer(config));
+      } else if (type == LayerType.SimpleRNN) {
+        this.layers.push(new SimpleRNNLayer(config));
+      }    
     }
     this.ptrLayer = 0;
   }
@@ -104,7 +106,7 @@ export function loadModel<T extends SequentialModel>(layersConfig: any, weights_
       const nxt_dim = [info.config.units];   
       const activation = info.config.activation;
 
-      configs.push([LayerType.Dense, dim[2], nxt_dim[0], activation, true]);
+      configs.push([LayerType.Dense, dim[0], nxt_dim[0], activation, true]);
       dim = nxt_dim;
     } else if (info.class_name == "MaxPooling2D") {
       const [w, h, d] = dim;
