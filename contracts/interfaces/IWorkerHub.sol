@@ -8,8 +8,15 @@ interface IWorkerHub is IInferable {
         Nil,
         Solving,
         Disputing,
+        Voting,
         Solved,
         Killed
+    }
+
+    enum ValidationResult{
+        Nil, 
+        Dispute,
+        NoDispute
     }
 
     struct MinerEpochState {
@@ -84,6 +91,19 @@ interface IWorkerHub is IInferable {
         address creator;
     }
 
+    struct DisputedInfer {
+        uint16 totalValidator;
+        bool isValid;
+        uint40 validatingExpireAt;
+        uint40 disputingExpireAt;
+        bool isValidatorDispute; //Validator or Miner call cal dispute()
+    }
+
+    struct Ballot {
+        uint256 assignmentId;
+        bool result;
+    }
+
     struct UnstakeRequest {
         uint256 stake;
         uint40 unlockAt;
@@ -94,6 +114,11 @@ interface IWorkerHub is IInferable {
         uint40 validatorTimestamp;
         uint48 reserved1; // accumulated active time
         uint128 reserved2;
+    }
+
+    struct ValidatingAssignment {
+        address assignedValidator;
+        ValidationResult result;
     }
 
     event MiningTimeLimitUpdate(uint40 newValue);
@@ -164,10 +189,17 @@ interface IWorkerHub is IInferable {
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
     event Restake(address indexed miner, uint256 restake, address indexed model);
 
-    event MinerDeactivated(address indexed miner, address indexed modelAddress, uint40 activeTime);
-    event FraudulentMinerPenalized(address indexed miner, address indexed modelAddress, address indexed treasury, uint256 fine);
     event PenaltyDurationUpdated(uint40 oldDuration, uint40 newDuration);
     event FinePercentageUpdated(uint16 oldPercent, uint16 newPercent);
+    
+    event MinerDeactivated(address indexed miner, address indexed modelAddress, uint40 activeTime);
+    event FraudulentMinerPenalized(address indexed miner, address indexed modelAddress, address indexed treasury, uint256 fine);
+    event ValidatorDeactivated(address indexed validator, address indexed modelAddress, uint40 activeTime);
+    event FraudulentValidatorPenalized(address indexed validator, address indexed modelAddress, address indexed treasury,  uint256 fine);
+    event DisputeInference(address indexed caller, uint256 indexed inferId, uint40 now, uint40 validateExpireTimestamp, uint40 disputeExpiredTimestamp);
+    event NoDisputeInference(address indexed caller, uint256 indexed inferId);
+    event DisputeUpvote(address indexed caller, uint256 indexed inferId, uint40 now);
+    event DisputeResolving(uint256 indexed inferId, address indexed modelAddress, bool status);
 
     error AlreadyRegistered();
     error AlreadySubmitted();
@@ -194,6 +226,20 @@ interface IWorkerHub is IInferable {
     error InvalidValidator();
     error InvalidMiner();
 
+    error InferenceAlreadyDisputed();
+    error InferenceNotDisputed();
+
+    error PrematureValidate();
+    error ValidateTimeout();
+    error PrematureDispute();
+    error DisputeTimeout();
+
+    error ValidatorVoteExists();
+    error SubmissionsEmpty();
+    error LoneSubmissionNoDispute();
+    error BallotEmpty();
+
     error MinerInDeactivationTime();
     error ValidatorInDeactivationTime();
+
 }

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
 import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 
 import {Random} from "../lib/Random.sol";
@@ -31,7 +30,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(address => Set.Uint256Set) internal assignmentsByMiner;
     mapping(uint256 => Set.Uint256Set) internal assignmentsByInference;
 
-    mapping(address => mapping(uint256 => bool)) public validatorDisputed;
+    mapping(address => mapping(uint256 => bool)) public validatorDisputed; //Do know the need
 
     // mapping total task completed in epoch and reward per epoch
     // epoch index => total reward
@@ -64,13 +63,24 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public rewardPerEpoch; // 12299.97 reward EAI for 1 worker per year
 
     // Tx Fee
-    uint16 public finePercentage;
+    uint16 public finePercentage; 
 
     // mapping tracking reward
     mapping(address => uint256) internal minerRewards;
+
     // tracking time miner join the network to
     // determine multiplier value
     mapping(address => Boost) internal boost;
 
-    uint256[97] private __gap;
+    // Tx Fee
+    uint16 public minerFeePercentage; // Percentage of inference value allocated to miner
+
+    //Dispute structures
+    Set.Uint256Set internal disputedInferIds;
+    mapping(uint256 => DisputedInfer) internal disputedInfers; // inferId => DisputedInfer detail
+    mapping(uint256 => Set.AddressSet) internal votersOf; // disputed inference ID => voters's address
+    mapping(uint256 => ValidatingAssignment) internal validatingAssignments; // infer ID => the validating task of the assigned validator
+    // mapping(address => Set.Uint256Set) internal disputedInfersOf; //voter's address => disputed inference id
+
+    uint256[92] private __gap;
 }
