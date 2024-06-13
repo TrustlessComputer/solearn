@@ -96,6 +96,8 @@ export class Tensor3D {
         return Tensor3D.__apply_unary_op(a, Tensors.__tanh);
       case "leaky_relu": 
         return Tensor3D.__apply_unary_op(a, Tensors.__leaky_relu);
+      case "gelu": 
+        return Tensor3D.__apply_unary_op(a, Tensors.__gelu);
       case "linear":
       default:
         return Tensor3D.__apply_unary_op(a, Tensors.__linear);

@@ -4,6 +4,27 @@ export class Tensors {
   static __leaky_relu = (x: number): number => x > 0 ? x : x * 0.2;
   static __sigmoid = (x: number): number => 1 / (1 + Math.exp(-x));
   static __tanh = (x: number): number => Math.tanh(x);
+  
+  static __erf = (x: number): number => {
+    var a1 =  0.254829592;
+    var a2 = -0.284496736;
+    var a3 =  1.421413741;
+    var a4 = -1.453152027;
+    var a5 =  1.061405429;
+    var p  =  0.3275911;
+
+    var sign = ((x < 0) ? -1: 1);
+    x = Math.abs(x);
+
+    var t = 1.0/(1.0 + p*x);
+    var y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-(x**2));
+
+    return sign*y;
+  };
+
+  static __gelu = (x: number): number => {
+    return (x/2)*(1+Tensors.__erf(x/Math.SQRT2));
+  };
 
   static __add = (a: number, b: number): number => a + b;
   static __mul = (a: number, b: number): number => a * b;

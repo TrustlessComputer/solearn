@@ -235,3 +235,74 @@ export class SimpleRNNLayer {
     return z;
   }
 }
+
+export class GELULayer {
+  constructor(config: any[]) {}
+
+  forwardTensor1D(x: Tensor1D): Tensor1D {
+    return Tensor1D.activation(x, "gelu");
+  }
+  forwardTensor2D(x: Tensor2D): Tensor2D {
+    return Tensor2D.activation(x, "gelu");
+  }
+  forwardTensor3D(x: Tensor3D): Tensor3D {
+    return Tensor3D.activation(x, "gelu");
+  }
+  forwardTensor4D(x: Tensor4D): Tensor4D {
+    return Tensor4D.activation(x, "gelu");
+  }
+}
+
+export class LayerNorm1D {
+  normalizedShape: number;
+  w: Tensor1D;
+
+  constructor(config: any[]) {
+    [this.normalizedShape] = config;
+    this.w = Tensor1D.emptyTensor(this.normalizedShape);    
+  }
+
+  forward()
+}
+
+export class MLP {
+  c_fc: DenseLayer;
+  gelu: GELULayer;
+  c_proj: DenseLayer;
+  ptrLayer: number;
+
+  constructor(configs: any[]) {    
+    this.c_fc = new DenseLayer(configs[0]);
+    this.gelu = new GELULayer(configs[1]);
+    this.c_proj = new DenseLayer(configs[2]);
+    this.ptrLayer = 0;
+  }
+
+  static makeMLPLayer(configs: any[][], idx: number): [MLP, number] {
+    const mlp = new MLP(configs.slice(idx, idx+3));
+    return [mlp, idx + 3];
+  }
+
+  appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
+		let ptrLayer = this.ptrLayer;
+    let isDone;
+    if (ptrLayer == 0) {
+      ({ idx, isDone } = this.c_fc.appendWeights(data, idx));
+      if (isDone) { ++ptrLayer; }
+    }
+    if (ptrLayer == 1) {
+      ({ idx, isDone } = this.c_proj.appendWeights(data, idx));
+      if (isDone) { ++ptrLayer; }
+    }
+    this.ptrLayer = ptrLayer;
+    return { idx, isDone: ptrLayer == 2 };
+  }
+
+  forward(x: Tensor1D): Tensor1D {
+    // console.log("SimpleRNN");
+    x = this.c_fc.forward(x);
+    x = this.gelu.forwardTensor1D(x);
+    x = this.c_proj.forward(x);
+    return x;
+  }
+}

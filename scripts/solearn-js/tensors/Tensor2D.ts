@@ -78,6 +78,8 @@ export class Tensor2D {
         return Tensor2D.__apply_unary_op(a, Tensors.__tanh);
       case "leaky_relu": 
         return Tensor2D.__apply_unary_op(a, Tensors.__leaky_relu);
+      case "gelu": 
+        return Tensor2D.__apply_unary_op(a, Tensors.__gelu);
       case "linear":
       default:
         return Tensor2D.__apply_unary_op(a, Tensors.__linear);
