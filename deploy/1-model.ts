@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const name = "Models";
     const symbol = "MDL";
-    const mintPrice = ethers.utils.parseEther('0.1');
+    const mintPrice = ethers.utils.parseEther('0');
     const royaltyReceiver = deployer;
     const royaltyPortion = 10;
     const nextModelId = 1;
