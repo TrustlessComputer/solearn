@@ -24,6 +24,11 @@ export class RescaleLayer {
     [ this.scale, this.offset ] = config;
   }
 
+  static makeRescaleLayer(configs: any[][], idx: number): [RescaleLayer, number] {
+    const rescale = new RescaleLayer(configs[idx]);
+    return [rescale, idx + 1];
+  }
+
   forward(x: Tensor3D): Tensor3D {
     // console.log("Rescale");
     return Tensor3D.rescale(x, this.scale, this.offset);
@@ -32,6 +37,11 @@ export class RescaleLayer {
 
 export class FlattenLayer {
   constructor(config: any) {}
+
+  static makeFlattenLayer(configs: any[][], idx: number): [FlattenLayer, number] {
+    const flatten = new FlattenLayer(configs[idx]);
+    return [flatten, idx + 1];
+  }
 
   forward(x: Tensor3D): Tensor1D {
     // console.log("Flatten");
@@ -55,6 +65,11 @@ export class DenseLayer {
     this.b = Tensor1D.emptyTensor(this.out_dim);
     this.ptrTensor = 0;
     this.ptr = 0;
+  }
+
+  static makeDenseLayer(configs: any[][], idx: number): [DenseLayer, number] {
+    const dense = new DenseLayer(configs[idx]);
+    return [dense, idx + 1];
   }
 
   appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
@@ -94,6 +109,11 @@ export class MaxPooling2DLayer {
     [this.size, this.stride, this.padding] = config;
   }
 
+  static makeMaxPooling2DLayer(configs: any[][], idx: number): [MaxPooling2DLayer, number] {
+    const pooling2d = new MaxPooling2DLayer(configs[idx]);
+    return [pooling2d, idx + 1];
+  }
+
   forward(x: Tensor3D): Tensor3D {
     // console.log("MaxPooling2D");
     const y = Tensor3D.maxPooling2D(x, this.size, this.stride, this.padding);
@@ -119,6 +139,11 @@ export class Conv2DLayer {
     this.b = Tensor1D.emptyTensor(this.filters);
     this.ptrTensor = 0;
     this.ptr = 0;
+  }
+
+  static makeConv2DLayer(configs: any[][], idx: number): [Conv2DLayer, number] {
+    const conv2d = new Conv2DLayer(configs[idx]);
+    return [conv2d, idx + 1];
   }
 
   appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
@@ -161,6 +186,11 @@ export class EmbeddingLayer {
     this.ptr = 0;
   }
   
+  static makeEmbeddingLayer(configs: any[][], idx: number): [EmbeddingLayer, number] {
+    const embedding = new EmbeddingLayer(configs[idx]);
+    return [embedding, idx + 1];
+  }
+
   appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
 		let ptrTensor = this.ptrTensor;
 		let ptr = this.ptr;
@@ -198,6 +228,11 @@ export class SimpleRNNLayer {
     this.states = Tensor1D.zerosTensor(this.units);
     this.ptr = 0;
     this.ptrTensor = 0;
+  }
+  
+  static makeSimpleRNNLayer(configs: any[][], idx: number): [SimpleRNNLayer, number] {
+    const simpleRNN = new SimpleRNNLayer(configs[idx]);
+    return [simpleRNN, idx + 1];
   }
 
   appendWeights(data: number[], idx: number): { idx: number, isDone: boolean } {
@@ -238,6 +273,11 @@ export class SimpleRNNLayer {
 
 export class GELULayer {
   constructor(config: any[]) {}
+  
+  static makeGELULayer(configs: any[][], idx: number): [GELULayer, number] {
+    const gelu = new GELULayer(configs[idx]);
+    return [gelu, idx + 1];
+  }
 
   forwardTensor1D(x: Tensor1D): Tensor1D {
     return Tensor1D.activation(x, "gelu");
@@ -254,32 +294,35 @@ export class GELULayer {
 }
 
 export class LayerNorm1D {
-  normalizedShape: number;
+  dim: number;
   w: Tensor1D;
 
   constructor(config: any[]) {
-    [this.normalizedShape] = config;
-    this.w = Tensor1D.emptyTensor(this.normalizedShape);    
+    [this.dim] = config;
+    this.w = Tensor1D.emptyTensor(this.dim);    
   }
 
-  forward()
+  forwardTensor2D(x: Tensor2D): Tensor2D {
+    x = Tensor2D.normalize(x);
+    x = Tensor2D.mul_vector(x, this.w);
+    return x;
+  }
 }
 
 export class MLP {
-  c_fc: DenseLayer;
-  gelu: GELULayer;
-  c_proj: DenseLayer;
-  ptrLayer: number;
+  c_fc!: DenseLayer;
+  gelu!: GELULayer;
+  c_proj!: DenseLayer;
+  ptrLayer!: number;
 
-  constructor(configs: any[]) {    
-    this.c_fc = new DenseLayer(configs[0]);
-    this.gelu = new GELULayer(configs[1]);
-    this.c_proj = new DenseLayer(configs[2]);
-    this.ptrLayer = 0;
-  }
+  constructor() {}
 
   static makeMLPLayer(configs: any[][], idx: number): [MLP, number] {
-    const mlp = new MLP(configs.slice(idx, idx+3));
+    const mlp = new MLP();
+    [mlp.c_fc, idx] = DenseLayer.makeDenseLayer(configs, idx);
+    [mlp.gelu, idx] = GELULayer.makeGELULayer(configs, idx);
+    [mlp.c_proj, idx] = DenseLayer.makeDenseLayer(configs, idx);
+    mlp.ptrLayer = 0;
     return [mlp, idx + 3];
   }
 

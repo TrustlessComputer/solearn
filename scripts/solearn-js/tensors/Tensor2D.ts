@@ -1,4 +1,6 @@
+import { Tensor1D } from "./Tensor1D";
 import { Tensors } from "./Tensors";
+import { normalizeArray } from "../utils/utils";
 
 export class Tensor2D {
   n: number;
@@ -100,6 +102,16 @@ export class Tensor2D {
     return Tensor2D.__apply_binary_op(a, b, Tensors.__add);
   }
 
+  static add_vector(a: Tensor2D, b: Tensor1D): Tensor2D {
+    const res = Tensor2D.zerosTensor(a.n, a.m);
+    for(let i = 0; i < res.n; ++i) {
+      for(let j = 0; j < res.m; ++j) {
+        res.mat[i][j] = a.mat[i][j] + b.mat[j];
+      }
+    }
+    return res;
+  }
+
   static add_scalar(a: Tensor2D, num: number): Tensor2D {
     const res = Tensor2D.zerosTensor(a.n, a.m);
     for(let i = 0; i < res.n; ++i) {
@@ -112,6 +124,16 @@ export class Tensor2D {
   
   static mul(a: Tensor2D, b: Tensor2D): Tensor2D {
     return Tensor2D.__apply_binary_op(a, b, Tensors.__mul);
+  }
+
+  static mul_vector(a: Tensor2D, b: Tensor1D): Tensor2D {
+    const res = Tensor2D.zerosTensor(a.n, a.m);
+    for(let i = 0; i < res.n; ++i) {
+      for(let j = 0; j < res.m; ++j) {
+        res.mat[i][j] = a.mat[i][j] * b.mat[j];
+      }
+    }
+    return res;
   }
 
   static mul_scalar(a: Tensor2D, num: number): Tensor2D {
@@ -147,6 +169,14 @@ export class Tensor2D {
       for(let j = 0; j < a.m; ++j) {
         res.mat[i][j] /= sum_e;
       }
+    }
+    return res;
+  }
+
+  static normalize(a: Tensor2D): Tensor2D {
+    const res = Tensor2D.emptyTensor(a.n, a.m);
+    for(let i = 0; i < a.n; ++i) {
+      res.mat[i] = normalizeArray(a.mat[i]);
     }
     return res;
   }
