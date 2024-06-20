@@ -25,7 +25,11 @@ library Layers {
         Conv2D,
         Embedding,
         SimpleRNN,
-        LSTM
+        LSTM,
+		Add,
+		Multiply,
+		OnesLike,
+		ZerosLike
     }
 
 	enum InputType {
@@ -136,6 +140,22 @@ library Layers {
 		LSTMCell cell;
 		uint ptr;
 		uint ptrLayer;
+	}
+
+	struct Add {
+		uint layerIndex;
+	}
+
+	struct Multiply {
+		uint layerIndex;
+	}
+
+	struct OnesLike {
+		uint layerIndex;
+	}
+
+	struct ZerosLike {
+		uint layerIndex;
 	}
 	
 	function forward(LSTMCell memory layer, Float32x32[] memory x, Float32x32[][] memory states) internal returns (Float32x32[] memory, Float32x32[] memory) {
@@ -289,6 +309,204 @@ library Layers {
 		Tensors.Tensor1D memory z_t = Tensor1DMethods.activation(y_t, layer.activation);
 		states[0] = z_t.mat;
 		return (states[0], states);
+	}
+
+	function forward(Add memory layer, Float32x32[][] memory data) internal pure returns (Float32x32[] memory) {
+		uint length = inputs.length > 0 ? inputs[0].length : 0;
+		uint numArrays = inputs.length;
+		
+		require(numArrays > 0, "Can't input empty list");
+
+		for (uint i = 1; i < numArrays; i++)
+			require(inputs[i].length == length, "Need all tensors to be equal size");
+
+		Float32x32[] memory output = inputs[0];
+
+		for (uint j = 0; j < length; j++) {
+			Float32x32 sum = 0;
+				for (uint i = 1; i < numArrays; i++)
+					sum += inputs[i][j];
+				output[j] += sum;
+			}
+		return output;
+	}
+
+	function forward(Add memory layer, Float32x32[][][] memory data) internal pure returns (Float32x32[][] memory) {
+		uint dim0 = inputs.length > 0 ? inputs[0].length : 0;
+		uint dim1 = inputs[0].length > 0 ? inputs[0][0].length : 0;
+		uint numArrays = inputs.length;
+
+		require(numArrays > 0, "Can't input empty list");
+		
+		for (uint i = 1; i < numArrays; i++) {
+			require(inputs[i].length == dim0, "Need all tensors to be equal size");
+			for (uint j=0; j < dim0; j++)
+				require (inputs[i][j].length == dim1, "Need all tensors to be equal size");
+		}
+
+		Float32x32[][] memory output = inputs[0];
+
+		for (uint j = 0; j < dim0; j++) 
+			for (uint k = 0; k < dim1; k++) {
+				Float32x32 sum = 0;
+				for (uint i=1; i < numArrays; i++) 
+					sum += inputs[i][j][k];
+				output[j][k] += sum;
+			}
+		return output;
+	}
+
+	function forward(Add memory layer, Float32x32[][][][] memory data) internal pure returns (Float32x32[][][] memory) {
+		uint dim0 = inputs.length > 0 ? inputs[0].length : 0;
+		uint dim1 = inputs[0].length > 0 ? inputs[0][0].length : 0;
+		uint dim2 = inputs[0][0].length > 0 ? inputs[0][0][0].length : 0;
+		uint numArrays = inputs.length;
+
+		require(numArrays > 0, "Can't input empty list");
+		
+		for (uint i = 0; i < numArrays; i++) {
+			require(inputs[i].length == dim0, "Need all tensors to be equal size");
+			for (uint j = 0; j < dim0; j++) {
+				require (inputs[i][j].length == dim1, "Need all tensors to be equal size");
+				for (uint k = 0; k < dim1; k++)
+					require (inputs[i][j][k].length == dim2, "Need all tensors to be equal size");
+			}
+		}
+
+		Float32x32[][][] memory output = inputs[0];
+
+		for (uint j = 0; j < dim0; j++) 
+			for (uint k = 0; k < dim1; k++) 
+				for (uint l = 0; l < dim2; l++) {
+					Float32x32 sum = 0;
+					for (uint i=1; i < numArrays; i++) 
+						sum += inputs[i][j][k][l];
+					output[j][k][l] += sum;
+				}
+		return output;
+	}
+
+	function forward(Multiply memory layer, Float32x32[][] memory data) internal pure returns (Float32x32[] memory) {
+		uint length = inputs.length > 0 ? inputs[0].length : 0;
+		uint numArrays = inputs.length;
+		
+		require(numArrays > 0, "Can't input empty list");
+
+		for (uint i = 1; i < numArrays; i++)
+			require(inputs[i].length == length, "Need all tensors to be equal size");
+
+		Float32x32[] memory output = inputs[0];
+
+		for (uint j = 0; j < length; j++) {
+			Float32x32 prod = 1;
+				for (uint i = 1; i < numArrays; i++)
+					prod *= inputs[i][j];
+				output[j] *= prod;
+			}
+		return output;
+	}
+
+	function forward(Multiply memory layer, Float32x32[][][] memory data) internal pure returns (Float32x32[][] memory) {
+		uint dim0 = inputs.length > 0 ? inputs[0].length : 0;
+		uint dim1 = inputs[0].length > 0 ? inputs[0][0].length : 0;
+		uint numArrays = inputs.length;
+
+		require(numArrays > 0, "Can't input empty list");
+		
+		for (uint i = 1; i < numArrays; i++) {
+			require(inputs[i].length == dim0, "Need all tensors to be equal size");
+			for (uint j=0; j < dim0; j++)
+				require (inputs[i][j].length == dim1, "Need all tensors to be equal size");
+		}
+
+		Float32x32[][] memory output = inputs[0];
+
+		for (uint j = 0; j < dim0; j++) 
+			for (uint k = 0; k < dim1; k++) {
+				Float32x32 prod = 1;
+				for (uint i=1; i < numArrays; i++) 
+					prod *= inputs[i][j][k];
+				output[j][k] *= prod;
+			}
+		return output;
+	}
+
+	function forward(Add memory layer, Float32x32[][][][] memory data) internal pure returns (Float32x32[][][] memory) {
+		uint dim0 = inputs.length > 0 ? inputs[0].length : 0;
+		uint dim1 = inputs[0].length > 0 ? inputs[0][0].length : 0;
+		uint dim2 = inputs[0][0].length > 0 ? inputs[0][0][0].length : 0;
+		uint numArrays = inputs.length;
+
+		require(numArrays > 0, "Can't input empty list");
+		
+		for (uint i = 0; i < numArrays; i++) {
+			require(inputs[i].length == dim0, "Need all tensors to be equal size");
+			for (uint j = 0; j < dim0; j++) {
+				require (inputs[i][j].length == dim1, "Need all tensors to be equal size");
+				for (uint k = 0; k < dim1; k++)
+					require (inputs[i][j][k].length == dim2, "Need all tensors to be equal size");
+			}
+		}
+
+		Float32x32[][][] memory output = inputs[0];
+
+		for (uint j = 0; j < dim0; j++) 
+			for (uint k = 0; k < dim1; k++) 
+				for (uint l = 0; l < dim2; l++) {
+					Float32x32 prod = 1;
+					for (uint i=1; i < numArrays; i++) 
+						prod *= inputs[i][j][k][l];
+					output[j][k][l] *= prod;
+				}
+		return output;
+	}
+
+	function forward(OnesLike memory layer, Float32x32[] memory x) internal pure returns (Float32x32[] memory) {
+		Float32x32[] memory output = x;
+		for (uint i = 0; i < x.length; i++) 
+			output[i] = 1;
+		return output;
+	}
+
+	function forward(OnesLike memory layer, Float32x32[][] memory x) internal pure returns (Float32x32[][] memory) {
+		Float32x32[][] memory output = x;
+		for (uint i = 0; i < x.length; i++) 
+			for (uint j = 0; j < x[i].length; j++)
+				output[i][j] = 1;
+		return output;
+	}
+
+	function forward(OnesLike memory layer, Float32x32[][][] memory x) internal pure returns (Float32x32[][][] memory) {
+		Float32x32[][][] memory output = x;
+		for (uint i = 0; i < x.length; i++) 
+			for (uint j = 0; j < x[i].length; j++)
+				for (uint k = 0; k < x[i][j].length; k++)
+					output[i][j][k] = 1;
+		return output;
+	}
+
+	function forward(ZerosLike memory layer, Float32x32[] memory x) internal pure returns (Float32x32[] memory) {
+		Float32x32[] memory output = x;
+		for (uint i = 0; i < x.length; i++) 
+			output[i] = 0;
+		return output;
+	}
+
+	function forward(ZerosLike memory layer, Float32x32[][] memory x) internal pure returns (Float32x32[][] memory) {
+		Float32x32[][] memory output = x;
+		for (uint i = 0; i < x.length; i++) 
+			for (uint j = 0; j < x[i].length; j++)
+				output[i][j] = 0;
+		return output;
+	}
+
+	function forward(ZerosLike memory layer, Float32x32[][][] memory x) internal pure returns (Float32x32[][][] memory) {
+		Float32x32[][][] memory output = x;
+		for (uint i = 0; i < x.length; i++) 
+			for (uint j = 0; j < x[i].length; j++)
+				for (uint k = 0; k < x[i][j].length; k++)
+					output[i][j][k] = 0;
+		return output;
 	}
 
 	function appendWeights(DenseLayer storage layer, Float32x32[] memory x) internal returns (uint) {
@@ -740,4 +958,20 @@ library Layers {
 		out_dim = new uint[](1);
 		out_dim[0] = 1;
 	}
+
+	// function makeAdd(SingleLayerConfig memory slc) internal pure returns (Add memory layer, uint256[] memory out_dim) {
+
+	// }
+
+	// function makeMultiply(SingleLayerConfig memory slc) internal pure returns (Add memory layer, uint256[] memory out_dim) {
+
+	// }
+
+	// function makeOnesLike(SingleLayerConfig memory slc) internal pure returns (Add memory layer, uint256[] memory out_dim) {
+
+	// }
+
+	// function makeZerosLike(SingleLayerConfig memory slc) internal pure returns (Add memory layer, uint256[] memory out_dim) {
+
+	// }
 }
