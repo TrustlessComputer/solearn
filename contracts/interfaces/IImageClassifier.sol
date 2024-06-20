@@ -5,29 +5,13 @@ import "./../lib/layers/Layers.sol";
 import { IOnchainImplementation } from "./IOnchainImplementation.sol";
 
 interface IImageClassifier is IOnchainImplementation {
-    // event Classified(
-    //     uint256 indexed tokenId,
-    //     uint256 classIndex,
-    //     string className,
-    //     Float32x32[] outputs,
-    //     Float32x32 confidence
-    // );
-
-    // event Forwarded(
-    //     uint256 indexed tokenId,
-    //     uint256 fromLayerIndex,
-    //     uint256 toLayerIndex,
-    //     Float32x32[][][] outputs1,
-    //     Float32x32[] outputs2
-    // );
-
     struct Model {
         string modelName;
         string[] classesName;
         uint256 requiredWeights;
         uint256 appendedWeights;
         Info[] layers;
-        Layers.InputImageLayer[] input;
+        Layers.InputTensor3DLayer[] input;
         Layers.RescaleLayer[] rescale;
         Layers.FlattenLayer[] flatten;
         Layers.DenseLayer[] dense;

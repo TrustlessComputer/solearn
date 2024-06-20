@@ -8,8 +8,6 @@ import "../tensors/Tensor3DMethods.sol";
 import "../tensors/Tensor4DMethods.sol";
 import { Float32x32, fromInt, toInt } from "./../Float32x32/Lib32x32.sol";
 
-error TooMuchData();
-
 library Layers {
 	using Tensor1DMethods for Tensors.Tensor1D;
 	using Tensor2DMethods for Tensors.Tensor2D;
@@ -17,7 +15,10 @@ library Layers {
 	using Tensor4DMethods for Tensors.Tensor4D;
 
 	enum LayerType {
-        Input,
+        InputScalar,
+        InputTensor1D,
+        InputTensor2D,
+        InputTensor3D,
         Dense,
         Flatten,
         Rescale,
@@ -29,9 +30,10 @@ library Layers {
     }
 
 	enum InputType {
-		Image,
-		Token,
-		Scalar
+		Scalar,
+		Tensor1D,
+		Tensor2D,
+		Tensor3D
 	}
     
 	struct SingleLayerConfig {
@@ -39,17 +41,23 @@ library Layers {
 		uint256 ind;
 	}
 
-	struct InputImageLayer {
-		uint layerIndex;
-		uint[3] inputDim;
-	}
-
-	struct InputTokenLayer {
-		uint layerIndex;
-	}
-
 	struct InputScalarLayer {
 		uint layerIndex;
+	}
+
+	struct InputTensor1DLayer {
+		uint layerIndex;
+		uint[1] inputDim;
+	}
+
+	struct InputTensor2DLayer {
+		uint layerIndex;
+		uint[2] inputDim;
+	}
+
+	struct InputTensor3DLayer {
+		uint layerIndex;
+		uint[3] inputDim;
 	}
 
 	struct RescaleLayer {
@@ -291,10 +299,9 @@ library Layers {
 		return (states[0], states);
 	}
 
-	function appendWeights(DenseLayer storage layer, Float32x32[] memory x) internal returns (uint) {
+	function appendWeights(DenseLayer storage layer, Float32x32[] calldata x, uint idx) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
-		uint idx = 0;
 		if (ptrLayer == 0) {
 			uint m = layer.w.m;
 			uint cnt = layer.w.n * layer.w.m;
@@ -312,15 +319,12 @@ library Layers {
 			}
 			if (ptr == n) { ++ptrLayer; ptr = 0; }
 		}
-		if (idx < x.length) {
-			revert TooMuchData();
-		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
 		return idx;
 	}
 
-	function appendWeights(LSTM storage layer, Float32x32[] memory x) internal returns (uint) {
+	function appendWeights(LSTM storage layer, Float32x32[] calldata x) internal returns (uint) {
 		// will overwrite the weights
 		uint currentWeight = 0;
 		for (uint i = 0; i < layer.inputUnits; i++) {
@@ -380,12 +384,11 @@ library Layers {
 		return currentWeight;
 	}
 
-	function appendWeightsPartial(LSTM storage layer, Float32x32[] memory x) internal returns (uint) {
+	function appendWeightsPartial(LSTM storage layer, Float32x32[] calldata x, uint idx) internal returns (uint) {
 		// can append weights to the end, at the cost of slightly higher gas
 		LSTMCell storage cell = layer.cell;
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
-		uint idx = 0;
 		// kernel
 		if (ptrLayer == 0) {
 			uint m = cell.kernel_i.m;
@@ -455,10 +458,9 @@ library Layers {
 		return idx;
 	}
 
-	function appendWeights(Conv2DLayer storage layer, Float32x32[] memory x) internal returns (uint) {
+	function appendWeights(Conv2DLayer storage layer, Float32x32[] calldata x, uint idx) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
-		uint idx = 0;
 		if (ptrLayer == 0) {
 			uint m = layer.w.m;
 			uint p = layer.w.p;
@@ -478,18 +480,14 @@ library Layers {
 			}
 			if (ptr == n) { ++ptrLayer; ptr = 0; }
 		}
-		if (idx < x.length) {
-			revert TooMuchData();
-		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
 		return idx;
 	}
 
-	function appendWeights(EmbeddingLayer storage layer, Float32x32[] memory x) internal returns (uint) {
+	function appendWeights(EmbeddingLayer storage layer, Float32x32[] calldata x, uint idx) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
-		uint idx = 0;
 		if (ptrLayer == 0) {
 			uint m = layer.w.m;
 			uint cnt = layer.w.n * layer.w.m;
@@ -499,18 +497,14 @@ library Layers {
 			}
 			if (ptr == cnt) { ++ptrLayer; ptr = 0; }
 		}
-		if (idx < x.length) {
-			revert TooMuchData();
-		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
 		return idx;
 	}
 
-	function appendWeights(SimpleRNNLayer storage layer, Float32x32[] memory x) internal returns (uint) {
+	function appendWeights(SimpleRNNLayer storage layer, Float32x32[] calldata x, uint idx) internal returns (uint) {
 		uint ptrLayer = layer.ptrLayer;
 		uint ptr = layer.ptr;
-		uint idx = 0;
 		if (ptrLayer == 0) {
 			uint m = layer.wx.m;
 			uint cnt = layer.wx.n * layer.wx.m;
@@ -536,9 +530,6 @@ library Layers {
 				ptr++; idx++;
 			}
 			if (ptr == n) { ++ptrLayer; ptr = 0; }
-		}
-		if (idx < x.length) {
-			revert TooMuchData();
 		}
 		layer.ptrLayer = ptrLayer;
 		layer.ptr = ptr;
@@ -708,13 +699,42 @@ library Layers {
 		requiredWeights = layer.wx.count() + layer.wh.count() + layer.b.count();
 	}
 
-	function makeInputImageLayer(SingleLayerConfig memory slc) internal pure returns (InputImageLayer memory layer, uint256[] memory out_dim) {
+	function makeInputTensor1DLayer(SingleLayerConfig memory slc) internal pure returns (InputTensor1DLayer memory layer, uint256[] memory out_dim) {
+		uint[1] memory ipd_dim;
+		(, , ipd_dim) = abi.decode(
+			slc.conf,
+			(uint8, uint8, uint256[1])
+		);
+		layer = Layers.InputTensor1DLayer(
+			slc.ind,
+			ipd_dim
+		);
+		out_dim = new uint[](1);
+		out_dim[0] = ipd_dim[0];
+	}
+
+	function makeInputTensor2DLayer(SingleLayerConfig memory slc) internal pure returns (InputTensor2DLayer memory layer, uint256[] memory out_dim) {
+		uint[2] memory ipd_dim;
+		(, , ipd_dim) = abi.decode(
+			slc.conf,
+			(uint8, uint8, uint256[2])
+		);
+		layer = Layers.InputTensor2DLayer(
+			slc.ind,
+			ipd_dim
+		);
+		out_dim = new uint[](3);
+		out_dim[0] = ipd_dim[0];
+		out_dim[1] = ipd_dim[1];
+	}
+
+	function makeInputTensor3DLayer(SingleLayerConfig memory slc) internal pure returns (InputTensor3DLayer memory layer, uint256[] memory out_dim) {
 		uint[3] memory ipd_dim;
 		(, , ipd_dim) = abi.decode(
 			slc.conf,
 			(uint8, uint8, uint256[3])
 		);
-		layer = Layers.InputImageLayer(
+		layer = Layers.InputTensor3DLayer(
 			slc.ind,
 			ipd_dim
 		);
@@ -725,19 +745,10 @@ library Layers {
 		out_dim[2] = ipd_dim[2];
 	}
 	
-	function makeInputTokenLayer(SingleLayerConfig memory slc) internal pure returns (InputTokenLayer memory layer, uint256[] memory out_dim) {
-		layer = Layers.InputTokenLayer(
-			slc.ind
-		);
-		out_dim = new uint[](1);
-		out_dim[0] = 1;
-	}
-	
 	function makeInputScalarLayer(SingleLayerConfig memory slc) internal pure returns (InputScalarLayer memory layer, uint256[] memory out_dim) {
 		layer = Layers.InputScalarLayer(
 			slc.ind
 		);
-		out_dim = new uint[](1);
-		out_dim[0] = 1;
+		out_dim = new uint[](0);
 	}
 }
