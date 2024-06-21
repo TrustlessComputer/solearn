@@ -29,7 +29,10 @@ library Layers {
 		Add,
 		Multiply,
 		OnesLike,
-		ZerosLike
+		ZerosLike,
+		Relu,
+		Softmax,
+		Sigmoid
     }
 
 	enum InputType {
@@ -155,6 +158,10 @@ library Layers {
 	}
 
 	struct ZerosLike {
+		uint layerIndex;
+	}
+
+	struct Relu {
 		uint layerIndex;
 	}
 	
@@ -507,6 +514,54 @@ library Layers {
 				for (uint k = 0; k < x[i][j].length; k++)
 					output[i][j][k] = 0;
 		return output;
+	}
+
+	function forward(Relu memory layer, Float32x32[] memory x, int256 negative_slope, int256 max_value, int256 threshold) internal pure returns (Float32x32[] memory) {
+		uint n = x.length;
+		Float32x32[] memory output = x;
+		for (uint i = 0; i < n; i++) {
+			if (output[i] < threshold) output[i] *= negative_slope;
+			if (output[i] > max_value) output[i] = max_value;
+		}
+		return output;
+	}
+
+	function forward(Relu memory layer, Float32x32[] memory x) internal pure returns (Float32x32[] memory) {
+		return forward(layer, x, 0, type(int256).max, 0);
+	}
+
+	function forward(Relu memory layer, Float32x32[][] memory x, int256 negative_slope, int256 max_value, int256 threshold) internal pure returns (Float32x32[][] memory) {
+		uint n = x.length;
+		uint m = x[0].length;
+		Float32x32[][] memory output = x;
+		for (uint i = 0; i < n; i++)
+			for (uint j = 0; j < m; j++) {
+				if (output[i][j] < threshold) output[i][j] *= negative_slope;
+				if (output[i][j] > max_value) output[i][j] = max_value;
+			}
+		return output;
+	}
+
+	function forward(Relu memory layer, Float32x32[][] memory x) internal pure returns (Float32x32[][] memory) {
+		return forward(layer, x, 0, type(int256).max, 0);
+	}
+
+	function forward(Relu memory layer, Float32x32[][][] memory x, int256 negative_slope, int256 max_value, int256 threshold) internal pure returns (Float32x32[][][] memory) {
+	uint n = x.length;
+	uint m = x[0].length;
+	uint p = x[0][0].length;
+	Float32x32[][][] memory output = x;
+	for (uint i = 0; i < n; i++)
+		for (uint j = 0; j < m; j++)
+			for (uint k = 0; k < p; k++) {
+				if (output[i][j][k] < threshold) output[i][j][k] *= negative_slope;
+				if (output[i][j][k] > max_value) output[i][j][k] = max_value;
+			}
+	return output;
+	}
+
+	function forward(Relu memory layer, Float32x32[][][] memory x) internal pure returns (Float32x32[][][] memory) {
+		return forward(layer, x, 0, type(int256).max, 0);
 	}
 
 	function appendWeights(DenseLayer storage layer, Float32x32[] memory x) internal returns (uint) {
@@ -963,15 +1018,19 @@ library Layers {
 
 	// }
 
-	// function makeMultiply(SingleLayerConfig memory slc) internal pure returns (Add memory layer, uint256[] memory out_dim) {
+	// function makeMultiply(SingleLayerConfig memory slc) internal pure returns (Multiply memory layer, uint256[] memory out_dim) {
 
 	// }
 
-	// function makeOnesLike(SingleLayerConfig memory slc) internal pure returns (Add memory layer, uint256[] memory out_dim) {
+	// function makeOnesLike(SingleLayerConfig memory slc) internal pure returns (OnesLike memory layer, uint256[] memory out_dim) {
 
 	// }
 
-	// function makeZerosLike(SingleLayerConfig memory slc) internal pure returns (Add memory layer, uint256[] memory out_dim) {
+	// function makeZerosLike(SingleLayerConfig memory slc) internal pure returns (ZerosLike memory layer, uint256[] memory out_dim) {
+
+	// }
+
+	// function makeRelu(SingleLayerConfig memory slc) internal pure returns (Relu memory layer, uint256[] memory out_dim) {
 
 	// }
 }
