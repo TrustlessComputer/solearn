@@ -25,7 +25,9 @@ library Layers {
         Conv2D,
         Embedding,
         SimpleRNN,
-        LSTM
+        LSTM,
+		Maximum,
+		Minimum
     }
 
 	enum InputType {
@@ -136,6 +138,16 @@ library Layers {
 		LSTMCell cell;
 		uint ptr;
 		uint ptrLayer;
+	}
+
+	struct MaximumLayer{
+		uint layerIndex;
+		uint[] outputDim;	
+	}
+
+	struct MinimumLayer{
+		uint layerIndex;
+		uint[] outputDim;	
 	}
 	
 	function forward(LSTMCell memory layer, Float32x32[] memory x, Float32x32[][] memory states) internal returns (Float32x32[] memory, Float32x32[] memory) {
@@ -289,6 +301,129 @@ library Layers {
 		Tensors.Tensor1D memory z_t = Tensor1DMethods.activation(y_t, layer.activation);
 		states[0] = z_t.mat;
 		return (states[0], states);
+	}
+
+	function validateShapes(Float32x32[][] memory a) internal pure returns (bool){
+        if (a.length == 0) {
+            return false;
+        }
+
+        uint length = a[0].length;
+
+        for (uint i = 1; i < a.length; i++) {
+            if (a[i].length != length) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+	function validateShapes(Float32x32[][][] memory a) internal pure returns (bool){
+		if (a.length == 0) {
+            return false;
+        }
+
+        uint rows = a[0].length;
+        uint cols = a[0][0].length;
+
+        for (uint i = 1; i < a.length; i++) {
+            if (a[i].length != rows || a[i][0].length != cols) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+	function forward(MaximumLayer memory layer, Float32x32[][] memory x) internal view returns (Float32x32[] memory){
+		require(validateShapes(x), "All tensors must have the same length");
+
+        uint numTensors = x.length;
+        uint length = x[0].length;
+		
+		Float32x32[] memory result = new Float32x32[](length);
+        
+        for (uint i = 0; i < length; i++) {
+            Float32x32 maxVal = x[0][i];
+            for (uint k = 1; k < numTensors; k++) {
+                if (x[k][i] > maxVal) {
+                    maxVal = x[k][i];
+                }
+            }
+            result[i] = maxVal;
+        }
+
+        return result;
+	}
+
+	function forward(MaximumLayer memory layer, Float32x32[][][] memory x) internal view returns (Float32x32[][] memory){
+		require(validateShapes(x), "All tensors must have the same length");
+
+        uint numTensors = x.length;
+        uint rows = x[0].length;
+        uint cols = x[0][0].length;
+
+        Float32x32[][] memory result = new Float32x32[][](rows);
+        for (uint i = 0; i < rows; i++) {
+            result[i] = new Float32x32[](cols);
+            for (uint j = 0; j < cols; j++) {
+                Float32x32 maxVal = x[0][i][j];
+                for (uint k = 1; k < numTensors; k++) {
+                    if (x[k][i][j] > maxVal) {
+                        maxVal = x[k][i][j];
+                    }
+                }
+                result[i][j] = maxVal;
+            }
+        }
+
+        return result;
+	}	
+
+	function forward(MinimumLayer memory layer, Float32x32[][] memory x) internal view returns (Float32x32[] memory){
+		require(validateShapes(x), "All tensors must have the same length");
+
+        uint numTensors = x.length;
+        uint length = x[0].length;
+		
+		Float32x32[] memory result = new Float32x32[](length);
+        
+        for (uint i = 0; i < length; i++) {
+            Float32x32 minVal = x[0][i];
+            for (uint k = 1; k < numTensors; k++) {
+                if (x[k][i] < minVal) {
+                    minVal = x[k][i];
+                }
+            }
+            result[i] = minVal;
+        }
+
+        return result;
+	}
+
+	function forward(MinimumLayer memory layer, Float32x32[][][] memory x) internal view returns (Float32x32[][] memory){
+		require(validateShapes(x), "All tensors must have the same length");
+
+        uint numTensors = x.length;
+        uint rows = x[0].length;
+        uint cols = x[0][0].length;
+
+        Float32x32[][] memory result = new Float32x32[][](rows);
+        for (uint i = 0; i < rows; i++) {
+            result[i] = new Float32x32[](cols);
+            for (uint j = 0; j < cols; j++) {
+                Float32x32 minVal = x[0][i][j];
+                for (uint k = 1; k < numTensors; k++) {
+                    if (x[k][i][j] < minVal) {
+                        minVal = x[k][i][j];
+                    }
+                }
+                result[i][j] = minVal;
+            }
+        }
+
+        return result;
 	}
 
 	function appendWeights(DenseLayer storage layer, Float32x32[] memory x) internal returns (uint) {
