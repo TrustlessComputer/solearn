@@ -90,6 +90,17 @@ const config: HardhatUserConfig = {
       gasPrice: 1_000_000_000,
       blockGasLimit: 100_000_000_000,
     },
+    regtest3: {
+      url: "https://eternal-ai3.tc.l2aas.com/rpc",
+      accounts: [
+        process.env.REGTEST3_PRIVATE_KEY || "", // private key
+      ],
+      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
+      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
+      timeout: 500_000,
+      gasPrice: 1_000_000_000,
+      blockGasLimit: 100_000_000_000,
+    },
   },
   namedAccounts: {
     deployer: 0,
