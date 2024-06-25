@@ -23,7 +23,7 @@ contract ModelRegStorage is IModelReg {
     uint256[50] private __gap;
 }
 
-contract ModelReg is 
+contract ModelReg is
 ModelRegStorage,
 Initializable,
 ERC721Upgradeable,
@@ -75,11 +75,11 @@ IERC2981Upgradeable {
         __ERC721_init("Models", "MDL");
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
-        
+
         mintPrice = _mintPrice;
         evalPrice = _evalPrice;
         royaltyReceiver = _royaltyReceiver;
-        nextModelId = 1; 
+        nextModelId = 1;
     }
 
     function afterUpgrade(uint256 _mintPrice, uint256 _evalPrice, address _royaltyReceiver, uint256 _nextModelId) public {
@@ -107,7 +107,7 @@ IERC2981Upgradeable {
         IModel(_modelAddr).setModelId(modelId);
     }
 
-    /* @dev EIP2981 royalties implementation. 
+    /* @dev EIP2981 royalties implementation.
     // EIP2981 standard royalties return.
     */
     function royaltyInfo(uint256 _tokenId, uint256 _salePrice) external view virtual override

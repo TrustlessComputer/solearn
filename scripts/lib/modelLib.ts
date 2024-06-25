@@ -246,7 +246,7 @@ export async function uploadModelWeights(model: ethers.Contract, weights: ethers
 }
 
 export async function mintModel(
-    modelReg: ethers.Contract,
+    modelCollection: ethers.Contract,
     model: ethers.Contract,
     owner: string,
     mintConfig: any
@@ -262,16 +262,16 @@ export async function mintModel(
 
     try {
         const modelUri = ""; // unused
-        const tx = await modelReg.safeMint(owner, modelUri, model.address, {...mintConfig, gasLimit: 1_000_000 });
+        const tx = await modelCollection.mint(owner, modelUri, model.address, {...mintConfig });
         const rc = await tx.wait();
-        // listen for Transfer event
-        const transferEvent = rc.events?.find((event: ethers.Event) => event.event === 'Transfer');
-        if (transferEvent != null) {
-            const from = transferEvent.args?.from;
-            const to = transferEvent.args?.to;
-            const tokenId = transferEvent.args?.tokenId;
+        // listen for NewToken event
+        const newTokenEvent = rc.events?.find((event: ethers.Event) => event.event === 'NewToken');
+        if (newTokenEvent != null) {
+            const model = newTokenEvent.args?.model;
+            const minter = newTokenEvent.args?.minter;
+            const tokenId = newTokenEvent.args?.tokenId;
             console.log("tx:", tx.hash);
-            console.log(`Minted new on-chain model, to=${to}, tokenId=${tokenId}`);
+            console.log(`Minted new on-chain model, tokenId=${tokenId}, model=${model}, minter=${minter}`);
         }
         // checkForDeployedModel(rc);
     } catch (e) {

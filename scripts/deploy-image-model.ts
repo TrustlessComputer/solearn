@@ -7,39 +7,16 @@ import { fromFloat } from './lib/utils';
 import { getModelConfig, uploadModelWeights, mintModel } from './lib/modelLib';
 dotenv.config();
 
-const ModelRegContractName = "ModelReg";
-const MaxWeightLen = 1000;
-const mintPrice = ethers.utils.parseEther('0.1');
+const ImageClassifierContractName = "ImageClassifier";
+const ModelCollectionContractName = "ModelCollection";
+const OnchainModelContractName = "OnchainModel";
+const MaxWeightLen = 30000;
+const mintPrice = ethers.utils.parseEther('0');
 const mintConfig = { value: mintPrice };
 
 // model 10x10: MaxWeightLen = 40, numTx = 8, fee = 0.02 * 8 TC
 
-async function main() {
-    const { ethers, upgrades } = hre;
-    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, MODELS_NFT_CONTRACT, MODEL_OWNER, MODEL_INFERENCE_COST, CHUNK_LEN } = process.env;
-    if (!PRIVATE_KEY) {
-        throw new Error("PRIVATE_KEY is not set");
-    }
-    if (!NODE_ENDPOINT) {
-        throw new Error("NODE_ENDPOINT is not set");
-    }
-    if (!MODEL_JSON) {
-        throw new Error("MODEL_JSON is not set");
-    }
-    if (!MODELS_NFT_CONTRACT || !ethers.utils.isAddress(MODELS_NFT_CONTRACT)) {
-        throw new Error("MODELS_NFT_CONTRACT is not set or invalid");
-    }
-    if (!MODEL_OWNER || !ethers.utils.isAddress(MODEL_OWNER)) {
-        throw new Error("MODEL_OWNER is not set");
-    }
-
-    const provider = ethers.getDefaultProvider(NODE_ENDPOINT);
-    const signer = new ethers.Wallet(PRIVATE_KEY, provider);
-
-    // load params from file
-    const modelParams = JSON.parse(fs.readFileSync(MODEL_JSON, 'utf-8'));
-    const params = Object.assign({}, modelParams);
-
+async function deployImageClassifier(params: any, weightPerTx: number, signer: ethers.Wallet): Promise<ethers.Contract> {
     let weightsFlat: ethers.BigNumber[] = [];
     if (params.weight_b64) {
         const temp = Buffer.from(params.weight_b64, 'base64');
@@ -54,14 +31,11 @@ async function main() {
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
     params.classes_name =  params.classes_name || [];
 
-    let nftContractAddress = MODELS_NFT_CONTRACT as string;
-
-    const modelReg = await ethers.getContractAt(ModelRegContractName, nftContractAddress);
-
     // deploy a ImageClassifier contract
     // ImageClassifier contract is too big (larger than 49152 bytes) to be deployed with ContractFactory
     const ImageFac = new ethers.ContractFactory(ImageClassifierArtifact.abi, ImageClassifierArtifact.bytecode, signer);    
     const imageImpl = await ImageFac.deploy();
+    await imageImpl.deployed();
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = ImageFac.interface.encodeFunctionData("initialize", [params.model_name, params.classes_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
@@ -80,32 +54,80 @@ async function main() {
     console.log('Gas used:', rc.gasUsed);
 
     console.log("Uploading weights");
-    const maxlen = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
-    await uploadModelWeights(image, weights, maxlen);
+    await uploadModelWeights(image, weights, weightPerTx);
+            
+    return image;
+}
 
-    console.log("Deploying OnchainModel contract");
-    const inferenceCost = ethers.BigNumber.from(MODEL_INFERENCE_COST);
-    const OnchainModel = await ethers.getContractFactory('OnchainModel');
-    const onchainModel = await upgrades.deployProxy(
-        OnchainModel,
-        [
-            modelReg.address,
-            0,
-            params.model_name,
-            image.address,
-            inferenceCost
-        ]
-    );
-    await onchainModel.deployed();
-    console.log(`Contract OnchainModel has been deployed to address ${onchainModel.address}`);
+async function main() {
+    const { ethers, upgrades } = hre;
+    const { PRIVATE_KEY, NODE_ENDPOINT, MODEL_JSON, ONCHAIN_MODEL_CONTRACT, MODELS_NFT_CONTRACT, MODEL_OWNER, MODEL_INFERENCE_COST, CHUNK_LEN } = process.env;
+    if (!PRIVATE_KEY) {
+        throw new Error("PRIVATE_KEY is not set");
+    }
+    if (!NODE_ENDPOINT) {
+        throw new Error("NODE_ENDPOINT is not set");
+    }
+    if (!MODEL_JSON) {
+        throw new Error("MODEL_JSON is not set");
+    }
+    if (ONCHAIN_MODEL_CONTRACT && !ethers.utils.isAddress(ONCHAIN_MODEL_CONTRACT)) {
+        throw new Error("ONCHAIN_MODEL_CONTRACT is invalid");
+    }
+    if (!MODELS_NFT_CONTRACT || !ethers.utils.isAddress(MODELS_NFT_CONTRACT)) {
+        throw new Error("MODELS_NFT_CONTRACT is not set or invalid");
+    }
+    if (!MODEL_OWNER || !ethers.utils.isAddress(MODEL_OWNER)) {
+        throw new Error("MODEL_OWNER is not set");
+    }
+    if (!MODEL_INFERENCE_COST) {
+        throw new Error("MODEL_INFERENCE_COST is not set");
+    }
 
-    console.log(`Set model inferface`);
-    const tx = await image.setModelInterface(onchainModel.address);
-    await tx.wait();
-    console.log("tx:", tx.hash);
+    const provider = ethers.getDefaultProvider(NODE_ENDPOINT);
+    const signer = new ethers.Wallet(PRIVATE_KEY, provider);
+
+    let nftContractAddress = MODELS_NFT_CONTRACT as string;
+    const modelCollection = await ethers.getContractAt(ModelCollectionContractName, nftContractAddress);
+
+    const modelParams = JSON.parse(fs.readFileSync(MODEL_JSON, 'utf-8'));
+    const params = Object.assign({}, modelParams);
+
+    const weightPerTx = CHUNK_LEN ? parseInt(CHUNK_LEN) : MaxWeightLen; // do not chunk the weights
+    let onchainModel: ethers.Contract;
+    let image: ethers.Contract;
+
+    if (!ONCHAIN_MODEL_CONTRACT) {
+        image = await deployImageClassifier(params, weightPerTx, signer);
+
+        console.log("Deploying OnchainModel contract");
+        const inferenceCost = ethers.BigNumber.from(MODEL_INFERENCE_COST);
+        const OnchainModel = await ethers.getContractFactory('OnchainModel');
+        onchainModel = await upgrades.deployProxy(
+            OnchainModel,
+            [
+                modelCollection.address,
+                0,
+                params.model_name,
+                image.address,
+                inferenceCost
+            ]
+        );
+        await onchainModel.deployed();
+        console.log(`Contract OnchainModel has been deployed to address ${onchainModel.address}`);
+        
+        console.log(`Set model inferface`);
+        const tx = await image.setModelInterface(onchainModel.address);
+        await tx.wait();
+        console.log("tx:", tx.hash);
+    } else {
+        onchainModel = await ethers.getContractAt(OnchainModelContractName, ONCHAIN_MODEL_CONTRACT);
+        const implementAddress = await onchainModel.implementation();
+        image = await ethers.getContractAt(ImageClassifierContractName, implementAddress, signer);
+    }
 
     console.log("Minting new model");
-    await mintModel(modelReg, onchainModel, MODEL_OWNER || signer.address, mintConfig);
+    await mintModel(modelCollection, onchainModel, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {

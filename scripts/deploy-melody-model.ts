@@ -8,7 +8,7 @@ import { getModelConfig, uploadModelWeights, mintModel } from './lib/modelLib';
 
 dotenv.config();
 
-const ModelRegContractName = "ModelReg";
+const ModelCollectionContractName = "ModelCollection";
 const MaxWeightLen = 1000;
 const mintPrice = ethers.utils.parseEther('0.1');
 const mintConfig = { value: mintPrice };
@@ -55,11 +55,12 @@ async function main() {
 
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
 
-    const modelReg = await ethers.getContractAt(ModelRegContractName, nftContractAddress);
+    const modelCollection = await ethers.getContractAt(ModelCollectionContractName, nftContractAddress);
 
     // deploy a MelodyRNN contract
     const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
     const mldyImpl = await MelodyFac.deploy();
+    await mldyImpl.deployed();
     // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
     // const initData = MelodyFac.interface.encodeFunctionData("initialize", [params.model_name, nftContractAddress]);
     // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
@@ -91,7 +92,7 @@ async function main() {
     const onchainModel = await upgrades.deployProxy(
         OnchainModel,
         [
-            modelReg.address,
+            modelCollection.address,
             0,
             params.model_name,
             mldy.address,
@@ -107,7 +108,7 @@ async function main() {
     console.log("tx:", tx.hash);
 
     console.log("Minting new model");
-    await mintModel(modelReg, onchainModel, MODEL_OWNER || signer.address, mintConfig);
+    await mintModel(modelCollection, onchainModel, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {

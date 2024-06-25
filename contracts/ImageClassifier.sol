@@ -29,9 +29,6 @@ contract ImageClassifier is IImageClassifier, Ownable {
     using Layers for Layers.MaxPooling2DLayer;
     using Layers for Layers.Conv2DLayer;
     using Tensor1DMethods for Tensors.Tensor1D;
-    using Tensor2DMethods for Tensors.Tensor2D;
-    using Tensor3DMethods for Tensors.Tensor3D;
-    using Tensor4DMethods for Tensors.Tensor4D;
 
     Model public model;
     address public modelInterface;

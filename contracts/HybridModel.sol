@@ -6,31 +6,24 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
+import {IInferable} from "./interfaces/IInferable.sol";
 
-abstract contract HybridModelStorage is IHybridModel {
-    uint256 public identifier;
-    uint256 public inferenceCost;
-
-    string public name;
-    string public url;
-
-    address public workerHub;
-
-    uint256[50] private __gap;
-}
+import {HybridModelStorage} from "./storages/HybridModelStorage.sol";
 
 contract HybridModel is
 HybridModelStorage,
 OwnableUpgradeable,
 PausableUpgradeable,
 ReentrancyGuardUpgradeable {
+    string constant private VERSION = "v0.0.1";
+
+    receive() external payable {}
+
     function initialize(
         address _workerHub,
         uint256 _identifier,
         string calldata _name,
-        string calldata _url,
-        uint256 _inferenceCost
+        string calldata _metadata
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
@@ -39,12 +32,11 @@ ReentrancyGuardUpgradeable {
         workerHub = _workerHub;
         identifier = _identifier;
         name = _name;
-        url = _url;
-        inferenceCost = _inferenceCost;
+        metadata = _metadata;
     }
 
     function version() external pure returns (string memory) {
-        return "v0.0.1";
+        return VERSION;
     }
 
     function pause() external onlyOwner whenNotPaused {
@@ -70,15 +62,9 @@ ReentrancyGuardUpgradeable {
         emit NameUpdate(_name);
     }
 
-    function updateUrl(string calldata _url) external onlyOwner {
-        url = _url;
-        emit UrlUpdate(_url);
-    }
-
-    function updateInferenceCost(uint256 _inferenceCost) external onlyOwner {
-        inferenceCost = _inferenceCost;
-
-        emit InferenceCostUpdate(_inferenceCost);
+    function updateMetadata(string calldata _metadata) external onlyOwner {
+        metadata = _metadata;
+        emit MetadataUpdate(_metadata);
     }
 
     function setModelId(uint256 _modelId) external {
@@ -87,9 +73,7 @@ ReentrancyGuardUpgradeable {
         emit IdentifierUpdate(_modelId);
     }
 
-    function infer(bytes calldata _data) external payable whenNotPaused nonReentrant returns (uint256) {
-        if (msg.value < inferenceCost) revert InsufficientFunds();
-
-        return IWorkerHub(workerHub).infer{value: msg.value}(_data, identifier, msg.sender);
+    function infer(bytes calldata _input) external payable whenNotPaused nonReentrant returns (uint256) {
+        return IInferable(workerHub).infer{value: msg.value}(_input, msg.sender);
     }
 }

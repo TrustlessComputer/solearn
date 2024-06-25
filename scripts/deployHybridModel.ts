@@ -1,3 +1,5 @@
+import assert from 'assert';
+import { version } from 'chai';
 import { ethers, network, upgrades } from 'hardhat';
 
 async function deployHybridModel() {
@@ -5,12 +7,32 @@ async function deployHybridModel() {
     const networkName = network.name.toUpperCase();
     const HybridModel = await ethers.getContractFactory('HybridModel');
     const WorkerHub = await ethers.getContractFactory('WorkerHub');
+    const ModelCollection = await ethers.getContractFactory('ModelCollection');
+
+    const collectionAddress = config.collectionAddress;
+    assert.ok(
+        collectionAddress,
+        `Missing ${networkName}_COLLECTION_ADDRESS from environment variables!`
+    );
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
-    const name = 'Futuristic Fragment';//`Model ${identifier}`;
-    const url = '';//`abc.com/${identifier}`;
-    const inferenceCost = ethers.utils.parseEther('100');
+    const name = 'Juggernaut XL';//`Model ${identifier}`;
+    const minHardware = 1;
+    const modelOwnerAddress = '0xB0D0c3C59B9101D0C98cD2235c03C43F1294cb95';
+    const metadataObj = {
+        "version": 1,
+        "model_name": "Juggernaut XL",
+        "model_type": "image",
+        "model_url": "https://gateway.lighthouse.storage/ipfs/QmcFYMYpVodkpT6t1fVmWNjPnUnnQbXvwpqyheXvPGKUr8",
+        "model_file_hash": "7f1f29cb884c5b2f4d072b99afcb87f32cbe4adc88cffedab15ffc9fd30887ae",
+        "min_hardware": 1,
+        "verifier_url": "https://gateway.lighthouse.storage/ipfs/QmdkKEjx2fauzbPh1j5bUiQXrUG5Ft36pJGHS8awrN89Dc",
+        "verifier_file_hash": "492b2b3dea3003d359fe1b2cee77a22777d8a9faf942ab6dee81e6bfadaadec4",
+    }
+
+    const metadata = JSON.stringify(metadataObj, null, "\t");
+    console.log(metadata);
 
     const hybridModel = await upgrades.deployProxy(
         HybridModel,
@@ -18,16 +40,26 @@ async function deployHybridModel() {
             workerHubAddress,
             identifier,
             name,
-            url,
-            inferenceCost
+            metadata
         ]
     );
     await hybridModel.deployed();
 
+    const collection = ModelCollection.attach(config.collectionAddress);
+    const mintReceipt = await (await collection.mint(
+        modelOwnerAddress,
+        metadata,
+        hybridModel.address
+    )).wait();
+
     const workerHub = WorkerHub.attach(workerHubAddress);
-    await workerHub.registerModel(hybridModel.address);
+    await workerHub.registerModel(hybridModel.address, minHardware, ethers.utils.parseEther('0.2'));
 
     console.log(`Contract HybridModel has been deployed to address ${hybridModel.address}`);
+    const newTokenEvent = mintReceipt.events?.find((event: ethers.Event) => event.event === 'NewToken');
+    if (newTokenEvent) {
+        console.log("tokenId:", newTokenEvent.args?.tokenId);
+    }
 
     console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.address}`);
 }

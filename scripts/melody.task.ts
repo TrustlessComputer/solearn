@@ -8,7 +8,7 @@ import { toInt } from "./lib/utils";
 
 const MelodyRNNContractName = "MelodyRNN";
 const OnchainModelContractName = "OnchainModel";
-const ModelRegContractName = "ModelReg";
+const ModelCollectionContractName = "ModelCollection";
 
 async function inferModel(interfaceContract: ethers.Contract, noteCount: number, x: ethers.BigNumber[]) {
     const abic = ethers.utils.defaultAbiCoder;
@@ -34,7 +34,7 @@ async function inferModel(interfaceContract: ethers.Contract, noteCount: number,
 }
 
 task("generate-melody", "evaluate model for each layer")
-    .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
+    .addOptionalParam("contract", "ModelCollection contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
     .addOptionalParam("count", "number of step", 1, types.int)
     .addOptionalParam("steplen", "number of notes to generate per step", 1, types.int)
@@ -48,13 +48,13 @@ task("generate-melody", "evaluate model for each layer")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ModelRegContractName);
+            const baseContract = await deployments.get(ModelCollectionContractName);
             contractAddress = baseContract.address;
         }
 
-        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
+        const modelCollectionContract = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const interfaceAddress = await modelRegContract.modelAddr(tokenId);
+        const interfaceAddress = await modelCollectionContract.modelAddressOf(tokenId);
         const interfaceContract = await ethers.getContractAt(OnchainModelContractName, interfaceAddress, signer);        
         
         const implementAddress = await interfaceContract.implementation();
@@ -109,12 +109,12 @@ task("get-melody-model", "get eternal AI model")
         const [signer] = await ethers.getSigners();
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ModelRegContractName);
+            const baseContract = await deployments.get(ModelCollectionContractName);
             contractAddress = baseContract.address;
         }
-        const modelRegContract = await ethers.getContractAt(ModelRegContractName, contractAddress, signer);
+        const modelCollectionContract = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await modelRegContract.modelAddr(tokenId);
+        const modelAddress = await modelCollectionContract.modelAddressOf(tokenId);
         console.log("Reading MelodyRNN model at address", modelAddress);
         const mldy = await ethers.getContractAt(MelodyRNNContractName, modelAddress, signer);
         // const model = await mldy.getInfo(tokenId);
