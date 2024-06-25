@@ -507,8 +507,8 @@ task("eval-img", "evaluate model for each layer")
 
         const c = await ethers.getContractAt(ContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        // const modelAddress = await c.modelAddr(tokenId);
-        const modelContract = new ethers.Contract(contractAddress, EternalAIArtifact.abi, signer);
+        const modelAddress = await c.modelAddr(tokenId);
+        const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
         const imgRaw = fs.readFileSync(taskArgs.img);
         console.log("imgRaw: ", imgRaw);

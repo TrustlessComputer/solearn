@@ -8,7 +8,7 @@ npx hardhat mint-model-id --network anvil --id '2' --contract '0x9fE46736679d2D9
 
 # npx hardhat get-model --network anvil --id '0' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'
 
-npx hardhat eval-img --network anvil --id '2' --offline true --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --img 'sample-images/10x10/cryptoadz/000.png'
+npx hardhat eval-img --network anvil --id '1' --offline true --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --img 'sample-images/10x10/cryptoadz/000.png'
 npx hardhat eval-img --network anvil --id '0' --offline true --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --img 'sample-images/10x10/cryptoadz/001.png'
 npx hardhat eval-img --network anvil --id '0' --offline true --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --img 'sample-images/10x10/cryptoadz/002.png'
 npx hardhat eval-img --network anvil --id '0' --offline true --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --img 'sample-images/10x10/cryptopunks/000.png'
@@ -29,7 +29,7 @@ npx hardhat generate-text --network anvil --id '1' --contract '0x9fE46736679d2D9
 
 npx hardhat mint-melody-model-id --network anvil --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --model 'sample-models/little_musicnet.json' --maxlen 100000
 
-npx hardhat generate-melody --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --count 50 --steplen 1 --output "outputs/vgm.mid"
-npx hardhat generate-melody --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --count 1 --steplen 50 --output "outputs/vgm_stateful.mid"
+npx hardhat generate-melody --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --count 50 --steplen 1 --output "_outputs/vgm.mid"
+npx hardhat generate-melody --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' --count 1 --steplen 50 --output "_outputs/vgm_stateful.mid"
 
 npx hardhat get-melody-model --network anvil --id '1' --contract '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'
