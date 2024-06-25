@@ -3,7 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-deploy";
 import './scripts/base.task';
 import './scripts/melody.task';
-import "hardhat-tracer";
+// import "hardhat-tracer";
 import "@foundry-rs/hardhat-anvil";
 import 'dotenv/config'
 
