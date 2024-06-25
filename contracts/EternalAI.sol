@@ -16,6 +16,9 @@ import "./thirdparty/solidity-stringutils/strings.sol";
 import "./lib/layers/Layers.sol";
 import "./lib/Utils.sol";
 
+import {IModel} from "./interfaces/IModel.sol";
+import {IModelCollection} from './interfaces/IModelCollection.sol';
+
 error NotTokenOwner();
 error InsufficientMintPrice();
 error InsufficientEvalPrice();
@@ -24,13 +27,13 @@ error UnknownTokenNotInVocabs();
 error IncorrectModelId();
 error NotModelRegistry();
 
-interface IModelReg is IERC721Upgradeable {
-    function modelAddr(uint256 tokenId) external view returns (address);
-    function evalPrice() external view returns (uint256);
-    function royaltyReceiver() external view returns (address);
-}
+// interface IModelReg is IERC721Upgradeable {
+//     function modelAddr(uint256 tokenId) external view returns (address);
+//     function evalPrice() external view returns (uint256);
+//     function royaltyReceiver() external view returns (address);
+// }
 
-contract EternalAI is Ownable {
+contract EternalAI is IModel, Ownable {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;
@@ -47,7 +50,7 @@ contract EternalAI is Ownable {
 
     Model public model;
     VocabInfo public vocabInfo;
-    IModelReg public modelRegistry;
+    IModelCollection public modelRegistry;
     uint256 public modelId;
     uint256 version;
 
@@ -138,7 +141,7 @@ contract EternalAI is Ownable {
         model.modelName = _modelName;
         model.classesName = _classesName;
 
-        modelRegistry = IModelReg(_modelRegistry);      
+        modelRegistry = IModelCollection(_modelRegistry);      
         version = 1;
     }
 

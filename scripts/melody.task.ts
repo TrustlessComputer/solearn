@@ -3,9 +3,9 @@ import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
 import { BigNumber, ethers } from "ethers";
-import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
-import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
-import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
+// import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
+// import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
+// import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 
 import { execSync } from 'child_process';
 

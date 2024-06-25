@@ -8,6 +8,8 @@ import "./lib/layers/Layers.sol";
 import "hardhat/console.sol";
 import './lib/Utils.sol';
 
+import {IModel} from "./interfaces/IModel.sol";
+
 error NotTokenOwner();
 error InsufficientEvalPrice();
 error TransferFailed();
@@ -22,7 +24,7 @@ interface IModelReg is IERC721Upgradeable {
     function royaltyReceiver() external view returns (address);
 }
 
-contract MelodyRNN is Ownable {
+contract MelodyRNN is IModel, Ownable {
     using Layers for Layers.RescaleLayer;
     using Layers for Layers.FlattenLayer;
     using Layers for Layers.DenseLayer;

@@ -6,9 +6,9 @@ import sharp from 'sharp';
 import { ethers, utils } from "ethers";
 import path from 'path';
 import levenshtein from 'js-levenshtein';
-import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
-import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
-import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
+// import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
+// import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
+// import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
 
 const ContractName = "Models";
 const MaxWeightLen = 1000;

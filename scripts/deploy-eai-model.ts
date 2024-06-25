@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import fs from 'fs';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
 import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
-import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
+import * as ModelCollectionArtifact from '../artifacts/contracts/ModelCollection.sol/ModelCollection.json';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -113,6 +113,41 @@ function getConvSize(
         }
     }
     return { out, pad };
+}
+
+async function mintModel(
+    modelCollection: ethers.Contract,
+    model: ethers.Contract,
+    owner: string,
+    mintConfig: any
+) {  
+    // const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
+    //     const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
+    //     if (deployedEvent != null) {
+    //         const owner = deployedEvent.args?.owner;
+    //         const tokenId = deployedEvent.args?.tokenId;
+    //         console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+    //     }
+    // }
+
+    try {
+        const modelUri = ""; // unused
+        const tx = await modelCollection.mint(owner, modelUri, model.address, {...mintConfig });
+        const rc = await tx.wait();
+        // listen for NewToken event
+        const newTokenEvent = rc.events?.find((event: ethers.Event) => event.event === 'NewToken');
+        if (newTokenEvent != null) {
+            const model = newTokenEvent.args?.model;
+            const minter = newTokenEvent.args?.minter;
+            const tokenId = newTokenEvent.args?.tokenId;
+            console.log("tx:", tx.hash);
+            console.log(`Minted new on-chain model, tokenId=${tokenId}, model=${model}, minter=${minter}`);
+        }
+        // checkForDeployedModel(rc);
+    } catch (e) {
+        console.error("Error minting model: ", e);
+        throw e;
+    }
 }
 
 async function main() {
@@ -287,7 +322,6 @@ async function main() {
 
     let tokenId = ethers.BigNumber.from(0); // placeholder
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
-    const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
     // deploy a EternalAI contract
     const EaiFac = new ethers.ContractFactory(EternalAIArtifact.abi, EternalAIArtifact.bytecode, signer);
     const eaiImpl = await EaiFac.deploy(params.model_name, params.classes_name || [], nftContractAddress);
@@ -319,48 +353,24 @@ async function main() {
     const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
         return _w.splice(0, maxlen);
     }
-    const checkForDeployedModel = (receipt: { events: any[]; }) => {
-        const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
-        if (deployedEvent != null) {
-            const owner = deployedEvent.args?.owner;
-            const tokenId = deployedEvent.args?.tokenId;
-            console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-        }
-    }
 
     for (let i = 0; i < MaxLayerType; ++i) {
         if (totSize[i] === 0) continue;
         console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
 
         for (let wi = 0; wi < weights[i].length; ++wi) {
-            for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                    
+            for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {                    
                 const appendWeightTx = await eai.appendWeights(tokenId, temp, wi, i, gasConfig);
                 const receipt = await appendWeightTx.wait(2);
                 console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                
-                checkForDeployedModel(receipt);
             }
         }            
     }
 
-    try {
-        const tx = await c.safeMint(MODEL_OWNER || signer.address, modelUri, eai.address, {...mintConfig, gasLimit: 1_000_000 });
-        const rc = await tx.wait();
-        // listen for Transfer event
-        const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
-        if (transferEvent != null) {
-            const from = transferEvent.args?.from;
-            const to = transferEvent.args?.to;
-            const tokenId = transferEvent.args?.tokenId;
-            console.log("tx:", tx.hash);
-            console.log(`Minted new EternalAI model, to=${to}, tokenId=${tokenId}`);
-        }
-        checkForDeployedModel(rc);
-    } catch (e) {
-        console.error("Error minting model: ", e);
-        throw e;
-    }
+    const modelCollection = new ethers.Contract(nftContractAddress, ModelCollectionArtifact.abi, signer);
+
+    console.log("Minting new model");
+    await mintModel(modelCollection, eai, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {
