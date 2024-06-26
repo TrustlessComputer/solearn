@@ -264,6 +264,7 @@ task("generate-text", "generate text from RNN model")
     .addOptionalParam("prompt", "input prompt", "", types.string)
     .addOptionalParam("togenerate", "number of characters to be generated", 100, types.int)
     .addOptionalParam("generatepertx", "number of characters to generate per tx", -1, types.int)
+    .addOptionalParam("offline", "whether to create tx or not", true, types.boolean)
     .addOptionalParam("dictionary", "dictionary for fuzzy match post processing", "", types.string)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const { ethers, deployments, getNamedAccounts } = hre;
@@ -299,19 +300,27 @@ task("generate-text", "generate text from RNN model")
 // And say one that had woney to his parts.
 // `
 
-        let states: ethers.BigNumber[][] = [];
+        let states: ethers.BigNumber[][][] = [];
         for(let i = 0; i < toGenerate; i += generatePerTx) {
             const generate = Math.min(toGenerate - i, generatePerTx);
             console.log(`Generating characters ${i+1}-${i+generate}`);
 
-            const tx = await modelContract.generateText(tokenId, prompt, generate, states, seed, gasConfig);
-            const rc = await tx.wait();
-
-            const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');
-            if (textGeneratedEvent) {
-                text = textGeneratedEvent.args?.result;
-                states = textGeneratedEvent.args?.states;
-                seed = textGeneratedEvent.args?.seed;
+            if (taskArgs.offline) {
+                [text, states, seed] = await modelContract.generateTextNoTx(tokenId, prompt, generate, states, seed, gasConfig);
+            } else {            
+                const tx = await modelContract.generateText(tokenId, prompt, generate, states, seed, gasConfig);
+                const rc = await tx.wait();
+                console.log(`Tx: ${tx.hash}, used gas: ${rc.gasUsed}`);
+                
+                const textGeneratedEvent = rc.events?.find(event => event.event === 'TextGenerated');                
+                if (textGeneratedEvent) {
+                    text = textGeneratedEvent.args?.result;
+                    states = textGeneratedEvent.args?.states;
+                    seed = textGeneratedEvent.args?.seed;
+                } else {
+                    console.log("TextGenerated event not found");
+                    return;
+                } 
             }
 
             // console.log(text);
@@ -320,7 +329,6 @@ task("generate-text", "generate text from RNN model")
     
             result += text;
             prompt = text.slice(text.length - 1);
-            console.log(`Used gas: `, rc.gasUsed);
         }
 
         console.log("-------------- Prompt + Generated text --------------");
