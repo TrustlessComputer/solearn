@@ -39,4 +39,6 @@ IERC2981Upgradeable {
     function royaltyPortion() external view returns (uint16 royaltyPortion);
 
     function mint(address to, string calldata uri, address model) external payable returns (uint256 tokenId);
+
+    function modelAddressOf(uint256 _tokenId) external view returns (address);
 }

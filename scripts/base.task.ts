@@ -8,7 +8,7 @@ import path from 'path';
 import levenshtein from 'js-levenshtein';
 import * as EternalAIArtifact from '../artifacts/contracts/EternalAI.sol/EternalAI.json';
 
-const ModelCollectionContractName = "Models";
+const ModelCollectionContractName = "ModelCollection";
 const EaiContractName = "EternalAI";
 
 const GasLimit = "9000000000"; // 100 B
@@ -139,7 +139,7 @@ task("eval-img", "evaluate model for each layer")
 
         const c = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await c.modelAddr(tokenId);
+        const modelAddress = await c.modelAddressOf(tokenId);
         const modelContract = new ethers.Contract(modelAddress, EternalAIArtifact.abi, signer);
 
         const imgRaw = fs.readFileSync(taskArgs.img);
@@ -283,7 +283,7 @@ task("generate-text", "generate text from RNN model")
 
         const c = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await c.modelAddr(tokenId);
+        const modelAddress = await c.modelAddressOf(tokenId);
         const modelContract = await ethers.getContractAt(EaiContractName, modelAddress, signer);
 
         let startTime = new Date().getTime();

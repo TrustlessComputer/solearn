@@ -7,7 +7,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const gasConfig = { gasLimit: 10_000_000_000 };

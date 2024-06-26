@@ -50,7 +50,7 @@ contract EternalAI is IModel, Ownable {
 
     Model public model;
     VocabInfo public vocabInfo;
-    IModelCollection public modelRegistry;
+    IModelCollection public modelCollection;
     uint256 public modelId;
     uint256 version;
 
@@ -124,7 +124,7 @@ contract EternalAI is IModel, Ownable {
     }
 
     modifier onlyOwnerOrOperator() {
-        if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
+        if (msg.sender != owner() && modelId > 0 && msg.sender != modelCollection.ownerOf(modelId)) {
             revert NotTokenOwner();
         }
         _;
@@ -137,11 +137,11 @@ contract EternalAI is IModel, Ownable {
         _;
     }
 
-    constructor(string memory _modelName, string[] memory _classesName, address _modelRegistry) Ownable() {
+    constructor(string memory _modelName, string[] memory _classesName, address _modelCollection) Ownable() {
         model.modelName = _modelName;
         model.classesName = _classesName;
 
-        modelRegistry = IModelCollection(_modelRegistry);      
+        modelCollection = IModelCollection(_modelCollection);      
         version = 1;
     }
 
@@ -323,10 +323,9 @@ contract EternalAI is IModel, Ownable {
         SD59x18[][][] calldata x1,
         SD59x18[] calldata x2
     ) external payable onlyMintedModel {
-        if (msg.value < modelRegistry.evalPrice()) revert InsufficientEvalPrice();
-        (bool success, ) = modelRegistry.royaltyReceiver().call{value: msg.value}("");
-        if (!success) revert TransferFailed();
-
+        // if (msg.value < modelRegistry.evalPrice()) revert InsufficientEvalPrice();
+        // (bool success, ) = modelRegistry.royaltyReceiver().call{value: msg.value}("");
+        // if (!success) revert TransferFailed();
 
         if (toLayerIndex >= model.layers.length) {
             toLayerIndex = model.layers.length - 1; // update to the last layer
@@ -530,16 +529,16 @@ contract EternalAI is IModel, Ownable {
     }
 
     function setModelId(uint256 _modelId) external {
-        if (msg.sender != address(modelRegistry)) {
+        if (msg.sender != address(modelCollection)) {
             revert NotModelRegistry();
         }
-        if (modelId > 0 || modelRegistry.modelAddr(_modelId) != address(this)) {
+        if (modelId > 0 || modelCollection.modelAddressOf(_modelId) != address(this)) {
             revert IncorrectModelId();
         }
 
         modelId = _modelId;
         if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
+            emit Deployed(modelCollection.modelAddressOf(modelId), modelId);
         }
     }
 
@@ -562,8 +561,8 @@ contract EternalAI is IModel, Ownable {
             appendedWeights = model.lstm[layerInd].appendWeightsPartial(weights);
         }
         model.appendedWeights += appendedWeights;
-        if (model.appendedWeights == model.requiredWeights && _modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), _modelId);
+        if (model.appendedWeights == model.requiredWeights && modelId > 0) {
+            emit Deployed(modelCollection.modelAddressOf(modelId), modelId);
         }
     }
 

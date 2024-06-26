@@ -3,13 +3,11 @@ import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from 'fs';
 import { BigNumber, ethers } from "ethers";
-// import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
-// import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
-// import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
+import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
 
 import { execSync } from 'child_process';
 
-const ContractName = "Models";
+const ModelCollectionContractName = "ModelCollection";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const gasConfig = { gasLimit: 10_000_000_000 };
@@ -141,250 +139,6 @@ function getConvSize(
     return { out, pad };
 }
 
-task("mint-melody-model-id", "mint model id (and upload weights)")
-    .addOptionalParam("model", "model file name", "", types.string)
-    .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
-    .addOptionalParam("id", "token id", "0", types.string)
-    .addOptionalParam("to", "new model owner address", "", types.string)
-    .addOptionalParam("uri", "token URI", "", types.string)
-    .addOptionalParam("maxlen", "max length for weights/tx", MaxWeightLen, types.int)
-    .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-        const { ethers, deployments, getNamedAccounts } = hre;
-        const { deployer: signerAddress } = await getNamedAccounts();
-        const signer = await ethers.getSigner(signerAddress);
-        const abic = ethers.utils.defaultAbiCoder;
-
-        // load params from file
-        const modelParams = JSON.parse(fs.readFileSync(taskArgs.model, 'utf-8'));
-        const params = Object.assign({}, modelParams);
-
-        let weightsFlat: ethers.BigNumber[] = [];
-        if (params.weight_b64) {
-            const temp = Buffer.from(params.weight_b64, 'base64');
-            const floats = new Float32Array(new Uint8Array(temp).buffer);
-            for (let i = 0; i < floats.length; i++) {
-                weightsFlat.push(ethers.BigNumber.from(String(Math.trunc(floats[i] * 1e18))));
-            }
-        }
-
-        let weights: ethers.BigNumber[][][] = [];
-        let totSize: number[] = [];
-        for (let i = 0; i < MaxLayerType; ++i) {
-            weights.push([]);
-            totSize.push(0);
-        }
-
-        let newLayerConfig = [];
-        let input_units: any = 0;
-        for (let i = 0; i < params.layers_config.config.layers.length; i++) {
-            const layer = params.layers_config.config.layers[i];
-            let result: String = "";
-            
-            let layerType = getLayerType(layer.class_name);
-
-            if (layer.class_name === 'Dense') {
-                const output_units = layer.config.units;
-    
-                let activationFn: number = getActivationType(layer.config.activation);
-    
-                // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, input_units * output_units + output_units)
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-                result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(output_units)]);
-                input_units = output_units;
-            } else if (layer.class_name === 'Flatten') {
-                result = abic.encode(["uint8"], [layerType]);
-                input_units = input_units[0] * input_units[1] * input_units[2];
-            } else if (layer.class_name === 'Rescaling') {
-                const n1 = ethers.BigNumber.from(String(layer.config.scale * 1e18))
-                const n2 = ethers.BigNumber.from(layer.config.offset).mul(ethers.BigNumber.from("1000000000000000000"));
-                result = abic.encode(["uint8", "int256", "int256"], [layerType, n1, n2]);
-            } else if (layer.class_name === 'InputLayer') {
-                const dim = layer.config.batch_input_shape.slice(1);
-                if (dim.length == 1 || dim.length == 2) {
-                    result = abic.encode(["uint8", "uint8"], [layerType, 0]);
-                    input_units = 1;
-                } else if (dim.length == 3) {
-                    const h = ethers.BigNumber.from(dim[0]);
-                    const w = ethers.BigNumber.from(dim[1]);
-                    const c = ethers.BigNumber.from(dim[2]);
-                    result = abic.encode(["uint8", "uint8", "uint[3]"], [layerType, 1, [h, w, c]]);
-                    input_units = [h.toNumber(), w.toNumber(), c.toNumber()];
-                } else {
-                    input_units = dim[0]
-                }
-            } else if (layer.class_name === 'MaxPooling2D') {
-                const f_w = layer.config.pool_size[0];
-                const f_h = layer.config.pool_size[1];
-                const s_w = layer.config.strides[0];
-                const s_h = layer.config.strides[1];
-                const padding = layer.config.padding;
-    
-                result = abic.encode(["uint8", "uint[2]", "uint[2]", "uint8"], [
-                    layerType,
-                    [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)],
-                    [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
-                    getPaddingType(padding),
-                ]);
-    
-                const { out } = getConvSize([input_units[0], input_units[1]], [f_w, f_h], [s_w, s_h], padding);
-                input_units = [out[0], out[1], input_units[2]];
-            } else if (layer.class_name === 'Conv2D') {
-                const filters = layer.config.filters;
-                const f_w = layer.config.kernel_size[0];
-                const f_h = layer.config.kernel_size[1];
-                const s_w = layer.config.strides[0];
-                const s_h = layer.config.strides[1];
-                const padding = layer.config.padding;
-                const d = input_units[2];
-    
-                let activationFn: number = getActivationType(layer.config.activation);
-    
-                // reconstruct weights
-                // Filter: (F_W, F_H, D, K)
-                let layerWeights = weightsFlat.splice(0, f_w * f_h * d * filters + filters);
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint8", "uint", "uint[2]", "uint[2]", "uint8"], [
-                    layerType,
-                    activationFn,
-                    ethers.BigNumber.from(filters),
-                    [ethers.BigNumber.from(f_w), ethers.BigNumber.from(f_h)],
-                    [ethers.BigNumber.from(s_w), ethers.BigNumber.from(s_h)],
-                    getPaddingType(padding),
-                ]);
-    
-                const { out } = getConvSize([input_units[0], input_units[1]], [f_w, f_h], [s_w, s_h], padding);
-                input_units = [out[0], out[1], filters];
-            } else if (layer.class_name === 'Embedding') {
-                let inputDim = layer.config.input_dim;
-                let outputDim = layer.config.output_dim;
-    
-                // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, inputDim * outputDim);
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint256", "uint256"], [layerType, ethers.BigNumber.from(inputDim), ethers.BigNumber.from(outputDim)]);
-                input_units = outputDim;
-            } else if (layer.class_name === 'SimpleRNN') {
-                const units = layer.config.units;
-                const activationFn: number = getActivationType(layer.config.activation);
-    
-                // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, input_units * units + units * units + units);
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint8", "uint256"], [layerType, activationFn, ethers.BigNumber.from(units)]);
-                input_units = units;
-            } else if (layer.class_name === 'LSTM') {
-                const units = layer.config.units;
-                console.log("input units to LSTM: ", input_units);
-                const activationFn: number = getActivationType(layer.config.activation);
-                const recActivationFn: number = getActivationType(layer.config.recurrent_activation);
-    
-                // reconstruct weights
-                let layerWeights = weightsFlat.splice(0, input_units * units * 4 + units * units * 4 + units * 4);
-                weights[layerType].push(layerWeights);
-                totSize[layerType] += layerWeights.length;
-    
-                result = abic.encode(["uint8", "uint8", "uint8", "uint256", "uint256"], [layerType, activationFn, recActivationFn, ethers.BigNumber.from(units), ethers.BigNumber.from(input_units)]);
-                input_units = units;
-            } else {
-                continue; // handle dropout etc
-            }
-            
-            if (result.length > 0) {
-                newLayerConfig.push(result);
-            }
-        }
-        params.layers_config = newLayerConfig.filter((x: any) => x !== null);
-
-        let contractAddress = taskArgs.contract;
-        if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
-            contractAddress = baseContract.address;
-        }
-        const c = new ethers.Contract(contractAddress, ModelsArtifact.abi, signer);
-        // deploy a MelodyRNN contract
-        const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
-        const mldyImpl = await MelodyFac.deploy(params.model_name, contractAddress);
-        // const ProxyFac = new ethers.ContractFactory(EIP173ProxyWithReceiveArtifact.abi, EIP173ProxyWithReceiveArtifact.bytecode, signer);
-        // const initData = MelodyFac.interface.encodeFunctionData("initialize", [params.model_name, contractAddress]);
-        // const mldyProxy = await ProxyFac.deploy(mldyImpl.address, signer.address, initData);
-        // const mldy = MelodyFac.attach(mldyProxy.address);
-        const mldy = MelodyFac.attach(mldyImpl.address);
-        console.log("Deployed MelodyRNN contract: ", mldy.address);
-
-        console.log("Setting AI model");
-        const setWeightTx = await mldy.setModel(params.layers_config, gasConfig);
-        await setWeightTx.wait();
-        console.log('tx', setWeightTx.hash);
-
-        if (params.vocabulary) {
-            console.log("Setting vocabs");
-            const vocabs = params.vocabulary;
-            const setVocabTx = await mldy.setVocabs(vocabs);
-            await setVocabTx.wait();
-            console.log('tx', setVocabTx.hash);
-        }
-
-        const weightStr = JSON.stringify(weights);
-        console.log("Total weights len: ", weightStr.length);
-
-        console.log(`Set weights`);
-        const maxlen = taskArgs.maxlen;
-        const truncateWeights = (_w: ethers.BigNumber[], maxlen: number) => {
-            return _w.splice(0, maxlen);
-        }
-
-        const checkForDeployedModel = (receipt: { events: any[]; }) => {
-            const deployedEvent = receipt.events?.find((event: { event: string; }) => event.event === 'Deployed');
-            if (deployedEvent != null) {
-                const owner = deployedEvent.args?.owner;
-                const tokenId = deployedEvent.args?.tokenId;
-                console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
-            }
-        }
-
-        for (let i = 0; i < MaxLayerType; ++i) {
-            if (totSize[i] === 0) continue;
-            console.log(`Weight ${getLayerName(i)} size: `, totSize[i]);
-
-            for (let wi = 0; wi < weights[i].length; ++wi) {
-                for (let temp = truncateWeights(weights[i][wi], maxlen); temp.length > 0; temp = truncateWeights(weights[i][wi], maxlen)) {
-                    
-                    const appendWeightTx = await mldy.appendWeights(temp, wi, i, gasConfig);
-                    const receipt = await appendWeightTx.wait(2);
-                    console.log(`append layer ${getLayerName(i)} #${wi} (${temp.length}) - tx ${appendWeightTx.hash}`);
-                    checkForDeployedModel(receipt);
-                }
-            }            
-        }
-
-        const modelUri = "";
-        try {
-            const tx = await c.safeMint(taskArgs.to || signer.address, modelUri, mldy.address, mintConfig);
-            const rc = await tx.wait();
-            // listen for Transfer event
-            const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
-            if (transferEvent != null) {
-                const from = transferEvent.args?.from;
-                const to = transferEvent.args?.to;
-                const tokenId = transferEvent.args?.tokenId;
-                console.log("tx:", tx.hash);
-                console.log(`Minted new MelodyRNN model, to=${to}, tokenId=${tokenId}`);
-            }
-            checkForDeployedModel(rc);
-        } catch (e) {
-            console.error("Error minting model: ", e);
-            throw e;
-        }
-    });
-
 task("generate-melody", "evaluate model for each layer")
     .addOptionalParam("contract", "modelRegistry contract address", "", types.string)
     .addOptionalParam("id", "token id of model", "1", types.string)
@@ -401,13 +155,13 @@ task("generate-melody", "evaluate model for each layer")
 
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
+            const baseContract = await deployments.get(ModelCollectionContractName);
             contractAddress = baseContract.address;
         }
 
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const c = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await c.modelAddr(tokenId);
+        const modelAddress = await c.modelAddressOf(tokenId);
         const mldy = new ethers.Contract(modelAddress, MelodyRNNArtifact.abi, signer);
 
         let startTime = new Date().getTime();
@@ -479,18 +233,18 @@ task("get-melody-model", "get eternal AI model")
         const [signer] = await ethers.getSigners();
         let contractAddress = taskArgs.contract;
         if (contractAddress === "") {
-            const baseContract = await deployments.get(ContractName);
+            const baseContract = await deployments.get(ModelCollectionContractName);
             contractAddress = baseContract.address;
         }
-        const c = await ethers.getContractAt(ContractName, contractAddress, signer);
+        const c = await ethers.getContractAt(ModelCollectionContractName, contractAddress, signer);
         const tokenId = ethers.BigNumber.from(taskArgs.id);
-        const modelAddress = await c.modelAddr(tokenId);
+        const modelAddress = await c.modelAddressOf(tokenId);
         console.log("Reading MelodyRNN model at address", modelAddress);
         const mldy = new ethers.Contract(modelAddress, MelodyRNNArtifact.abi, signer);
-        // const model = await mldy.getInfo(tokenId);
+        const model = await mldy.getInfo(tokenId);
 
         // fs.writeFileSync("baseDesc.json", JSON.stringify(model));
-        // console.log(JSON.stringify(model));
+        console.log(JSON.stringify(model, null, 2));
 
         // const lstmInfo = await mldy.getLSTMLayer(ethers.BigNumber.from(2));
         // const lstmInfoDec = [

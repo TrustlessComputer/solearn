@@ -9,6 +9,7 @@ import "hardhat/console.sol";
 import './lib/Utils.sol';
 
 import {IModel} from "./interfaces/IModel.sol";
+import {IModelCollection} from './interfaces/IModelCollection.sol';
 
 error NotTokenOwner();
 error InsufficientEvalPrice();
@@ -18,11 +19,11 @@ error InvalidInput();
 error IncorrectModelId();
 error NotModelRegistry();
 
-interface IModelReg is IERC721Upgradeable {
-    function modelAddr(uint256 tokenId) external view returns (address);
-    function evalPrice() external view returns (uint256);
-    function royaltyReceiver() external view returns (address);
-}
+// interface IModelReg is IERC721Upgradeable {
+//     function modelAddr(uint256 tokenId) external view returns (address);
+//     function evalPrice() external view returns (uint256);
+//     function royaltyReceiver() external view returns (address);
+// }
 
 contract MelodyRNN is IModel, Ownable {
     using Layers for Layers.RescaleLayer;
@@ -39,7 +40,7 @@ contract MelodyRNN is IModel, Ownable {
     int256 constant VOCAB_SIZE = 130;
 
     Model public model;
-    IModelReg public modelRegistry;
+    IModelCollection public modelCollection;
     uint256 public modelId;
 
     uint256 version;
@@ -97,7 +98,7 @@ contract MelodyRNN is IModel, Ownable {
     }
 
     modifier onlyOwnerOrOperator() {
-        if (msg.sender != owner() && modelId > 0 && msg.sender != modelRegistry.ownerOf(modelId)) {
+        if (msg.sender != owner() && modelId > 0 && msg.sender != modelCollection.ownerOf(modelId)) {
             revert NotTokenOwner();
         }
         _;
@@ -110,9 +111,9 @@ contract MelodyRNN is IModel, Ownable {
         _;
     }
 
-    constructor(string memory _modelName, address _modelRegistry) Ownable() {
+    constructor(string memory _modelName, address _modelCollection) Ownable() {
         model.modelName = _modelName;
-        modelRegistry = IModelReg(_modelRegistry);        
+        modelCollection = IModelCollection(_modelCollection);        
         version = 1;
     }
 
@@ -395,7 +396,7 @@ contract MelodyRNN is IModel, Ownable {
         
         model.appendedWeights += appendedWeights;
         if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
+            emit Deployed(modelCollection.modelAddressOf(modelId), modelId);
         }
     }
     
@@ -494,16 +495,16 @@ contract MelodyRNN is IModel, Ownable {
     }
 
     function setModelId(uint256 _modelId) external {
-        if (msg.sender != address(modelRegistry)) {
+        if (msg.sender != address(modelCollection)) {
             revert NotModelRegistry();
         }
-        if (modelId > 0 || modelRegistry.modelAddr(_modelId) != address(this)) {
+        if (modelId > 0 || modelCollection.modelAddressOf(_modelId) != address(this)) {
             revert IncorrectModelId();
         }
 
         modelId = _modelId;
         if (model.appendedWeights == model.requiredWeights && modelId > 0) {
-            emit Deployed(modelRegistry.ownerOf(modelId), modelId);
+            emit Deployed(modelCollection.modelAddressOf(modelId), modelId);
         }
     }
 }

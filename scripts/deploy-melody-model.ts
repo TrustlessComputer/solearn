@@ -2,12 +2,11 @@ import { ethers } from 'ethers';
 import fs from 'fs';
 import * as MelodyRNNArtifact from '../artifacts/contracts/MelodyRNN.sol/MelodyRNN.json';
 import * as EIP173ProxyWithReceiveArtifact from '../artifacts/contracts/solc_0.8/proxy/EIP173ProxyWithReceive.sol/EIP173ProxyWithReceive.json';
-import * as ModelsArtifact from '../artifacts/contracts/Models.sol/Models.json';
+import * as ModelCollectionArtifact from '../artifacts/contracts/ModelCollection.sol/ModelCollection.json';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const ContractName = "Models";
 const MaxWeightLen = 1000;
 const MaxLayerType = 9;
 const gasConfig = { gasLimit: 10_000_000_000 };
@@ -113,6 +112,41 @@ function getConvSize(
         }
     }
     return { out, pad };
+}
+
+async function mintModel(
+    modelCollection: ethers.Contract,
+    model: ethers.Contract,
+    owner: string,
+    mintConfig: any
+) {  
+    // const checkForDeployedModel = (receipt: ethers.ContractReceipt) => {
+    //     const deployedEvent = receipt.events?.find((event: ethers.Event) => event.event === 'Deployed');
+    //     if (deployedEvent != null) {
+    //         const owner = deployedEvent.args?.owner;
+    //         const tokenId = deployedEvent.args?.tokenId;
+    //         console.log(`"Deployed" event emitted: owner=${owner}, tokenId=${tokenId}`);
+    //     }
+    // }
+
+    try {
+        const modelUri = ""; // unused
+        const tx = await modelCollection.mint(owner, modelUri, model.address, {...mintConfig });
+        const rc = await tx.wait();
+        // listen for NewToken event
+        const newTokenEvent = rc.events?.find((event: ethers.Event) => event.event === 'NewToken');
+        if (newTokenEvent != null) {
+            const model = newTokenEvent.args?.model;
+            const minter = newTokenEvent.args?.minter;
+            const tokenId = newTokenEvent.args?.tokenId;
+            console.log("tx:", tx.hash);
+            console.log(`Minted new on-chain model, tokenId=${tokenId}, model=${model}, minter=${minter}`);
+        }
+        // checkForDeployedModel(rc);
+    } catch (e) {
+        console.error("Error minting model: ", e);
+        throw e;
+    }
 }
 
 async function main() {
@@ -285,7 +319,6 @@ async function main() {
     params.layers_config = newLayerConfig.filter((x: any) => x !== null);
 
     let nftContractAddress = MODELS_NFT_CONTRACT as string;
-    const c = new ethers.Contract(nftContractAddress, ModelsArtifact.abi, signer);
     // deploy a MelodyRNN contract
     const MelodyFac = new ethers.ContractFactory(MelodyRNNArtifact.abi, MelodyRNNArtifact.bytecode, signer);
     const mldyImpl = await MelodyFac.deploy(params.model_name, nftContractAddress);
@@ -342,26 +375,10 @@ async function main() {
         }            
     }
 
-    const modelUri = "";
-    console.log('before mibnt')
-    try {
-        const tx = await c.safeMint(MODEL_OWNER || signer.address, modelUri, mldy.address, mintConfig);
-        const rc = await tx.wait();
-        // listen for Transfer event
-        const transferEvent = rc.events?.find((event: { event: string; }) => event.event === 'Transfer');
-        if (transferEvent != null) {
-            const from = transferEvent.args?.from;
-            const to = transferEvent.args?.to;
-            const tokenId = transferEvent.args?.tokenId;
-            console.log("tx:", tx.hash);
-            console.log(`Minted new MelodyRNN model, to=${to}, tokenId=${tokenId}`);
-        }
-        checkForDeployedModel(rc);
-    } catch (e) {
-        console.error("Error minting model: ", e);
-        throw e;
-    }
-    console.log('after mibnt')
+    const modelCollection = new ethers.Contract(nftContractAddress, ModelCollectionArtifact.abi, signer);
+
+    console.log("Minting new model");
+    await mintModel(modelCollection, mldy, MODEL_OWNER || signer.address, mintConfig);
 }
 
 main().catch((error) => {
