@@ -137,11 +137,11 @@ contract EternalAI is IModel, Ownable {
         _;
     }
 
-    constructor(string memory _modelName, string[] memory _classesName, address _modelCollection) Ownable() {
+    constructor(string memory _modelName, string[] memory _classesName, address _modelRegistry) Ownable() {
         model.modelName = _modelName;
         model.classesName = _classesName;
 
-        modelCollection = IModelCollection(_modelCollection);      
+        modelCollection = IModelCollection(_modelRegistry);      
         version = 1;
     }
 
