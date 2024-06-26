@@ -145,7 +145,7 @@ task("generate-melody", "evaluate model for each layer")
     .addOptionalParam("count", "number of step", 1, types.int)
     .addOptionalParam("steplen", "number of notes to generate per step", 1, types.int)
     .addOptionalParam("output", "output file path", "output.mid", types.string)
-    // .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
+    .addOptionalParam("offline", "evaluate without sending a tx", true, types.boolean)
     .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
         const inputLen = 20;
         const stepLen = taskArgs.steplen;
@@ -187,34 +187,42 @@ task("generate-melody", "evaluate model for each layer")
         
         let melody: any[] = [];
         for (let i = 0; i < taskArgs.count; i++) {
-            // let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
-            // const rc = await tx.wait();
-            // console.log("result:", rc);
-            const [res, states] = await mldy.generateMelodyTest(tokenId, stepLen, x2);
-
-            // get event NewMelody
-            // const newMelody = rc.events?.find(event => event.event === 'NewMelody');
-            // if (newMelody != null) {
-                // const res = newMelody.args?.melody;
-                const notes = res.map((num: ethers.BigNumber) => Number(num.div(BigNumber.from("1000000000000000000"))))
-                // // prevent repetition at the end
-                // const last = x2.slice(melody.length-stepLen);
-                // let repeated = false;
-                // for (let i = 0; i < last.length; i++) {
-                //     if (last[i].eq(res[i])) {
-                //         repeated = true;
-                //         break;
-                //     }
-                // }
-                // if (repeated) { 
-                //     res[res.length - 1] = ethers.BigNumber.from(String(Math.trunc(Math.floor(Math.random() * 128) * 1e18)));
-                // }
-                x2 = x2.concat(res).slice(stepLen);
-                melody = melody.concat(notes);
-                // sleep for 1s
-                await new Promise(r => setTimeout(r, 1000));
-            // }
+            let res;
+            if (taskArgs.offline) {
+                res = (await mldy.generateMelodyTest(tokenId, stepLen, x2))[0];
+            } else {
+                let tx = await mldy.generateMelody(tokenId, stepLen, x2, gasConfig);
+                const rc = await tx.wait();
+                console.log(`Tx: ${tx.hash}, used gas: ${rc.gasUsed}`);
+                // console.log("result:", rc);
+     
+                // get event NewMelody
+                const newMelody = rc.events?.find(event => event.event === 'NewMelody');
+                if (newMelody != null) {
+                    res = newMelody.args?.melody;
+                    // // prevent repetition at the end
+                    // const last = x2.slice(melody.length-stepLen);
+                    // let repeated = false;
+                    // for (let i = 0; i < last.length; i++) {
+                    //     if (last[i].eq(res[i])) {
+                    //         repeated = true;
+                    //         break;
+                    //     }
+                    // }
+                    // if (repeated) { 
+                    //     res[res.length - 1] = ethers.BigNumber.from(String(Math.trunc(Math.floor(Math.random() * 128) * 1e18)));
+                    // }
+                } else {
+                    console.log("NewMelody event not found");
+                }
+            }
+            x2 = x2.concat(res).slice(stepLen);
+            const notes = res.map((num: ethers.BigNumber) => Number(num.div(BigNumber.from("1000000000000000000"))));
+            melody = melody.concat(notes);
+            // sleep for 1s
+            // await new Promise(r => setTimeout(r, 1000));
         }
+
         console.log("generated melody:", melody);
 
         const cmd = `python scripts/gen_midi.py --data "${JSON.stringify(melody)}" --output-path "${taskArgs.output}"`;

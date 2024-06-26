@@ -12,3 +12,6 @@ deployments
 out.log
 
 .DS_Store
+_outputs
+_models
+_data

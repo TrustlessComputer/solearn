@@ -1,7 +1,7 @@
-npx hardhat deploy --tags 1 --network regtest3
+npm run deployModelCollection:anvil
 
-npx hardhat mint-model-id --network regtest3 --id '0' --contract '0x2ECdC4B57b6993a6897019a4FF70Ff1DB62A2B8f' --model 'sample-models/cnn_10x10_small.json'
-npx hardhat mint-model-id --network regtest3 --id '2' --contract '0x2ECdC4B57b6993a6897019a4FF70Ff1DB62A2B8f' --model 'sample-models/cnn_10x10.json'
+npx hardhat run scripts/deploy-eai-model.ts --network regtest3
+npx hardhat run scripts/deploy-melody-model.ts --network regtest3
 
 # npx hardhat get-model --network regtest3 --id '0' --contract '0x2ECdC4B57b6993a6897019a4FF70Ff1DB62A2B8f'
 
