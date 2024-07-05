@@ -28,6 +28,11 @@ OwnableUpgradeable {
 
     receive() external payable {}
 
+    modifier onlyManager() {
+        if (msg.sender != owner() && !isManager[msg.sender]) revert Unauthorized();
+        _;
+    }
+
     function initialize(
         string calldata _name,
         string calldata _symbol,
@@ -44,6 +49,8 @@ OwnableUpgradeable {
         royaltyReceiver = _royaltyReceiver;
         royaltyPortion = _royaltyPortion;
         nextModelId = _nextModelId;
+
+        isManager[owner()] = true;
     }
 
     function version() external pure returns (string memory) {
@@ -56,6 +63,18 @@ OwnableUpgradeable {
 
     function unpause() external onlyOwner whenPaused {
         _unpause();
+    }
+
+    function authorizeManager(address _account) external onlyOwner {
+        if (isManager[_account]) revert Authorized();
+        isManager[_account] = true;
+        emit ManagerAuthorization(_account);
+    }
+
+    function deauthorizeManager(address _account) external onlyOwner {
+        if (!isManager[_account]) revert Unauthorized();
+        isManager[_account] = false;
+        emit ManagerDeauthorization(_account);
     }
 
     function updateMintPrice(uint256 _mintPrice) external onlyOwner {
@@ -87,7 +106,7 @@ OwnableUpgradeable {
         return tokenId;
     }
 
-    function mint(address _to, string calldata _uri, address _model) external payable onlyOwner returns (uint256) {
+    function mint(address _to, string calldata _uri, address _model) external payable onlyManager returns (uint256) {
         while (models[nextModelId] != address(0)) {
             nextModelId++;
         }
@@ -100,27 +119,29 @@ OwnableUpgradeable {
         address _to,
         string calldata _uri,
         address _model,
-        uint256 _tokenId,
+        address _manager,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public virtual returns (uint256) {
-        bytes32 hash = getHashToSign(_to, _uri, _model, _tokenId);
+        bytes32 hash = getHashToSign(_to, _uri, _model, _manager);
 
         address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-        if (signer != owner()) revert InvalidSignature();
-        if (models[_tokenId] != address(0)) revert AlreadyMinted();
-
-        return mint_(_to, _uri, _model, _tokenId);
+        if (signer != _manager || !isManager[_manager]) revert InvalidSignature();
+        while (models[nextModelId] != address(0)) {
+            nextModelId++;
+        }
+        uint256 tokenId = nextModelId++;
+        return mint_(_to, _uri, _model, tokenId);
     }
 
     function getHashToSign(
         address _to,
         string calldata  _uri,
         address _model,
-        uint256 _tokenId
+        address _manager
     ) public view virtual returns(bytes32) {
-        bytes32 structHash = keccak256(abi.encode(_to, _uri, _model, _tokenId));
+        bytes32 structHash = keccak256(abi.encode(_to, _uri, _model, _manager));
 
         return _hashTypedDataV4(structHash);
     }
@@ -153,19 +174,19 @@ OwnableUpgradeable {
 
     function tokenURI(uint256 _tokenId)
     public view override (
-        ERC721Upgradeable,
-        ERC721URIStorageUpgradeable,
-        IERC721MetadataUpgradeable
+    ERC721Upgradeable,
+    ERC721URIStorageUpgradeable,
+    IERC721MetadataUpgradeable
     )  returns (string memory) {
         return super.tokenURI(_tokenId);
     }
 
     function supportsInterface(bytes4 _interfaceId)
     public view override (
-        ERC721Upgradeable,
-        ERC721EnumerableUpgradeable,
-        ERC721URIStorageUpgradeable,
-        IERC165Upgradeable
+    ERC721Upgradeable,
+    ERC721EnumerableUpgradeable,
+    ERC721URIStorageUpgradeable,
+    IERC165Upgradeable
     ) returns (bool) {
         return _interfaceId == type(IERC2981Upgradeable).interfaceId || super.supportsInterface(_interfaceId);
     }
@@ -176,9 +197,9 @@ OwnableUpgradeable {
         uint256 _tokenId,
         uint256 _batchSize
     ) internal override (
-        ERC721Upgradeable,
-        ERC721EnumerableUpgradeable,
-        ERC721PausableUpgradeable
+    ERC721Upgradeable,
+    ERC721EnumerableUpgradeable,
+    ERC721PausableUpgradeable
     ) {
         super._beforeTokenTransfer(_from, _to, _tokenId, _batchSize);
     }

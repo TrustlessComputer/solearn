@@ -10,5 +10,7 @@ abstract contract ModelCollectionStorage is IModelCollection {
     address public royaltyReceiver;
     uint16 public royaltyPortion;
 
-    uint256[50] private __gap;
+    mapping(address => bool) public isManager;
+
+    uint256[49] private __gap;
 }

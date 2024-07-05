@@ -17,6 +17,9 @@ IERC2981Upgradeable {
     event RoyaltyPortionUpdate(uint16 newValue);
     event RoyaltyReceiverUpdate(address newAddress);
 
+    event ManagerAuthorization(address indexed account);
+    event ManagerDeauthorization(address indexed account);
+
     event NewToken(
         uint256 indexed tokenId,
         string uri,
@@ -27,10 +30,12 @@ IERC2981Upgradeable {
     event TokenModelUpdate(uint256 indexed tokenId, address model);
 
     error AlreadyMinted();
+    error Authorized();
+    error FailedTransfer();
     error InsufficientFunds();
     error InvalidModel();
     error InvalidSignature();
-    error FailedTransfer();
+    error Unauthorized();
 
     function version() external pure returns (string memory version);
     function nextModelId() external view returns (uint256 nextModelId);
@@ -38,5 +43,20 @@ IERC2981Upgradeable {
     function royaltyReceiver() external view returns (address royaltyReceiver);
     function royaltyPortion() external view returns (uint16 royaltyPortion);
 
-    function mint(address to, string calldata uri, address model) external payable returns (uint256 tokenId);
+    function isManager(address account) external view returns (bool isManager);
+
+    function mint(
+        address to,
+        string calldata uri,
+        address model
+    ) external payable returns (uint256 tokenId);
+    function mintBySignature(
+        address to,
+        string calldata uri,
+        address model,
+        address manager,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external returns (uint256 tokenId);
 }
