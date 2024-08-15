@@ -17,18 +17,18 @@ async function deployHybridModel() {
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
-    const name = 'Juggernaut XL';//`Model ${identifier}`;
+    const name = 'FluxSchnell';//`Model ${identifier}`;
     const minHardware = 1;
-    const modelOwnerAddress = '0xB0D0c3C59B9101D0C98cD2235c03C43F1294cb95';
+    const modelOwnerAddress = '0x1EFad7cbA6a66B7e2d7AA277095A887c54971086';
     const metadataObj = {
         "version": 1,
-        "model_name": "Juggernaut XL",
+        "model_name": "FluxSchnell",
         "model_type": "image",
-        "model_url": "https://gateway.lighthouse.storage/ipfs/QmcFYMYpVodkpT6t1fVmWNjPnUnnQbXvwpqyheXvPGKUr8",
-        "model_file_hash": "7f1f29cb884c5b2f4d072b99afcb87f32cbe4adc88cffedab15ffc9fd30887ae",
+        "model_url": "",
+        "model_file_hash": "",
         "min_hardware": 1,
-        "verifier_url": "https://gateway.lighthouse.storage/ipfs/QmdkKEjx2fauzbPh1j5bUiQXrUG5Ft36pJGHS8awrN89Dc",
-        "verifier_file_hash": "492b2b3dea3003d359fe1b2cee77a22777d8a9faf942ab6dee81e6bfadaadec4",
+        "verifier_url": "",
+        "verifier_file_hash": "",
     }
 
     const metadata = JSON.stringify(metadataObj, null, "\t");
@@ -45,6 +45,8 @@ async function deployHybridModel() {
     );
     await hybridModel.deployed();
 
+    console.log(`Contract HybridModel has been deployed to address ${hybridModel.address}`);
+
     const collection = ModelCollection.attach(config.collectionAddress);
     const mintReceipt = await (await collection.mint(
         modelOwnerAddress,
@@ -52,14 +54,15 @@ async function deployHybridModel() {
         hybridModel.address
     )).wait();
 
-    const workerHub = WorkerHub.attach(workerHubAddress);
-    await workerHub.registerModel(hybridModel.address, minHardware, ethers.utils.parseEther('0.2'));
-
-    console.log(`Contract HybridModel has been deployed to address ${hybridModel.address}`);
     const newTokenEvent = mintReceipt.events?.find((event: ethers.Event) => event.event === 'NewToken');
     if (newTokenEvent) {
         console.log("tokenId:", newTokenEvent.args?.tokenId);
     }
+    
+    const workerHub = WorkerHub.attach(workerHubAddress);
+    await workerHub.registerModel(hybridModel.address, minHardware, ethers.utils.parseEther('0.2'));
+
+    console.log(`Contract HybridModel is registered to WorkerHub`);
 
     console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.address}`);
 }
