@@ -17,12 +17,12 @@ async function deployHybridModel() {
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
-    const name = 'FluxSchnell';//`Model ${identifier}`;
+    const name = 'FluxDev';//`Model ${identifier}`;
     const minHardware = 1;
-    const modelOwnerAddress = '0x1EFad7cbA6a66B7e2d7AA277095A887c54971086';
+    const modelOwnerAddress = '0x594e1ca39dd377f45d56e9b76e0Acee3a76f7DFC';
     const metadataObj = {
         "version": 1,
-        "model_name": "FluxSchnell",
+        "model_name": "FluxDev",
         "model_type": "image",
         "model_url": "",
         "model_file_hash": "",
