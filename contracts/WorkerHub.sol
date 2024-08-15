@@ -287,6 +287,19 @@ ReentrancyGuardUpgradeable {
         emit MinerRegistration(msg.sender, tier, msg.value);
     }
 
+    function forceChangeModelForMiner(address _miner, address _modelAddress) external onlyOwner {
+        _updateEpoch();
+
+        address currentModelAddress = miners[_miner].modelAddress;
+        require(currentModelAddress != _modelAddress, "Same model address");
+        if (minerAddresses.hasValue(_miner)) {
+            minerAddressesByModel[currentModelAddress].erase(_miner);
+            minerAddressesByModel[_modelAddress].insert(_miner);
+        }
+
+        miners[_miner].modelAddress = _modelAddress;
+    }
+
     function joinForMinting() external whenNotPaused {
         _updateEpoch();
 
