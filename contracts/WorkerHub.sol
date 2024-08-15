@@ -300,7 +300,7 @@ ReentrancyGuardUpgradeable {
         }
 
         miners[_miner].modelAddress = _modelAddress;
-        miners[_miner].tier = models[_modelAddress].tier;
+        miners[_miner].tier = uint16(models[_modelAddress].tier);
     }
 
     function joinForMinting() external whenNotPaused {
