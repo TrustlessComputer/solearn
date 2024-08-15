@@ -290,6 +290,8 @@ ReentrancyGuardUpgradeable {
     function forceChangeModelForMiner(address _miner, address _modelAddress) external onlyOwner {
         _updateEpoch();
 
+        if (models[_modelAddress].tier == 0) revert InvalidModel();
+
         address currentModelAddress = miners[_miner].modelAddress;
         require(currentModelAddress != _modelAddress, "Same model address");
         if (minerAddresses.hasValue(_miner)) {
@@ -298,6 +300,7 @@ ReentrancyGuardUpgradeable {
         }
 
         miners[_miner].modelAddress = _modelAddress;
+        miners[_miner].tier = models[_modelAddress].tier;
     }
 
     function joinForMinting() external whenNotPaused {
