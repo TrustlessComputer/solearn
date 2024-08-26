@@ -17,13 +17,13 @@ async function deployHybridModel() {
 
     const workerHubAddress = config.workerHubAddress;
     const identifier = 0;
-    const name = 'FluxDev';//`Model ${identifier}`;
+    const name = 'Llama 3 70B';
     const minHardware = 1;
-    const modelOwnerAddress = '0x594e1ca39dd377f45d56e9b76e0Acee3a76f7DFC';
+    const modelOwnerAddress = '0xe7ebeb300dB63a76F26833Fa8C6eDCE062fBe383';
     const metadataObj = {
         "version": 1,
-        "model_name": "FluxDev",
-        "model_type": "image",
+        "model_name": "Llama 3 70B",
+        "model_type": "text",
         "model_url": "",
         "model_file_hash": "",
         "min_hardware": 1,

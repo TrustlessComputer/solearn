@@ -95,3 +95,17 @@ const metadataObj = {
     "verifier_url": "",
     "verifier_file_hash": "",
 }
+
+const name = 'Llama 3 70B';
+const minHardware = 1;
+const modelOwnerAddress = '0xe7ebeb300dB63a76F26833Fa8C6eDCE062fBe383';
+const metadataObj = {
+    "version": 1,
+    "model_name": "Llama 3 70B",
+    "model_type": "text",
+    "model_url": "",
+    "model_file_hash": "",
+    "min_hardware": 1,
+    "verifier_url": "",
+    "verifier_file_hash": "",
+}
