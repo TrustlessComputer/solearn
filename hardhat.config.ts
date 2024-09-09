@@ -5,7 +5,6 @@ import "hardhat-deploy";
 import './scripts/image.task';
 import './scripts/textrnn.task';
 import './scripts/melody.task';
-import './scripts/test.task';
 import './scripts/rune.task';
 import './scripts/workerhub.task';
 // import "hardhat-tracer";
@@ -49,17 +48,6 @@ const config: HardhatUserConfig = {
       timeout: 500_000_000,
       blockGasLimit: 2_500_000_000,
     },
-    regtest2: {
-      url: "https://eternal-ai2.tc.l2aas.com/rpc",
-      accounts: [
-        process.env.REGTEST2_PRIVATE_KEY || "",
-      ],
-      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
-      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
-      timeout: 500_000,
-      gasPrice: 1_000_000_000,
-      blockGasLimit: 100_000_000_000,
-    } as any,
     regtest3: {
       url: "https://eternal-ai3.tc.l2aas.com/rpc",
       accounts: [

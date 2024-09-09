@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { IOnchainModel } from "./interfaces/IOnchainModel.sol";
-import { IModelRegPublic } from "./interfaces/IModelReg.sol";
 import { IOnchainImplementation } from "./interfaces/IOnchainImplementation.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
