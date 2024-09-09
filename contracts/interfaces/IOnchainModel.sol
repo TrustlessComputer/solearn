@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { IModel } from "./IModel.sol";
-import { Layers } from "./../lib/layers/Layers.sol";
 
 interface IOnchainModel is IModel {
     event ModelRegUpdate(address newAddress);

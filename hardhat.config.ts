@@ -2,11 +2,8 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import '@openzeppelin/hardhat-upgrades';
 import "hardhat-deploy";
-import './scripts/image.task';
-import './scripts/textrnn.task';
-import './scripts/melody.task';
-import './scripts/rune.task';
 import './scripts/workerhub.task';
+import './scripts/wallet.task';
 // import "hardhat-tracer";
 import "@foundry-rs/hardhat-anvil";
 import 'dotenv/config'
@@ -45,6 +42,8 @@ const config: HardhatUserConfig = {
         mnemonic: localTestMnemonic,
         count: 10,
       },
+      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
+      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000_000,
       blockGasLimit: 2_500_000_000,
     },
@@ -53,8 +52,6 @@ const config: HardhatUserConfig = {
       accounts: [
         process.env.REGTEST3_PRIVATE_KEY || "",
       ],
-      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
-      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       treasuryAddress: process.env.REGTEST3_TREASURY_ADDRESS,
       collectionAddress: process.env.REGTEST3_COLLECTION_ADDRESS,
       workerHubAddress: process.env.REGTEST3_WORKER_HUB_ADDRESS,
@@ -64,18 +61,16 @@ const config: HardhatUserConfig = {
       blockGasLimit: 100_000_000_000
     } as any,
     cudatest: {
-      url: "http://34.124.187.213:8545",
+      url: "https://cuda-eternalai.testnet.l2aas.com/rpc",
       accounts: [
         process.env.CUDATEST_PRIVATE_KEY || "",
       ],
-      // issue: https://github.com/NomicFoundation/hardhat/issues/3136
-      // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       treasuryAddress: process.env.CUDATEST_TREASURY_ADDRESS,
       collectionAddress: process.env.CUDATEST_COLLECTION_ADDRESS,
       workerHubAddress: process.env.CUDATEST_WORKER_HUB_ADDRESS,
-      timeout: 500_000,
-      gasPrice: 1_000_000_000,
-      blockGasLimit: 100_000_000_000,
+      timeout: 600_000,
+      gas: 90_000_000,
+      gasPrice: "auto",
     } as any,
     mainnet: {
       url: "https://node.eternalai.org/",
@@ -84,9 +79,9 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.MAINNET_WORKER_HUB_ADDRESS,
-      timeout: 500_000,
-      gasPrice: 1_000_000_000,
-      blockGasLimit: 100_000_000_000,
+      timeout: 600_000,
+      gas: 90_000_000,
+      gasPrice: "auto",
     } as any,
   },
   namedAccounts: {
