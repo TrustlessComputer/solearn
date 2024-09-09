@@ -102,6 +102,17 @@ const config: HardhatUserConfig = {
       gasPrice: 1_000_000_000,
       blockGasLimit: 100_000_000_000,
     },
+    mainnet: {
+      url: "https://node.eternalai.org/",
+      chainId: 43338,
+      accounts: [process.env.MAINNET_PRIVATE_KEY],
+      treasuryAddress: process.env.MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.MAINNET_WORKER_HUB_ADDRESS,
+      timeout: 500_000,
+      gasPrice: 1_000_000_000,
+      blockGasLimit: 100_000_000,
+    } as any,
   },
   namedAccounts: {
     deployer: 0,
