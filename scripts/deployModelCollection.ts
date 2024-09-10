@@ -17,7 +17,7 @@ async function deployModelCollection() {
         await (async () => {
             const name = "Eternal AI"
             const symbol = ""
-            const mintPrice = ethers.utils.parseEther('0');
+            const mintPrice = ethers.parseEther('0');
             const royaltyReceiver = '0x451064E5B968858cD54f227Dba7b7F419eAC5BA9'
             const royalPortion = 5_00;
             const nextModelId = 100_001;
@@ -33,10 +33,10 @@ async function deployModelCollection() {
                     nextModelId
                 ]
             );
-            await modelCollection.deployed();
+            await modelCollection.waitForDeployment();
 
-            console.log(`Contract ModelCollection has been deployed to address ${modelCollection.address}`);
-            return modelCollection.address;
+            console.log(`Contract ModelCollection has been deployed to address ${modelCollection.target}`);
+            return modelCollection.target;
         })();
     console.log(`${networkName}_COLLECTION_ADDRESS=${modelCollectionAddress}`);
 }

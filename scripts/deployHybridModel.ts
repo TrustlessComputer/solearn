@@ -1,6 +1,8 @@
 import assert from 'assert';
 import { version } from 'chai';
 import { ethers, network, upgrades } from 'hardhat';
+import { ModelCollection, WorkerHub } from '../typechain-types';
+import { EventLog, Log } from 'ethers';
 
 async function deployHybridModel() {
     const config = network.config as any;
@@ -43,28 +45,28 @@ async function deployHybridModel() {
             metadata
         ]
     );
-    await hybridModel.deployed();
+    await hybridModel.waitForDeployment();
 
-    console.log(`Contract HybridModel has been deployed to address ${hybridModel.address}`);
-
-    const collection = ModelCollection.attach(config.collectionAddress);
+    console.log(`Contract HybridModel has been deployed to address ${hybridModel.target}`);
+    
+    const collection = ModelCollection.attach(config.collectionAddress) as ModelCollection;
     const mintReceipt = await (await collection.mint(
         modelOwnerAddress,
         metadata,
-        hybridModel.address
+        hybridModel.target
     )).wait();
 
-    const newTokenEvent = mintReceipt.events?.find((event: ethers.Event) => event.event === 'NewToken');
+    const newTokenEvent = (mintReceipt!.logs as EventLog[]).find((event: EventLog) => event.eventName === 'NewToken');
     if (newTokenEvent) {
         console.log("tokenId:", newTokenEvent.args?.tokenId);
     }
     
-    const workerHub = WorkerHub.attach(workerHubAddress);
-    await workerHub.registerModel(hybridModel.address, minHardware, ethers.utils.parseEther('0.2'));
+    const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
+    await workerHub.registerModel(hybridModel.target, minHardware, ethers.parseEther('0.2'));
 
     console.log(`Contract HybridModel is registered to WorkerHub`);
 
-    console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.address}`);
+    console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.target}`);
 }
 
 deployHybridModel()

@@ -1,20 +1,16 @@
 import { HardhatUserConfig } from "hardhat/config";
+import "@matterlabs/hardhat-zksync";
 import "@nomicfoundation/hardhat-toolbox";
 import '@openzeppelin/hardhat-upgrades';
 import "hardhat-deploy";
-import './scripts/workerhub.task';
+import 'dotenv/config';
+import 'hardhat-contract-sizer';
+
 import './scripts/wallet.task';
-// import "hardhat-tracer";
-import "@foundry-rs/hardhat-anvil";
-import 'dotenv/config'
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "anvil",
-  anvil: {
-    url: "http://127.0.0.1:8545/",
-    launch: false, // if set to `true`, it will spawn a new instance if the plugin is initialized, if set to `false` it expects an already running anvil instance
-  },
+  defaultNetwork: "hardhat",
   solidity: {
     compilers: [
       { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 2000 } } },
@@ -29,13 +25,7 @@ const config: HardhatUserConfig = {
       gas: 100_000_000,
       allowUnlimitedContractSize: true,
       blockGasLimit: 1_000_000_000_000,
-    },
-    anvil: {
-      url: "http://127.0.0.1:8545/",
-      timeout: 600_000,
-      gas: 10_000_000_000,
-      gasPrice: "auto",
-    },
+    } as any,
     localhost: {
       url: "http://localhost:8545",
       accounts: {
@@ -56,9 +46,8 @@ const config: HardhatUserConfig = {
       collectionAddress: process.env.REGTEST3_COLLECTION_ADDRESS,
       workerHubAddress: process.env.REGTEST3_WORKER_HUB_ADDRESS,
       timeout: 600_000,
-      gas: 10_000_000_000,
+      gas: 90_000_000,
       gasPrice: "auto", 
-      blockGasLimit: 100_000_000_000
     } as any,
     cudatest: {
       url: "https://cuda-eternalai.testnet.l2aas.com/rpc",
@@ -83,6 +72,18 @@ const config: HardhatUserConfig = {
       gas: 90_000_000,
       gasPrice: "auto",
     } as any,
+    zknet: {
+      url: "https://rpc.poc-chain.l2aas.com",
+      chainId: 70683,
+      accounts: [process.env.ZKNET_PRIVATE_KEY],
+      treasuryAddress: process.env.ZKNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.ZKNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.ZKNET_WORKER_HUB_ADDRESS,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: true,
+      estimateGasProxyAddress: process.env.ZKNET_ESTIMATE_GAS_PROXY_ADDRESS
+  } as any,
   },
   namedAccounts: {
     deployer: 0,

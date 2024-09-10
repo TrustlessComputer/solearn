@@ -9,6 +9,6 @@ task("balance", "Prints an account's balance")
     const account = taskArgs.account || accs[0].address;
     const balance = await ethers.provider.getBalance(account);
 
-    console.log(ethers.utils.formatEther(balance), "ETH");
+    console.log(ethers.formatEther(balance), "ETH");
   });
   

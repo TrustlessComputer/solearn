@@ -16,13 +16,13 @@ async function deployWorkerHub() {
     : await (async () => {
         const treasuryAddress = "0x451064E5B968858cD54f227Dba7b7F419eAC5BA9";
         const feePercentage = 10_00;
-        const minerMinimumStake = ethers.utils.parseEther("25000");
-        const validatorMinimumStake = ethers.utils.parseEther("40000");
+        const minerMinimumStake = ethers.parseEther("25000");
+        const validatorMinimumStake = ethers.parseEther("40000");
         const miningTimeLimit = 10 * 60;
         const minerRequirement = 3;
         const blockPerEpoch = 600;
-        const rewardPerEpochBasedOnPerf = ethers.utils.parseEther("0");
-        const rewardPerEpoch = ethers.utils.parseEther("0");
+        const rewardPerEpochBasedOnPerf = ethers.parseEther("0");
+        const rewardPerEpoch = ethers.parseEther("0");
         const unstakeDelayTime = 21 * 24 * 3600;
         const penaltyDuration = 3600;
         const finePercentage = 5_00;
@@ -41,19 +41,19 @@ async function deployWorkerHub() {
           penaltyDuration,
           finePercentage,
         ]);
-        await workerHub.deployed();
+        await workerHub.waitForDeployment();
 
         // const tx = {
-        //     to: workerHub.address,
-        //     value: ethers.utils.parseEther('1000')
+        //     to: workerHub.target,
+        //     value: ethers.parseEther('1000')
         // }
         //
         // await (await ethers.getSigners())[0].sendTransaction(tx);
 
         console.log(
-          `Contract WorkerHub has been deployed to address ${workerHub.address}`
+          `Contract WorkerHub has been deployed to address ${workerHub.target}`
         );
-        return workerHub.address;
+        return workerHub.target;
       })();
   console.log(`${networkName}_WORKER_HUB_ADDRESS=${workerHubAddress}`);
 }

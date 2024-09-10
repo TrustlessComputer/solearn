@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { ethers, network, upgrades } from 'hardhat';
+import { HybridModel, ModelCollection, WorkerHub } from '../typechain-types';
 
 async function updateHybridModelMetadata() {
     const config = network.config as any;
@@ -21,7 +22,7 @@ async function updateHybridModelMetadata() {
     );
 
     const tokenId = 1000001;
-    const minHardware = 1;
+    const minHardware = BigInt(1);
     const metadata = '{\n' +
         '\t"version": 1,\n' +
         '\t"model_name": "Max Multi",\n' +
@@ -33,16 +34,16 @@ async function updateHybridModelMetadata() {
         '\t"verifier_file_hash": "492b2b3dea3003d359fe1b2cee77a22777d8a9faf942ab6dee81e6bfadaadec4"\n' +
         '}'
 
-    const collection = ModelCollection.attach(config.collectionAddress);
+    const collection = ModelCollection.attach(config.collectionAddress) as ModelCollection;
     await (await collection.updateTokenURI(tokenId, metadata)).wait();
     console.log("TokenURI updated");
 
     const modelAddress = await collection.modelAddressOf(tokenId);
-    const hybridModel = HybridModel.attach(modelAddress);
+    const hybridModel = HybridModel.attach(modelAddress) as HybridModel;
     await (await hybridModel.updateMetadata(metadata)).wait();
     console.log("Hybrid model metadata updated");
 
-    const workerHub = WorkerHub.attach(workerHubAddress);
+    const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
     const currentTier = (await workerHub.models(modelAddress)).tier;
     if (currentTier !== minHardware) {
         await (await workerHub.updateModelTier(modelAddress, minHardware)).wait();

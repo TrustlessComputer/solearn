@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { ethers, network, upgrades } from 'hardhat';
+import { WorkerHub } from '../typechain-types';
 
 async function addWorkerToModel() {
     const config = network.config as any;
@@ -43,7 +44,7 @@ async function addWorkerToModel() {
         "0x99e4dd9460eadd244ca1fc6cdd946b61fe070dc1",
     ];
 
-    const workerHub = WorkerHub.attach(workerHubAddress);
+    const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
     for(const worker of workerAddresses) {
         await (await workerHub.forceChangeModelForMiner(worker, modelAddress)).wait();
     }
