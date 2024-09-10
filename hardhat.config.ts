@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@matterlabs/hardhat-zksync";
 import "@nomicfoundation/hardhat-toolbox";
+import '@nomiclabs/hardhat-solhint';
 import '@openzeppelin/hardhat-upgrades';
 import "hardhat-deploy";
 import 'dotenv/config';
@@ -76,17 +77,16 @@ const config: HardhatUserConfig = {
       gas: 90_000_000,
       gasPrice: "auto",
     } as any,
-    zknet: {
+    zk_testnet: {
       url: "https://rpc.poc-chain.l2aas.com",
       chainId: 70683,
-      accounts: [process.env.ZKNET_PRIVATE_KEY],
-      treasuryAddress: process.env.ZKNET_TREASURY_ADDRESS,
-      collectionAddress: process.env.ZKNET_COLLECTION_ADDRESS,
-      workerHubAddress: process.env.ZKNET_WORKER_HUB_ADDRESS,
+      accounts: [process.env.ZK_TESTNET_PRIVATE_KEY],
+      treasuryAddress: process.env.ZK_TESTNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.ZK_TESTNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.ZK_TESTNET_WORKER_HUB_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
-      estimateGasProxyAddress: process.env.ZKNET_ESTIMATE_GAS_PROXY_ADDRESS
   } as any,
   },
   namedAccounts: {

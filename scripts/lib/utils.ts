@@ -5,7 +5,7 @@ import {upgrades, zkUpgrades} from "hardhat";
 import * as hre from "hardhat";
 import * as dotenv from "dotenv";
 
-import '@nomiclabs/hardhat-ethers'
+// import '@nomiclabs/hardhat-ethers'
 import "@openzeppelin/hardhat-upgrades";
 
 import "@matterlabs/hardhat-zksync-node/dist/type-extensions";

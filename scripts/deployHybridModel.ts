@@ -1,13 +1,13 @@
 import assert from 'assert';
 import { version } from 'chai';
 import { ethers, network, upgrades } from 'hardhat';
-import { ModelCollection, WorkerHub } from '../typechain-types';
+import { HybridModel, ModelCollection, WorkerHub } from '../typechain-types';
 import { EventLog, Log } from 'ethers';
+import { deployOrUpgrade } from './lib/utils';
 
 async function deployHybridModel() {
     const config = network.config as any;
     const networkName = network.name.toUpperCase();
-    const HybridModel = await ethers.getContractFactory('HybridModel');
     const WorkerHub = await ethers.getContractFactory('WorkerHub');
     const ModelCollection = await ethers.getContractFactory('ModelCollection');
 
@@ -32,20 +32,22 @@ async function deployHybridModel() {
         "verifier_url": "",
         "verifier_file_hash": "",
     }
-
     const metadata = JSON.stringify(metadataObj, null, "\t");
     console.log(metadata);
 
-    const hybridModel = await upgrades.deployProxy(
-        HybridModel,
-        [
-            workerHubAddress,
-            identifier,
-            name,
-            metadata
-        ]
-    );
-    await hybridModel.waitForDeployment();
+    const constructorParams = [
+        workerHubAddress,
+        identifier,
+        name,
+        metadata
+    ];
+    const hybridModel = (await deployOrUpgrade(
+        null, 
+        "HybridModel", 
+        constructorParams, 
+        config, 
+        true
+    ) as unknown) as HybridModel;
 
     console.log(`Contract HybridModel has been deployed to address ${hybridModel.target}`);
     

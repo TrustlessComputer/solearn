@@ -291,13 +291,12 @@ ReentrancyGuardUpgradeable {
         _updateEpoch();
 
         if (models[_modelAddress].tier == 0) revert InvalidModel();
+        if (!minerAddresses.hasValue(_miner)) revert NotRegistered();
 
         address currentModelAddress = miners[_miner].modelAddress;
         require(currentModelAddress != _modelAddress, "Same model address");
-        if (minerAddresses.hasValue(_miner)) {
-            minerAddressesByModel[currentModelAddress].erase(_miner);
-            minerAddressesByModel[_modelAddress].insert(_miner);
-        }
+        minerAddressesByModel[currentModelAddress].erase(_miner);
+        minerAddressesByModel[_modelAddress].insert(_miner);
 
         miners[_miner].modelAddress = _modelAddress;
         miners[_miner].tier = uint16(models[_modelAddress].tier);
