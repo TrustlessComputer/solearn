@@ -25,18 +25,22 @@ const config: HardhatUserConfig = {
       gas: 100_000_000,
       allowUnlimitedContractSize: true,
       blockGasLimit: 1_000_000_000_000,
-    } as any,
+    },
     localhost: {
       url: "http://localhost:8545",
       accounts: {
         mnemonic: localTestMnemonic,
         count: 10,
       },
+      treasuryAddress: process.env.HARDHAT_TREASURY_ADDRESS,
+      collectionAddress: process.env.HARDHAT_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.HARDHAT_WORKER_HUB_ADDRESS,
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000_000,
+      gas: 90_000_000,
       blockGasLimit: 2_500_000_000,
-    },
+    } as any,
     regtest3: {
       url: "https://eternal-ai3.tc.l2aas.com/rpc",
       accounts: [
