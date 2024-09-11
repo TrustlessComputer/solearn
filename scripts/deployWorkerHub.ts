@@ -9,8 +9,8 @@ async function deployWorkerHub() {
 
   const treasuryAddress = "0x451064E5B968858cD54f227Dba7b7F419eAC5BA9";
   const feePercentage = 10_00;
-  const minerMinimumStake = ethers.parseEther("25000");
-  const validatorMinimumStake = ethers.parseEther("40000");
+  const minerMinimumStake = ethers.parseEther("1");
+  const validatorMinimumStake = ethers.parseEther("1");
   const miningTimeLimit = 10 * 60;
   const minerRequirement = 3;
   const blockPerEpoch = 600;

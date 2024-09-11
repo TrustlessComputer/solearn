@@ -14,7 +14,7 @@ import "@matterlabs/hardhat-zksync-verify/dist/src/type-extensions";
 dotenv.config();
 export const deployOrUpgrade = async (address: any, contractName: any, constructorParams: any[], networkConfig: any, isInitializable: boolean) => {
   console.log(networkConfig);
-  if (networkConfig.zkSync) {
+  if (networkConfig.zksync) {
     return deployOrUpgradeZk(getMasterWallet(), address, contractName, constructorParams, isInitializable);
   } else {
     return deployOrUpgradeLocal(address, contractName, constructorParams, isInitializable);

@@ -78,8 +78,8 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
     } as any,
     zk_testnet: {
-      url: "https://rpc.poc-chain.l2aas.com",
-      chainId: 70683,
+      url: "https://rpc.testnet.supersonic2.bvm.network",
+      chainId: 22219,
       accounts: [process.env.ZK_TESTNET_PRIVATE_KEY],
       treasuryAddress: process.env.ZK_TESTNET_TREASURY_ADDRESS,
       collectionAddress: process.env.ZK_TESTNET_COLLECTION_ADDRESS,
