@@ -588,14 +588,14 @@ ReentrancyGuardUpgradeable {
             revert InvalidInferenceStatus();
         }
 
-        if (clonedInference.expiredAt < block.timestamp) {
-            if (clonedInference.assignments.length == 0) {
-                resolveInference(clonedAssignments.inferenceId);
-                return;
-            } else {
-                revert MiningSessionEnded();
-            }
-        }
+        // if (clonedInference.expiredAt < block.timestamp) {
+        //     if (clonedInference.assignments.length == 0) {
+        //         resolveInference(clonedAssignments.inferenceId);
+        //         return;
+        //     } else {
+        //         revert MiningSessionEnded();
+        //     }
+        // }
 
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
