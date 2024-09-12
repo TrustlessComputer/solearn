@@ -36,7 +36,7 @@ async function deployWorkerHub() {
   ];
 
   const workerHub = (await deployOrUpgrade(
-    null, 
+    config.workerHubAddress, 
     "WorkerHub", 
     constructorParams, 
     config, 
