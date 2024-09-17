@@ -73,7 +73,7 @@ ReentrancyGuardUpgradeable {
         emit IdentifierUpdate(_modelId);
     }
 
-    function infer(bytes calldata _input) external payable whenNotPaused nonReentrant returns (uint256) {
-        return IInferable(workerHub).infer{value: msg.value}(_input, msg.sender);
+    function infer(bytes calldata _input, uint256 cost) external whenNotPaused nonReentrant returns (uint256) {
+        return IInferable(workerHub).infer(_input, msg.sender, cost);
     }
 }

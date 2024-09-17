@@ -38,7 +38,8 @@ ReentrancyGuardUpgradeable {
         uint256 _rewardPerEpoch,
         uint40 _unstakeDelayTime,
         uint40 _penaltyDuration,
-        uint16 _finePercentage
+        uint16 _finePercentage,
+        address _stakeToken
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
@@ -58,6 +59,7 @@ ReentrancyGuardUpgradeable {
         lastBlock = block.number;
         penaltyDuration = _penaltyDuration;
         finePercentage = _finePercentage;
+        stakeToken = _stakeToken;
     }
 
     function version() external pure returns (string memory) {
@@ -269,22 +271,24 @@ ReentrancyGuardUpgradeable {
         emit ModelMinimumFeeUpdate(_model, _minimumFee);
     }
 
-    function registerMiner(uint16 tier) external payable whenNotPaused {
+    function registerMiner(uint16 tier, uint256 stakeAmount) external whenNotPaused {
         _updateEpoch();
 
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
-        if (msg.value < minerMinimumStake) revert StakeTooLow();
+        if (stakeAmount < minerMinimumStake) revert StakeTooLow();
 
         Worker storage miner = miners[msg.sender];
         if (miner.tier != 0) revert AlreadyRegistered();
 
-        miner.stake = msg.value;
+        miner.stake = stakeAmount;
+        TransferHelper.safeTransferFrom(stakeToken, msg.sender, address(this), stakeAmount);
+
         miner.tier = tier;
 
         address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
         miner.modelAddress = modelAddress;
 
-        emit MinerRegistration(msg.sender, tier, msg.value);
+        emit MinerRegistration(msg.sender, tier, stakeAmount);
     }
 
     function forceChangeModelForMiner(address _miner, address _modelAddress) external onlyOwner {
@@ -351,15 +355,16 @@ ReentrancyGuardUpgradeable {
         emit MinerUnregistration(msg.sender);
     }
 
-    function increaseMinerStake() external payable whenNotPaused {
+    function increaseMinerStake(uint256 stakeAmount) external whenNotPaused {
         _updateEpoch();
 
         Worker storage miner = miners[msg.sender];
         if (miner.tier == 0) revert NotRegistered();
 
-        miner.stake += msg.value;
+        miner.stake += stakeAmount;
+        TransferHelper.safeTransferFrom(stakeToken, msg.sender, address(this), stakeAmount);
 
-        emit MinerExtraStake(msg.sender, msg.value);
+        emit MinerExtraStake(msg.sender, stakeAmount);
     }
 
     function unstakeForMiner() external {
@@ -371,7 +376,7 @@ ReentrancyGuardUpgradeable {
         uint256 stake = unstakeRequest.stake;
         if (stake == 0) revert NullStake();
         unstakeRequest.stake = 0;
-        TransferHelper.safeTransferNative(msg.sender, stake);
+        TransferHelper.safeTransfer(stakeToken, msg.sender, stake);
 
         emit MinerUnstake(msg.sender, stake);
     }
@@ -399,24 +404,24 @@ ReentrancyGuardUpgradeable {
         emit Restake(msg.sender, unstakeAmount, miner.modelAddress);
     }
 
-    function registerValidator(uint16 tier) external payable whenNotPaused {
+    function registerValidator(uint16 tier, uint256 stakeAmount) external whenNotPaused {
         _updateEpoch();
 
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
-        if (msg.value < validatorMinimumStake) revert StakeTooLow();
+        if (stakeAmount < validatorMinimumStake) revert StakeTooLow();
 
         Worker storage validator = validators[msg.sender];
         if (validator.tier != 0) revert AlreadyRegistered();
 
-        validator.stake = msg.value;
-        validator.tier = tier;
+        validator.stake = stakeAmount;
+        TransferHelper.safeTransferFrom(stakeToken, msg.sender, address(this), stakeAmount);
         validator.tier = tier;
         validator.lastClaimedEpoch = currentEpoch;
 
         address modelAddress = modelAddresses.values[randomizer.randomUint256() % modelAddresses.size()];
         validator.modelAddress = modelAddress;
 
-        emit ValidatorRegistration(msg.sender, tier, msg.value);
+        emit ValidatorRegistration(msg.sender, tier, stakeAmount);
     }
 
     function joinForValidating() external whenNotPaused {
@@ -459,15 +464,16 @@ ReentrancyGuardUpgradeable {
         emit ValidatorUnregistration(msg.sender);
     }
 
-    function increaseValidatorStake() external payable whenNotPaused {
+    function increaseValidatorStake(uint256 stakeAmount) external whenNotPaused {
         _updateEpoch();
 
         Worker storage validator = validators[msg.sender];
         if (validator.tier == 0) revert NotRegistered();
 
-        validator.stake += msg.value;
+        validator.stake += stakeAmount;
+        TransferHelper.safeTransferFrom(stakeToken, msg.sender, address(this), stakeAmount);
 
-        emit ValidatorExtraStake(msg.sender, msg.value);
+        emit ValidatorExtraStake(msg.sender, stakeAmount);
     }
 
     function unstakeForValidator() external {
@@ -479,19 +485,20 @@ ReentrancyGuardUpgradeable {
         uint256 stake = unstakeRequest.stake;
         if (stake == 0) revert NullStake();
         unstakeRequest.stake = 0;
-        TransferHelper.safeTransferNative(msg.sender, stake);
+        TransferHelper.safeTransfer(stakeToken, msg.sender, stake);
 
         emit ValidatorUnstake(msg.sender, stake);
     }
 
-    function infer(bytes calldata _input, address _creator) external payable whenNotPaused returns (uint256) {
+    function infer(bytes calldata _input, address _creator, uint256 cost) external whenNotPaused returns (uint256) {
         Model storage model = models[msg.sender];
         if (model.tier == 0) revert Unauthorized();
-        if (msg.value < model.minimumFee) revert FeeTooLow();
+        if (cost < model.minimumFee) revert FeeTooLow();
         uint256 inferenceId = ++inferenceNumber;
         Inference storage inference = inferences[inferenceId];
 
-        uint256 value = msg.value;
+        uint256 value = cost;
+        TransferHelper.safeTransferFrom(stakeToken, msg.sender, address(this), value);
 
         inference.input = _input;
         inference.value = value;
@@ -505,12 +512,13 @@ ReentrancyGuardUpgradeable {
         return inferenceId;
     }
 
-    function topUpInfer(uint256 _inferenceId) external payable whenNotPaused {
-        if (msg.value == 0) revert ZeroValue();
+    function topUpInfer(uint256 _inferenceId, uint256 topUpAmount) external whenNotPaused {
+        if (topUpAmount == 0) revert ZeroValue();
 
         Inference storage inference = inferences[_inferenceId];
         if (inference.status != InferenceStatus.Solving) revert InferMustBeSolvingState();
-        inference.value += msg.value;
+        inference.value += topUpAmount;
+        TransferHelper.safeTransferFrom(stakeToken, msg.sender, address(this), topUpAmount);
 
         emit TopUpInfer(_inferenceId, inference.creator, inference.value);
     }
@@ -606,8 +614,8 @@ ReentrancyGuardUpgradeable {
         if (inference.assignments.length == 1) {
             uint256 fee = clonedInference.value * feePercentage / PERCENTAGE_DENOMINATOR;
             uint256 value = clonedInference.value - fee;
-            TransferHelper.safeTransferNative(treasury, fee);
-            TransferHelper.safeTransferNative(_msgSender, value);
+            TransferHelper.safeTransfer(stakeToken, treasury, fee);
+            TransferHelper.safeTransfer(stakeToken, _msgSender, value);
 
             emit TransferFee(_msgSender, value, treasury, fee);
             emit InferenceStatusUpdate(clonedAssignments.inferenceId, InferenceStatus.Solved);
@@ -658,7 +666,7 @@ ReentrancyGuardUpgradeable {
 
             // reset boost
             boost[_miner].reserved1 = 0;
-            TransferHelper.safeTransferNative(treasury, fine);
+            TransferHelper.safeTransfer(stakeToken, treasury, fine);
 
             emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
             return;
@@ -689,7 +697,7 @@ ReentrancyGuardUpgradeable {
         Inference storage inference = inferences[_inferenceId];
         if (inference.status == InferenceStatus.Solving && block.timestamp > inference.expiredAt) {
             inference.status = InferenceStatus.Killed;
-            TransferHelper.safeTransferNative(inference.creator, inference.value);
+            TransferHelper.safeTransfer(stakeToken, inference.creator, inference.value);
             emit InferenceStatusUpdate(_inferenceId, InferenceStatus.Killed);
         }
     }
@@ -699,7 +707,7 @@ ReentrancyGuardUpgradeable {
         miners[_miner].lastClaimedEpoch = currentEpoch;
         if (rewardAmount > 0 && _isTransfer) {
             minerRewards[_miner] = 0;
-            TransferHelper.safeTransferNative(_miner, rewardAmount);
+            TransferHelper.safeTransfer(stakeToken, _miner, rewardAmount);
 
             emit RewardClaim(_miner, rewardAmount);
         } else if (rewardAmount > 0) {

@@ -28,7 +28,11 @@
     "console:zk_testnet": "npx hardhat console --network zk_testnet",
     "deployModelCollection:zk_testnet": "npx hardhat run scripts/deployModelCollection.ts --network zk_testnet",
     "deployWorkerHub:zk_testnet": "npx hardhat run scripts/deployWorkerHub.ts --network zk_testnet",
-    "deployHybridModel:zk_testnet": "npx hardhat run scripts/deployHybridModel.ts --network zk_testnet"
+    "deployHybridModel:zk_testnet": "npx hardhat run scripts/deployHybridModel.ts --network zk_testnet",
+    "console:zk_mainnet": "npx hardhat console --network zk_mainnet",
+    "deployModelCollection:zk_mainnet": "npx hardhat run scripts/deployModelCollection.ts --network zk_mainnet",
+    "deployWorkerHub:zk_mainnet": "npx hardhat run scripts/deployWorkerHub.ts --network zk_mainnet",
+    "deployHybridModel:zk_mainnet": "npx hardhat run scripts/deployHybridModel.ts --network zk_mainnet"
   },
   "devDependencies": {
     "@ericxstone/hardhat-blockscout-verify": "^1.0.2",

@@ -14,7 +14,7 @@ const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   solidity: {
     compilers: [
-      { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 2000 } } },
+      { version: "0.8.19", settings: { optimizer: { enabled: true, runs: 2000 }, viaIR: true } },
     ]
   },
   networks: {
@@ -87,7 +87,18 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
-  } as any,
+    } as any,
+    zk_mainnet: {
+      url: "https://rpc.eternalai.bvm.network/",
+      chainId: 222672,
+      accounts: [process.env.ZK_TESTNET_PRIVATE_KEY],
+      treasuryAddress: process.env.ZK_TESTNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.ZK_TESTNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.ZK_TESTNET_WORKER_HUB_ADDRESS,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: true,
+    } as any,
   },
   namedAccounts: {
     deployer: 0,

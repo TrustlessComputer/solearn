@@ -72,5 +72,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // determine multiplier value
     mapping(address => Boost) internal boost;
 
-    uint256[97] private __gap;
+    address public stakeToken;
+
+    uint256[96] private __gap;
 }

@@ -18,5 +18,5 @@ interface IHybridModel is IModel {
     function metadata() external view returns (string memory metadata);
     function name() external view returns (string memory name);
 
-    function infer(bytes calldata _data) external payable returns (uint256 referenceId);
+    function infer(bytes calldata _data, uint256 amount) external returns (uint256 referenceId);
 }
