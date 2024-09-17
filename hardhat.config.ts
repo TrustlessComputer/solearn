@@ -87,6 +87,7 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
+      gasPrice: "auto",
     } as any,
     zk_mainnet: {
       url: "https://rpc.eternalai.bvm.network/",
@@ -98,6 +99,7 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
+      gasPrice: "auto",
     } as any,
   },
   namedAccounts: {
