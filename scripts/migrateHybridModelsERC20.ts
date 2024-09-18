@@ -31,7 +31,13 @@ async function migrateHybridModelERC20() {
     );
 
     const hybridModelsData = JSON.parse(fs.readFileSync("_outputs/hybridModelsData.json").toString());
-    const newHybridModelsData = JSON.parse(fs.readFileSync("_outputs/newHybridModelsData.json").toString()) as any[];
+
+    const newHybridDataPath = "_outputs/newHybridModelsData.json";
+    let newHybridModelsData = [];
+    if (fs.existsSync(newHybridDataPath)) {
+        newHybridModelsData = JSON.parse(fs.readFileSync(newHybridDataPath).toString());
+    }
+
     for(const { address: oldAddress, tokenId: oldTokenId, name, metadata, owner: modelOwnerAddress } of hybridModelsData) {
         if (newHybridModelsData.find(item => item.oldAddress === oldAddress)) {
             continue;
@@ -42,7 +48,7 @@ async function migrateHybridModelERC20() {
 
         const constructorParams = [
             workerHubERC20Address,
-            0,
+            identifier,
             name,
             metadata
         ];

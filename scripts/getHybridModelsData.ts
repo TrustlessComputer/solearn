@@ -68,6 +68,9 @@ async function getModelsFromCollection() {
         })
     }
 
+    if (!fs.existsSync("_outputs")) {
+        fs.mkdirSync("_outputs", { recursive: true });
+    }
     fs.writeFileSync("_outputs/hybridModelsData.json", stringifyJSON(hybridModelsData));
 }
 
