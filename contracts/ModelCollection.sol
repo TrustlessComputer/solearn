@@ -6,6 +6,7 @@ import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces
 import {IERC2981Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import {ERC721EnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
 import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
@@ -180,6 +181,14 @@ OwnableUpgradeable {
     )  returns (string memory) {
         return super.tokenURI(_tokenId);
     }
+
+    // function ownerOf(uint256 _tokenId)
+    // public view override (
+    // ERC721Upgradeable,
+    // IERC721Upgradeable
+    // )  returns (address) {
+    //     return super.ownerOf(_tokenId);
+    // }
 
     function supportsInterface(bytes4 _interfaceId)
     public view override (

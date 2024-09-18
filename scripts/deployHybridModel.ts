@@ -72,7 +72,6 @@ async function deployHybridModel() {
     await workerHub.registerModel(hybridModel.target, minHardware, ethers.parseEther('0.2'));
 
     console.log(`Contract HybridModel is registered to WorkerHub`);
-
     console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.target}`);
 }
 
