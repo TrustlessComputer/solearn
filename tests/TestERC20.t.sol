@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../contracts/WorkerHub.sol";
+import "../contracts/WorkerHubERC20.sol";
 import "../contracts/tests/TestToken.sol";
 import "forge-std/console.sol";
 
-contract WorkHubTest is Test {
-    WorkerHub workerHub;
+contract WorkHubERC20Test is Test {
+    WorkerHubERC20 workerHub;
     TestToken token;
     
     address public constant ADMIN_ADDR = address(0x10);
@@ -17,7 +17,7 @@ contract WorkHubTest is Test {
     address public constant ModelAddr = address(0x1);
 
     function setUp() public {
-        workerHub = new WorkerHub();
+        workerHub = new WorkerHubERC20();
         token = new TestToken();
 
         vm.startPrank(ADMIN_ADDR);

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
+import {IWorkerHubERC20} from "../interfaces/IWorkerHubERC20.sol";
 
 import {Random} from "../lib/Random.sol";
 import {Set} from "../lib/Set.sol";
 
-abstract contract WorkerHubStorage is IWorkerHub {
+abstract contract WorkerHubERC20Storage is IWorkerHubERC20 {
     Random.Randomizer internal randomizer;
 
     mapping(address => Model) public models;
@@ -72,5 +72,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // determine multiplier value
     mapping(address => Boost) internal boost;
 
-    uint256[97] private __gap;
+    address public stakeToken;
+
+    uint256[96] private __gap;
 }

@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import {IInferable} from "./interfaces/IInferable.sol";
+import {IInferableERC20} from "./interfaces/IInferableERC20.sol";
 
-import {HybridModelStorage} from "./storages/HybridModelStorage.sol";
+import {HybridModelERC20Storage} from "./storages/HybridModelERC20Storage.sol";
 
-contract HybridModel is
-HybridModelStorage,
+contract HybridModelERC20 is
+HybridModelERC20Storage,
 OwnableUpgradeable,
 PausableUpgradeable,
 ReentrancyGuardUpgradeable {
@@ -73,7 +72,7 @@ ReentrancyGuardUpgradeable {
         emit IdentifierUpdate(_modelId);
     }
 
-    function infer(bytes calldata _input) external payable whenNotPaused nonReentrant returns (uint256) {
-        return IInferable(workerHub).infer{value: msg.value}(_input, msg.sender);
+    function infer(bytes calldata _input, uint256 cost) external whenNotPaused nonReentrant returns (uint256) {
+        return IInferableERC20(workerHub).infer(_input, msg.sender, cost);
     }
 }

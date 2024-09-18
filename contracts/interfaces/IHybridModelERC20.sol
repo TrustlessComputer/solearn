@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IModel } from "./IModel.sol";
 
-interface IHybridModel is IModel {
+interface IHybridModelERC20 is IModel {
     event WorkerHubUpdate(address newAddress);
 
     event IdentifierUpdate(uint256 newValue);
@@ -18,5 +18,5 @@ interface IHybridModel is IModel {
     function metadata() external view returns (string memory metadata);
     function name() external view returns (string memory name);
 
-    function infer(bytes calldata _data) external payable returns (uint256 referenceId);
+    function infer(bytes calldata _data, uint256 amount) external returns (uint256 referenceId);
 }

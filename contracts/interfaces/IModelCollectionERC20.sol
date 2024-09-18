@@ -6,7 +6,7 @@ import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC7
 import {IERC721EnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721EnumerableUpgradeable.sol";
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 
-interface IModelCollection is
+interface IModelCollectionERC20 is
 IERC721Upgradeable,
 IERC721MetadataUpgradeable,
 IERC721EnumerableUpgradeable,
@@ -14,6 +14,7 @@ IERC2981Upgradeable {
     event MintPriceUpdate(uint256 newValue);
     event RoyaltyPortionUpdate(uint16 newValue);
     event RoyaltyReceiverUpdate(address newAddress);
+    event ERC20TokenUpdate(address newToken);
 
     event ManagerAuthorization(address indexed account);
     event ManagerDeauthorization(address indexed account);
@@ -46,8 +47,9 @@ IERC2981Upgradeable {
     function mint(
         address to,
         string calldata uri,
-        address model
-    ) external payable returns (uint256 tokenId);
+        address model,
+        uint256 cost
+    ) external returns (uint256 tokenId);
     function mintBySignature(
         address to,
         string calldata uri,
