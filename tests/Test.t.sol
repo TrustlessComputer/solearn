@@ -79,6 +79,10 @@ contract WorkHubTest is Test {
         workerHub.joinForMinting();
         vm.stopPrank();
 
+        assertEq(token.balanceOf(Miner1), 1e18);
+        assertEq(token.balanceOf(Miner2), 1e18);
+        assertEq(token.balanceOf(Miner3), 1e18);
+
         assertEq(workerHub.lastBlock(), 11);
         assertEq(workerHub.currentEpoch(), 1);
         assertEq(workerHub.rewardToClaim(Miner1), 0);

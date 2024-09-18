@@ -18,6 +18,11 @@ async function deployHybridModel() {
     );
 
     const workerHubAddress = config.workerHubAddress;
+    assert.ok(
+        workerHubAddress,
+        `Missing ${networkName}_WORKER_HUB_ADDRESS from environment variables!`
+    );
+
     const identifier = 0;
     const name = 'Flux V2';
     const minHardware = 1;
