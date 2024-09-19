@@ -2,7 +2,7 @@ import assert from 'assert';
 import { ethers, network } from 'hardhat';
 import { ERC721Upgradeable, HybridModel, ModelCollection, WorkerHub } from '../typechain-types';
 import fs from "fs";
-import { stringifyJSON } from './lib/lib';
+import { saveFile, stringifyJSON } from './lib/lib';
 
 async function getModelsFromCollection() {
     const config = network.config as any;
@@ -68,10 +68,7 @@ async function getModelsFromCollection() {
         })
     }
 
-    if (!fs.existsSync("_outputs")) {
-        fs.mkdirSync("_outputs", { recursive: true });
-    }
-    fs.writeFileSync("_outputs/hybridModelsData.json", stringifyJSON(hybridModelsData));
+    saveFile("_outputs", "hybridModelsData.json", stringifyJSON(hybridModelsData));
 }
 
 getModelsFromCollection()

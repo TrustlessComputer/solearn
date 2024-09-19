@@ -13,8 +13,8 @@ async function deployWorkerHubERC20() {
       `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
   );
   const feePercentage = 10_00;
-  const minerMinimumStake = ethers.parseEther("0.1");
-  const validatorMinimumStake = ethers.parseEther("0.1");
+  const minerMinimumStake = ethers.parseEther("25000");
+  const validatorMinimumStake = ethers.parseEther("40000");
   const miningTimeLimit = 10 * 60;
   const minerRequirement = 3;
   const blockPerEpoch = 600;
@@ -42,7 +42,7 @@ async function deployWorkerHubERC20() {
   ];
 
   const workerHubERC20 = (await deployOrUpgrade(
-    config.workerHubERC20Address, 
+    config.workerHubAddress, 
     "WorkerHubERC20", 
     constructorParams, 
     config, 

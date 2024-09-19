@@ -778,4 +778,12 @@ ReentrancyGuardUpgradeable {
 
         return PERCENTAGE_DENOMINATOR + 500 * (multiplierRes >= 12 ? 12 : multiplierRes);
     }
+
+    function updateMinerMinimumStake(uint256 _minimumStake) external onlyOwner {
+        minerMinimumStake = _minimumStake;
+    }
+    
+    function updateValidatorMinimumStake(uint256 _minimumStake) external onlyOwner {
+        validatorMinimumStake = _minimumStake;
+    }
 }

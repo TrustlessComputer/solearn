@@ -31,7 +31,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(address => Set.Uint256Set) internal assignmentsByMiner;
     mapping(uint256 => Set.Uint256Set) internal assignmentsByInference;
 
-    mapping(address => mapping(uint256 => bool)) public validatorDisputed;
+    mapping(address => mapping(uint256 => bool)) public validatorDisputed; // unused
 
     // mapping total task completed in epoch and reward per epoch
     // epoch index => total reward
@@ -40,7 +40,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // mapping detail miner completed how many request
     // total task completed in epoch
     // miner => epoch => total task completed
-    mapping(address => mapping(uint256 => uint256)) internal minerTaskCompleted;
+    mapping(address => mapping(uint256 => uint256)) internal minerTaskCompleted; // unused
 
     uint256 public minerMinimumStake;
     uint256 public validatorMinimumStake;
@@ -54,7 +54,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint8 public minerRequirement;
 
     uint16 public maximumTier;
-    uint16 public disqualificationPercentage;
+    uint16 public disqualificationPercentage; // unused
 
     // reward purpose
     uint40 public currentEpoch;

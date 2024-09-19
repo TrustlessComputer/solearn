@@ -7,7 +7,8 @@ import "hardhat-deploy";
 import 'dotenv/config';
 import 'hardhat-contract-sizer';
 
-import './scripts/wallet.task';
+import './scripts/tasks/wallet.task';
+import './scripts/tasks/control.task';
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {

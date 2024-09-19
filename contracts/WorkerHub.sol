@@ -770,4 +770,48 @@ ReentrancyGuardUpgradeable {
 
         return PERCENTAGE_DENOMINATOR + 500 * (multiplierRes >= 12 ? 12 : multiplierRes);
     }
+    
+    function getAllMiners() external view returns (Worker[] memory minerData) {
+        address[] memory addresses = minerAddresses.values;
+        minerData = new Worker[](addresses.length);
+        for(uint i = 0; i < addresses.length; ++i) {
+            minerData[i] = miners[addresses[i]];
+        }
+    }
+
+    function getAllMinerUnstakeRequests() external view returns (address[] memory unstakeAddresses, UnstakeRequest[] memory unstakeRequests) {
+        address[] memory addresses = minerAddresses.values;
+
+        uint countUnstakeRequest = 0;
+        for(uint i = 0; i < addresses.length; ++i) {
+            UnstakeRequest memory request = minerUnstakeRequests[addresses[i]];
+            if (request.unlockAt > 0) ++countUnstakeRequest;
+        }
+        
+        unstakeAddresses = new address[](countUnstakeRequest);
+        unstakeRequests = new UnstakeRequest[](countUnstakeRequest);
+        uint idx = 0;
+        for(uint i = 0; i < addresses.length; ++i) {
+            UnstakeRequest memory request = minerUnstakeRequests[addresses[i]];
+            if (request.unlockAt > 0) {
+                unstakeAddresses[idx] = addresses[idx];
+                unstakeRequests[idx] = request;
+                ++idx;
+            }
+        }
+    }
+    
+    function getAllInferences() external view returns (Inference[] memory inferenceData) {
+        inferenceData = new Inference[](inferenceNumber);        
+        for(uint i = 0; i < inferenceNumber; ++i) {
+            inferenceData[i] = inferences[i];
+        }
+    }
+
+    function getAllAssignments() external view returns (Assignment[] memory assignmentData) {
+        assignmentData = new Assignment[](assignmentNumber);        
+        for(uint i = 0; i < assignmentNumber; ++i) {
+            assignmentData[i] = assignments[i];
+        }
+    }
 }
