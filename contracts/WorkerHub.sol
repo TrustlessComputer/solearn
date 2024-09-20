@@ -801,17 +801,21 @@ ReentrancyGuardUpgradeable {
         }
     }
     
-    function getAllInferences() external view returns (Inference[] memory inferenceData) {
-        inferenceData = new Inference[](inferenceNumber);        
-        for(uint i = 0; i < inferenceNumber; ++i) {
-            inferenceData[i] = inferences[i];
+    function getAllInferences(uint startId, uint count) external view returns (Inference[] memory inferenceData) {
+        uint nData = (startId + count - 1 <= inferenceNumber) ? count : (inferenceNumber + 1 - startId);
+        inferenceData = new Inference[](nData);        
+        for(uint i = 0; i < nData; ++i) {
+            uint id = startId + i;
+            inferenceData[i] = inferences[id];
         }
     }
 
-    function getAllAssignments() external view returns (Assignment[] memory assignmentData) {
-        assignmentData = new Assignment[](assignmentNumber);        
-        for(uint i = 0; i < assignmentNumber; ++i) {
-            assignmentData[i] = assignments[i];
+    function getAllAssignments(uint startId, uint count) external view returns (Assignment[] memory assignmentData) {
+        uint nData = (startId + count - 1 <= inferenceNumber) ? count : (inferenceNumber + 1 - startId);
+        assignmentData = new Assignment[](nData);        
+        for(uint i = 0; i < nData; ++i) {
+            uint id = startId + i;
+            assignmentData[i] = assignments[id];
         }
     }
 }
