@@ -4,15 +4,9 @@ import { ERC721Upgradeable, HybridModel, ModelCollection, WorkerHub } from '../t
 import fs from "fs";
 import { saveFile, stringifyJSON } from './lib/lib';
 
-async function getModelsFromCollection() {
+async function getWorkerHubData() {
     const config = network.config as any;
     const networkName = network.name.toUpperCase();
-
-    const collectionAddress = config.collectionAddress;
-    assert.ok(
-        collectionAddress,
-        `Missing ${networkName}_COLLECTION_ADDRESS from environment variables!`
-    );
 
     const workerHubAddress = config.workerHubAddress;
     assert.ok(
@@ -37,7 +31,7 @@ async function getModelsFromCollection() {
     saveFile("_outputs", "workerHubData.json", stringifyJSON(workerHubData));
 }
 
-getModelsFromCollection()
+getWorkerHubData()
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);
