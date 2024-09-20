@@ -319,7 +319,7 @@ ReentrancyGuardUpgradeable {
         emit MinerJoin(msg.sender);
     }
 
-    function unregisterMiner() external nonReentrant {
+    function unregisterMiner() external nonReentrant whenNotPaused {
         _updateEpoch();
 
         Worker storage miner = miners[msg.sender];
@@ -376,7 +376,7 @@ ReentrancyGuardUpgradeable {
         emit MinerUnstake(msg.sender, stake);
     }
 
-    function restakeForMiner(uint16 tier) external {
+    function restakeForMiner(uint16 tier) external whenNotPaused {
         _updateEpoch();
 
         UnstakeRequest storage unstakeRequest = minerUnstakeRequests[msg.sender];
@@ -434,7 +434,7 @@ ReentrancyGuardUpgradeable {
         emit ValidatorJoin(msg.sender);
     }
 
-    function unregisterValidator() external nonReentrant {
+    function unregisterValidator() external nonReentrant whenNotPaused {
         _updateEpoch();
 
         Worker storage validator = validators[msg.sender];
@@ -683,7 +683,7 @@ ReentrancyGuardUpgradeable {
         penaltyDuration = _penaltyDuration;
     }
 
-    function resolveInference(uint256 _inferenceId) public virtual {
+    function resolveInference(uint256 _inferenceId) public virtual whenNotPaused {
         _updateEpoch();
 
         Inference storage inference = inferences[_inferenceId];
@@ -802,18 +802,16 @@ ReentrancyGuardUpgradeable {
     }
     
     function getAllInferences(uint startId, uint count) external view returns (Inference[] memory inferenceData) {
-        uint nData = (startId + count - 1 <= inferenceNumber) ? count : (inferenceNumber + 1 - startId);
-        inferenceData = new Inference[](nData);        
-        for(uint i = 0; i < nData; ++i) {
+        inferenceData = new Inference[](count);        
+        for(uint i = 0; i < count; ++i) {
             uint id = startId + i;
             inferenceData[i] = inferences[id];
         }
     }
 
     function getAllAssignments(uint startId, uint count) external view returns (Assignment[] memory assignmentData) {
-        uint nData = (startId + count - 1 <= inferenceNumber) ? count : (inferenceNumber + 1 - startId);
-        assignmentData = new Assignment[](nData);        
-        for(uint i = 0; i < nData; ++i) {
+        assignmentData = new Assignment[](count);        
+        for(uint i = 0; i < count; ++i) {
             uint id = startId + i;
             assignmentData[i] = assignments[id];
         }
