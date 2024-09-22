@@ -19,5 +19,6 @@ artifacts-zk
 _data
 _models
 _outputs
+migrate-data
 cache_forge
 out

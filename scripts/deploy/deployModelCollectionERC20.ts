@@ -1,9 +1,9 @@
 import assert from 'assert';
 import { ethers, network, upgrades } from 'hardhat';
-import { deployOrUpgrade } from './lib/utils';
-import { ModelCollection } from '../typechain-types';
+import { deployOrUpgrade } from '../lib/utils';
+import { ModelCollectionERC20 } from '../../typechain-types';
 
-async function deployModelCollection() {
+async function deployModelCollectionERC20() {
     const config = network.config as any;
     const networkName = network.name.toUpperCase();
 
@@ -19,6 +19,7 @@ async function deployModelCollection() {
     const royaltyReceiver = treasuryAddress;
     const royalPortion = 5_00;
     const nextModelId = 100_001;
+    const token = "0xCDbE9D69d5d9a98D85384C05b462D16A588B53FA";
     
     const constructorParams = [
         name,
@@ -26,21 +27,22 @@ async function deployModelCollection() {
         mintPrice,
         royaltyReceiver,
         royalPortion,
-        nextModelId
+        nextModelId,
+        token,
     ];
     
-    const modelCollection = (await deployOrUpgrade(
+    const modelCollectionERC20 = (await deployOrUpgrade(
         config.collectionAddress, 
-        "ModelCollection", 
+        "ModelCollectionERC20", 
         constructorParams, 
         config, 
         true
-    ) as unknown) as ModelCollection;
+    ) as unknown) as ModelCollectionERC20;
         
-    console.log(`${networkName}_COLLECTION_ADDRESS=${modelCollection.target}`);
+    console.log(`${networkName}_COLLECTION_ADDRESS=${modelCollectionERC20.target}`);
 }
 
-deployModelCollection()
+deployModelCollectionERC20()
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);

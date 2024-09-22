@@ -1,11 +1,11 @@
 import assert from 'assert';
 import { version } from 'chai';
 import { ethers, network, upgrades } from 'hardhat';
-import { HybridModelERC20, ModelCollectionERC20, WorkerHubERC20 } from '../typechain-types';
+import { HybridModelERC20, ModelCollectionERC20, WorkerHubERC20 } from '../../typechain-types';
 import { EventLog, Log } from 'ethers';
-import { deployOrUpgrade } from './lib/utils';
+import { deployOrUpgrade } from '../lib/utils';
 import fs from "fs";
-import { stringifyJSON } from './lib/lib';
+import { stringifyJSON } from '../lib/lib';
 
 async function migrateHybridModelERC20() {
     const config = network.config as any;

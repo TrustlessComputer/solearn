@@ -5067,6 +5067,2490 @@
         },
         "namespaces": {}
       }
+    },
+    "9a0861be27386f5299c0f6c3bca1c09c5611616083d05b15ed1b921f46eea1d4": {
+      "address": "0x15223Ffa55A3309219ea1F4216Ed8986ab2012a7",
+      "txHash": "0xd1ac174ba6b06e8de48dc3fe58e991b240281da171c5b57bb819e9b90ae77252",
+      "layout": {
+        "solcVersion": "0.8.19",
+        "storage": [
+          {
+            "label": "randomizer",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_struct(Randomizer)4626_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:10"
+          },
+          {
+            "label": "models",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_address,t_struct(Model)4266_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:12"
+          },
+          {
+            "label": "miners",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_address,t_struct(Worker)4279_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:13"
+          },
+          {
+            "label": "validators",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_address,t_struct(Worker)4279_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:14"
+          },
+          {
+            "label": "minerAddressesByModel",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_address,t_struct(AddressSet)4670_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:16"
+          },
+          {
+            "label": "validatorAddressesByModel",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_address,t_struct(AddressSet)4670_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:17"
+          },
+          {
+            "label": "modelAddresses",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_struct(AddressSet)4670_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:19"
+          },
+          {
+            "label": "minerAddresses",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_struct(AddressSet)4670_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:20"
+          },
+          {
+            "label": "validatorAddresses",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_struct(AddressSet)4670_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:21"
+          },
+          {
+            "label": "minerUnstakeRequests",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_mapping(t_address,t_struct(UnstakeRequest)4364_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:23"
+          },
+          {
+            "label": "validatorUnstakeRequests",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_mapping(t_address,t_struct(UnstakeRequest)4364_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:24"
+          },
+          {
+            "label": "inferenceNumber",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:26"
+          },
+          {
+            "label": "inferences",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_mapping(t_uint256,t_struct(Inference)4339_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:27"
+          },
+          {
+            "label": "assignmentNumber",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:29"
+          },
+          {
+            "label": "assignments",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_mapping(t_uint256,t_struct(Assignment)4303_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:30"
+          },
+          {
+            "label": "assignmentsByMiner",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_address,t_struct(Uint256Set)4840_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:31"
+          },
+          {
+            "label": "assignmentsByInference",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_mapping(t_uint256,t_struct(Uint256Set)4840_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:32"
+          },
+          {
+            "label": "validatorDisputed",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:34"
+          },
+          {
+            "label": "rewardInEpoch",
+            "offset": 0,
+            "slot": "21",
+            "type": "t_mapping(t_uint256,t_struct(MinerEpochState)4261_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:38"
+          },
+          {
+            "label": "minerTaskCompleted",
+            "offset": 0,
+            "slot": "22",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint256))",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:43"
+          },
+          {
+            "label": "minerMinimumStake",
+            "offset": 0,
+            "slot": "23",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:45"
+          },
+          {
+            "label": "validatorMinimumStake",
+            "offset": 0,
+            "slot": "24",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:46"
+          },
+          {
+            "label": "treasury",
+            "offset": 0,
+            "slot": "25",
+            "type": "t_address",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:47"
+          },
+          {
+            "label": "feePercentage",
+            "offset": 20,
+            "slot": "25",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:48"
+          },
+          {
+            "label": "miningTimeLimit",
+            "offset": 22,
+            "slot": "25",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:49"
+          },
+          {
+            "label": "validatingTimeLimit",
+            "offset": 27,
+            "slot": "25",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:50"
+          },
+          {
+            "label": "disputingTimeLimit",
+            "offset": 0,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:51"
+          },
+          {
+            "label": "penaltyDuration",
+            "offset": 5,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:52"
+          },
+          {
+            "label": "unstakeDelayTime",
+            "offset": 10,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:53"
+          },
+          {
+            "label": "minerRequirement",
+            "offset": 15,
+            "slot": "26",
+            "type": "t_uint8",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:54"
+          },
+          {
+            "label": "maximumTier",
+            "offset": 16,
+            "slot": "26",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:56"
+          },
+          {
+            "label": "disqualificationPercentage",
+            "offset": 18,
+            "slot": "26",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:57"
+          },
+          {
+            "label": "currentEpoch",
+            "offset": 20,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:60"
+          },
+          {
+            "label": "blocksPerEpoch",
+            "offset": 0,
+            "slot": "27",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:61"
+          },
+          {
+            "label": "lastBlock",
+            "offset": 0,
+            "slot": "28",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:62"
+          },
+          {
+            "label": "rewardPerEpochBasedOnPerf",
+            "offset": 0,
+            "slot": "29",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:63"
+          },
+          {
+            "label": "rewardPerEpoch",
+            "offset": 0,
+            "slot": "30",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:64"
+          },
+          {
+            "label": "finePercentage",
+            "offset": 0,
+            "slot": "31",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:67"
+          },
+          {
+            "label": "minerRewards",
+            "offset": 0,
+            "slot": "32",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:70"
+          },
+          {
+            "label": "boost",
+            "offset": 0,
+            "slot": "33",
+            "type": "t_mapping(t_address,t_struct(Boost)4373_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:73"
+          },
+          {
+            "label": "stakeToken",
+            "offset": 0,
+            "slot": "34",
+            "type": "t_address",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:75"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "35",
+            "type": "t_array(t_uint256)96_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:77"
+          },
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "131",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "131",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "132",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:40"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "182",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "183",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "232",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "233",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "282",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "283",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_array(t_uint256)96_storage": {
+            "label": "uint256[96]",
+            "numberOfBytes": "3072"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes_storage": {
+            "label": "bytes",
+            "numberOfBytes": "32"
+          },
+          "t_enum(InferenceStatus)4252": {
+            "label": "enum IWorkerHubERC20.InferenceStatus",
+            "members": [
+              "Nil",
+              "Solving",
+              "Disputing",
+              "Solved",
+              "Killed"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_bool))": {
+            "label": "mapping(address => mapping(uint256 => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_uint256))": {
+            "label": "mapping(address => mapping(uint256 => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(AddressSet)4670_storage)": {
+            "label": "mapping(address => struct Set.AddressSet)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Boost)4373_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Boost)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Model)4266_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Model)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Uint256Set)4840_storage)": {
+            "label": "mapping(address => struct Set.Uint256Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(UnstakeRequest)4364_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.UnstakeRequest)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Worker)4279_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Worker)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Assignment)4303_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.Assignment)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Inference)4339_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.Inference)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(MinerEpochState)4261_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.MinerEpochState)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Uint256Set)4840_storage)": {
+            "label": "mapping(uint256 => struct Set.Uint256Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AddressSet)4670_storage": {
+            "label": "struct Set.AddressSet",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_address)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_address,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Assignment)4303_storage": {
+            "label": "struct IWorkerHubERC20.Assignment",
+            "members": [
+              {
+                "label": "inferenceId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "output",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "worker",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "disapprovalCount",
+                "type": "t_uint8",
+                "offset": 20,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(Boost)4373_storage": {
+            "label": "struct IWorkerHubERC20.Boost",
+            "members": [
+              {
+                "label": "minerTimestamp",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "validatorTimestamp",
+                "type": "t_uint40",
+                "offset": 5,
+                "slot": "0"
+              },
+              {
+                "label": "reserved1",
+                "type": "t_uint48",
+                "offset": 10,
+                "slot": "0"
+              },
+              {
+                "label": "reserved2",
+                "type": "t_uint128",
+                "offset": 16,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Inference)4339_storage": {
+            "label": "struct IWorkerHubERC20.Inference",
+            "members": [
+              {
+                "label": "assignments",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "input",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "disputingAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "modelAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "expiredAt",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "4"
+              },
+              {
+                "label": "firstSubmissionId",
+                "type": "t_uint8",
+                "offset": 25,
+                "slot": "4"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(InferenceStatus)4252",
+                "offset": 26,
+                "slot": "4"
+              },
+              {
+                "label": "creator",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(MinerEpochState)4261_storage": {
+            "label": "struct IWorkerHubERC20.MinerEpochState",
+            "members": [
+              {
+                "label": "perfReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "epochReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "totalTaskCompleted",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "totalMiner",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(Model)4266_storage": {
+            "label": "struct IWorkerHubERC20.Model",
+            "members": [
+              {
+                "label": "minimumFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "tier",
+                "type": "t_uint32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Randomizer)4626_storage": {
+            "label": "struct Random.Randomizer",
+            "members": [
+              {
+                "label": "nonce",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Uint256Set)4840_storage": {
+            "label": "struct Set.Uint256Set",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_uint256,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(UnstakeRequest)4364_storage": {
+            "label": "struct IWorkerHubERC20.UnstakeRequest",
+            "members": [
+              {
+                "label": "stake",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "unlockAt",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Worker)4279_storage": {
+            "label": "struct IWorkerHubERC20.Worker",
+            "members": [
+              {
+                "label": "stake",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "commitment",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "modelAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastClaimedEpoch",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "2"
+              },
+              {
+                "label": "activeTime",
+                "type": "t_uint40",
+                "offset": 25,
+                "slot": "2"
+              },
+              {
+                "label": "tier",
+                "type": "t_uint16",
+                "offset": 30,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_uint128": {
+            "label": "uint128",
+            "numberOfBytes": "16"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
+          },
+          "t_uint48": {
+            "label": "uint48",
+            "numberOfBytes": "6"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
+    },
+    "0e907da6c08375e0ca4180472ce18c870d772a7850d379d5c94e6e163e40c66c": {
+      "address": "0x5Bc4f0a25698Df75187B6BC165d9F077fE417756",
+      "txHash": "0xe439e210a3b5144d2e21acf0c9064d7784369b46b892f3c7294751190172b089",
+      "layout": {
+        "solcVersion": "0.8.19",
+        "storage": [
+          {
+            "label": "randomizer",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_struct(Randomizer)4888_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:10"
+          },
+          {
+            "label": "models",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_address,t_struct(Model)4528_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:12"
+          },
+          {
+            "label": "miners",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_address,t_struct(Worker)4541_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:13"
+          },
+          {
+            "label": "validators",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_address,t_struct(Worker)4541_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:14"
+          },
+          {
+            "label": "minerAddressesByModel",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_address,t_struct(AddressSet)4932_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:16"
+          },
+          {
+            "label": "validatorAddressesByModel",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_address,t_struct(AddressSet)4932_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:17"
+          },
+          {
+            "label": "modelAddresses",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_struct(AddressSet)4932_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:19"
+          },
+          {
+            "label": "minerAddresses",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_struct(AddressSet)4932_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:20"
+          },
+          {
+            "label": "validatorAddresses",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_struct(AddressSet)4932_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:21"
+          },
+          {
+            "label": "minerUnstakeRequests",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_mapping(t_address,t_struct(UnstakeRequest)4626_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:23"
+          },
+          {
+            "label": "validatorUnstakeRequests",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_mapping(t_address,t_struct(UnstakeRequest)4626_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:24"
+          },
+          {
+            "label": "inferenceNumber",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:26"
+          },
+          {
+            "label": "inferences",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_mapping(t_uint256,t_struct(Inference)4601_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:27"
+          },
+          {
+            "label": "assignmentNumber",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:29"
+          },
+          {
+            "label": "assignments",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_mapping(t_uint256,t_struct(Assignment)4565_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:30"
+          },
+          {
+            "label": "assignmentsByMiner",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_address,t_struct(Uint256Set)5102_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:31"
+          },
+          {
+            "label": "assignmentsByInference",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_mapping(t_uint256,t_struct(Uint256Set)5102_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:32"
+          },
+          {
+            "label": "validatorDisputed",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:34"
+          },
+          {
+            "label": "rewardInEpoch",
+            "offset": 0,
+            "slot": "21",
+            "type": "t_mapping(t_uint256,t_struct(MinerEpochState)4523_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:38"
+          },
+          {
+            "label": "minerTaskCompleted",
+            "offset": 0,
+            "slot": "22",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint256))",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:43"
+          },
+          {
+            "label": "minerMinimumStake",
+            "offset": 0,
+            "slot": "23",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:45"
+          },
+          {
+            "label": "validatorMinimumStake",
+            "offset": 0,
+            "slot": "24",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:46"
+          },
+          {
+            "label": "treasury",
+            "offset": 0,
+            "slot": "25",
+            "type": "t_address",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:47"
+          },
+          {
+            "label": "feePercentage",
+            "offset": 20,
+            "slot": "25",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:48"
+          },
+          {
+            "label": "miningTimeLimit",
+            "offset": 22,
+            "slot": "25",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:49"
+          },
+          {
+            "label": "validatingTimeLimit",
+            "offset": 27,
+            "slot": "25",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:50"
+          },
+          {
+            "label": "disputingTimeLimit",
+            "offset": 0,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:51"
+          },
+          {
+            "label": "penaltyDuration",
+            "offset": 5,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:52"
+          },
+          {
+            "label": "unstakeDelayTime",
+            "offset": 10,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:53"
+          },
+          {
+            "label": "minerRequirement",
+            "offset": 15,
+            "slot": "26",
+            "type": "t_uint8",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:54"
+          },
+          {
+            "label": "maximumTier",
+            "offset": 16,
+            "slot": "26",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:56"
+          },
+          {
+            "label": "disqualificationPercentage",
+            "offset": 18,
+            "slot": "26",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:57"
+          },
+          {
+            "label": "currentEpoch",
+            "offset": 20,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:60"
+          },
+          {
+            "label": "blocksPerEpoch",
+            "offset": 0,
+            "slot": "27",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:61"
+          },
+          {
+            "label": "lastBlock",
+            "offset": 0,
+            "slot": "28",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:62"
+          },
+          {
+            "label": "rewardPerEpochBasedOnPerf",
+            "offset": 0,
+            "slot": "29",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:63"
+          },
+          {
+            "label": "rewardPerEpoch",
+            "offset": 0,
+            "slot": "30",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:64"
+          },
+          {
+            "label": "finePercentage",
+            "offset": 0,
+            "slot": "31",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:67"
+          },
+          {
+            "label": "minerRewards",
+            "offset": 0,
+            "slot": "32",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:70"
+          },
+          {
+            "label": "boost",
+            "offset": 0,
+            "slot": "33",
+            "type": "t_mapping(t_address,t_struct(Boost)4635_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:73"
+          },
+          {
+            "label": "stakeToken",
+            "offset": 0,
+            "slot": "34",
+            "type": "t_address",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:75"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "35",
+            "type": "t_array(t_uint256)96_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:77"
+          },
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "131",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "131",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "132",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:40"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "182",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "183",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "232",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "233",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "282",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "283",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_array(t_uint256)96_storage": {
+            "label": "uint256[96]",
+            "numberOfBytes": "3072"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes_storage": {
+            "label": "bytes",
+            "numberOfBytes": "32"
+          },
+          "t_enum(InferenceStatus)4514": {
+            "label": "enum IWorkerHubERC20.InferenceStatus",
+            "members": [
+              "Nil",
+              "Solving",
+              "Disputing",
+              "Solved",
+              "Killed"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_bool))": {
+            "label": "mapping(address => mapping(uint256 => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_uint256))": {
+            "label": "mapping(address => mapping(uint256 => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(AddressSet)4932_storage)": {
+            "label": "mapping(address => struct Set.AddressSet)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Boost)4635_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Boost)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Model)4528_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Model)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Uint256Set)5102_storage)": {
+            "label": "mapping(address => struct Set.Uint256Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(UnstakeRequest)4626_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.UnstakeRequest)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Worker)4541_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Worker)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Assignment)4565_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.Assignment)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Inference)4601_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.Inference)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(MinerEpochState)4523_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.MinerEpochState)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Uint256Set)5102_storage)": {
+            "label": "mapping(uint256 => struct Set.Uint256Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AddressSet)4932_storage": {
+            "label": "struct Set.AddressSet",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_address)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_address,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Assignment)4565_storage": {
+            "label": "struct IWorkerHubERC20.Assignment",
+            "members": [
+              {
+                "label": "inferenceId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "output",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "worker",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "disapprovalCount",
+                "type": "t_uint8",
+                "offset": 20,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(Boost)4635_storage": {
+            "label": "struct IWorkerHubERC20.Boost",
+            "members": [
+              {
+                "label": "minerTimestamp",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "validatorTimestamp",
+                "type": "t_uint40",
+                "offset": 5,
+                "slot": "0"
+              },
+              {
+                "label": "reserved1",
+                "type": "t_uint48",
+                "offset": 10,
+                "slot": "0"
+              },
+              {
+                "label": "reserved2",
+                "type": "t_uint128",
+                "offset": 16,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Inference)4601_storage": {
+            "label": "struct IWorkerHubERC20.Inference",
+            "members": [
+              {
+                "label": "assignments",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "input",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "disputingAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "modelAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "expiredAt",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "4"
+              },
+              {
+                "label": "firstSubmissionId",
+                "type": "t_uint8",
+                "offset": 25,
+                "slot": "4"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(InferenceStatus)4514",
+                "offset": 26,
+                "slot": "4"
+              },
+              {
+                "label": "creator",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(MinerEpochState)4523_storage": {
+            "label": "struct IWorkerHubERC20.MinerEpochState",
+            "members": [
+              {
+                "label": "perfReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "epochReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "totalTaskCompleted",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "totalMiner",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(Model)4528_storage": {
+            "label": "struct IWorkerHubERC20.Model",
+            "members": [
+              {
+                "label": "minimumFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "tier",
+                "type": "t_uint32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Randomizer)4888_storage": {
+            "label": "struct Random.Randomizer",
+            "members": [
+              {
+                "label": "nonce",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Uint256Set)5102_storage": {
+            "label": "struct Set.Uint256Set",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_uint256,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(UnstakeRequest)4626_storage": {
+            "label": "struct IWorkerHubERC20.UnstakeRequest",
+            "members": [
+              {
+                "label": "stake",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "unlockAt",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Worker)4541_storage": {
+            "label": "struct IWorkerHubERC20.Worker",
+            "members": [
+              {
+                "label": "stake",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "commitment",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "modelAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastClaimedEpoch",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "2"
+              },
+              {
+                "label": "activeTime",
+                "type": "t_uint40",
+                "offset": 25,
+                "slot": "2"
+              },
+              {
+                "label": "tier",
+                "type": "t_uint16",
+                "offset": 30,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_uint128": {
+            "label": "uint128",
+            "numberOfBytes": "16"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
+          },
+          "t_uint48": {
+            "label": "uint48",
+            "numberOfBytes": "6"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
+    },
+    "c424b2114cd4ad62b30a4454429cf04f1b664741ff7fa0ae30348bbe60ef5aa4": {
+      "address": "0x10AC7Db56D85d5F4946EF34A97EF9a0D839D5b21",
+      "txHash": "0xac9b1f3baf1c662d0f8a6c539cb821dea446a3ace7d80f67d172c715464ca32b",
+      "layout": {
+        "solcVersion": "0.8.19",
+        "storage": [
+          {
+            "label": "randomizer",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_struct(Randomizer)4925_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:10"
+          },
+          {
+            "label": "models",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_address,t_struct(Model)4565_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:12"
+          },
+          {
+            "label": "miners",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_address,t_struct(Worker)4578_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:13"
+          },
+          {
+            "label": "validators",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_address,t_struct(Worker)4578_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:14"
+          },
+          {
+            "label": "minerAddressesByModel",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_address,t_struct(AddressSet)4969_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:16"
+          },
+          {
+            "label": "validatorAddressesByModel",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_address,t_struct(AddressSet)4969_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:17"
+          },
+          {
+            "label": "modelAddresses",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_struct(AddressSet)4969_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:19"
+          },
+          {
+            "label": "minerAddresses",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_struct(AddressSet)4969_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:20"
+          },
+          {
+            "label": "validatorAddresses",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_struct(AddressSet)4969_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:21"
+          },
+          {
+            "label": "minerUnstakeRequests",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_mapping(t_address,t_struct(UnstakeRequest)4663_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:23"
+          },
+          {
+            "label": "validatorUnstakeRequests",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_mapping(t_address,t_struct(UnstakeRequest)4663_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:24"
+          },
+          {
+            "label": "inferenceNumber",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:26"
+          },
+          {
+            "label": "inferences",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_mapping(t_uint256,t_struct(Inference)4638_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:27"
+          },
+          {
+            "label": "assignmentNumber",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:29"
+          },
+          {
+            "label": "assignments",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_mapping(t_uint256,t_struct(Assignment)4602_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:30"
+          },
+          {
+            "label": "assignmentsByMiner",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_address,t_struct(Uint256Set)5139_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:31"
+          },
+          {
+            "label": "assignmentsByInference",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_mapping(t_uint256,t_struct(Uint256Set)5139_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:32"
+          },
+          {
+            "label": "validatorDisputed",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_bool))",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:34"
+          },
+          {
+            "label": "rewardInEpoch",
+            "offset": 0,
+            "slot": "21",
+            "type": "t_mapping(t_uint256,t_struct(MinerEpochState)4560_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:38"
+          },
+          {
+            "label": "minerTaskCompleted",
+            "offset": 0,
+            "slot": "22",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint256))",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:43"
+          },
+          {
+            "label": "minerMinimumStake",
+            "offset": 0,
+            "slot": "23",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:45"
+          },
+          {
+            "label": "validatorMinimumStake",
+            "offset": 0,
+            "slot": "24",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:46"
+          },
+          {
+            "label": "treasury",
+            "offset": 0,
+            "slot": "25",
+            "type": "t_address",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:47"
+          },
+          {
+            "label": "feePercentage",
+            "offset": 20,
+            "slot": "25",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:48"
+          },
+          {
+            "label": "miningTimeLimit",
+            "offset": 22,
+            "slot": "25",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:49"
+          },
+          {
+            "label": "validatingTimeLimit",
+            "offset": 27,
+            "slot": "25",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:50"
+          },
+          {
+            "label": "disputingTimeLimit",
+            "offset": 0,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:51"
+          },
+          {
+            "label": "penaltyDuration",
+            "offset": 5,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:52"
+          },
+          {
+            "label": "unstakeDelayTime",
+            "offset": 10,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:53"
+          },
+          {
+            "label": "minerRequirement",
+            "offset": 15,
+            "slot": "26",
+            "type": "t_uint8",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:54"
+          },
+          {
+            "label": "maximumTier",
+            "offset": 16,
+            "slot": "26",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:56"
+          },
+          {
+            "label": "disqualificationPercentage",
+            "offset": 18,
+            "slot": "26",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:57"
+          },
+          {
+            "label": "currentEpoch",
+            "offset": 20,
+            "slot": "26",
+            "type": "t_uint40",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:60"
+          },
+          {
+            "label": "blocksPerEpoch",
+            "offset": 0,
+            "slot": "27",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:61"
+          },
+          {
+            "label": "lastBlock",
+            "offset": 0,
+            "slot": "28",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:62"
+          },
+          {
+            "label": "rewardPerEpochBasedOnPerf",
+            "offset": 0,
+            "slot": "29",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:63"
+          },
+          {
+            "label": "rewardPerEpoch",
+            "offset": 0,
+            "slot": "30",
+            "type": "t_uint256",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:64"
+          },
+          {
+            "label": "finePercentage",
+            "offset": 0,
+            "slot": "31",
+            "type": "t_uint16",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:67"
+          },
+          {
+            "label": "minerRewards",
+            "offset": 0,
+            "slot": "32",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:70"
+          },
+          {
+            "label": "boost",
+            "offset": 0,
+            "slot": "33",
+            "type": "t_mapping(t_address,t_struct(Boost)4672_storage)",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:73"
+          },
+          {
+            "label": "stakeToken",
+            "offset": 0,
+            "slot": "34",
+            "type": "t_address",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:75"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "35",
+            "type": "t_array(t_uint256)96_storage",
+            "contract": "WorkerHubERC20Storage",
+            "src": "contracts/storages/WorkerHubERC20Storage.sol:77"
+          },
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "131",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "131",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "132",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:40"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "182",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "183",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "232",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "233",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "282",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "283",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_array(t_uint256)96_storage": {
+            "label": "uint256[96]",
+            "numberOfBytes": "3072"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes_storage": {
+            "label": "bytes",
+            "numberOfBytes": "32"
+          },
+          "t_enum(InferenceStatus)4551": {
+            "label": "enum IWorkerHubERC20.InferenceStatus",
+            "members": [
+              "Nil",
+              "Solving",
+              "Disputing",
+              "Solved",
+              "Killed"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_bool))": {
+            "label": "mapping(address => mapping(uint256 => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_uint256))": {
+            "label": "mapping(address => mapping(uint256 => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(AddressSet)4969_storage)": {
+            "label": "mapping(address => struct Set.AddressSet)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Boost)4672_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Boost)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Model)4565_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Model)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Uint256Set)5139_storage)": {
+            "label": "mapping(address => struct Set.Uint256Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(UnstakeRequest)4663_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.UnstakeRequest)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Worker)4578_storage)": {
+            "label": "mapping(address => struct IWorkerHubERC20.Worker)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Assignment)4602_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.Assignment)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Inference)4638_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.Inference)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(MinerEpochState)4560_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHubERC20.MinerEpochState)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Uint256Set)5139_storage)": {
+            "label": "mapping(uint256 => struct Set.Uint256Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AddressSet)4969_storage": {
+            "label": "struct Set.AddressSet",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_address)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_address,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Assignment)4602_storage": {
+            "label": "struct IWorkerHubERC20.Assignment",
+            "members": [
+              {
+                "label": "inferenceId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "output",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "worker",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "disapprovalCount",
+                "type": "t_uint8",
+                "offset": 20,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(Boost)4672_storage": {
+            "label": "struct IWorkerHubERC20.Boost",
+            "members": [
+              {
+                "label": "minerTimestamp",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "validatorTimestamp",
+                "type": "t_uint40",
+                "offset": 5,
+                "slot": "0"
+              },
+              {
+                "label": "reserved1",
+                "type": "t_uint48",
+                "offset": 10,
+                "slot": "0"
+              },
+              {
+                "label": "reserved2",
+                "type": "t_uint128",
+                "offset": 16,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Inference)4638_storage": {
+            "label": "struct IWorkerHubERC20.Inference",
+            "members": [
+              {
+                "label": "assignments",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "input",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "disputingAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "modelAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "expiredAt",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "4"
+              },
+              {
+                "label": "firstSubmissionId",
+                "type": "t_uint8",
+                "offset": 25,
+                "slot": "4"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(InferenceStatus)4551",
+                "offset": 26,
+                "slot": "4"
+              },
+              {
+                "label": "creator",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(MinerEpochState)4560_storage": {
+            "label": "struct IWorkerHubERC20.MinerEpochState",
+            "members": [
+              {
+                "label": "perfReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "epochReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "totalTaskCompleted",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "totalMiner",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(Model)4565_storage": {
+            "label": "struct IWorkerHubERC20.Model",
+            "members": [
+              {
+                "label": "minimumFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "tier",
+                "type": "t_uint32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Randomizer)4925_storage": {
+            "label": "struct Random.Randomizer",
+            "members": [
+              {
+                "label": "nonce",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Uint256Set)5139_storage": {
+            "label": "struct Set.Uint256Set",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_uint256,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(UnstakeRequest)4663_storage": {
+            "label": "struct IWorkerHubERC20.UnstakeRequest",
+            "members": [
+              {
+                "label": "stake",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "unlockAt",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Worker)4578_storage": {
+            "label": "struct IWorkerHubERC20.Worker",
+            "members": [
+              {
+                "label": "stake",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "commitment",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "modelAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastClaimedEpoch",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "2"
+              },
+              {
+                "label": "activeTime",
+                "type": "t_uint40",
+                "offset": 25,
+                "slot": "2"
+              },
+              {
+                "label": "tier",
+                "type": "t_uint16",
+                "offset": 30,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_uint128": {
+            "label": "uint128",
+            "numberOfBytes": "16"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
+          },
+          "t_uint48": {
+            "label": "uint48",
+            "numberOfBytes": "6"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
     }
   }
 }

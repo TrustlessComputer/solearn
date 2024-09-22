@@ -1,9 +1,9 @@
 import assert from 'assert';
 import { version } from 'chai';
 import { ethers, network, upgrades } from 'hardhat';
-import { HybridModel, ModelCollection, WorkerHub } from '../typechain-types';
+import { HybridModel, ModelCollection, WorkerHub } from '../../typechain-types';
 import { EventLog, Log } from 'ethers';
-import { deployOrUpgrade } from './lib/utils';
+import { deployOrUpgrade } from '../lib/utils';
 
 async function deployHybridModel() {
     const config = network.config as any;

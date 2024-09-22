@@ -1,8 +1,8 @@
 import assert from 'assert';
 import { ethers, network } from 'hardhat';
-import { ERC721Upgradeable, HybridModel, ModelCollection, WorkerHub } from '../typechain-types';
+import { ERC721Upgradeable, HybridModel, ModelCollection, WorkerHub } from '../../typechain-types';
 import fs from "fs";
-import { saveFile, stringifyJSON } from './lib/lib';
+import { saveFile, stringifyJSON } from '../lib/lib';
 
 async function getModelsFromCollection() {
     const config = network.config as any;
