@@ -32,7 +32,8 @@
     "console:zk_mainnet": "npx hardhat console --network zk_mainnet",
     "deployModelCollection:zk_mainnet": "npx hardhat run scripts/deploy/deployModelCollectionERC20.ts --network zk_mainnet",
     "deployWorkerHub:zk_mainnet": "npx hardhat run scripts/deploy/deployWorkerHubERC20.ts --network zk_mainnet",
-    "deployHybridModel:zk_mainnet": "npx hardhat run scripts/deploy/deployHybridModelERC20.ts --network zk_mainnet"
+    "deployHybridModel:zk_mainnet": "npx hardhat run scripts/deploy/deployHybridModelERC20.ts --network zk_mainnet",
+    "deployWETH9:zk_mainnet": "npx hardhat run scripts/deploy/deployWETH9.ts --network zk_mainnet"
   },
   "devDependencies": {
     "@ericxstone/hardhat-blockscout-verify": "^1.0.2",
