@@ -867,9 +867,12 @@ ReentrancyGuardUpgradeable {
     }
 
     function migrateMiner(address[] memory _minerAddresses, Worker[] memory minerData) external onlyOwner {
+        _updateEpoch();
         for(uint i = 0; i < _minerAddresses.length; ++i) {
             address _address = _minerAddresses[i];
             Worker memory data = minerData[i];
+            data.lastClaimedEpoch = currentEpoch;
+
             swapNativeERC20(_address, stakeToken, minerMinimumStake);
             miners[_address] = data;
             minerAddresses.insert(_address);
