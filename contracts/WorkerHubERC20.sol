@@ -817,66 +817,61 @@ ReentrancyGuardUpgradeable {
         }
     }
     
-    function getAllInferences(uint startId, uint count) external view returns (Inference[] memory inferenceData) {
-        inferenceData = new Inference[](count);        
-        for(uint i = 0; i < count; ++i) {
-            uint id = startId + i;
-            inferenceData[i] = inferences[id];
-        }
-    }
+    // function getAllInferences(uint startId, uint count) external view returns (Inference[] memory inferenceData) {
+    //     inferenceData = new Inference[](count);        
+    //     for(uint i = 0; i < count; ++i) {
+    //         uint id = startId + i;
+    //         inferenceData[i] = inferences[id];
+    //     }
+    // }
 
-    function getAllAssignments(uint startId, uint count) external view returns (Assignment[] memory assignmentData) {
-        assignmentData = new Assignment[](count);        
-        for(uint i = 0; i < count; ++i) {
-            uint id = startId + i;
-            assignmentData[i] = assignments[id];
-        }
-    }
+    // function getAllAssignments(uint startId, uint count) external view returns (Assignment[] memory assignmentData) {
+    //     assignmentData = new Assignment[](count);        
+    //     for(uint i = 0; i < count; ++i) {
+    //         uint id = startId + i;
+    //         assignmentData[i] = assignments[id];
+    //     }
+    // }
     
-    function migrateInferenceData(Inference[] memory inferenceData) external onlyOwner {
-        uint nInference = inferenceData.length;
-        for(uint i = 0; i < nInference; ++i) {
-            uint id = inferenceNumber + i + 1;
-            inferences[id] = inferenceData[i];
-        }
-        inferenceNumber += nInference;
-    }
+    // function migrateInferenceData(Inference[] memory inferenceData) external onlyOwner {
+    //     uint nInference = inferenceData.length;
+    //     for(uint i = 0; i < nInference; ++i) {
+    //         uint id = inferenceNumber + i + 1;
+    //         inferences[id] = inferenceData[i];
+    //     }
+    //     inferenceNumber += nInference;
+    // }
 
-    function migrateAssignmentData(Assignment[] memory assignmentData) external onlyOwner {
-        uint nAssignment = assignmentData.length;
-        for(uint i = 0; i < nAssignment; ++i) {
-            uint id = assignmentNumber + i + 1;
-            Assignment memory data = assignmentData[i];
-            assignments[id] = data;
-            assignmentsByMiner[data.worker].insert(id);
-            assignmentsByInference[data.inferenceId].insert(id);
-        }
-        assignmentNumber += nAssignment;
-    }
+    // function migrateAssignmentData(Assignment[] memory assignmentData) external onlyOwner {
+    //     uint nAssignment = assignmentData.length;
+    //     for(uint i = 0; i < nAssignment; ++i) {
+    //         uint id = assignmentNumber + i + 1;
+    //         Assignment memory data = assignmentData[i];
+    //         assignments[id] = data;
+    //         assignmentsByMiner[data.worker].insert(id);
+    //         assignmentsByInference[data.inferenceId].insert(id);
+    //     }
+    //     assignmentNumber += nAssignment;
+    // }
 
-    function removeInferenceData(uint count) external onlyOwner {
-        inferenceNumber -= count;
-        for(uint i = 0; i < count; ++i) {
-            uint id = inferenceNumber + i + 1;
-            delete inferences[id];
-        }
-    }
+    // function removeInferenceData(uint count) external onlyOwner {
+    //     inferenceNumber -= count;
+    //     for(uint i = 0; i < count; ++i) {
+    //         uint id = inferenceNumber + i + 1;
+    //         delete inferences[id];
+    //     }
+    // }
 
-    function swapNativeERC20(address _address, address token, uint amount) internal {
-        
-    }
+    // function migrateMiner(address[] memory _minerAddresses, Worker[] memory minerData) external onlyOwner {
+    //     _updateEpoch();
+    //     for(uint i = 0; i < _minerAddresses.length; ++i) {
+    //         address _address = _minerAddresses[i];
+    //         Worker memory data = minerData[i];
+    //         data.lastClaimedEpoch = currentEpoch;
 
-    function migrateMiner(address[] memory _minerAddresses, Worker[] memory minerData) external onlyOwner {
-        _updateEpoch();
-        for(uint i = 0; i < _minerAddresses.length; ++i) {
-            address _address = _minerAddresses[i];
-            Worker memory data = minerData[i];
-            data.lastClaimedEpoch = currentEpoch;
-
-            swapNativeERC20(_address, stakeToken, minerMinimumStake);
-            miners[_address] = data;
-            minerAddresses.insert(_address);
-            minerAddressesByModel[data.modelAddress].insert(_address);
-        }        
-    } 
+    //         miners[_address] = data;
+    //         minerAddresses.insert(_address);
+    //         minerAddressesByModel[data.modelAddress].insert(_address);
+    //     }        
+    // } 
 }
