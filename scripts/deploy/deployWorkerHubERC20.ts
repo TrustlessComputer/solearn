@@ -20,7 +20,7 @@ async function deployWorkerHubERC20() {
   const blockPerEpoch = 600;
   const rewardPerEpochBasedOnPerf = ethers.parseEther("0");
   const rewardPerEpoch = ethers.parseEther("0");
-  const unstakeDelayTime = 21 * 24 * 3660;
+  const unstakeDelayTime = 21 * 24 * 3600;
   const penaltyDuration = 3600;
   const finePercentage = 5_00;
   const stakeToken = "0xCDbE9D69d5d9a98D85384C05b462D16A588B53FA";

@@ -9,6 +9,7 @@ import 'hardhat-contract-sizer';
 
 import './scripts/tasks/wallet.task';
 import './scripts/tasks/control.task';
+import { zk_mainnets } from "./zk-networks/zkMainnets";
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
@@ -90,18 +91,7 @@ const config: HardhatUserConfig = {
       zksync: true,
       gasPrice: "auto",
     } as any,
-    zk_mainnet: {
-      url: "https://rpc.eternalai.bvm.network/",
-      chainId: 222672,
-      accounts: [process.env.ZK_MAINNET_PRIVATE_KEY],
-      treasuryAddress: process.env.ZK_MAINNET_TREASURY_ADDRESS,
-      collectionAddress: process.env.ZK_MAINNET_COLLECTION_ADDRESS,
-      workerHubAddress: process.env.ZK_MAINNET_WORKER_HUB_ADDRESS,
-      allowUnlimitedContractSize: true,
-      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
-      zksync: true,
-      gasPrice: "auto",
-    } as any,
+    ...zk_mainnets
   },
   namedAccounts: {
     deployer: 0,
