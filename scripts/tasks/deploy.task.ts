@@ -1,16 +1,16 @@
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ethers, EventLog } from "ethers";
-import { deployOrUpgrade } from "../lib/utils";
+import { deployOrUpgrade } from "../lib/utilsTask";
 
-task("deploy:collection-erc20", "Deploy or upgrade ModelCollectionERC20 contract")
+task("deploy:collection", "Deploy or upgrade ModelCollection contract")
   .addParam("treasuryAddress", "Treasury address")
-  .addOptionalParam("address", "Contract address to upgrade (null for new deploy)", null, types.string)
+  .addOptionalParam("address", "Contract address to upgrade (null for new deploy)", "", types.string)
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
     const { ethers, network } = hre;
     const { treasuryAddress, address } = taskArgs
     const networkName = network.name.toUpperCase();
-    console.log(`Deploying or upgrading ModelCollectionERC20 on ${networkName}`);
+    console.log(`Deploying or upgrading ModelCollection on ${networkName}`);
 
     const name = "Eternal AI"
     const symbol = ""
@@ -29,6 +29,7 @@ task("deploy:collection-erc20", "Deploy or upgrade ModelCollectionERC20 contract
     ];
     
     const modelCollection = (await deployOrUpgrade(
+      hre,
       address, 
       "ModelCollection", 
       constructorParams, 
@@ -39,15 +40,14 @@ task("deploy:collection-erc20", "Deploy or upgrade ModelCollectionERC20 contract
     // console.log(`${networkName}_COLLECTION_ADDRESS=${modelCollection.target}`);
   });
 
-task("deploy:workerhub-erc20", "Deploy hybrid contract")
-  .addParam("stakeToken", "ERC20 token address")
+task("deploy:workerhub", "Deploy hybrid contract")
   .addParam("treasuryAddress", "Treasury address")
   .addOptionalParam("address", "Contract address to upgrade (null for new deploy)", null, types.string)
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
     const { ethers, network } = hre;
     const { treasuryAddress, address } = taskArgs
     const networkName = network.name.toUpperCase();
-    console.log(`Deploying or upgrading WorkerHubERC20 on ${networkName}`);
+    console.log(`Deploying or upgrading WorkerHub on ${networkName}`);
 
     const feePercentage = 10_00;
     const minerMinimumStake = ethers.parseEther("25000");
@@ -78,29 +78,30 @@ task("deploy:workerhub-erc20", "Deploy hybrid contract")
       stakeToken,
     ];
   
-    const workerHubERC20 = (await deployOrUpgrade(
+    const workerHub = (await deployOrUpgrade(
+      hre,
       address, 
-      "WorkerHubERC20", 
+      "WorkerHub", 
       constructorParams, 
       network.config, 
       true
     ) as unknown) as ethers.Contract;
   
-    // console.log(`${networkName}_WORKER_HUB_ADDRESS=${workerHubERC20.target}`);
+    // console.log(`${networkName}_WORKER_HUB_ADDRESS=${workerHub.target}`);
   });
 
 
-task("deploy:hybrid-erc20", "Deploy HybridModelERC20 contract")
+task("deploy:hybrid", "Deploy HybridModel contract")
   .addParam("name", "Model name")
   .addParam("modelOwnerAddress", "Model owner address")
   .addParam("metadataJson", "Metadata in json format")
-  .addParam("collectionAddress", "ModelCollectionERC20 address")
-  .addParam("workerHubAddress", "WorkerHubERC20 address")
+  .addParam("collectionAddress", "ModelCollection address")
+  .addParam("workerHubAddress", "WorkerHub address")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
     const { ethers, network } = hre;
     const { collectionAddress, workerHubAddress, name, modelOwnerAddress, metadataJson } = taskArgs
     const networkName = network.name.toUpperCase();
-    console.log(`Deploying new HybridModelERC20 on ${networkName}`);
+    console.log(`Deploying new HybridModel on ${networkName}`);
 
     const identifier = 0;
     const minHardware = 1;
@@ -113,35 +114,35 @@ task("deploy:hybrid-erc20", "Deploy HybridModelERC20 contract")
       name,
       metadata
     ];
-    const hybridModelERC20 = (await deployOrUpgrade(
+    const hybridModel = (await deployOrUpgrade(
+      hre,
       null, 
-      "HybridModelERC20", 
+      "HybridModel", 
       constructorParams, 
       network.config, 
       true
     ) as unknown) as ethers.Contract;
 
-    // console.log(`Contract HybridModelERC20 has been deployed to address ${hybridModelERC20.target}`);
+    // console.log(`Contract HybridModel has been deployed to address ${hybridModel.target}`);
     
-    const collection = await ethers.getContractAt("ModelCollectionERC20", collectionAddress);
+    const collection = await ethers.getContractAt("ModelCollection", collectionAddress);
     const mintReceipt = await (await collection.mint(
         modelOwnerAddress,
         metadata,
-        hybridModelERC20.target,
-        0
+        hybridModel.target
     )).wait();
 
-    console.log(`Contract HybridModelERC20 is minted to ModelCollectionERC20`);
+    console.log(`Contract HybridModel is minted to ModelCollection`);
 
     const newTokenEvent = (mintReceipt!.logs as EventLog[]).find((event: EventLog) => event.eventName === 'NewToken');
     if (newTokenEvent) {
         console.log("tokenId:", newTokenEvent.args?.tokenId);
     }
     
-    const workerHubERC20 = await ethers.getContractAt("WorkerHubERC20", workerHubAddress);
-    await workerHubERC20.registerModel(hybridModelERC20.target, minHardware, ethers.parseEther('0.2'));
+    const workerHub = await ethers.getContractAt("WorkerHub", workerHubAddress);
+    await workerHub.registerModel(hybridModel.target, minHardware, ethers.parseEther('0.2'));
 
-    console.log(`Contract HybridModelERC20 is registered to WorkerHubERC20`);
+    console.log(`Contract HybridModel is registered to WorkerHub`);
 
-    // console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModelERC20.target}`);
+    // console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.target}`);
   });

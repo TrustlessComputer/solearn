@@ -7,9 +7,10 @@ import "hardhat-deploy";
 import 'dotenv/config';
 import 'hardhat-contract-sizer';
 
+import './scripts/tasks/deploy.task';
 import './scripts/tasks/wallet.task';
 import './scripts/tasks/control.task';
-import { zk_mainnets } from "./zk-networks/zkMainnets";
+import { zk_mainnets } from "./zk-networks/zkNetworks";
 
 let localTestMnemonic = "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
@@ -77,18 +78,6 @@ const config: HardhatUserConfig = {
       workerHubAddress: process.env.MAINNET_WORKER_HUB_ADDRESS,
       timeout: 600_000,
       gas: 90_000_000,
-      gasPrice: "auto",
-    } as any,
-    zk_testnet: {
-      url: "https://rpc.testnet.supersonic2.bvm.network",
-      chainId: 22219,
-      accounts: [process.env.ZK_TESTNET_PRIVATE_KEY],
-      treasuryAddress: process.env.ZK_TESTNET_TREASURY_ADDRESS,
-      collectionAddress: process.env.ZK_TESTNET_COLLECTION_ADDRESS,
-      workerHubAddress: process.env.ZK_TESTNET_WORKER_HUB_ADDRESS,
-      allowUnlimitedContractSize: true,
-      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
-      zksync: true,
       gasPrice: "auto",
     } as any,
     ...zk_mainnets

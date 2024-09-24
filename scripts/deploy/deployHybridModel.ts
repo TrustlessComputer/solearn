@@ -24,13 +24,13 @@ async function deployHybridModel() {
     );
 
     const identifier = 0;
-    const name = 'Flux V2';
+    const name = 'Llama 3.1 405B';
     const minHardware = 1;
-    const modelOwnerAddress = '0x248E156B7b14DBFb842a335920d3D85Ca4600812';
+    const modelOwnerAddress = '0xe7ebeb300dB63a76F26833Fa8C6eDCE062fBe383';
     const metadataObj = {
         "version": 1,
-        "model_name": "Flux V2",
-        "model_type": "image",
+        "model_name": "Llama 3.1 405B",
+        "model_type": "text",
         "model_url": "",
         "model_file_hash": "",
         "min_hardware": 1,
