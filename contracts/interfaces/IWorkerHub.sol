@@ -9,6 +9,9 @@ interface IWorkerHub is IInferable {
         Solving,
         Disputing,
         Solved,
+        Commit,
+        Reveal,
+        Processed,
         Killed
     }
 
