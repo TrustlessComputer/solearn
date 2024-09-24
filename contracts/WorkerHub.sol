@@ -451,6 +451,7 @@ contract WorkerHub is
 
         address model = inferences[_inferenceId].modelAddress;
         if (minerAddressesByModel[model].size() < minerRequirement)
+            // TODO: check when imp slashing feature
             revert NotEnoughMiners();
 
         Set.AddressSet storage miners = minerAddressesByModel[model];
@@ -465,6 +466,8 @@ contract WorkerHub is
             uint256 assignmentId = ++assignmentNumber;
             assignments[assignmentId].inferenceId = _inferenceId;
             assignments[assignmentId].worker = miner;
+            assignments[assignmentId].role = AssignmentRole.Validating;
+
             selectedMiners[i] = miner;
             assignmentsByMiner[miner].insert(assignmentId);
             assignmentsByInference[_inferenceId].insert(assignmentId);
@@ -472,6 +475,26 @@ contract WorkerHub is
         }
 
         for (uint256 i = 0; i < n; ++i) miners.insert(selectedMiners[i]);
+    }
+
+    function seizeMinerRole(uint256 _assignmentId) external {
+        if (assignments[_assignmentId].worker != msg.sender)
+            revert("Only assigned worker can seize the role");
+        uint256 inferId = assignments[_assignmentId].inferenceId;
+        if (inferences[inferId].processedMiner != address(0))
+            revert("This inference has been seized");
+
+        assignments[_assignmentId].role = AssignmentRole.Mining;
+        inferences[inferId].processedMiner = msg.sender;
+
+        emit MinerRoleSeized(_assignmentId, inferId, msg.sender);
+    }
+
+    // After listen to the new assignment, miner will call this getter to get the assignment role
+    function getRoleByAssigmentId(
+        uint256 _assignmentId
+    ) external view returns (AssignmentRole) {
+        return assignments[_assignmentId].role;
     }
 
     // this internal function update new epoch
@@ -506,6 +529,7 @@ contract WorkerHub is
     ) public virtual whenNotPaused {
         _updateEpoch();
         address _msgSender = msg.sender;
+        if (_data.length == 0) revert InvalidData();
 
         // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
         if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
@@ -516,7 +540,11 @@ contract WorkerHub is
 
         Assignment memory clonedAssignments = assignments[_assigmentId];
 
+        // Check the msg sender is the assigned miner
         if (_msgSender != clonedAssignments.worker) revert Unauthorized();
+        if (clonedAssignments.role != AssignmentRole.Mining)
+            revert InvalidRole();
+
         if (clonedAssignments.output.length != 0) revert AlreadySubmitted();
 
         Inference memory clonedInference = inferences[

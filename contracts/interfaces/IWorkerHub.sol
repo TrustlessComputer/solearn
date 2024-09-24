@@ -14,8 +14,8 @@ interface IWorkerHub is IInferable {
 
     enum AssignmentRole {
         Nil,
-        Mining,
-        Validating
+        Validating,
+        Mining
     }
 
     struct MinerEpochState {
@@ -79,6 +79,7 @@ interface IWorkerHub is IInferable {
         uint8 firstSubmissionId;
         InferenceStatus status;
         address creator;
+        address processedMiner;
     }
 
     struct InferenceInfo {
@@ -141,6 +142,11 @@ interface IWorkerHub is IInferable {
         uint256 indexed inferenceId,
         address indexed miner,
         uint40 expiredAt
+    );
+    event MinerRoleSeized(
+        uint256 indexed assignmentId,
+        uint256 indexed inferenceId,
+        address indexed miner
     );
     event SolutionSubmission(
         address indexed miner,
@@ -210,6 +216,8 @@ interface IWorkerHub is IInferable {
     error InferMustBeSolvingState();
     error ZeroValue();
     error InvalidMiner();
+    error InvalidData();
+    error InvalidRole();
 
     error MinerInDeactivationTime();
 }
