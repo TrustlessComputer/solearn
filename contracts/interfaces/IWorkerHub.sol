@@ -12,6 +12,12 @@ interface IWorkerHub is IInferable {
         Killed
     }
 
+    enum AssignmentRole {
+        Nil,
+        Mining,
+        Validating
+    }
+
     struct MinerEpochState {
         uint256 perfReward;
         uint256 epochReward;
@@ -45,9 +51,12 @@ interface IWorkerHub is IInferable {
 
     struct Assignment {
         uint256 inferenceId;
-        bytes output;
+        bytes32 commitment;
+        uint40 revealNonce;
         address worker;
         uint8 disapprovalCount;
+        AssignmentRole role;
+        bytes output;
     }
 
     struct AssignmentInfo {
@@ -115,22 +124,17 @@ interface IWorkerHub is IInferable {
     );
     event MinerUnregistration(address indexed miner);
 
-    event ValidatorExtraStake(address indexed validator, uint256 value);
-    event ValidatorRegistration(
-        address indexed validator,
-        uint16 indexed tier,
-        uint256 value
-    );
-    event ValidatorUnregistration(address indexed validator);
-
     event NewInference(
         uint256 indexed inferenceId,
         address indexed model,
         address indexed creator,
         uint256 value
     );
-    event InferenceDisputation(address indexed validator, uint256 indexed assigmentId);
-    event InferenceStatusUpdate(uint256 indexed inferenceId, InferenceStatus newStatus);
+    // event InferenceDisputation(address indexed validator, uint256 indexed assigmentId);
+    event InferenceStatusUpdate(
+        uint256 indexed inferenceId,
+        InferenceStatus newStatus
+    );
 
     event NewAssignment(
         uint256 indexed assignmentId,
@@ -138,7 +142,10 @@ interface IWorkerHub is IInferable {
         address indexed miner,
         uint40 expiredAt
     );
-    event SolutionSubmission(address indexed miner, uint256 indexed assigmentId);
+    event SolutionSubmission(
+        address indexed miner,
+        uint256 indexed assigmentId
+    );
     event TransferFee(
         address indexed miner,
         uint256 mingingFee,
@@ -154,18 +161,29 @@ interface IWorkerHub is IInferable {
 
     event MinerUnstake(address indexed miner, uint256 stake);
     event MinerJoin(address indexed miner);
-    event ValidatorUnstake(address indexed validator, uint256 stake);
-    event ValidatorJoin(address indexed validator);
 
     event RewardClaim(address indexed worker, uint256 value);
 
     event RewardPerEpoch(uint256 oldReward, uint256 newReward);
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
-    event Restake(address indexed miner, uint256 restake, address indexed model);
+    event Restake(
+        address indexed miner,
+        uint256 restake,
+        address indexed model
+    );
 
-    event MinerDeactivated(address indexed miner, address indexed modelAddress, uint40 activeTime);
-    event FraudulentMinerPenalized(address indexed miner, address indexed modelAddress, address indexed treasury, uint256 fine);
+    event MinerDeactivated(
+        address indexed miner,
+        address indexed modelAddress,
+        uint40 activeTime
+    );
+    event FraudulentMinerPenalized(
+        address indexed miner,
+        address indexed modelAddress,
+        address indexed treasury,
+        uint256 fine
+    );
     event PenaltyDurationUpdated(uint40 oldDuration, uint40 newDuration);
     event FinePercentageUpdated(uint16 oldPercent, uint16 newPercent);
 
@@ -191,9 +209,7 @@ interface IWorkerHub is IInferable {
 
     error InferMustBeSolvingState();
     error ZeroValue();
-    error InvalidValidator();
     error InvalidMiner();
 
     error MinerInDeactivationTime();
-    error ValidatorInDeactivationTime();
 }
