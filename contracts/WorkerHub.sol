@@ -425,6 +425,10 @@ contract WorkerHub is
         inference.value = value;
         inference.creator = _creator;
         inference.modelAddress = msg.sender;
+        // inference.commitTimeout = uint40(block.timestamp + commitDuration);
+        // inference.revealTimeout = uint40(
+        //     block.timestamp + commitDuration + revealDuration
+        // );
 
         emit NewInference(inferenceId, msg.sender, _creator, value);
 
@@ -588,6 +592,36 @@ contract WorkerHub is
         }
 
         emit SolutionSubmission(_msgSender, _assigmentId);
+    }
+
+    function commit(
+        uint256 _assignmentId,
+        bytes32 _commitment
+    ) public virtual whenNotPaused {
+        _updateEpoch();
+
+        address _msgSender = msg.sender;
+        if (_commitment == 0) revert InvalidCommitment();
+
+        // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
+        if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
+
+        address modelAddrOfMiner = miners[msg.sender].modelAddress;
+        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(msg.sender))
+            revert InvalidMiner();
+
+        Assignment memory clonedAssignments = assignments[_assignmentId];
+
+        // Check the msg sender is the assigned miner
+        if (msg.sender != clonedAssignments.worker) revert Unauthorized();
+        if (clonedAssignments.role != AssignmentRole.Validating)
+            revert InvalidRole();
+
+        if (clonedAssignments.commitment != 0) revert AlreadyCommitted();
+
+        assignments[_assignmentId].commitment = _commitment;
+
+        emit CommitmentSubmission(msg.sender, _assignmentId, _commitment);
     }
 
     function _handleDisputeSuccess(uint256 _inferId) internal {

@@ -40,8 +40,8 @@ abstract contract WorkerHubStorage is IWorkerHub {
     address public treasury;
     uint16 public feePercentage;
     uint40 public miningTimeLimit;
-    uint40 public validatingTimeLimit;
-    uint40 public disputingTimeLimit;
+    uint40 public commitDuration;
+    uint40 public revealDuration;
     uint40 public penaltyDuration;
     uint40 public unstakeDelayTime;
     uint8 public minerRequirement;

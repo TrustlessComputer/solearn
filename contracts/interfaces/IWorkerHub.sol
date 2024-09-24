@@ -76,6 +76,9 @@ interface IWorkerHub is IInferable {
         address disputingAddress;
         address modelAddress;
         uint40 expiredAt;
+        uint40 submissionExpAt;
+        uint40 commitTimeout;
+        uint40 revealTimeout;
         uint8 firstSubmissionId;
         InferenceStatus status;
         address creator;
@@ -152,6 +155,11 @@ interface IWorkerHub is IInferable {
         address indexed miner,
         uint256 indexed assigmentId
     );
+    event CommitmentSubmission(
+        address indexed miner,
+        uint256 indexed assigmentId,
+        bytes32 commitment
+    );
     event TransferFee(
         address indexed miner,
         uint256 mingingFee,
@@ -220,4 +228,6 @@ interface IWorkerHub is IInferable {
     error InvalidRole();
 
     error MinerInDeactivationTime();
+    error InvalidCommitment();
+    error AlreadyCommitted();
 }
