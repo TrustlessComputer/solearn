@@ -3,6 +3,9 @@ export const zk_mainnets = {
     url: "https://rpc.testnet.supersonic2.bvm.network",
     chainId: 22219,
     accounts: [process.env.ZK_TESTNET_PRIVATE_KEY],
+    treasuryAddress: process.env.ZK_TESTNET_405B_TREASURY_ADDRESS,
+    collectionAddress: process.env.ZK_TESTNET_405B_COLLECTION_ADDRESS,
+    workerHubAddress: process.env.ZK_TESTNET_405B_WORKER_HUB_ADDRESS,
     allowUnlimitedContractSize: true,
     ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
     zksync: true,
