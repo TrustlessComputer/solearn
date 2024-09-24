@@ -2,23 +2,19 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../contracts/WorkerHubERC20.sol";
-import "../contracts/tests/TestToken.sol";
-import "forge-std/console.sol";
+import "../contracts/WorkerHub.sol";
 
-contract WorkHubERC20Test is Test {
-    WorkerHubERC20 workerHub;
-    TestToken token;
-    
-    address public constant ADMIN_ADDR = address(0x10);
-    address public constant Miner1 = address(0x101);
-    address public constant Miner2 = address(0x102);
-    address public constant Miner3 = address(0x103);
-    address public constant ModelAddr = address(0x1);
+contract WorkHubTest is Test {
+    WorkerHub workerHub;
+    address public constant ADMIN_ADDR = address(10);
+    address public constant Miner1 = address(101);
+    address public constant Miner2 = address(102);
+    address public constant Miner3 = address(103);
+    address public constant ModelAddr = address(1);
+
 
     function setUp() public {
-        workerHub = new WorkerHubERC20();
-        token = new TestToken();
+        workerHub = new WorkerHub();
 
         vm.startPrank(ADMIN_ADDR);
         workerHub.initialize(
@@ -33,55 +29,36 @@ contract WorkHubERC20Test is Test {
             1229997 * 1e16, // reward 1 worker in one year
             21 days,
             0,
-            0,
-            address(token)
+            0
         );
+
         workerHub.registerModel(ModelAddr, 1, 1e18);
-
-        token.initialize("TestToken", "TEST");
-        address[] memory minerAddresses = new address[](3);
-        minerAddresses[0] = Miner1;
-        minerAddresses[1] = Miner2;
-        minerAddresses[2] = Miner3;
-        for(uint i = 0; i < minerAddresses.length; ++i) {
-            vm.startPrank(minerAddresses[i]);
-            token.approve(address(workerHub), 100e18);
-            vm.stopPrank();
-        }
-
         vm.stopPrank();
         // Sunday, May 19, 2024 4:14:11 PM
         vm.warp(1716135251);
     }
 
     function testRewards() public {
-        address[] memory minerAddresses = new address[](3);
-        minerAddresses[0] = Miner1;
-        minerAddresses[1] = Miner2;
-        minerAddresses[2] = Miner3;
-        token.mintFor(minerAddresses, 2e18);
-
+        vm.deal(Miner1, 2e18);
+        vm.deal(Miner2, 2e18);
+        vm.deal(Miner3, 2e18);
         assertEq(workerHub.lastBlock(), 1);
         // init block height
         vm.roll(11);
         vm.startPrank(Miner1);
-        workerHub.registerMiner(1, 1e18);
+        workerHub.registerMiner{value: 1e18}(1);
         workerHub.joinForMinting();
         vm.stopPrank();
 
         vm.startPrank(Miner2);
-        workerHub.registerMiner(1, 1e18);
+        workerHub.registerMiner{value: 1e18}(1);
         workerHub.joinForMinting();
         vm.stopPrank();
 
         vm.startPrank(Miner3);
-        workerHub.registerMiner(1, 1e18);
+        workerHub.registerMiner{value: 1e18}(1);
         workerHub.joinForMinting();
         vm.stopPrank();
-
-        assertEq(token.balanceOf(Miner1), 1e18);
-        assertEq(token.balanceOf(Miner2), 1e18);
-        assertEq(token.balanceOf(Miner3), 1e18);
 
         assertEq(workerHub.lastBlock(), 11);
         assertEq(workerHub.currentEpoch(), 1);
@@ -127,15 +104,15 @@ contract WorkHubERC20Test is Test {
         assertEq(workerHub.rewardToClaim(Miner2), 15601179604261796);
         assertEq(workerHub.rewardToClaim(Miner3), 15601179604261796);
 
-        token.mintFor(address(workerHub), 2e18);
+        vm.deal(address(workerHub), address(workerHub).balance + 2e18);
         // claim reward
         workerHub.claimReward(Miner1);
         workerHub.claimReward(Miner2);
         workerHub.claimReward(Miner3);
 
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 1e18);
-        assertEq(token.balanceOf(Miner2), 15601179604261796 + 1e18);
-        assertEq(token.balanceOf(Miner3), 15601179604261796 + 1e18);
+        assertEq(Miner1.balance, 15601179604261796 + 1e18);
+        assertEq(Miner2.balance, 15601179604261796 + 1e18);
+        assertEq(Miner3.balance, 15601179604261796 + 1e18);
 
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         assertEq(workerHub.rewardToClaim(Miner2), 0);
@@ -145,48 +122,48 @@ contract WorkHubERC20Test is Test {
         workerHub.claimReward(Miner2);
         workerHub.claimReward(Miner3);
 
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 1e18);
-        assertEq(token.balanceOf(Miner2), 15601179604261796 + 1e18);
-        assertEq(token.balanceOf(Miner3), 15601179604261796 + 1e18);
+        assertEq(Miner1.balance, 15601179604261796 + 1e18);
+        assertEq(Miner2.balance, 15601179604261796 + 1e18);
+        assertEq(Miner3.balance, 15601179604261796 + 1e18);
 
         // test miner request unstake
         vm.startPrank(Miner1);
         workerHub.unregisterMiner();
-        vm.warp(vm.getBlockTimestamp() + 21 days);
+        vm.warp(block.timestamp + 21 days);
         workerHub.unstakeForMiner();
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 2e18);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18);
 
         assertEq(workerHub.multiplier(Miner1), 1e4);
 
         vm.roll(51);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 2e18);
-        workerHub.registerMiner(1, 1e18);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18);
+        workerHub.registerMiner{value: 1e18}(1);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 2e18 - 1e18);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18 - 1e18);
         workerHub.unregisterMiner();
-        vm.warp(vm.getBlockTimestamp() + 21 days);
+        vm.warp(block.timestamp + 21 days);
         workerHub.unstakeForMiner();
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 2e18);
-        workerHub.registerMiner(1, 1e18);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18);
+        workerHub.registerMiner{value: 1e18}(1);
         vm.roll(55);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 2e18 - 1e18);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18 - 1e18);
         vm.roll(61);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         workerHub.claimReward(Miner1);
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 2e18 - 1e18);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18 - 1e18);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         assertEq(workerHub.multiplier(Miner1), 1e4);
         // test case miner active then unregis but no claim reward
         workerHub.joinForMinting();
 
-        // assertEq(workerHub.test(Miner1), vm.getBlockTimestamp());
+        // assertEq(workerHub.test(Miner1), block.timestamp);
         assertEq(workerHub.multiplier(Miner1), 1e4);
 
         vm.roll(71);
@@ -194,28 +171,28 @@ contract WorkHubERC20Test is Test {
         vm.roll(81);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
         workerHub.unregisterMiner();
-        vm.warp(vm.getBlockTimestamp() + 21 days);
+        vm.warp(block.timestamp + 21 days);
         workerHub.unstakeForMiner();
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 2e18);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
 
-        // assertEq(workerHub.test(Miner1) + 21 days, vm.getBlockTimestamp());
+        // assertEq(workerHub.test(Miner1) + 21 days, block.timestamp);
 
         vm.roll(91);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
-        workerHub.registerMiner(1, 1e18);
+        workerHub.registerMiner{value: 1e18}(1);
         workerHub.joinForMinting();
 
-        // assertEq(workerHub.test(Miner1), vm.getBlockTimestamp());
+        // assertEq(workerHub.test(Miner1), block.timestamp);
 
         vm.roll(101);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 3);
-        // assertEq(workerHub.test(Miner1), vm.getBlockTimestamp());
+        // assertEq(workerHub.test(Miner1), block.timestamp);
 
         // claim reward
         workerHub.claimReward(Miner1);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
-        assertEq(token.balanceOf(Miner1), 15601179604261796 + 2e18 - 1e18 + 7800589802130898 * 3);
+        assertEq(Miner1.balance, 15601179604261796 + 2e18 - 1e18 + 7800589802130898 * 3);
         vm.roll(109);
         assertEq(workerHub.rewardToClaim(Miner1), 0);
         vm.stopPrank();
@@ -227,16 +204,16 @@ contract WorkHubERC20Test is Test {
         assertEq(workerHub.multiplier(Miner2), 11000);
         assertEq(workerHub.multiplier(Miner1), 1e4);
         assertEq(workerHub.rewardToClaim(Miner1), 7800589802130898 * 2);
-        // assertEq(workerHub.test(Miner1), vm.getBlockTimestamp());
-        vm.warp(vm.getBlockTimestamp() + 30 days);
+        // assertEq(workerHub.test(Miner1), block.timestamp);
+        vm.warp(block.timestamp + 30 days);
         uint boostReward = 7800589802130898 * 2 * 10500 / uint256(1e4);
         assertEq(workerHub.rewardToClaim(Miner1), boostReward);
 
-        vm.warp(vm.getBlockTimestamp() + 30 days);
+        vm.warp(block.timestamp + 30 days);
         boostReward = 7800589802130898 * 2 * 11000 / uint256(1e4);
         assertEq(workerHub.rewardToClaim(Miner1), boostReward);
 
-        vm.warp(vm.getBlockTimestamp() + 365 days);
+        vm.warp(block.timestamp + 365 days);
         boostReward = 7800589802130898 * 2 * 16000 / uint256(1e4);
         assertEq(workerHub.rewardToClaim(Miner1), boostReward);
 
