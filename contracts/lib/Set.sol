@@ -11,7 +11,8 @@ library Set {
     error AddressSet_DuplicatedValue(address value);
 
     function insert(AddressSet storage _set, address _value) internal {
-        if (_set.positions[_value] != 0) revert AddressSet_DuplicatedValue(_value);
+        if (_set.positions[_value] != 0)
+            revert AddressSet_DuplicatedValue(_value);
         _set.values.push(_value);
         _set.positions[_value] = _set.values.length;
     }
@@ -27,7 +28,10 @@ library Set {
         _set.positions[_value] = 0;
     }
 
-    function hasValue(AddressSet storage _set, address _value) internal view returns (bool) {
+    function hasValue(
+        AddressSet storage _set,
+        address _value
+    ) internal view returns (bool) {
         return _set.positions[_value] != 0;
     }
 
@@ -48,7 +52,8 @@ library Set {
     error Uint256Set_DuplicatedValue(uint256 value);
 
     function insert(Uint256Set storage _set, uint256 _value) internal {
-        if (_set.positions[_value] != 0) revert Uint256Set_DuplicatedValue(_value);
+        if (_set.positions[_value] != 0)
+            revert Uint256Set_DuplicatedValue(_value);
         _set.values.push(_value);
         _set.positions[_value] = _set.values.length;
     }
@@ -64,7 +69,10 @@ library Set {
         _set.positions[_value] = 0;
     }
 
-    function hasValue(Uint256Set storage _set, uint256 _value) internal view returns (bool) {
+    function hasValue(
+        Uint256Set storage _set,
+        uint256 _value
+    ) internal view returns (bool) {
         return _set.positions[_value] != 0;
     }
 
@@ -73,6 +81,52 @@ library Set {
     }
 
     function size(Uint256Set storage _set) internal view returns (uint256) {
+        return _set.values.length;
+    }
+
+    struct Bytes32Set {
+        bytes32[] values;
+        mapping(bytes32 => uint256) positions;
+    }
+
+    error Bytes32Set_ValueNotFound(bytes32 value);
+    error Bytes32Set_OutBound(uint256 position);
+    error Bytes32Set_DuplicatedValue(bytes32 value);
+
+    function insert(Bytes32Set storage _set, bytes32 _value) internal {
+        if (_set.positions[_value] != 0)
+            revert Bytes32Set_DuplicatedValue(_value);
+        _set.values.push(_value);
+        _set.positions[_value] = _set.values.length;
+    }
+
+    // function atPosition(
+    //     Bytes32Set storage _set,
+    //     uint256 _position
+    // ) internal view returns (bytes32) {
+    //     if (_position == 0) return "";
+    //     return _set.values[_position - 1];
+    // }
+
+    function hasValue(
+        Bytes32Set storage _set,
+        bytes32 _value
+    ) internal view returns (bool) {
+        return _set.positions[_value] != 0;
+    }
+
+    // function positionOf(
+    //     Bytes32Set storage _set,
+    //     bytes32 _value
+    // ) internal view returns (uint256) {
+    //     return _set.positions[_value];
+    // }
+
+    function isEmpty(Bytes32Set storage _set) internal view returns (bool) {
+        return _set.values.length == 0;
+    }
+
+    function size(Bytes32Set storage _set) internal view returns (uint256) {
         return _set.values.length;
     }
 }

@@ -33,6 +33,7 @@ contract WorkerHub is
         uint256 _minerMinimumStake,
         uint40 _miningTimeLimit,
         uint8 _minerRequirement,
+        uint8 _votingRequirement,
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpochBasedOnPerf,
         uint256 _rewardPerEpoch,
@@ -49,6 +50,7 @@ contract WorkerHub is
         minerMinimumStake = _minerMinimumStake;
         miningTimeLimit = _miningTimeLimit;
         minerRequirement = _minerRequirement;
+        votingRequirement = _votingRequirement;
         blocksPerEpoch = _blocksPerEpoch;
         rewardPerEpochBasedOnPerf = _rewardPerEpochBasedOnPerf;
         rewardPerEpoch = _rewardPerEpoch;
@@ -561,9 +563,7 @@ contract WorkerHub is
             clonedAssignments.inferenceId
         ];
 
-        if (
-            clonedInference.status != InferenceStatus.Solving
-        ) {
+        if (clonedInference.status != InferenceStatus.Solving) {
             revert InvalidInferenceStatus();
         }
 
@@ -634,8 +634,14 @@ contract WorkerHub is
 
         assignments[_assignmentId].commitment = _commitment;
         inferences[inferId].assignments.push(_assignmentId);
+        votingInfo[inferId].totalCommit++;
 
         emit CommitmentSubmission(msg.sender, _assignmentId, _commitment);
+
+        if (votingInfo[inferId].totalCommit == minerRequirement - 1) {
+            inferences[inferId].status = InferenceStatus.Reveal;
+            emit InferenceStatusUpdate(inferId, InferenceStatus.Reveal);
+        }
     }
 
     function reveal(
@@ -688,19 +694,20 @@ contract WorkerHub is
             .commitment;
         if (firstAssignmentCommitment != digest) {
             assignments[_assignmentId].vote = Vote.Disapproval;
-            votingInfo[inferId].totalDisapproval++;
         } else {
             assignments[_assignmentId].vote = Vote.Approval;
-            votingInfo[inferId].totalApproval++;
         }
 
         assignments[_assignmentId].revealNonce = _nonce;
         assignments[_assignmentId].output = _data;
-
-        //TODO: mr Issac check again
-        resolveInference(inferId);
+        votingInfo[inferId].totalReveal++;
 
         emit RevealSubmission(msg.sender, _assignmentId, _nonce, _data);
+
+        //TODO: mr Issac check again
+        if (votingInfo[inferId].totalReveal == minerRequirement - 1) {
+            resolveInference(inferId);
+        }
     }
 
     function slashMiner(
@@ -775,6 +782,15 @@ contract WorkerHub is
         penaltyDuration = _penaltyDuration;
     }
 
+    function enoughCommitReveal(
+        uint256 _inferenceId
+    ) public view returns (bool, bool) {
+        return (
+            votingInfo[_inferenceId].totalCommit >= votingRequirement,
+            votingInfo[_inferenceId].totalReveal >= votingRequirement
+        );
+    }
+
     function resolveInference(
         uint256 _inferenceId
     ) public virtual whenNotPaused {
@@ -782,23 +798,35 @@ contract WorkerHub is
 
         Inference storage inference = inferences[_inferenceId];
 
-        if (inference.status == InferenceStatus.Solving && inference.submitTimeout < block.timestamp && inference.processedMiner != address(0)) {
+        if (
+            inference.status == InferenceStatus.Solving &&
+            inference.submitTimeout < block.timestamp &&
+            inference.processedMiner != address(0)
+        ) {
             inference.status = InferenceStatus.Killed;
-            TransferHelper.safeTransferNative(inference.creator, inference.value);
-            
+            TransferHelper.safeTransferNative(
+                inference.creator,
+                inference.value
+            );
+
             // slash miner
             _slashMiner(inference.processedMiner, false);
         }
 
-        if (inference.status == InferenceStatus.Commit && inference.commitTimeout < block.timestamp) {
-            // if 2/3 miners approve, then move to reveal phase 
-            
+        if (
+            inference.status == InferenceStatus.Commit &&
+            inference.commitTimeout < block.timestamp
+        ) {
+            // if 2/3 miners approve, then move to reveal phase
             // else slash miner has not submitted solution and use miner's answer as result
         }
 
-        if (inference.status == InferenceStatus.Reveal && inference.revealTimeout < block.timestamp) {
+        if (
+            inference.status == InferenceStatus.Reveal &&
+            inference.revealTimeout < block.timestamp
+        ) {
             // handle timeout for reveal
-            
+
             // call kelvin function to get result
             // if 2/3 miners approve, then mark this infer as processed and trigger resolve infer again
             this.resolveInference(_inferenceId);

@@ -93,8 +93,8 @@ interface IWorkerHub is IInferable {
     }
 
     struct VotingInfo {
-        uint8 totalApproval;
-        uint8 totalDisapproval;
+        uint8 totalCommit;
+        uint8 totalReveal;
     }
 
     struct InferenceInfo {
