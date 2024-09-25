@@ -20,6 +20,7 @@ contract WorkerHub is
     using Random for Random.Randomizer;
     using Set for Set.AddressSet;
     using Set for Set.Uint256Set;
+    using Set for Set.Bytes32Set;
 
     string private constant VERSION = "v0.0.2";
     uint256 private constant PERCENTAGE_DENOMINATOR = 100_00;
@@ -636,9 +637,17 @@ contract WorkerHub is
         inferences[inferId].assignments.push(_assignmentId);
         votingInfo[inferId].totalCommit++;
 
+        if (!commitments[inferId].hasValue(_commitment)) {
+            commitments[inferId].insert(_commitment);
+        }
+        countCommitment[_commitment]++;
+
         emit CommitmentSubmission(msg.sender, _assignmentId, _commitment);
 
-        if (votingInfo[inferId].totalCommit == minerRequirement - 1) {
+        if (
+            votingInfo[inferId].totalCommit ==
+            assignmentsByInference[inferId].size() - 1
+        ) {
             inferences[inferId].status = InferenceStatus.Reveal;
             emit InferenceStatusUpdate(inferId, InferenceStatus.Reveal);
         }
@@ -789,6 +798,51 @@ contract WorkerHub is
             votingInfo[_inferenceId].totalCommit >= votingRequirement,
             votingInfo[_inferenceId].totalReveal >= votingRequirement
         );
+    }
+
+    function _findMostVotedCommitment(
+        uint256 _inferenceId
+    ) internal view returns (bytes32, uint8) {
+        uint8 maxCount = 0;
+        bytes32 mostVotedCommitment = 0;
+        bytes32[] memory commits = commitments[_inferenceId].values;
+        uint256 len = commitments[_inferenceId].size();
+
+        for (uint256 i = 0; i < len; i++) {
+            bytes32 currCommit = commits[i];
+            uint8 count = countCommitment[currCommit];
+            if (count > maxCount) {
+                maxCount = count;
+                mostVotedCommitment = currCommit;
+            }
+        }
+        return (mostVotedCommitment, maxCount);
+    }
+
+    function _filterCommitment(uint256 _inferenceId) internal returns (bool) {
+        bytes32 mostVotedCommitment;
+        uint8 maxCount;
+        (mostVotedCommitment, maxCount) = _findMostVotedCommitment(
+            _inferenceId
+        );
+
+        // Check the maxCount is greater than the voting requirement
+        if (maxCount < votingRequirement) {
+            return false;
+        }
+
+        uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
+        uint256 len = assignmentIds.length;
+
+        for (uint256 i = 0; i < len; i++) {
+            uint256 asgId = assignmentIds[i];
+            if (assignments[asgId].commitment != mostVotedCommitment) {
+                assignments[asgId].vote = Vote.Disapproval;
+            } else {
+                assignments[asgId].vote = Vote.Approval;
+            }
+        }
+        return true;
     }
 
     function resolveInference(
