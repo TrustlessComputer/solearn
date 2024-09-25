@@ -818,7 +818,7 @@ contract WorkerHub is
         );
 
         // Check the maxCount is greater than the voting requirement
-        if (maxCount < getThresholdValue(assignmentsByInference[_inferenceId].size())) {
+        if (maxCount < _getThresholdValue(assignmentsByInference[_inferenceId].size())) {
             return false;
         }
 
@@ -849,7 +849,7 @@ contract WorkerHub is
                 assignments[asgId].vote = Vote.Approval;
                 if (!isMatchMinerResult) {
                     TransferHelper.safeTransferNative(
-                        inferences[_inferenceId].processedMiner,
+                        assignments[asgId].worker,
                         inferences[_inferenceId].value / maxCount
                     );
                 }
@@ -886,7 +886,7 @@ contract WorkerHub is
             inference.commitTimeout < block.timestamp
         ) {
             // if 2/3 miners approve, then move to reveal phase
-            if (votingInfo[_inferenceId].totalCommit >= getThresholdValue(assignmentsByInference[_inferenceId].size())) {
+            if (votingInfo[_inferenceId].totalCommit >= _getThresholdValue(assignmentsByInference[_inferenceId].size())) {
                 inference.status == InferenceStatus.Reveal;
             } else {
                 // else slash miner has not submitted solution and use miner's answer as result
@@ -901,7 +901,7 @@ contract WorkerHub is
                 uint256[] memory assignmentIds = assignmentsByInference[_inferenceId].values;
                 for (uint i; i < assignmentIds.length; i++) {
                     // 
-                    if (assignments[assignmentIds[i]].commitment == byets32(0)) {
+                    if (assignments[assignmentIds[i]].commitment == bytes32(0)) {
                         _slashMiner(assignments[assignmentIds[i]].worker, false);
                     }
                 }
@@ -927,7 +927,7 @@ contract WorkerHub is
                 uint256[] memory assignmentIds = assignmentsByInference[_inferenceId].values;
                 for (uint i; i < assignmentIds.length; i++) {
                     // 
-                    if (assignments[assignmentIds[i]].commitment == byets32(0)) {
+                    if (assignments[assignmentIds[i]].commitment == bytes32(0x0) || assignments[assignmentIds[i]].revealNonce == 0) {
                         _slashMiner(assignments[assignmentIds[i]].worker, false);
                     }
                 }
@@ -939,7 +939,7 @@ contract WorkerHub is
     }
 
     function _getThresholdValue(uint x) internal pure returns(uint) {
-        return totalAssignMiner * 2 / 3  + (totalAssignMiner % 3 == 0 ? 0 : 1);
+        return x * 2 / 3  + (x % 3 == 0 ? 0 : 1);
     }
 
     function _claimReward(
