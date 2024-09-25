@@ -42,7 +42,6 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public minerMinimumStake;
     address public treasury;
     uint16 public feePercentage;
-    uint40 public miningTimeLimit;
     uint40 public submitDuration;
     uint40 public commitDuration;
     uint40 public revealDuration;
@@ -70,5 +69,5 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // determine multiplier value
     mapping(address => Boost) internal boost;
 
-    uint256[97] private __gap;
+    uint256[100] private __gap;
 }

@@ -32,7 +32,6 @@ contract WorkerHub is
         address _treasury,
         uint16 _feePercentage,
         uint256 _minerMinimumStake,
-        uint40 _miningTimeLimit,
         uint8 _minerRequirement,
         uint8 _votingRequirement,
         uint256 _blocksPerEpoch,
@@ -49,7 +48,6 @@ contract WorkerHub is
         treasury = _treasury;
         feePercentage = _feePercentage;
         minerMinimumStake = _minerMinimumStake;
-        miningTimeLimit = _miningTimeLimit;
         minerRequirement = _minerRequirement;
         votingRequirement = _votingRequirement;
         blocksPerEpoch = _blocksPerEpoch;
@@ -72,11 +70,6 @@ contract WorkerHub is
 
     function unpause() external onlyOwner whenPaused {
         _unpause();
-    }
-
-    function updateMiningTimeLimit(uint40 _miningTimeLimit) external onlyOwner {
-        miningTimeLimit = _miningTimeLimit;
-        emit MiningTimeLimitUpdate(_miningTimeLimit);
     }
 
     function getModelAddresses() external view returns (address[] memory) {
@@ -453,8 +446,6 @@ contract WorkerHub is
     }
 
     function _assignMiners(uint256 _inferenceId) private {
-        // uint40 expiredAt = uint40(block.timestamp + miningTimeLimit);
-        // inferences[_inferenceId].expiredAt = expiredAt;
         uint40 expiredAt = uint40(block.timestamp + submitDuration);
         uint40 commitTimeout = expiredAt + commitDuration;
         inferences[_inferenceId].submitTimeout = expiredAt;
