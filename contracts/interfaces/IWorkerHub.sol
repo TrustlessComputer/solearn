@@ -7,8 +7,8 @@ interface IWorkerHub is IInferable {
     enum InferenceStatus {
         Nil,
         Solving,
-        Disputing,
-        Solved,
+        // Disputing,
+        // Solved,
         Commit,
         Reveal,
         Processed,

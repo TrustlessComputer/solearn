@@ -562,8 +562,7 @@ contract WorkerHub is
         ];
 
         if (
-            clonedInference.status != InferenceStatus.Solving &&
-            clonedInference.status != InferenceStatus.Solved
+            clonedInference.status != InferenceStatus.Solving
         ) {
             revert InvalidInferenceStatus();
         }
@@ -583,7 +582,7 @@ contract WorkerHub is
         assignments[_assigmentId].commitment = keccak256(
             abi.encodePacked(_data)
         ); //Record the solution
-        inference.status = InferenceStatus.Solved;
+        inference.status = InferenceStatus.Commit;
         inference.assignments.push(_assigmentId);
 
         if (inference.assignments.length == 1) {
@@ -596,7 +595,7 @@ contract WorkerHub is
             emit TransferFee(_msgSender, value, treasury, fee);
             emit InferenceStatusUpdate(
                 clonedAssignments.inferenceId,
-                InferenceStatus.Solved
+                InferenceStatus.Commit
             );
         }
 
@@ -623,9 +622,7 @@ contract WorkerHub is
 
         if (uint40(block.timestamp) > inferences[inferId].commitTimeout)
             revert();
-        if (inferences[inferId].status == InferenceStatus.Solved) {
-            inferences[inferId].status = InferenceStatus.Commit;
-        } else if (inferences[inferId].status != InferenceStatus.Commit) {
+        if (inferences[inferId].status != InferenceStatus.Commit) {
             revert InvalidInferenceStatus();
         }
 
@@ -784,17 +781,32 @@ contract WorkerHub is
         _updateEpoch();
 
         Inference storage inference = inferences[_inferenceId];
-        if (
-            inference.status == InferenceStatus.Solving &&
-            block.timestamp > inference.expiredAt //TODO: mr Isssac check again, we do not use expiredAt
-        ) {
+        // if (
+        //     inference.status == InferenceStatus.Solving &&
+        //     block.timestamp > inference.expiredAt //TODO: mr Isssac check again, we do not use expiredAt
+        // ) {
+        //     inference.status = InferenceStatus.Killed;
+        //     TransferHelper.safeTransferNative(
+        //         inference.creator,
+        //         inference.value
+        //     );
+        // }
+
+        if (inference.status == InferenceStatus.Solving && inference.submitTimeout < block.timestamp && inference.processedMiner != address(0)) {
             inference.status = InferenceStatus.Killed;
-            TransferHelper.safeTransferNative(
-                inference.creator,
-                inference.value
-            );
-            emit InferenceStatusUpdate(_inferenceId, InferenceStatus.Killed);
+            TransferHelper.safeTransferNative(inference.creator, inference.value);
+            
+            // slash miner
+            _slashMiner(inference.processedMiner, false);
         }
+
+        if (inference.status == InferenceStatus.Commit && inference.commitTimeout < block.timestamp) {
+            // if 2/3 miners approve, then move to reveal phase 
+            
+            // else slash miner has not submitted solution and kill the inference
+        }
+
+        emit InferenceStatusUpdate(_inferenceId, inference.status);
     }
 
     function _claimReward(
