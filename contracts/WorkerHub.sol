@@ -80,40 +80,41 @@ contract WorkerHub is
         return modelAddresses.values;
     }
 
-    function getMiningAssignments()
-        external
-        view
-        returns (AssignmentInfo[] memory)
-    {
-        uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
-        uint256 assignmentNumber = assignmentIds.length;
+    // function getMiningAssignments()
+    //     external
+    //     view
+    //     returns (AssignmentInfo[] memory)
+    // {
+    //     uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
+    //     uint256 assignmentNumber = assignmentIds.length;
 
-        uint256 counter = 0;
-        for (uint256 i = 0; i < assignmentNumber; ++i)
-            if (isAssignmentPending(assignmentIds[i])) counter++;
+    //     uint256 counter = 0;
+    //     for (uint256 i = 0; i < assignmentNumber; ++i)
+    //         if (isAssignmentPending(assignmentIds[i])) counter++;
 
-        AssignmentInfo[] memory result = new AssignmentInfo[](counter);
-        counter = 0;
+    //     AssignmentInfo[] memory result = new AssignmentInfo[](counter);
+    //     counter = 0;
 
-        for (uint256 i = 0; i < assignmentNumber; ++i)
-            if (isAssignmentPending(assignmentIds[i])) {
-                Assignment storage assignment = assignments[assignmentIds[i]];
-                Inference storage inference = inferences[
-                    assignment.inferenceId
-                ];
-                result[counter++] = AssignmentInfo(
-                    assignmentIds[i],
-                    assignment.inferenceId,
-                    inference.value,
-                    inference.input,
-                    inference.modelAddress,
-                    inference.creator,
-                    inference.expiredAt
-                );
-            }
+    //     for (uint256 i = 0; i < assignmentNumber; ++i)
+    //         if (isAssignmentPending(assignmentIds[i])) {
+    //             Assignment storage assignment = assignments[assignmentIds[i]];
+    //             Inference storage inference = inferences[
+    //                 assignment.inferenceId
+    //             ];
+    //             result[counter++] = AssignmentInfo(
+    //                 assignmentIds[i],
+    //                 assignment.inferenceId,
+    //                 inference.value,
+    //                 inference.input,
+    //                 inference.modelAddress,
+    //                 inference.creator,
+    //                 uint40(block.timestamp) // TODO: kelvin check again
+    //                 // inference.expiredAt
+    //             );
+    //         }
 
-        return result;
-    }
+    //     return result;
+    // }
 
     function getMintingAssignmentsOfInference(
         uint256 _inferenceId
@@ -133,7 +134,8 @@ contract WorkerHub is
                 inference.input,
                 inference.modelAddress,
                 inference.creator,
-                inference.expiredAt
+                uint40(block.timestamp) // TODO: kelvin check again
+                // inference.expiredAt
             );
         }
 
@@ -173,40 +175,39 @@ contract WorkerHub is
         return result;
     }
 
-    function isAssignmentPending(
-        uint256 _assignmentId
-    ) public view returns (bool) {
-        return
-            assignments[_assignmentId].output.length == 0 &&
-            block.timestamp <
-            inferences[assignments[_assignmentId].inferenceId].expiredAt;
-    }
+    // function isAssignmentPending(
+    //     uint256 _assignmentId
+    // ) public view returns (bool) {
+    //     return
+    //         assignments[_assignmentId].output.length == 0 &&
+    //         block.timestamp <
+    //         inferences[assignments[_assignmentId].inferenceId].expiredAt;
+    // }
 
-    function getInferences(
-        uint256[] calldata _inferenceIds
-    ) external view returns (InferenceInfo[] memory) {
-        uint256 inferenceNumber = _inferenceIds.length;
-        InferenceInfo[] memory result = new InferenceInfo[](inferenceNumber);
-        for (uint256 i = 0; i < inferenceNumber; ++i) {
-            Inference storage inference = inferences[_inferenceIds[i]];
-            result[i] = InferenceInfo(
-                _inferenceIds[i],
-                inference.input,
-                inference.status == InferenceStatus.Solved
-                    ? assignments[
-                        inference.assignments[inference.firstSubmissionId]
-                    ].output
-                    : bytes(""),
-                inference.value,
-                inference.disputingAddress,
-                inference.modelAddress,
-                inference.expiredAt,
-                inference.status,
-                inference.creator
-            );
-        }
-        return result;
-    }
+    // function getInferences(
+    //     uint256[] calldata _inferenceIds
+    // ) external view returns (InferenceInfo[] memory) {
+    //     uint256 inferenceNumber = _inferenceIds.length;
+    //     InferenceInfo[] memory result = new InferenceInfo[](inferenceNumber);
+    //     for (uint256 i = 0; i < inferenceNumber; ++i) {
+    //         Inference storage inference = inferences[_inferenceIds[i]];
+    //         result[i] = InferenceInfo(
+    //             _inferenceIds[i],
+    //             inference.input,
+    //             inference.status == InferenceStatus.Solved
+    //                 ? assignments[
+    //                     inference.assignments[inference.firstSubmissionId]
+    //                 ].output
+    //                 : bytes(""),
+    //             inference.value,
+    //             inference.modelAddress,
+    //             inference.expiredAt,
+    //             inference.status,
+    //             inference.creator
+    //         );
+    //     }
+    //     return result;
+    // }
 
     function registerModel(
         address _model,
@@ -449,8 +450,13 @@ contract WorkerHub is
     }
 
     function _assignMiners(uint256 _inferenceId) private {
-        uint40 expiredAt = uint40(block.timestamp + miningTimeLimit);
-        inferences[_inferenceId].expiredAt = expiredAt;
+        // uint40 expiredAt = uint40(block.timestamp + miningTimeLimit);
+        // inferences[_inferenceId].expiredAt = expiredAt;
+        uint40 expiredAt = uint40(block.timestamp + submitDuration);
+        uint40 commitTimeout = expiredAt + commitDuration;
+        inferences[_inferenceId].submitTimeout = expiredAt;
+        inferences[_inferenceId].commitTimeout = commitTimeout;
+        inferences[_inferenceId].revealTimeout = commitTimeout + revealDuration;
         inferences[_inferenceId].status = InferenceStatus.Solving;
 
         address model = inferences[_inferenceId].modelAddress;
@@ -574,6 +580,9 @@ contract WorkerHub is
         Inference storage inference = inferences[clonedAssignments.inferenceId];
 
         assignments[_assigmentId].output = _data; //Record the solution
+        assignments[_assigmentId].commitment = keccak256(
+            abi.encodePacked(_data)
+        ); //Record the solution
         inference.status = InferenceStatus.Solved;
         inference.assignments.push(_assigmentId);
 
@@ -600,7 +609,6 @@ contract WorkerHub is
     ) public virtual whenNotPaused {
         _updateEpoch();
 
-        address _msgSender = msg.sender;
         if (_commitment == 0) revert InvalidCommitment();
 
         // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
@@ -611,25 +619,91 @@ contract WorkerHub is
             revert InvalidMiner();
 
         Assignment memory clonedAssignments = assignments[_assignmentId];
+        uint256 inferId = clonedAssignments.inferenceId;
+
+        if (uint40(block.timestamp) > inferences[inferId].commitTimeout)
+            revert();
+        if (inferences[inferId].status == InferenceStatus.Solved) {
+            inferences[inferId].status = InferenceStatus.Commit;
+        } else if (inferences[inferId].status != InferenceStatus.Commit) {
+            revert InvalidInferenceStatus();
+        }
 
         // Check the msg sender is the assigned miner
         if (msg.sender != clonedAssignments.worker) revert Unauthorized();
         if (clonedAssignments.role != AssignmentRole.Validating)
             revert InvalidRole();
-
         if (clonedAssignments.commitment != 0) revert AlreadyCommitted();
 
         assignments[_assignmentId].commitment = _commitment;
+        inferences[inferId].assignments.push(_assignmentId);
 
         emit CommitmentSubmission(msg.sender, _assignmentId, _commitment);
     }
 
-    function _handleDisputeSuccess(uint256 _inferId) internal {
-        // TODO
-    }
+    function reveal(
+        uint256 _assignmentId,
+        uint40 _nonce,
+        bytes memory _data
+    ) public virtual whenNotPaused {
+        _updateEpoch();
 
-    function disputeInfer(uint256 _assignmentId) public virtual {
-        // TODO
+        if (_data.length == 0) revert InvalidData();
+        if (_nonce == 0) revert InvalidNonce();
+        if (assignments[_assignmentId].revealNonce != 0)
+            revert AlreadyRevealed();
+
+        // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
+        if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
+
+        address modelAddrOfMiner = miners[msg.sender].modelAddress;
+        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(msg.sender))
+            revert InvalidMiner();
+
+        Assignment memory clonedAssignments = assignments[_assignmentId];
+        uint256 inferId = clonedAssignments.inferenceId;
+
+        if (uint40(block.timestamp) > inferences[inferId].revealTimeout)
+            revert();
+        if (inferences[inferId].status == InferenceStatus.Commit) {
+            inferences[inferId].status = InferenceStatus.Reveal;
+        } else if (inferences[inferId].status != InferenceStatus.Reveal) {
+            revert InvalidInferenceStatus();
+        }
+
+        // Check the msg sender is the assigned miner
+        if (msg.sender != clonedAssignments.worker) revert Unauthorized();
+        if (clonedAssignments.role != AssignmentRole.Validating)
+            revert InvalidRole();
+        if (clonedAssignments.commitment == 0) revert NotCommitted();
+
+        bytes32 commitment = clonedAssignments.commitment;
+        bytes32 revealHash = keccak256(
+            abi.encodePacked(_nonce, msg.sender, _data)
+        );
+
+        if (commitment != revealHash) revert InvalidReveal();
+
+        bytes32 digest = keccak256(abi.encodePacked(_data));
+        // find inference from assignment id
+        uint256 firstAssignmentId = inferences[inferId].assignments[0];
+        bytes32 firstAssignmentCommitment = assignments[firstAssignmentId]
+            .commitment;
+        if (firstAssignmentCommitment != digest) {
+            assignments[_assignmentId].vote = Vote.Disapproval;
+            votingInfo[inferId].totalDisapproval++;
+        } else {
+            assignments[_assignmentId].vote = Vote.Approval;
+            votingInfo[inferId].totalApproval++;
+        }
+
+        assignments[_assignmentId].revealNonce = _nonce;
+        assignments[_assignmentId].output = _data;
+
+        //TODO: mr Issac check again
+        resolveInference(inferId);
+
+        emit RevealSubmission(msg.sender, _assignmentId, _nonce, _data);
     }
 
     function slashMiner(
@@ -712,7 +786,7 @@ contract WorkerHub is
         Inference storage inference = inferences[_inferenceId];
         if (
             inference.status == InferenceStatus.Solving &&
-            block.timestamp > inference.expiredAt
+            block.timestamp > inference.expiredAt //TODO: mr Isssac check again, we do not use expiredAt
         ) {
             inference.status = InferenceStatus.Killed;
             TransferHelper.safeTransferNative(

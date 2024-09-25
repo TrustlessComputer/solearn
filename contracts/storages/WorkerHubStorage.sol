@@ -24,6 +24,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     uint256 public assignmentNumber;
     mapping(uint256 => Assignment) public assignments;
+    mapping(uint256 inferId => VotingInfo) public votingInfo;
     mapping(address => Set.Uint256Set) internal assignmentsByMiner;
     mapping(uint256 => Set.Uint256Set) internal assignmentsByInference;
 
@@ -40,6 +41,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     address public treasury;
     uint16 public feePercentage;
     uint40 public miningTimeLimit;
+    uint40 public submitDuration;
     uint40 public commitDuration;
     uint40 public revealDuration;
     uint40 public penaltyDuration;

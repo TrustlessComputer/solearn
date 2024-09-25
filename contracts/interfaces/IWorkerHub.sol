@@ -21,6 +21,12 @@ interface IWorkerHub is IInferable {
         Mining
     }
 
+    enum Vote {
+        Nil,
+        Disapproval,
+        Approval
+    }
+
     struct MinerEpochState {
         uint256 perfReward;
         uint256 epochReward;
@@ -57,8 +63,8 @@ interface IWorkerHub is IInferable {
         bytes32 commitment;
         uint40 revealNonce;
         address worker;
-        uint8 disapprovalCount;
         AssignmentRole role;
+        Vote vote;
         bytes output;
     }
 
@@ -76,10 +82,9 @@ interface IWorkerHub is IInferable {
         uint256[] assignments;
         bytes input;
         uint256 value;
-        address disputingAddress;
         address modelAddress;
-        uint40 expiredAt;
-        uint40 submissionExpAt;
+        // uint40 expiredAt;
+        uint40 submitTimeout; // limit time to capture the miner role and submit the solution
         uint40 commitTimeout;
         uint40 revealTimeout;
         uint8 firstSubmissionId;
@@ -88,12 +93,16 @@ interface IWorkerHub is IInferable {
         address processedMiner;
     }
 
+    struct VotingInfo {
+        uint8 totalApproval;
+        uint8 totalDisapproval;
+    }
+
     struct InferenceInfo {
         uint256 inferenceId;
         bytes input;
         bytes output;
         uint256 value;
-        address disputingAddress;
         address modelAddress;
         uint40 expiredAt;
         InferenceStatus status;
@@ -178,6 +187,12 @@ interface IWorkerHub is IInferable {
 
     event MinerUnstake(address indexed miner, uint256 stake);
     event MinerJoin(address indexed miner);
+    event RevealSubmission(
+        address indexed miner,
+        uint256 indexed assigmentId,
+        uint40 nonce,
+        bytes output
+    );
 
     event RewardClaim(address indexed worker, uint256 value);
 
@@ -233,4 +248,8 @@ interface IWorkerHub is IInferable {
     error MinerInDeactivationTime();
     error InvalidCommitment();
     error AlreadyCommitted();
+    error NotCommitted();
+    error InvalidReveal();
+    error InvalidNonce();
+    error AlreadyRevealed();
 }
