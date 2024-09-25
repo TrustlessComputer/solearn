@@ -586,6 +586,7 @@ contract WorkerHub is
         inference.status = InferenceStatus.Commit;
         inference.assignments.push(_assigmentId);
 
+        // todo: kelvin look at this logic
         if (inference.assignments.length == 1) {
             uint256 fee = (clonedInference.value * feePercentage) /
                 PERCENTAGE_DENOMINATOR;
@@ -713,8 +714,7 @@ contract WorkerHub is
 
         emit RevealSubmission(msg.sender, _assignmentId, _nonce, _data);
 
-        //TODO: mr Issac check again
-        if (votingInfo[inferId].totalReveal == minerRequirement - 1) {
+        if (votingInfo[inferId].totalReveal == votingInfo[inferId].totalCommit) {
             resolveInference(inferId);
         }
     }
@@ -827,21 +827,44 @@ contract WorkerHub is
         );
 
         // Check the maxCount is greater than the voting requirement
-        if (maxCount < votingRequirement) {
+        if (maxCount < getThresholdValue(assignmentsByInference[_inferenceId].size())) {
             return false;
         }
 
         uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
         uint256 len = assignmentIds.length;
 
+        bool isMatchMinerResult;
+        for (uint256 i = 0; i < len; i++) {
+            if (assignments[assignmentIds[i]].worker == inferences[_inferenceId].processedMiner) {
+                isMatchMinerResult = assignments[assignmentIds[i]].commitment == mostVotedCommitment;
+                break;
+            }
+        }
+
+        if (isMatchMinerResult) {
+            TransferHelper.safeTransferNative(
+                inferences[_inferenceId].processedMiner,
+                inferences[_inferenceId].value
+            );
+        }
+
         for (uint256 i = 0; i < len; i++) {
             uint256 asgId = assignmentIds[i];
             if (assignments[asgId].commitment != mostVotedCommitment) {
                 assignments[asgId].vote = Vote.Disapproval;
+                _slashMiner(assignments[asgId].worker, assignments[asgId].worker == inferences[_inferenceId].processedMiner);
             } else {
                 assignments[asgId].vote = Vote.Approval;
+                if (!isMatchMinerResult) {
+                    TransferHelper.safeTransferNative(
+                        inferences[_inferenceId].processedMiner,
+                        inferences[_inferenceId].value / maxCount
+                    );
+                }
             }
         }
+
         return true;
     }
 
@@ -900,15 +923,10 @@ contract WorkerHub is
         ) {
             // call kelvin function to get result
             // if 2/3 miners approve, then mark this infer as processed and trigger resolve infer again
-
-            // todo
             // else slash miner has not submitted solution and use miner's answer as result
-            if (votingInfo[_inferenceId].totalReveal >= getThresholdValue(assignmentsByInference[_inferenceId].size())) {
-                inference.status == InferenceStatus.Reveal;
-            } else {
+            if (!_filterCommitment(_inferenceId)) {
                 // else slash miner has not submitted solution and use miner's answer as result
                 // Processed
-                inference.status = InferenceStatus.Processed;
                 TransferHelper.safeTransferNative(
                     inference.processedMiner,
                     inference.value
@@ -923,16 +941,13 @@ contract WorkerHub is
                     }
                 }
             }
+            inference.status = InferenceStatus.Processed;
         }
 
         emit InferenceStatusUpdate(_inferenceId, inference.status);
     }
 
-    function distributeReward() internal {
-        // 
-    }
-
-    function getThresholdValue(uint x) internal pure returns(uint) {
+    function _getThresholdValue(uint x) internal pure returns(uint) {
         return totalAssignMiner * 2 / 3  + (totalAssignMiner % 3 == 0 ? 0 : 1);
     }
 
