@@ -781,16 +781,6 @@ contract WorkerHub is
         _updateEpoch();
 
         Inference storage inference = inferences[_inferenceId];
-        // if (
-        //     inference.status == InferenceStatus.Solving &&
-        //     block.timestamp > inference.expiredAt //TODO: mr Isssac check again, we do not use expiredAt
-        // ) {
-        //     inference.status = InferenceStatus.Killed;
-        //     TransferHelper.safeTransferNative(
-        //         inference.creator,
-        //         inference.value
-        //     );
-        // }
 
         if (inference.status == InferenceStatus.Solving && inference.submitTimeout < block.timestamp && inference.processedMiner != address(0)) {
             inference.status = InferenceStatus.Killed;
@@ -803,7 +793,21 @@ contract WorkerHub is
         if (inference.status == InferenceStatus.Commit && inference.commitTimeout < block.timestamp) {
             // if 2/3 miners approve, then move to reveal phase 
             
-            // else slash miner has not submitted solution and kill the inference
+            // else slash miner has not submitted solution and use miner's answer as result
+        }
+
+        if (inference.status == InferenceStatus.Reveal && inference.revealTimeout < block.timestamp) {
+            // handle timeout for reveal
+            
+            // call kelvin function to get result
+            // if 2/3 miners approve, then mark this infer as processed and trigger resolve infer again
+            this.resolveInference(_inferenceId);
+
+            // else slash miner has not submitted solution and use miner's answer as result
+        }
+
+        if (inference.status == InferenceStatus.Processed) {
+            // transfer reward to valid miners
         }
 
         emit InferenceStatusUpdate(_inferenceId, inference.status);
