@@ -810,7 +810,7 @@ contract WorkerHub is
             );
 
             // slash miner
-            _slashMiner(inference.processedMiner, false);
+            _slashMiner(inference.processedMiner, true);
         }
 
         if (
@@ -818,27 +818,68 @@ contract WorkerHub is
             inference.commitTimeout < block.timestamp
         ) {
             // if 2/3 miners approve, then move to reveal phase
-            // else slash miner has not submitted solution and use miner's answer as result
+            if (votingInfo[_inferenceId].totalCommit >= getThresholdValue(assignmentsByInference[_inferenceId].size())) {
+                inference.status == InferenceStatus.Reveal;
+            } else {
+                // else slash miner has not submitted solution and use miner's answer as result
+                // Processed
+                inference.status = InferenceStatus.Processed;
+                TransferHelper.safeTransferNative(
+                    inference.processedMiner,
+                    inference.value
+                );
+
+                // slash miner not submitted commit hash
+                uint256[] memory assignmentIds = assignmentsByInference[_inferenceId].values;
+                for (uint i; i < assignmentIds.length; i++) {
+                    // 
+                    if (assignments[assignmentIds[i]].commitment == byets32(0)) {
+                        _slashMiner(assignments[assignmentIds[i]].worker, false);
+                    }
+                }
+            }
         }
 
         if (
             inference.status == InferenceStatus.Reveal &&
             inference.revealTimeout < block.timestamp
         ) {
-            // handle timeout for reveal
-
             // call kelvin function to get result
             // if 2/3 miners approve, then mark this infer as processed and trigger resolve infer again
-            this.resolveInference(_inferenceId);
 
+            // todo
             // else slash miner has not submitted solution and use miner's answer as result
-        }
+            if (votingInfo[_inferenceId].totalReveal >= getThresholdValue(assignmentsByInference[_inferenceId].size())) {
+                inference.status == InferenceStatus.Reveal;
+            } else {
+                // else slash miner has not submitted solution and use miner's answer as result
+                // Processed
+                inference.status = InferenceStatus.Processed;
+                TransferHelper.safeTransferNative(
+                    inference.processedMiner,
+                    inference.value
+                );
 
-        if (inference.status == InferenceStatus.Processed) {
-            // transfer reward to valid miners
+                // slash miner not submitted commit hash
+                uint256[] memory assignmentIds = assignmentsByInference[_inferenceId].values;
+                for (uint i; i < assignmentIds.length; i++) {
+                    // 
+                    if (assignments[assignmentIds[i]].commitment == byets32(0)) {
+                        _slashMiner(assignments[assignmentIds[i]].worker, false);
+                    }
+                }
+            }
         }
 
         emit InferenceStatusUpdate(_inferenceId, inference.status);
+    }
+
+    function distributeReward() internal {
+        // 
+    }
+
+    function getThresholdValue(uint x) internal pure returns(uint) {
+        return totalAssignMiner * 2 / 3  + (totalAssignMiner % 3 == 0 ? 0 : 1);
     }
 
     function _claimReward(
