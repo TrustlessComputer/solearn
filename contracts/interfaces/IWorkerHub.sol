@@ -60,6 +60,7 @@ interface IWorkerHub is IInferable {
     struct Assignment {
         uint256 inferenceId;
         bytes32 commitment;
+        bytes32 digest; // keccak256(output)
         uint40 revealNonce;
         address worker;
         AssignmentRole role;

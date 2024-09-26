@@ -543,6 +543,7 @@ contract WorkerHub is
             revert InvalidMiner();
 
         Assignment memory clonedAssignments = assignments[_assigmentId];
+        uint256 inferId = clonedAssignments.inferenceId;
 
         // Check the msg sender is the assigned miner
         if (_msgSender != clonedAssignments.worker) revert Unauthorized();
@@ -551,9 +552,7 @@ contract WorkerHub is
 
         if (clonedAssignments.output.length != 0) revert AlreadySubmitted();
 
-        Inference memory clonedInference = inferences[
-            clonedAssignments.inferenceId
-        ];
+        Inference memory clonedInference = inferences[inferId];
 
         if (clonedInference.status != InferenceStatus.Solving) {
             revert InvalidInferenceStatus();
@@ -561,21 +560,25 @@ contract WorkerHub is
 
         // if (clonedInference.expiredAt < block.timestamp) {
         //     if (clonedInference.assignments.length == 0) {
-        //         resolveInference(clonedAssignments.inferenceId);
+        //         resolveInference(inferId);
         //         return;
         //     } else {
         //         revert MiningSessionEnded();
         //     }
         // }
 
-        Inference storage inference = inferences[clonedAssignments.inferenceId];
+        Inference storage inference = inferences[inferId];
 
         assignments[_assigmentId].output = _data; //Record the solution
-        assignments[_assigmentId].commitment = keccak256(
-            abi.encodePacked(_data)
-        ); //Record the solution
+        bytes32 digest = keccak256(abi.encodePacked(_data)); //Record the solution
+        assignments[_assigmentId].commitment = digest;
         inference.status = InferenceStatus.Commit;
         inference.assignments.push(_assigmentId);
+
+        if (!commitments[inferId].hasValue(digest)) {
+            commitments[inferId].insert(digest);
+        }
+        countCommitment[digest]++;
 
         // todo: kelvin look at this logic
         if (inference.assignments.length == 1) {
@@ -586,10 +589,7 @@ contract WorkerHub is
             TransferHelper.safeTransferNative(_msgSender, value);
 
             emit TransferFee(_msgSender, value, treasury, fee);
-            emit InferenceStatusUpdate(
-                clonedAssignments.inferenceId,
-                InferenceStatus.Commit
-            );
+            emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
         }
 
         emit SolutionSubmission(_msgSender, _assigmentId);
@@ -629,10 +629,10 @@ contract WorkerHub is
         inferences[inferId].assignments.push(_assignmentId);
         votingInfo[inferId].totalCommit++;
 
-        if (!commitments[inferId].hasValue(_commitment)) {
-            commitments[inferId].insert(_commitment);
-        }
-        countCommitment[_commitment]++;
+        // if (!commitments[inferId].hasValue(_commitment)) {
+        //     commitments[inferId].insert(_commitment);
+        // }
+        // countCommitment[_commitment]++;
 
         emit CommitmentSubmission(msg.sender, _assignmentId, _commitment);
 
@@ -701,11 +701,19 @@ contract WorkerHub is
 
         assignments[_assignmentId].revealNonce = _nonce;
         assignments[_assignmentId].output = _data;
+        assignments[_assignmentId].digest = digest;
         votingInfo[inferId].totalReveal++;
+
+        if (!commitments[inferId].hasValue(digest)) {
+            commitments[inferId].insert(digest);
+        }
+        countCommitment[digest]++;
 
         emit RevealSubmission(msg.sender, _assignmentId, _nonce, _data);
 
-        if (votingInfo[inferId].totalReveal == votingInfo[inferId].totalCommit) {
+        if (
+            votingInfo[inferId].totalReveal == votingInfo[inferId].totalCommit
+        ) {
             resolveInference(inferId);
         }
     }
@@ -818,19 +826,20 @@ contract WorkerHub is
         );
 
         // Check the maxCount is greater than the voting requirement
-        if (maxCount < _getThresholdValue(assignmentsByInference[_inferenceId].size())) {
+        if (
+            maxCount <
+            _getThresholdValue(assignmentsByInference[_inferenceId].size())
+        ) {
             return false;
         }
 
         uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
         uint256 len = assignmentIds.length;
 
+        //TODO: mr Issac check this logic
         bool isMatchMinerResult;
-        for (uint256 i = 0; i < len; i++) {
-            if (assignments[assignmentIds[i]].worker == inferences[_inferenceId].processedMiner) {
-                isMatchMinerResult = assignments[assignmentIds[i]].commitment == mostVotedCommitment;
-                break;
-            }
+        if (assignments[assignmentIds[0]].commitment == mostVotedCommitment) {
+            isMatchMinerResult = true;
         }
 
         if (isMatchMinerResult) {
@@ -844,7 +853,11 @@ contract WorkerHub is
             uint256 asgId = assignmentIds[i];
             if (assignments[asgId].commitment != mostVotedCommitment) {
                 assignments[asgId].vote = Vote.Disapproval;
-                _slashMiner(assignments[asgId].worker, assignments[asgId].worker == inferences[_inferenceId].processedMiner);
+                _slashMiner(
+                    assignments[asgId].worker,
+                    assignments[asgId].worker ==
+                        inferences[_inferenceId].processedMiner
+                );
             } else {
                 assignments[asgId].vote = Vote.Approval;
                 if (!isMatchMinerResult) {
@@ -886,7 +899,10 @@ contract WorkerHub is
             inference.commitTimeout < block.timestamp
         ) {
             // if 2/3 miners approve, then move to reveal phase
-            if (votingInfo[_inferenceId].totalCommit >= _getThresholdValue(assignmentsByInference[_inferenceId].size())) {
+            if (
+                votingInfo[_inferenceId].totalCommit >=
+                _getThresholdValue(assignmentsByInference[_inferenceId].size())
+            ) {
                 inference.status == InferenceStatus.Reveal;
             } else {
                 // else slash miner has not submitted solution and use miner's answer as result
@@ -898,11 +914,18 @@ contract WorkerHub is
                 );
 
                 // slash miner not submitted commit hash
-                uint256[] memory assignmentIds = assignmentsByInference[_inferenceId].values;
+                uint256[] memory assignmentIds = assignmentsByInference[
+                    _inferenceId
+                ].values;
                 for (uint i; i < assignmentIds.length; i++) {
-                    // 
-                    if (assignments[assignmentIds[i]].commitment == bytes32(0)) {
-                        _slashMiner(assignments[assignmentIds[i]].worker, false);
+                    //
+                    if (
+                        assignments[assignmentIds[i]].commitment == bytes32(0)
+                    ) {
+                        _slashMiner(
+                            assignments[assignmentIds[i]].worker,
+                            false
+                        );
                     }
                 }
             }
@@ -924,11 +947,16 @@ contract WorkerHub is
                 );
 
                 // slash miner not submitted commit hash
-                uint256[] memory assignmentIds = assignmentsByInference[_inferenceId].values;
+                uint256[] memory assignmentIds = assignmentsByInference[
+                    _inferenceId
+                ].values;
                 for (uint i; i < assignmentIds.length; i++) {
-                    // 
-                    if (assignments[assignmentIds[i]].commitment == bytes32(0x0) || assignments[assignmentIds[i]].revealNonce == 0) {
-                        _slashMiner(assignments[assignmentIds[i]].worker, false);
+                    //
+                    if (assignments[assignmentIds[i]].revealNonce == 0) {
+                        _slashMiner(
+                            assignments[assignmentIds[i]].worker,
+                            false
+                        );
                     }
                 }
             }
@@ -938,8 +966,8 @@ contract WorkerHub is
         emit InferenceStatusUpdate(_inferenceId, inference.status);
     }
 
-    function _getThresholdValue(uint x) internal pure returns(uint) {
-        return x * 2 / 3  + (x % 3 == 0 ? 0 : 1);
+    function _getThresholdValue(uint x) internal pure returns (uint) {
+        return (x * 2) / 3 + (x % 3 == 0 ? 0 : 1);
     }
 
     function _claimReward(
