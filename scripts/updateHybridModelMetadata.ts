@@ -21,13 +21,13 @@ async function updateHybridModelMetadata() {
         `Missing ${networkName}_WORKERHUB_ADDRESS from environment variables!`
     );
 
-    const tokenId = 100001;
+    const tokenId = 200001;
     const minHardware = BigInt(1);
     const metadataObj = {
         "version": 1,
-        "model_name": "Llama 3 70B Updated",
+        "model_name": "Llama 3.1 405B",
         "model_type": "text",
-        "model_url": "",
+        "model_url": "https://gateway.lighthouse.storage/ipfs/bafkreigb3j2gfpfbrrjil4ubkyfxgbcw2pwlcheeztpcgbydzs5cvgw6i4",
         "model_file_hash": "",
         "min_hardware": 1,
         "verifier_url": "",

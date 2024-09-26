@@ -13,14 +13,14 @@ async function deployWorkerHub() {
       `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
   );
   const feePercentage = 10_00;
-  const minerMinimumStake = ethers.parseEther("0.1");
-  const validatorMinimumStake = ethers.parseEther("0.1");
+  const minerMinimumStake = ethers.parseEther("25000");
+  const validatorMinimumStake = ethers.parseEther("40000");
   const miningTimeLimit = 10 * 60;
   const minerRequirement = 3;
   const blockPerEpoch = 600;
   const rewardPerEpochBasedOnPerf = ethers.parseEther("0");
   const rewardPerEpoch = ethers.parseEther("0");
-  const unstakeDelayTime = 10 * 60;
+  const unstakeDelayTime = 21 * 24 * 3600;
   const penaltyDuration = 3600;
   const finePercentage = 5_00;
 

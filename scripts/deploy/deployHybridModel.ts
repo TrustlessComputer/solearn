@@ -31,7 +31,7 @@ async function deployHybridModel() {
         "version": 1,
         "model_name": "Llama 3.1 405B",
         "model_type": "text",
-        "model_url": "",
+        "model_url": "https://gateway.lighthouse.storage/ipfs/bafkreigb3j2gfpfbrrjil4ubkyfxgbcw2pwlcheeztpcgbydzs5cvgw6i4",
         "model_file_hash": "",
         "min_hardware": 1,
         "verifier_url": "",
