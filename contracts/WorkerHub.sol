@@ -514,93 +514,89 @@ contract WorkerHub is
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
 
+    modifier onlyActiveWorker() {
+        _checkWorkerAvailable(msg.sender);
+        _;
+    }
+
+    function _checkWorkerAvailable(address _workerAddr) internal view {
+        // Check whether miner is available (the miner had previously joined and still work to serve or the assigned model).
+        if (!minerAddresses.hasValue(_workerAddr)) revert InvalidMiner();
+
+        address modelAddrOfMiner = miners[_workerAddr].modelAddress;
+        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(_workerAddr))
+            revert InvalidMiner();
+    }
+
     function commit(
-        uint256 _assignmentId,
+        uint256 _assignId,
         bytes32 _commitment
-    ) public virtual whenNotPaused {
+    ) public virtual onlyActiveWorker whenNotPaused {
         _updateEpoch();
 
         if (_commitment == 0) revert InvalidCommitment();
 
-        // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
-        if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
+        Assignment storage assignment = assignments[_assignId];
+        uint256 inferId = assignment.inferenceId;
 
-        address modelAddrOfMiner = miners[msg.sender].modelAddress;
-        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(msg.sender))
-            revert InvalidMiner();
+        Inference storage inference = inferences[inferId];
 
-        Assignment memory clonedAssignments = assignments[_assignmentId];
-        uint256 inferId = clonedAssignments.inferenceId;
-
-        if (uint40(block.timestamp) > inferences[inferId].commitTimeout)
-            revert();
-        if (inferences[inferId].status != InferenceStatus.Commit) {
+        if (uint40(block.timestamp) > inference.commitTimeout)
+            revert CommitTimeout();
+        if (inference.status != InferenceStatus.Commit) {
             revert InvalidInferenceStatus();
         }
 
         // Check the msg sender is the assigned miner
-        if (msg.sender != clonedAssignments.worker) revert Unauthorized();
-        if (clonedAssignments.role != AssignmentRole.Validating)
-            revert InvalidRole();
-        if (clonedAssignments.commitment != 0) revert AlreadyCommitted();
+        if (msg.sender != assignment.worker) revert Unauthorized();
+        if (assignment.role != AssignmentRole.Validating) revert InvalidRole();
+        if (assignment.commitment != 0) revert AlreadyCommitted();
 
-        assignments[_assignmentId].commitment = _commitment;
-        inferences[inferId].assignments.push(_assignmentId);
+        assignment.commitment = _commitment;
+        inference.assignments.push(_assignId);
         votingInfo[inferId].totalCommit++;
 
-        // if (!commitments[inferId].hasValue(_commitment)) {
-        //     commitments[inferId].insert(_commitment);
-        // }
-        // countCommitment[_commitment]++;
-
-        emit CommitmentSubmission(msg.sender, _assignmentId, _commitment);
+        emit CommitmentSubmission(msg.sender, _assignId, _commitment);
 
         if (
             votingInfo[inferId].totalCommit ==
             assignmentsByInference[inferId].size() - 1
         ) {
-            inferences[inferId].status = InferenceStatus.Reveal;
+            inference.status = InferenceStatus.Reveal;
             emit InferenceStatusUpdate(inferId, InferenceStatus.Reveal);
         }
     }
 
     function reveal(
-        uint256 _assignmentId,
+        uint256 _assignId,
         uint40 _nonce,
         bytes memory _data
-    ) public virtual whenNotPaused {
+    ) public virtual onlyActiveWorker whenNotPaused {
         _updateEpoch();
 
         if (_data.length == 0) revert InvalidData();
         if (_nonce == 0) revert InvalidNonce();
-        if (assignments[_assignmentId].revealNonce != 0)
-            revert AlreadyRevealed();
 
-        // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
-        if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
+        Assignment storage assignment = assignments[_assignId];
+        if (assignment.revealNonce != 0) revert AlreadyRevealed();
 
-        address modelAddrOfMiner = miners[msg.sender].modelAddress;
-        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(msg.sender))
-            revert InvalidMiner();
+        uint256 inferId = assignment.inferenceId;
+        Inference storage inference = inferences[inferId];
 
-        Assignment memory clonedAssignments = assignments[_assignmentId];
-        uint256 inferId = clonedAssignments.inferenceId;
-
-        if (uint40(block.timestamp) > inferences[inferId].revealTimeout)
-            revert();
-        if (inferences[inferId].status == InferenceStatus.Commit) {
-            inferences[inferId].status = InferenceStatus.Reveal;
-        } else if (inferences[inferId].status != InferenceStatus.Reveal) {
+        if (uint40(block.timestamp) > inference.revealTimeout)
+            revert RevealTimeout();
+        if (inference.status == InferenceStatus.Commit) {
+            inference.status = InferenceStatus.Reveal;
+        } else if (inference.status != InferenceStatus.Reveal) {
             revert InvalidInferenceStatus();
         }
 
         // Check the msg sender is the assigned miner
-        if (msg.sender != clonedAssignments.worker) revert Unauthorized();
-        if (clonedAssignments.role != AssignmentRole.Validating)
-            revert InvalidRole();
-        if (clonedAssignments.commitment == 0) revert NotCommitted();
+        if (msg.sender != assignment.worker) revert Unauthorized();
+        if (assignment.role != AssignmentRole.Validating) revert InvalidRole();
+        if (assignment.commitment == 0) revert NotCommitted();
 
-        bytes32 commitment = clonedAssignments.commitment;
+        bytes32 commitment = assignment.commitment;
         bytes32 revealHash = keccak256(
             abi.encodePacked(_nonce, msg.sender, _data)
         );
@@ -608,19 +604,10 @@ contract WorkerHub is
         if (commitment != revealHash) revert InvalidReveal();
 
         bytes32 digest = keccak256(abi.encodePacked(_data));
-        // find inference from assignment id
-        uint256 firstAssignmentId = inferences[inferId].assignments[0];
-        bytes32 firstAssignmentCommitment = assignments[firstAssignmentId]
-            .commitment;
-        if (firstAssignmentCommitment != digest) {
-            assignments[_assignmentId].vote = Vote.Disapproval;
-        } else {
-            assignments[_assignmentId].vote = Vote.Approval;
-        }
 
-        assignments[_assignmentId].revealNonce = _nonce;
-        assignments[_assignmentId].output = _data;
-        assignments[_assignmentId].digest = digest;
+        assignment.revealNonce = _nonce;
+        assignment.output = _data;
+        assignment.digest = digest;
         votingInfo[inferId].totalReveal++;
 
         if (!commitments[inferId].hasValue(digest)) {
@@ -628,7 +615,7 @@ contract WorkerHub is
         }
         countCommitment[digest]++;
 
-        emit RevealSubmission(msg.sender, _assignmentId, _nonce, _data);
+        emit RevealSubmission(msg.sender, _assignId, _nonce, _data);
 
         if (
             votingInfo[inferId].totalReveal == votingInfo[inferId].totalCommit

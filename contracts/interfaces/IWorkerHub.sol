@@ -249,6 +249,8 @@ interface IWorkerHub is IInferable {
     error InvalidCommitment();
     error AlreadyCommitted();
     error NotCommitted();
+    error CommitTimeout();
+    error RevealTimeout();
     error InvalidReveal();
     error InvalidNonce();
     error AlreadyRevealed();
