@@ -18,7 +18,7 @@ async function deployModelCollection() {
     const mintPrice = ethers.parseEther('0');
     const royaltyReceiver = treasuryAddress;
     const royalPortion = 5_00;
-    const nextModelId = 100_001;
+    const nextModelId = 22219;
     
     const constructorParams = [
         name,
