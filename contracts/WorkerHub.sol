@@ -755,9 +755,8 @@ contract WorkerHub is
         uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
         uint256 len = assignmentIds.length;
 
-        //TODO: mr Issac check this logic
         bool isMatchMinerResult;
-        if (assignments[assignmentIds[0]].commitment == mostVotedCommitment) {
+        if (assignments[assignmentIds[0]].digest == mostVotedCommitment) {
             isMatchMinerResult = true;
         }
 
