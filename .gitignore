@@ -22,3 +22,5 @@ _outputs
 migrate-data
 cache_forge
 out
+
+!artifacts-zk/contracts/WorkerHub.sol/WorkerHub.json
