@@ -844,7 +844,9 @@ contract WorkerHub is
 
         if (
             inference.status == InferenceStatus.Reveal &&
-            inference.revealTimeout < block.timestamp
+            (inference.revealTimeout < block.timestamp ||
+                votingInfo[_inferenceId].totalReveal ==
+                votingInfo[_inferenceId].totalCommit)
         ) {
             // call kelvin function to get result
             // if 2/3 miners approve, then mark this infer as processed and trigger resolve infer again
@@ -1035,5 +1037,11 @@ contract WorkerHub is
             uint id = startId + i;
             assignmentData[i] = assignments[id];
         }
+    }
+
+    function getInerenceInfo(
+        uint256 _inferenceId
+    ) external view returns (Inference memory) {
+        return inferences[_inferenceId];
     }
 }
