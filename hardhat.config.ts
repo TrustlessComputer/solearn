@@ -18,7 +18,7 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: "0.8.19",
-        settings: { optimizer: { enabled: true, runs: 2000 }, viaIR: true },
+        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
       },
     ],
   },

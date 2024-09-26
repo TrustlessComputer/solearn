@@ -42,6 +42,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public minerMinimumStake;
     address public treasury;
     uint16 public feePercentage;
+    uint16 public feeRatioMinerValidator;
     uint40 public submitDuration;
     uint40 public commitDuration;
     uint40 public revealDuration;
@@ -57,7 +58,6 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint40 public currentEpoch;
     uint256 public blocksPerEpoch;
     uint256 public lastBlock;
-    uint256 internal rewardPerEpochBasedOnPerf; // percentage for workers completed task
     uint256 public rewardPerEpoch; // 12299.97 reward EAI for 1 worker per year
 
     // Tx Fee

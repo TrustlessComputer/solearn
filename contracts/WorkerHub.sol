@@ -35,11 +35,11 @@ contract WorkerHub is
         uint8 _minerRequirement,
         uint8 _votingRequirement,
         uint256 _blocksPerEpoch,
-        uint256 _rewardPerEpochBasedOnPerf,
         uint256 _rewardPerEpoch,
         uint40 _unstakeDelayTime,
         uint40 _penaltyDuration,
-        uint16 _finePercentage
+        uint16 _finePercentage,
+        uint16 _feeRatioMinerValidor
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
@@ -47,11 +47,11 @@ contract WorkerHub is
 
         treasury = _treasury;
         feePercentage = _feePercentage;
+        feeRatioMinerValidator = _feeRatioMinerValidor;
         minerMinimumStake = _minerMinimumStake;
         minerRequirement = _minerRequirement;
         votingRequirement = _votingRequirement;
         blocksPerEpoch = _blocksPerEpoch;
-        rewardPerEpochBasedOnPerf = _rewardPerEpochBasedOnPerf;
         rewardPerEpoch = _rewardPerEpoch;
         unstakeDelayTime = _unstakeDelayTime;
         maximumTier = 1;
@@ -75,42 +75,6 @@ contract WorkerHub is
     function getModelAddresses() external view returns (address[] memory) {
         return modelAddresses.values;
     }
-
-    // function getMiningAssignments()
-    //     external
-    //     view
-    //     returns (AssignmentInfo[] memory)
-    // {
-    //     uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
-    //     uint256 assignmentNumber = assignmentIds.length;
-
-    //     uint256 counter = 0;
-    //     for (uint256 i = 0; i < assignmentNumber; ++i)
-    //         if (isAssignmentPending(assignmentIds[i])) counter++;
-
-    //     AssignmentInfo[] memory result = new AssignmentInfo[](counter);
-    //     counter = 0;
-
-    //     for (uint256 i = 0; i < assignmentNumber; ++i)
-    //         if (isAssignmentPending(assignmentIds[i])) {
-    //             Assignment storage assignment = assignments[assignmentIds[i]];
-    //             Inference storage inference = inferences[
-    //                 assignment.inferenceId
-    //             ];
-    //             result[counter++] = AssignmentInfo(
-    //                 assignmentIds[i],
-    //                 assignment.inferenceId,
-    //                 inference.value,
-    //                 inference.input,
-    //                 inference.modelAddress,
-    //                 inference.creator,
-    //                 uint40(block.timestamp) // TODO: kelvin check again
-    //                 // inference.expiredAt
-    //             );
-    //         }
-
-    //     return result;
-    // }
 
     function getMintingAssignmentsOfInference(
         uint256 _inferenceId
@@ -170,40 +134,6 @@ contract WorkerHub is
         }
         return result;
     }
-
-    // function isAssignmentPending(
-    //     uint256 _assignmentId
-    // ) public view returns (bool) {
-    //     return
-    //         assignments[_assignmentId].output.length == 0 &&
-    //         block.timestamp <
-    //         inferences[assignments[_assignmentId].inferenceId].expiredAt;
-    // }
-
-    // function getInferences(
-    //     uint256[] calldata _inferenceIds
-    // ) external view returns (InferenceInfo[] memory) {
-    //     uint256 inferenceNumber = _inferenceIds.length;
-    //     InferenceInfo[] memory result = new InferenceInfo[](inferenceNumber);
-    //     for (uint256 i = 0; i < inferenceNumber; ++i) {
-    //         Inference storage inference = inferences[_inferenceIds[i]];
-    //         result[i] = InferenceInfo(
-    //             _inferenceIds[i],
-    //             inference.input,
-    //             inference.status == InferenceStatus.Solved
-    //                 ? assignments[
-    //                     inference.assignments[inference.firstSubmissionId]
-    //                 ].output
-    //                 : bytes(""),
-    //             inference.value,
-    //             inference.modelAddress,
-    //             inference.expiredAt,
-    //             inference.status,
-    //             inference.creator
-    //         );
-    //     }
-    //     return result;
-    // }
 
     function registerModel(
         address _model,
@@ -422,10 +352,6 @@ contract WorkerHub is
         inference.value = value;
         inference.creator = _creator;
         inference.modelAddress = msg.sender;
-        // inference.commitTimeout = uint40(block.timestamp + commitDuration);
-        // inference.revealTimeout = uint40(
-        //     block.timestamp + commitDuration + revealDuration
-        // );
 
         emit NewInference(inferenceId, msg.sender, _creator, value);
 
@@ -558,14 +484,7 @@ contract WorkerHub is
             revert InvalidInferenceStatus();
         }
 
-        // if (clonedInference.expiredAt < block.timestamp) {
-        //     if (clonedInference.assignments.length == 0) {
-        //         resolveInference(inferId);
-        //         return;
-        //     } else {
-        //         revert MiningSessionEnded();
-        //     }
-        // }
+
 
         Inference storage inference = inferences[inferId];
 
@@ -581,16 +500,16 @@ contract WorkerHub is
         countCommitment[digest]++;
 
         // todo: kelvin look at this logic
-        if (inference.assignments.length == 1) {
-            uint256 fee = (clonedInference.value * feePercentage) /
-                PERCENTAGE_DENOMINATOR;
-            uint256 value = clonedInference.value - fee;
-            TransferHelper.safeTransferNative(treasury, fee);
-            TransferHelper.safeTransferNative(_msgSender, value);
+        // if (inference.assignments.length == 1) {
+        //     uint256 fee = (clonedInference.value * feePercentage) /
+        //         PERCENTAGE_DENOMINATOR;
+        //     uint256 value = clonedInference.value - fee;
+        //     TransferHelper.safeTransferNative(treasury, fee);
+        //     TransferHelper.safeTransferNative(_msgSender, value);
 
-            emit TransferFee(_msgSender, value, treasury, fee);
-            emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
-        }
+        //     emit TransferFee(_msgSender, value, treasury, fee);
+        //     emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
+        // }
 
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
@@ -842,10 +761,12 @@ contract WorkerHub is
             isMatchMinerResult = true;
         }
 
+        uint feeForMiner = 0;
         if (isMatchMinerResult) {
+            feeForMiner = inferences[_inferenceId].value * feeRatioMinerValidator / 1e4;
             TransferHelper.safeTransferNative(
                 inferences[_inferenceId].processedMiner,
-                inferences[_inferenceId].value
+                feeForMiner
             );
         }
 
@@ -863,13 +784,18 @@ contract WorkerHub is
                 if (!isMatchMinerResult) {
                     TransferHelper.safeTransferNative(
                         assignments[asgId].worker,
-                        inferences[_inferenceId].value / maxCount
+                        (inferences[_inferenceId].value - feeForMiner) / maxCount
                     );
                 }
             }
         }
 
         return true;
+    }
+
+    function setFeeRatioMinerValidator(uint16 _newRatio) external onlyOwner {
+        require(_newRatio <= 10000, "Fee ratio must be <= 10000");
+        feeRatioMinerValidator = _newRatio;
     }
 
     function resolveInference(
