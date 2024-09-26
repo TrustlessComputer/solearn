@@ -484,20 +484,18 @@ contract WorkerHub is
             revert InvalidInferenceStatus();
         }
 
-
-
         Inference storage inference = inferences[inferId];
 
         assignments[_assigmentId].output = _data; //Record the solution
         bytes32 digest = keccak256(abi.encodePacked(_data)); //Record the solution
-        assignments[_assigmentId].commitment = digest;
+        assignments[_assigmentId].digest = digest;
         inference.status = InferenceStatus.Commit;
         inference.assignments.push(_assigmentId);
 
-        if (!commitments[inferId].hasValue(digest)) {
-            commitments[inferId].insert(digest);
+        if (!digests[inferId].hasValue(digest)) {
+            digests[inferId].insert(digest);
         }
-        countCommitment[digest]++;
+        countDigest[digest]++;
 
         // todo: kelvin look at this logic
         // if (inference.assignments.length == 1) {
@@ -531,7 +529,7 @@ contract WorkerHub is
     function commit(
         uint256 _assignId,
         bytes32 _commitment
-    ) public virtual onlyActiveWorker whenNotPaused {
+    ) public virtual whenNotPaused {
         _updateEpoch();
 
         if (_commitment == 0) revert InvalidCommitment();
@@ -571,7 +569,7 @@ contract WorkerHub is
         uint256 _assignId,
         uint40 _nonce,
         bytes memory _data
-    ) public virtual onlyActiveWorker whenNotPaused {
+    ) public virtual whenNotPaused {
         _updateEpoch();
 
         if (_data.length == 0) revert InvalidData();
@@ -610,10 +608,10 @@ contract WorkerHub is
         assignment.digest = digest;
         votingInfo[inferId].totalReveal++;
 
-        if (!commitments[inferId].hasValue(digest)) {
-            commitments[inferId].insert(digest);
+        if (!digests[inferId].hasValue(digest)) {
+            digests[inferId].insert(digest);
         }
-        countCommitment[digest]++;
+        countDigest[digest]++;
 
         emit RevealSubmission(msg.sender, _assignId, _nonce, _data);
 
@@ -705,31 +703,29 @@ contract WorkerHub is
         );
     }
 
-    function _findMostVotedCommitment(
+    function _findMostVotedDigest(
         uint256 _inferenceId
     ) internal view returns (bytes32, uint8) {
         uint8 maxCount = 0;
-        bytes32 mostVotedCommitment = 0;
-        bytes32[] memory commits = commitments[_inferenceId].values;
-        uint256 len = commitments[_inferenceId].size();
+        bytes32 mostVotedDigest = 0;
+        bytes32[] memory digestArr = digests[_inferenceId].values;
+        uint256 len = digests[_inferenceId].size();
 
         for (uint256 i = 0; i < len; i++) {
-            bytes32 currCommit = commits[i];
-            uint8 count = countCommitment[currCommit];
+            bytes32 currDigest = digestArr[i];
+            uint8 count = countDigest[currDigest];
             if (count > maxCount) {
                 maxCount = count;
-                mostVotedCommitment = currCommit;
+                mostVotedDigest = currDigest;
             }
         }
-        return (mostVotedCommitment, maxCount);
+        return (mostVotedDigest, maxCount);
     }
 
     function _filterCommitment(uint256 _inferenceId) internal returns (bool) {
-        bytes32 mostVotedCommitment;
+        bytes32 mostVotedDigest;
         uint8 maxCount;
-        (mostVotedCommitment, maxCount) = _findMostVotedCommitment(
-            _inferenceId
-        );
+        (mostVotedDigest, maxCount) = _findMostVotedDigest(_inferenceId);
 
         // Check the maxCount is greater than the voting requirement
         if (
@@ -743,13 +739,15 @@ contract WorkerHub is
         uint256 len = assignmentIds.length;
 
         bool isMatchMinerResult;
-        if (assignments[assignmentIds[0]].digest == mostVotedCommitment) {
+        if (assignments[assignmentIds[0]].digest == mostVotedDigest) {
             isMatchMinerResult = true;
         }
 
         uint feeForMiner = 0;
         if (isMatchMinerResult) {
-            feeForMiner = inferences[_inferenceId].value * feeRatioMinerValidator / 1e4;
+            feeForMiner =
+                (inferences[_inferenceId].value * feeRatioMinerValidator) /
+                1e4;
             TransferHelper.safeTransferNative(
                 inferences[_inferenceId].processedMiner,
                 feeForMiner
@@ -758,7 +756,7 @@ contract WorkerHub is
 
         for (uint256 i = 0; i < len; i++) {
             uint256 asgId = assignmentIds[i];
-            if (assignments[asgId].commitment != mostVotedCommitment) {
+            if (assignments[asgId].digest != mostVotedDigest) {
                 assignments[asgId].vote = Vote.Disapproval;
                 _slashMiner(
                     assignments[asgId].worker,
@@ -770,7 +768,8 @@ contract WorkerHub is
                 if (!isMatchMinerResult) {
                     TransferHelper.safeTransferNative(
                         assignments[asgId].worker,
-                        (inferences[_inferenceId].value - feeForMiner) / maxCount
+                        (inferences[_inferenceId].value - feeForMiner) /
+                            maxCount
                     );
                 }
             }
