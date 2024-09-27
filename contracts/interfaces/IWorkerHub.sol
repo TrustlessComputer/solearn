@@ -199,6 +199,9 @@ interface IWorkerHub is IInferable {
     event RewardPerEpoch(uint256 oldReward, uint256 newReward);
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
+    event SubmitDuration(uint256 oldTime, uint256 newTime);
+    event CommitDuration(uint256 oldTime, uint256 newTime);
+    event RevealDuration(uint256 oldTime, uint256 newTime);
     event Restake(
         address indexed miner,
         uint256 restake,

@@ -31,8 +31,9 @@
     "deployHybridModel:zk_testnet": "npx hardhat run scripts/deploy/deployHybridModel.ts --network zk_testnet",
     "console:zk_mainnet": "npx hardhat console --network zk_mainnet",
     "deployModelCollection:zk_mainnet": "npx hardhat run scripts/deploy/deployModelCollectionERC20.ts --network zk_mainnet",
-    "deployWorkerHub:zk_mainnet": "npx hardhat run scripts/deploy/deployWorkerHubERC20.ts --network zk_mainnet",
-    "deployHybridModel:zk_mainnet": "npx hardhat run scripts/deploy/deployHybridModelERC20.ts --network zk_mainnet"
+    "deployWorkerHub:zk_mainnet": "npx hardhat run scripts/deploy/deployWorkerHub.ts --network zk_mainnet",
+    "deployHybridModel:zk_mainnet": "npx hardhat run scripts/deploy/deployHybridModelERC20.ts --network zk_mainnet",
+    "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {
     "@ericxstone/hardhat-blockscout-verify": "^1.0.2",

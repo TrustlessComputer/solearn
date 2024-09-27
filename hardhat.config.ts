@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "zk_testnet",
   solidity: {
     compilers: [
       {
@@ -92,7 +92,7 @@ const config: HardhatUserConfig = {
       blockGasLimit: 100_000_000_000,
     } as any,
     zk_mainnet: {
-      url: "https://rpc.eternalai.bvm.network/",
+      url: "https://rpc.eternalai.bvm.network",
       chainId: 222672,
       accounts: [process.env.ZK_MAINNET_PRIVATE_KEY],
       treasuryAddress: process.env.ZK_MAINNET_TREASURY_ADDRESS,

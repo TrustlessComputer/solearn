@@ -17,11 +17,14 @@ async function deployWorkerHub() {
   const minerRequirement = 3;
   const votingRequirement = 2;
   const blockPerEpoch = 600;
-  const rewardPerEpochBasedOnPerf = ethers.parseEther("0");
   const rewardPerEpoch = ethers.parseEther("0");
+  const submitDuration = 10 * 60;
+  const commitDuration = 10 * 60;
+  const revealDuration = 10 * 60;
   const unstakeDelayTime = 10 * 60;
   const penaltyDuration = 3600;
   const finePercentage = 5_00;
+  const feeRatioMinerValidor = 10_00;
 
   const constructorParams = [
     treasuryAddress,
@@ -30,11 +33,14 @@ async function deployWorkerHub() {
     minerRequirement,
     votingRequirement,
     blockPerEpoch,
-    rewardPerEpochBasedOnPerf,
     rewardPerEpoch,
+    submitDuration,
+    commitDuration,
+    revealDuration,
     unstakeDelayTime,
     penaltyDuration,
     finePercentage,
+    feeRatioMinerValidor,
   ];
 
   const workerHub = (await deployOrUpgrade(

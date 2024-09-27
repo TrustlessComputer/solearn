@@ -10,6 +10,7 @@ import {Set} from "./lib/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 
 import {WorkerHubStorage} from "./storages/WorkerHubStorage.sol";
+import {console} from "hardhat/console.sol";
 
 contract WorkerHub is
     WorkerHubStorage,
@@ -36,6 +37,9 @@ contract WorkerHub is
         uint8 _votingRequirement,
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpoch,
+        uint40 _submitDuration,
+        uint40 _commitDuration,
+        uint40 _revealDuration,
         uint40 _unstakeDelayTime,
         uint40 _penaltyDuration,
         uint16 _finePercentage,
@@ -53,6 +57,9 @@ contract WorkerHub is
         votingRequirement = _votingRequirement;
         blocksPerEpoch = _blocksPerEpoch;
         rewardPerEpoch = _rewardPerEpoch;
+        submitDuration = _submitDuration;
+        commitDuration = _commitDuration;
+        revealDuration = _revealDuration;
         unstakeDelayTime = _unstakeDelayTime;
         maximumTier = 1;
         lastBlock = block.number;
@@ -935,6 +942,42 @@ contract WorkerHub is
         unstakeDelayTime = _newUnstakeDelayTime;
     }
 
+    function setSubmitDuration(
+        uint40 _newSubmitDuration
+    ) public virtual onlyOwner {
+        _updateEpoch();
+
+        require(_newSubmitDuration != 0, "invalid submit duration time");
+
+        emit SubmitDuration(submitDuration, _newSubmitDuration);
+
+        submitDuration = _newSubmitDuration;
+    }
+
+    function setCommitDuration(
+        uint40 _newCommitDuration
+    ) public virtual onlyOwner {
+        _updateEpoch();
+
+        require(_newCommitDuration != 0, "invalid commit duration time");
+
+        emit CommitDuration(commitDuration, _newCommitDuration);
+
+        commitDuration = _newCommitDuration;
+    }
+
+    function setRevealDuration(
+        uint40 _newRevealDuration
+    ) public virtual onlyOwner {
+        _updateEpoch();
+
+        require(_newRevealDuration != 0, "invalid reveal duration time");
+
+        emit RevealDuration(revealDuration, _newRevealDuration);
+
+        revealDuration = _newRevealDuration;
+    }
+
     // sum reward of an miner since last claimed epoch
     function rewardToClaim(address _miner) public virtual returns (uint256) {
         _updateEpoch();
@@ -1039,7 +1082,7 @@ contract WorkerHub is
         }
     }
 
-    function getInerenceInfo(
+    function getInferenceInfo(
         uint256 _inferenceId
     ) external view returns (Inference memory) {
         return inferences[_inferenceId];
