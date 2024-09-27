@@ -101,8 +101,9 @@ contract WorkerHub is
                 inference.input,
                 inference.modelAddress,
                 inference.creator,
-                uint40(block.timestamp) // TODO: kelvin check again
-                // inference.expiredAt
+                inference.submitTimeout,
+                inference.commitTimeout,
+                inference.revealTimeout
             );
         }
 
@@ -1087,4 +1088,75 @@ contract WorkerHub is
     ) external view returns (Inference memory) {
         return inferences[_inferenceId];
     }
+
+    function getAssignmentByMiner(
+        address _minerAddr
+    ) external view returns (AssignmentInfo[] memory) {
+        uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
+        uint count = assignmentIds.length;
+        AssignmentInfo[] memory result = new AssignmentInfo[](count);
+
+        for (uint i = 0; i < count; ++i) {
+            Assignment storage assignment = assignments[assignmentIds[i]];
+            Inference storage inference = inferences[assignment.inferenceId];
+
+            result[i] = AssignmentInfo(
+                assignmentIds[i],
+                assignment.inferenceId,
+                inference.value,
+                inference.input,
+                inference.modelAddress,
+                inference.creator,
+                inference.submitTimeout,
+                inference.commitTimeout,
+                inference.revealTimeout
+            );
+        }
+        return result;
+    }
+
+    function isAssignmentPending(
+        uint256 _assignmentId
+    ) public view returns (bool) {
+        return
+            assignments[_assignmentId].output.length == 0 &&
+            block.timestamp <
+            inferences[assignments[_assignmentId].inferenceId].revealTimeout;
+    }
+
+    // function getMiningAssignments()
+    //     external
+    //     view
+    //     returns (AssignmentInfo[] memory)
+    // {
+    //     uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
+    //     uint256 assignmentNumber = assignmentIds.length;
+
+    //     uint256 counter = 0;
+    //     for (uint256 i = 0; i < assignmentNumber; ++i)
+    //         if (isAssignmentPending(assignmentIds[i])) counter++;
+
+    //     AssignmentInfo[] memory result = new AssignmentInfo[](counter);
+    //     counter = 0;
+
+    //     for (uint256 i = 0; i < assignmentNumber; ++i)
+    //         if (isAssignmentPending(assignmentIds[i])) {
+    //             Assignment storage assignment = assignments[assignmentIds[i]];
+    //             Inference storage inference = inferences[
+    //                 assignment.inferenceId
+    //             ];
+    //             result[counter++] = AssignmentInfo(
+    //                 assignmentIds[i],
+    //                 assignment.inferenceId,
+    //                 inference.value,
+    //                 inference.input,
+    //                 inference.modelAddress,
+    //                 inference.creator,
+    //                 uint40(block.timestamp) // TODO: kelvin check again
+    //                 // inference.expiredAt
+    //             );
+    //         }
+
+    //     return result;
+    // }
 }

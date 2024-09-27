@@ -75,7 +75,9 @@ interface IWorkerHub is IInferable {
         bytes input;
         address modelAddress;
         address creator;
-        uint40 expiredAt;
+        uint40 submitTimeout;
+        uint40 commitTimeout;
+        uint40 revealTimeout;
     }
 
     struct Inference {

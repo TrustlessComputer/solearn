@@ -51,10 +51,10 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint40 public penaltyDuration;
     uint40 public unstakeDelayTime;
     uint8 public minerRequirement;
-    uint8 public votingRequirement;
+    uint8 public votingRequirement; //TODO: unused |  Kelvin need to remove
 
     uint16 public maximumTier;
-    uint16 public disqualificationPercentage; // unused
+    uint16 public disqualificationPercentage; //TODO: unused |  Kelvin need to remove
 
     // reward purpose
     uint40 public currentEpoch;
