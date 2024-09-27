@@ -667,9 +667,13 @@ contract WorkerHub is
         miner.activeTime = uint40(block.timestamp + penaltyDuration);
 
         if (_isFined) {
-            uint256 fine = (miner.stake * finePercentage) /
-                PERCENTAGE_DENOMINATOR; // Fine = stake * 5%
-            miner.stake -= fine;
+            uint256 fine = (minerMinimumStake * finePercentage) /
+                PERCENTAGE_DENOMINATOR; // Fine = stake * 10%
+            if (miner.stake < fine) {
+                miner.stake = 0;
+            } else {
+                miner.stake -= fine;
+            }
 
             // reset boost
             boost[_miner].reserved1 = 0;
