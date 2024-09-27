@@ -18,12 +18,12 @@ async function deployWorkerHub() {
   const votingRequirement = 2;
   const blockPerEpoch = 600;
   const rewardPerEpoch = ethers.parseEther("0");
-  const submitDuration = 10 * 60;
-  const commitDuration = 10 * 60;
-  const revealDuration = 10 * 60;
+  const submitDuration = 10 * 60; // 1 minute
+  const commitDuration = 10 * 60; // 5 minute
+  const revealDuration = 10 * 60; // 5 minute
   const unstakeDelayTime = 10 * 60;
   const penaltyDuration = 3600;
-  const finePercentage = 5_00;
+  const finePercentage = 10_00;
   const feeRatioMinerValidor = 10_00;
 
   const constructorParams = [
