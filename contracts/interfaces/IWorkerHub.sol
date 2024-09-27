@@ -84,6 +84,7 @@ interface IWorkerHub is IInferable {
         uint256[] assignments;
         bytes input;
         uint256 value;
+        uint256 systemFee;
         address modelAddress;
         // uint40 expiredAt;
         uint40 submitTimeout; // limit time to capture the miner role and submit the solution
@@ -174,12 +175,7 @@ interface IWorkerHub is IInferable {
         uint256 indexed assigmentId,
         bytes32 commitment
     );
-    event TransferFee(
-        address indexed miner,
-        uint256 mingingFee,
-        address indexed treasury,
-        uint256 protocolFee
-    );
+    event TransferFee(address indexed treasury, uint256 protocolFee);
 
     event TopUpInfer(
         uint256 indexed inferenceId,

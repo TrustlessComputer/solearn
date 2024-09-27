@@ -354,10 +354,13 @@ contract WorkerHub is
         uint256 inferenceId = ++inferenceNumber;
         Inference storage inference = inferences[inferenceId];
 
+        //TODO: mr Issac review the calculating fee logic
         uint256 value = msg.value;
+        uint256 fee = (value * feePercentage) / PERCENTAGE_DENOMINATOR;
 
         inference.input = _input;
         inference.value = value;
+        inference.systemFee = fee;
         inference.creator = _creator;
         inference.modelAddress = msg.sender;
 
@@ -505,18 +508,11 @@ contract WorkerHub is
         }
         countDigest[digest]++;
 
-        // todo: kelvin look at this logic
-        // if (inference.assignments.length == 1) {
-        //     uint256 fee = (clonedInference.value * feePercentage) /
-        //         PERCENTAGE_DENOMINATOR;
-        //     uint256 value = clonedInference.value - fee;
-        //     TransferHelper.safeTransferNative(treasury, fee);
-        //     TransferHelper.safeTransferNative(_msgSender, value);
+        // Transfer the mining fee to treasury
+        TransferHelper.safeTransferNative(treasury, clonedInference.systemFee);
 
-        //     emit TransferFee(_msgSender, value, treasury, fee);
-        //     emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
-        // }
-
+        emit TransferFee(treasury, clonedInference.systemFee);
+        emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
 
@@ -735,9 +731,9 @@ contract WorkerHub is
     }
 
     function _filterCommitment(uint256 _inferenceId) internal returns (bool) {
-        bytes32 mostVotedDigest;
-        uint8 maxCount;
-        (mostVotedDigest, maxCount) = _findMostVotedDigest(_inferenceId);
+        (bytes32 mostVotedDigest, uint8 maxCount) = _findMostVotedDigest(
+            _inferenceId
+        );
 
         // Check the maxCount is greater than the voting requirement
         if (
@@ -750,38 +746,44 @@ contract WorkerHub is
         uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
         uint256 len = assignmentIds.length;
 
-        bool isMatchMinerResult;
-        if (assignments[assignmentIds[0]].digest == mostVotedDigest) {
-            isMatchMinerResult = true;
-        }
+        bool isMatchMinerResult = assignments[assignmentIds[0]].digest ==
+            mostVotedDigest;
 
         uint feeForMiner = 0;
+        uint shareFeePerValidator = 0;
+        uint256 remainValue = inferences[_inferenceId].value -
+            inferences[_inferenceId].systemFee;
+        // Calculate fee for miner and share fee for validators
         if (isMatchMinerResult) {
+            //if miner result is correct, then fee for miner = feeRatioMinerValidator * remainValue / 10000
             feeForMiner =
-                (inferences[_inferenceId].value * feeRatioMinerValidator) /
-                1e4;
-            TransferHelper.safeTransferNative(
-                inferences[_inferenceId].processedMiner,
-                feeForMiner
-            );
+                (remainValue * feeRatioMinerValidator) /
+                PERCENTAGE_DENOMINATOR;
+            shareFeePerValidator = (remainValue - feeForMiner) / (maxCount - 1);
+        } else {
+            //if miner result is incorrect, then fee for miner = 0 and all honest validators will share the remainValue
+            shareFeePerValidator = remainValue / maxCount;
         }
 
         for (uint256 i = 0; i < len; i++) {
-            uint256 asgId = assignmentIds[i];
-            if (assignments[asgId].digest != mostVotedDigest) {
-                assignments[asgId].vote = Vote.Disapproval;
-                _slashMiner(
-                    assignments[asgId].worker,
-                    assignments[asgId].worker ==
-                        inferences[_inferenceId].processedMiner
-                );
+            Assignment storage assignment = assignments[assignmentIds[i]];
+            if (assignment.digest != mostVotedDigest) {
+                assignment.vote = Vote.Disapproval;
+                _slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
             } else {
-                assignments[asgId].vote = Vote.Approval;
-                if (!isMatchMinerResult) {
+                // process for honest workers
+                assignment.vote = Vote.Approval;
+                if (assignment.role == AssignmentRole.Validating) {
+                    // if it iss validator, then transfer share fee
                     TransferHelper.safeTransferNative(
-                        assignments[asgId].worker,
-                        (inferences[_inferenceId].value - feeForMiner) /
-                            maxCount
+                        assignment.worker,
+                        shareFeePerValidator
+                    );
+                } else if (feeForMiner != 0) {
+                    // it is miner, if miner is honest, the feeForMiner is greater than 0
+                    TransferHelper.safeTransferNative(
+                        assignment.worker,
+                        feeForMiner
                     );
                 }
             }
@@ -828,15 +830,15 @@ contract WorkerHub is
             ) {
                 inference.status == InferenceStatus.Reveal;
             } else {
-                // else slash miner has not submitted solution and use miner's answer as result
+                // else slash miner has not submitted solution and refund to user (because we do not know the correctly result)
                 // Processed
                 inference.status = InferenceStatus.Processed;
                 TransferHelper.safeTransferNative(
-                    inference.processedMiner,
-                    inference.value
+                    inference.creator, // TODO: mr Issac review this line
+                    inference.value - inference.systemFee
                 );
 
-                // slash miner not submitted commit hash
+                // slash validator not submitted commit hash
                 uint256[] memory assignmentIds = assignmentsByInference[
                     _inferenceId
                 ].values;
@@ -864,14 +866,14 @@ contract WorkerHub is
             // if 2/3 miners approve, then mark this infer as processed and trigger resolve infer again
             // else slash miner has not submitted solution and use miner's answer as result
             if (!_filterCommitment(_inferenceId)) {
-                // else slash miner has not submitted solution and use miner's answer as result
+                // edisable workers not call reveal and refund to user
                 // Processed
                 TransferHelper.safeTransferNative(
-                    inference.processedMiner,
-                    inference.value
+                    inference.creator,
+                    inference.value - inference.systemFee
                 );
 
-                // slash miner not submitted commit hash
+                // disable workers not call reveal
                 uint256[] memory assignmentIds = assignmentsByInference[
                     _inferenceId
                 ].values;
