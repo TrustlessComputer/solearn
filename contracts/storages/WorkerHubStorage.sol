@@ -25,8 +25,6 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public assignmentNumber;
     mapping(uint256 => Assignment) public assignments;
     mapping(uint256 inferId => VotingInfo) public votingInfo;
-    // mapping(uint256 inferId => Set.Bytes32Set) internal commitments;
-    // mapping(bytes32 commitment => uint8) internal countCommitment;
     mapping(uint256 inferId => Set.Bytes32Set) internal digests;
     mapping(bytes32 commitment => uint8) internal countDigest;
     mapping(address => Set.Uint256Set) internal assignmentsByMiner;
@@ -39,7 +37,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // mapping detail miner completed how many request
     // total task completed in epoch
     // miner => epoch => total task completed
-    mapping(address => mapping(uint256 => uint256)) internal minerTaskCompleted; // unused
+    // mapping(address => mapping(uint256 => uint256)) internal minerTaskCompleted; // unused
 
     uint256 public minerMinimumStake;
     address public L2Owner;
@@ -53,10 +51,8 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint40 public penaltyDuration;
     uint40 public unstakeDelayTime;
     uint8 public minerRequirement;
-    uint8 public votingRequirement; //TODO: unused |  Kelvin need to remove
 
     uint16 public maximumTier;
-    uint16 public disqualificationPercentage; //TODO: unused |  Kelvin need to remove
 
     // reward purpose
     uint40 public currentEpoch;

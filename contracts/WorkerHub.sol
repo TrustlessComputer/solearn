@@ -36,7 +36,6 @@ contract WorkerHub is
         uint16 _feeTreasuryPercentage,
         uint256 _minerMinimumStake,
         uint8 _minerRequirement,
-        uint8 _votingRequirement,
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpoch,
         uint40 _submitDuration,
@@ -63,7 +62,6 @@ contract WorkerHub is
         feeRatioMinerValidator = _feeRatioMinerValidor;
         minerMinimumStake = _minerMinimumStake;
         minerRequirement = _minerRequirement;
-        votingRequirement = _votingRequirement;
         blocksPerEpoch = _blocksPerEpoch;
         rewardPerEpoch = _rewardPerEpoch;
         submitDuration = _submitDuration;
@@ -721,15 +719,6 @@ contract WorkerHub is
         emit PenaltyDurationUpdated(penaltyDuration, _penaltyDuration);
 
         penaltyDuration = _penaltyDuration;
-    }
-
-    function enoughCommitReveal(
-        uint256 _inferenceId
-    ) public view returns (bool, bool) {
-        return (
-            votingInfo[_inferenceId].totalCommit >= votingRequirement,
-            votingInfo[_inferenceId].totalReveal >= votingRequirement
-        );
     }
 
     function _findMostVotedDigest(

@@ -7,15 +7,16 @@ async function deployWorkerHub() {
   const config = network.config as any;
   const networkName = network.name.toUpperCase();
 
+  const l2OwnerAddress = config.l2OwnerAddress;
   const treasuryAddress = config.treasuryAddress;
   assert.ok(
     treasuryAddress,
     `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
   );
-  const feePercentage = 10_00;
+  const feeL2Percentage = 10_00;
+  const feeTreasuryPercentage = 30_00;
   const minerMinimumStake = ethers.parseEther("0.1");
   const minerRequirement = 3;
-  const votingRequirement = 2;
   const blockPerEpoch = 600;
   const rewardPerEpoch = ethers.parseEther("0");
   const submitDuration = 10 * 60;
@@ -27,11 +28,12 @@ async function deployWorkerHub() {
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
 
   const constructorParams = [
+    l2OwnerAddress,
     treasuryAddress,
-    feePercentage,
+    feeL2Percentage,
+    feeTreasuryPercentage,
     minerMinimumStake,
     minerRequirement,
-    votingRequirement,
     blockPerEpoch,
     rewardPerEpoch,
     submitDuration,
