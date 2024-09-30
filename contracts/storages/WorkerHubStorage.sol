@@ -40,7 +40,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // mapping(address => mapping(uint256 => uint256)) internal minerTaskCompleted; // unused
 
     uint256 public minerMinimumStake;
-    address public L2Owner;
+    address public l2Owner;
     address public treasury;
     uint16 public feeL2Percentage;
     uint16 public feeTreasuryPercentage;
@@ -68,6 +68,11 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // tracking time miner join the network to
     // determine multiplier value
     mapping(address => Boost) internal boost;
+
+    mapping(address => bool) public isReferrer;
+    address daoToken;
+    uint256 public daoTokenReward; // per request (in wei)
+    DAOTokenPercentage public daoTokenPercentage;
 
     uint256[100] private __gap;
 }

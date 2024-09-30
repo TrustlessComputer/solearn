@@ -92,6 +92,7 @@ interface IWorkerHub is IInferable {
         InferenceStatus status;
         address creator;
         address processedMiner;
+        address referrer;
     }
 
     struct VotingInfo {
@@ -120,6 +121,14 @@ interface IWorkerHub is IInferable {
         uint40 validatorTimestamp;
         uint48 reserved1; // accumulated active time
         uint128 reserved2;
+    }
+
+    struct DAOTokenPercentage {
+        uint16 minerPercentage;
+        uint16 userPercentage;
+        uint16 referrerPercentage;
+        uint16 refereePercentage;
+        uint16 l2OwnerPercentage;
     }
 
     event MiningTimeLimitUpdate(uint40 newValue);
@@ -222,6 +231,12 @@ interface IWorkerHub is IInferable {
     );
     event PenaltyDurationUpdated(uint40 oldDuration, uint40 newDuration);
     event FinePercentageUpdated(uint16 oldPercent, uint16 newPercent);
+    event DAOTokenUpdated(address oldAddress, address newAddress);
+    event DAOTokenRewardUpdated(uint256 oldValue, uint256 newValue);
+    event DAOTokenPercentageUpdated(
+        DAOTokenPercentage oldValue,
+        DAOTokenPercentage newValue
+    );
 
     error AlreadyRegistered();
     error AlreadySubmitted();

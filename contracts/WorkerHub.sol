@@ -8,8 +8,8 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/se
 import {Random} from "./lib/Random.sol";
 import {Set} from "./lib/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
-
 import {WorkerHubStorage} from "./storages/WorkerHubStorage.sol";
+import {IDAOToken} from "./tokens/IDAOToken.sol";
 import {console} from "hardhat/console.sol";
 
 contract WorkerHub is
@@ -30,7 +30,7 @@ contract WorkerHub is
     receive() external payable {}
 
     function initialize(
-        address _L2Owner,
+        address _l2Owner,
         address _treasury,
         uint16 _feeL2Percentage,
         uint16 _feeTreasuryPercentage,
@@ -44,18 +44,19 @@ contract WorkerHub is
         uint40 _unstakeDelayTime,
         uint40 _penaltyDuration,
         uint16 _finePercentage,
-        uint16 _feeRatioMinerValidor
+        uint16 _feeRatioMinerValidor,
+        DAOTokenPercentage memory _daoTokenPercentage
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         require(
-            _L2Owner != address(0) && _treasury != address(0),
+            _l2Owner != address(0) && _treasury != address(0),
             "Zero address"
         );
 
-        L2Owner = _L2Owner;
+        l2Owner = _l2Owner;
         treasury = _treasury;
         feeL2Percentage = _feeL2Percentage;
         feeTreasuryPercentage = _feeTreasuryPercentage;
@@ -72,6 +73,30 @@ contract WorkerHub is
         lastBlock = block.number;
         penaltyDuration = _penaltyDuration;
         finePercentage = _finePercentage;
+
+        setDAOTokenPercentage(_daoTokenPercentage);
+    }
+
+    function _validateDaoTokenPercentage(
+        DAOTokenPercentage memory _daoTokenPercentage
+    ) internal returns (bool) {
+        return (_daoTokenPercentage.minerPercentage +
+            _daoTokenPercentage.userPercentage +
+            _daoTokenPercentage.referrerPercentage +
+            _daoTokenPercentage.refereePercentage +
+            _daoTokenPercentage.l2OwnerPercentage ==
+            PERCENTAGE_DENOMINATOR);
+    }
+
+    function setDAOTokenPercentage(
+        DAOTokenPercentage memory _daoTokenPercentage
+    ) public onlyOwner {
+        require(
+            _validateDaoTokenPercentage(_daoTokenPercentage),
+            "Invalid DAO Token Percentage"
+        );
+        emit DAOTokenPercentageUpdated(daoTokenPercentage, _daoTokenPercentage);
+        daoTokenPercentage = _daoTokenPercentage;
     }
 
     function version() external pure returns (string memory) {
@@ -157,6 +182,8 @@ contract WorkerHub is
     ) external onlyOwner {
         _updateEpoch();
 
+        if (_model == address(0)) revert InvalidModel();
+        if (_minimumFee < 1e17) revert FeeTooLow(); // NOTE: the minimum fee of using this model is 0.1 EAI
         if (_tier == 0) revert InvalidTier();
 
         Model storage model = models[_model];
@@ -353,7 +380,8 @@ contract WorkerHub is
 
     function infer(
         bytes calldata _input,
-        address _creator
+        address _creator,
+        address _referrer
     ) external payable whenNotPaused returns (uint256) {
         Model storage model = models[msg.sender];
         if (model.tier == 0) revert Unauthorized();
@@ -372,7 +400,13 @@ contract WorkerHub is
         inference.feeTreasury = feeTreasury;
         inference.value = value - feeL2 - feeTreasury;
         inference.creator = _creator;
+        inference.referrer = isReferrer[_referrer] ? _referrer : address(0);
         inference.modelAddress = msg.sender;
+
+        // mark user can be referrer for other user
+        if (!isReferrer[_creator]) {
+            isReferrer[_creator] = true;
+        }
 
         emit NewInference(inferenceId, msg.sender, _creator, value);
 
@@ -519,7 +553,7 @@ contract WorkerHub is
         countDigest[digest]++;
 
         // Transfer the mining fee to treasury
-        TransferHelper.safeTransferNative(L2Owner, clonedInference.feeL2);
+        TransferHelper.safeTransferNative(l2Owner, clonedInference.feeL2);
         TransferHelper.safeTransferNative(
             treasury,
             clonedInference.feeTreasury
@@ -528,7 +562,7 @@ contract WorkerHub is
         emit TransferFee(
             treasury,
             clonedInference.feeL2,
-            L2Owner,
+            l2Owner,
             clonedInference.feeL2
         );
         emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
@@ -721,6 +755,50 @@ contract WorkerHub is
         penaltyDuration = _penaltyDuration;
     }
 
+    function setDaoToken(address _daoTokenAddress) public virtual onlyOwner {
+        _updateEpoch();
+
+        emit DAOTokenUpdated(daoToken, _daoTokenAddress);
+
+        daoToken = _daoTokenAddress;
+    }
+
+    function _transferDAOToken(
+        uint256 _inferenceId,
+        bool _isReferred
+    ) internal {
+        DAOTokenPercentage memory percentage = daoTokenPercentage;
+        uint256 userAmt = 0;
+        uint256 referrerAmt = 0;
+        address referrer = inferences[_inferenceId].referrer;
+        address user = inferences[_inferenceId].creator;
+        address[] memory addresses;
+        uint256[] memory amounts;
+
+        addresses[0] = l2Owner;
+        addresses[1] = inferences[_inferenceId].creator;
+        amounts[0] =
+            (daoTokenReward * percentage.l2OwnerPercentage) /
+            PERCENTAGE_DENOMINATOR;
+
+        if (_isReferred) {
+            addresses[3] = referrer;
+            amounts[1] =
+                (daoTokenReward *
+                    (percentage.refereePercentage +
+                        percentage.userPercentage)) /
+                PERCENTAGE_DENOMINATOR;
+            amounts[2] =
+                (daoTokenReward * percentage.referrerPercentage) /
+                PERCENTAGE_DENOMINATOR;
+        } else {
+            amounts[1] =
+                (daoTokenReward * percentage.userPercentage) /
+                PERCENTAGE_DENOMINATOR;
+        }
+        IDAOToken(daoToken).mintBatch(addresses, amounts);
+    }
+
     function _findMostVotedDigest(
         uint256 _inferenceId
     ) internal view returns (bytes32, uint8) {
@@ -753,15 +831,40 @@ contract WorkerHub is
             return false;
         }
 
+        bool hasReachedLimit;
+        bool isReferred = inferences[_inferenceId].referrer != address(0);
+        if (isReferred) {
+            hasReachedLimit = IDAOToken(daoToken).validateSupplyIncrease(
+                daoTokenReward
+            );
+        } else {
+            hasReachedLimit = IDAOToken(daoToken).validateSupplyIncrease(
+                (daoTokenReward *
+                    (PERCENTAGE_DENOMINATOR -
+                        daoTokenPercentage.referrerPercentage -
+                        daoTokenPercentage.refereePercentage)) /
+                    PERCENTAGE_DENOMINATOR
+            );
+        }
+        if (!hasReachedLimit) {
+            _transferDAOToken(_inferenceId, isReferred);
+        }
+
         uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
         uint256 len = assignmentIds.length;
-
         bool isMatchMinerResult = assignments[assignmentIds[0]].digest ==
             mostVotedDigest;
 
-        uint feeForMiner = 0;
-        uint shareFeePerValidator = 0;
+        //EAI
+        uint256 feeForMiner = 0;
+        uint256 shareFeePerValidator = 0;
         uint256 remainValue = inferences[_inferenceId].value;
+        // DAO token
+        uint256 tokenForMiner = 0;
+        uint256 shareTokenPerValidator = 0;
+        uint256 remainToken = (daoTokenPercentage.minerPercentage *
+            daoTokenReward) / PERCENTAGE_DENOMINATOR;
+
         // Calculate fee for miner and share fee for validators
         if (isMatchMinerResult) {
             //if miner result is correct, then fee for miner = feeRatioMinerValidator * remainValue / 10000
@@ -769,9 +872,16 @@ contract WorkerHub is
                 (remainValue * feeRatioMinerValidator) /
                 PERCENTAGE_DENOMINATOR;
             shareFeePerValidator = (remainValue - feeForMiner) / (maxCount - 1);
+            tokenForMiner =
+                (remainToken * feeRatioMinerValidator) /
+                PERCENTAGE_DENOMINATOR;
+            shareTokenPerValidator =
+                (remainToken - tokenForMiner) /
+                (maxCount - 1);
         } else {
             //if miner result is incorrect, then fee for miner = 0 and all honest validators will share the remainValue
             shareFeePerValidator = remainValue / maxCount;
+            shareTokenPerValidator = remainToken / maxCount;
         }
 
         for (uint256 i = 0; i < len; i++) {
@@ -788,12 +898,24 @@ contract WorkerHub is
                         assignment.worker,
                         shareFeePerValidator
                     );
+                    if (!hasReachedLimit) {
+                        IDAOToken(daoToken).mint(
+                            assignment.worker,
+                            shareTokenPerValidator
+                        );
+                    }
                 } else if (feeForMiner != 0) {
                     // it is miner, if miner is honest, the feeForMiner is greater than 0
                     TransferHelper.safeTransferNative(
                         assignment.worker,
                         feeForMiner
                     );
+                    if (!hasReachedLimit) {
+                        IDAOToken(daoToken).mint(
+                            assignment.worker,
+                            tokenForMiner
+                        );
+                    }
                 }
             }
         }
@@ -1040,6 +1162,8 @@ contract WorkerHub is
             500 *
             (multiplierRes >= 12 ? 12 : multiplierRes);
     }
+
+    // LLAMA token
 
     function getAllMiners() external view returns (Worker[] memory minerData) {
         address[] memory addresses = minerAddresses.values;
