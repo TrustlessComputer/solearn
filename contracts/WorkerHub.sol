@@ -1096,7 +1096,7 @@ contract WorkerHub is
     function getAssignmentByMiner(
         address _minerAddr
     ) external view returns (AssignmentInfo[] memory) {
-        uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
+        uint256[] memory assignmentIds = assignmentsByMiner[_minerAddr].values;
         uint count = assignmentIds.length;
         AssignmentInfo[] memory result = new AssignmentInfo[](count);
 
