@@ -9,6 +9,9 @@ import {Set} from "../lib/Set.sol";
 abstract contract WorkerHubStorage is IWorkerHub {
     Random.Randomizer internal randomizer;
 
+    // todo: update this value
+    uint256 internal constant CHUNK_MAX_SIZE = 100000;
+
     mapping(address => Model) public models;
     mapping(address => Worker) public miners;
 
@@ -73,5 +76,9 @@ abstract contract WorkerHubStorage is IWorkerHub {
     // determine multiplier value
     mapping(address => Boost) internal boost;
 
-    uint256[100] private __gap;
+    // assignmentId => chunk
+    // chunkId => chunk
+    mapping(uint256 => Chunk) internal chunks;
+
+    uint256[99] private __gap;
 }

@@ -80,6 +80,13 @@ interface IWorkerHub is IInferable {
         uint40 revealTimeout;
     }
 
+    struct Chunk {
+        mapping(uint128 => bytes) chunks;
+        bytes32 digestCache;
+        uint128 lastChunkId;
+        bool isFinal;
+    }
+
     struct Inference {
         uint256[] assignments;
         bytes input;
@@ -161,6 +168,13 @@ interface IWorkerHub is IInferable {
         address indexed miner,
         uint40 expiredAt
     );
+
+    event ChunkSubmission(
+        uint256 indexed assignmentId,
+        uint256 indexed chunkId,
+        address indexed miner
+    );
+
     event MinerRoleSeized(
         uint256 indexed assignmentId,
         uint256 indexed inferenceId,
@@ -248,6 +262,8 @@ interface IWorkerHub is IInferable {
     error InferMustBeSolvingState();
     error ZeroValue();
     error InvalidMiner();
+    error InvalidChunkId();
+    error MustBeMultipleOfChunkSize();
     error InvalidData();
     error InvalidRole();
 
