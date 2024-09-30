@@ -24,7 +24,7 @@ async function deployWorkerHub() {
   const unstakeDelayTime = 10 * 60;
   const penaltyDuration = 3600;
   const finePercentage = 5_00;
-  const feeRatioMinerValidor = 10_00;
+  const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
 
   const constructorParams = [
     treasuryAddress,
@@ -40,7 +40,7 @@ async function deployWorkerHub() {
     unstakeDelayTime,
     penaltyDuration,
     finePercentage,
-    feeRatioMinerValidor,
+    feeRatioMinerValidator,
   ];
 
   const workerHub = (await deployOrUpgrade(

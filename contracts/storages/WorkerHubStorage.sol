@@ -42,8 +42,10 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(address => mapping(uint256 => uint256)) internal minerTaskCompleted; // unused
 
     uint256 public minerMinimumStake;
+    address public L2Owner;
     address public treasury;
-    uint16 public feePercentage;
+    uint16 public feeL2Percentage;
+    uint16 public feeTreasuryPercentage;
     uint16 public feeRatioMinerValidator;
     uint40 public submitDuration;
     uint40 public commitDuration;

@@ -30,8 +30,10 @@ contract WorkerHub is
     receive() external payable {}
 
     function initialize(
+        address _L2Owner,
         address _treasury,
-        uint16 _feePercentage,
+        uint16 _feeL2Percentage,
+        uint16 _feeTreasuryPercentage,
         uint256 _minerMinimumStake,
         uint8 _minerRequirement,
         uint8 _votingRequirement,
@@ -49,8 +51,15 @@ contract WorkerHub is
         __Pausable_init();
         __ReentrancyGuard_init();
 
+        require(
+            _L2Owner != address(0) && _treasury != address(0),
+            "Zero address"
+        );
+
+        L2Owner = _L2Owner;
         treasury = _treasury;
-        feePercentage = _feePercentage;
+        feeL2Percentage = _feeL2Percentage;
+        feeTreasuryPercentage = _feeTreasuryPercentage;
         feeRatioMinerValidator = _feeRatioMinerValidor;
         minerMinimumStake = _minerMinimumStake;
         minerRequirement = _minerRequirement;
@@ -356,11 +365,14 @@ contract WorkerHub is
 
         //TODO: mr Issac review the calculating fee logic
         uint256 value = msg.value;
-        uint256 fee = (value * feePercentage) / PERCENTAGE_DENOMINATOR;
+        uint256 feeL2 = (value * feeL2Percentage) / PERCENTAGE_DENOMINATOR;
+        uint256 feeTreasury = (value * feeTreasuryPercentage) /
+            PERCENTAGE_DENOMINATOR;
 
         inference.input = _input;
-        inference.systemFee = fee;
-        inference.value = value - fee;
+        inference.feeL2 = feeL2;
+        inference.feeTreasury = feeTreasury;
+        inference.value = value - feeL2 - feeTreasury;
         inference.creator = _creator;
         inference.modelAddress = msg.sender;
 
@@ -509,9 +521,18 @@ contract WorkerHub is
         countDigest[digest]++;
 
         // Transfer the mining fee to treasury
-        TransferHelper.safeTransferNative(treasury, clonedInference.systemFee);
+        TransferHelper.safeTransferNative(L2Owner, clonedInference.feeL2);
+        TransferHelper.safeTransferNative(
+            treasury,
+            clonedInference.feeTreasury
+        );
 
-        emit TransferFee(treasury, clonedInference.systemFee);
+        emit TransferFee(
+            treasury,
+            clonedInference.feeL2,
+            L2Owner,
+            clonedInference.feeL2
+        );
         emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
@@ -813,7 +834,7 @@ contract WorkerHub is
             inference.status = InferenceStatus.Killed;
             TransferHelper.safeTransferNative(
                 inference.creator,
-                inference.value + inference.systemFee
+                inference.value + inference.feeL2 + inference.feeTreasury
             );
 
             // slash miner
