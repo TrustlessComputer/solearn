@@ -83,10 +83,9 @@ interface IWorkerHub is IInferable {
     struct Inference {
         uint256[] assignments;
         bytes input;
-        uint256 value;
+        uint256 value; // this value is calculated by msg.value - systemFee
         uint256 systemFee;
         address modelAddress;
-        // uint40 expiredAt;
         uint40 submitTimeout; // limit time to capture the miner role and submit the solution
         uint40 commitTimeout;
         uint40 revealTimeout;

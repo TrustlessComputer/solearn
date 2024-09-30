@@ -359,8 +359,8 @@ contract WorkerHub is
         uint256 fee = (value * feePercentage) / PERCENTAGE_DENOMINATOR;
 
         inference.input = _input;
-        inference.value = value;
         inference.systemFee = fee;
+        inference.value = value - fee;
         inference.creator = _creator;
         inference.modelAddress = msg.sender;
 
@@ -751,8 +751,7 @@ contract WorkerHub is
 
         uint feeForMiner = 0;
         uint shareFeePerValidator = 0;
-        uint256 remainValue = inferences[_inferenceId].value -
-            inferences[_inferenceId].systemFee;
+        uint256 remainValue = inferences[_inferenceId].value;
         // Calculate fee for miner and share fee for validators
         if (isMatchMinerResult) {
             //if miner result is correct, then fee for miner = feeRatioMinerValidator * remainValue / 10000
@@ -804,6 +803,8 @@ contract WorkerHub is
 
         Inference storage inference = inferences[_inferenceId];
 
+        // If the inference is not processed (not seize or not submit solution),
+        // we will refund all the value that user spent to get solution
         if (
             inference.status == InferenceStatus.Solving &&
             inference.submitTimeout < block.timestamp &&
@@ -812,7 +813,7 @@ contract WorkerHub is
             inference.status = InferenceStatus.Killed;
             TransferHelper.safeTransferNative(
                 inference.creator,
-                inference.value
+                inference.value + inference.systemFee
             );
 
             // slash miner
@@ -835,7 +836,7 @@ contract WorkerHub is
                 inference.status = InferenceStatus.Processed;
                 TransferHelper.safeTransferNative(
                     inference.creator, // TODO: mr Issac review this line
-                    inference.value - inference.systemFee
+                    inference.value
                 );
 
                 // slash validator not submitted commit hash
@@ -870,7 +871,7 @@ contract WorkerHub is
                 // Processed
                 TransferHelper.safeTransferNative(
                     inference.creator,
-                    inference.value - inference.systemFee
+                    inference.value
                 );
 
                 // disable workers not call reveal
@@ -1098,7 +1099,7 @@ contract WorkerHub is
     function getAssignmentByMiner(
         address _minerAddr
     ) external view returns (AssignmentInfo[] memory) {
-        uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
+        uint256[] memory assignmentIds = assignmentsByMiner[_minerAddr].values;
         uint count = assignmentIds.length;
         AssignmentInfo[] memory result = new AssignmentInfo[](count);
 
