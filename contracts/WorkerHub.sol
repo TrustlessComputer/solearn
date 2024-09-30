@@ -552,19 +552,13 @@ contract WorkerHub is
         }
         countDigest[digest]++;
 
-        // Transfer the mining fee to treasury
-        TransferHelper.safeTransferNative(l2Owner, clonedInference.feeL2);
-        TransferHelper.safeTransferNative(
-            treasury,
-            clonedInference.feeTreasury
-        );
+        // // Transfer the mining fee to treasury
+        // TransferHelper.safeTransferNative(l2Owner, clonedInference.feeL2);
+        // TransferHelper.safeTransferNative(
+        //     treasury,
+        //     clonedInference.feeTreasury
+        // );
 
-        emit TransferFee(
-            treasury,
-            clonedInference.feeL2,
-            l2Owner,
-            clonedInference.feeL2
-        );
         emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
@@ -768,10 +762,7 @@ contract WorkerHub is
         bool _isReferred
     ) internal {
         DAOTokenPercentage memory percentage = daoTokenPercentage;
-        uint256 userAmt = 0;
-        uint256 referrerAmt = 0;
         address referrer = inferences[_inferenceId].referrer;
-        address user = inferences[_inferenceId].creator;
         address[] memory addresses;
         uint256[] memory amounts;
 
@@ -920,6 +911,16 @@ contract WorkerHub is
             }
         }
 
+        // Transfer the mining fee to treasury
+        TransferHelper.safeTransferNative(
+            l2Owner,
+            inferences[_inferenceId].feeL2
+        );
+        TransferHelper.safeTransferNative(
+            treasury,
+            inferences[_inferenceId].feeTreasury
+        );
+
         return true;
     }
 
@@ -968,7 +969,7 @@ contract WorkerHub is
                 inference.status = InferenceStatus.Processed;
                 TransferHelper.safeTransferNative(
                     inference.creator, // TODO: mr Issac review this line
-                    inference.value
+                    inference.value + inference.feeL2 + inference.feeTreasury
                 );
 
                 // slash validator not submitted commit hash
@@ -1003,7 +1004,7 @@ contract WorkerHub is
                 // Processed
                 TransferHelper.safeTransferNative(
                     inference.creator,
-                    inference.value
+                    inference.value + inference.feeL2 + inference.feeTreasury
                 );
 
                 // disable workers not call reveal
