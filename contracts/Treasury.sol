@@ -10,7 +10,6 @@ contract Treasury is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     address public daoToken;
     uint256[100] private __gap;
 
-    event Withdraw(uint256 _amount, address _to);
     event Receive(uint256 _amount, address _from);
 
     function initialize(address _daoToken) external initializer {
@@ -26,19 +25,5 @@ contract Treasury is OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     receive() external payable {
         emit Receive(msg.value, msg.sender);
-    }
-
-    function withdraw(
-        uint256 _amount,
-        address _to
-    ) external onlyOwner nonReentrant {
-        require(
-            _amount > 0 && _amount <= address(this).balance,
-            "Invalid amount"
-        );
-        require(_to != address(0), "Invalid address");
-
-        TransferHelper.safeTransferNative(_to, _amount);
-        emit Withdraw(_amount, _to);
     }
 }

@@ -22,7 +22,7 @@ async function deployWorkerHub() {
   const minerMinimumStake = ethers.parseEther("0.1");
   const minerRequirement = 3;
   const blockPerEpoch = 600;
-  const rewardPerEpoch = ethers.parseEther("0");
+  const rewardPerEpoch = ethers.parseEther("0.38");
   const submitDuration = 10 * 60;
   const commitDuration = 10 * 60;
   const revealDuration = 10 * 60;

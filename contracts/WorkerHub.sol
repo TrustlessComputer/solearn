@@ -380,8 +380,7 @@ contract WorkerHub is
 
     function infer(
         bytes calldata _input,
-        address _creator,
-        address _referrer
+        address _creator
     ) external payable whenNotPaused returns (uint256) {
         Model storage model = models[msg.sender];
         if (model.tier == 0) revert Unauthorized();
@@ -400,7 +399,8 @@ contract WorkerHub is
         inference.feeTreasury = feeTreasury;
         inference.value = value - feeL2 - feeTreasury;
         inference.creator = _creator;
-        inference.referrer = isReferrer[_referrer] ? _referrer : address(0);
+        // inference.referrer = isReferrer[_referrer] ? _referrer : address(0);
+        inference.referrer = address(0);
         inference.modelAddress = msg.sender;
 
         // mark user can be referrer for other user
@@ -757,6 +757,16 @@ contract WorkerHub is
         daoToken = _daoTokenAddress;
     }
 
+    function setTreasuryAddress(
+        address _treasuryAddress
+    ) public virtual onlyOwner {
+        _updateEpoch();
+
+        emit TreasuryAddressUpdated(treasury, _treasuryAddress);
+
+        treasury = _treasuryAddress;
+    }
+
     function _transferDAOToken(
         uint256 chainID,
         address modelAddress,
@@ -775,7 +785,7 @@ contract WorkerHub is
             PERCENTAGE_DENOMINATOR;
 
         if (_isReferred) {
-            addresses[3] = referrer;
+            addresses[2] = referrer;
             amounts[1] =
                 (daoTokenReward *
                     (percentage.refereePercentage +

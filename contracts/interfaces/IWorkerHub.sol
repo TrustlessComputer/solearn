@@ -237,6 +237,7 @@ interface IWorkerHub is IInferable {
         DAOTokenPercentage oldValue,
         DAOTokenPercentage newValue
     );
+    event TreasuryAddressUpdated(address oldAddress, address newAddress);
     event LLAMATokenMinted(
         uint256 chainId,
         address modelAddress,
