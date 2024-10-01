@@ -87,6 +87,7 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.ZK_TESTNET_TREASURY_ADDRESS,
       collectionAddress: process.env.ZK_TESTNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.ZK_TESTNET_WORKER_HUB_ADDRESS,
+      llamaTokenAddress: process.env.ZK_TESTNET_LLAMA_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       timeout: 500_000,
       gasPrice: 1_000_000_000,
@@ -100,6 +101,7 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.ZK_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.ZK_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.ZK_MAINNET_WORKER_HUB_ADDRESS,
+      llamaTokenAddress: process.env.ZK_MAINNET_LLAMA_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,

@@ -33,6 +33,8 @@
     "deployModelCollection:zk_mainnet": "npx hardhat run scripts/deploy/deployModelCollectionERC20.ts --network zk_mainnet",
     "deployWorkerHub:zk_mainnet": "npx hardhat run scripts/deploy/deployWorkerHub.ts --network zk_mainnet",
     "deployHybridModel:zk_mainnet": "npx hardhat run scripts/deploy/deployHybridModelERC20.ts --network zk_mainnet",
+    "deployLLAMAToken:zk_mainnet": "npx hardhat run scripts/deploy/deployLLAMAToken.ts --network zk_mainnet",
+    "setupWorkerHub:zk_mainnet": "npx hardhat run scripts/deploy/wokerhubUpdateDAOTokenAddress.ts --network zk_mainnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {

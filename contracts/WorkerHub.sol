@@ -45,6 +45,7 @@ contract WorkerHub is
         uint40 _penaltyDuration,
         uint16 _finePercentage,
         uint16 _feeRatioMinerValidor,
+        uint256 _daoTokenReward,
         DAOTokenPercentage memory _daoTokenPercentage
     ) external initializer {
         __Ownable_init();
@@ -73,13 +74,14 @@ contract WorkerHub is
         lastBlock = block.number;
         penaltyDuration = _penaltyDuration;
         finePercentage = _finePercentage;
+        daoTokenReward = _daoTokenReward;
 
         setDAOTokenPercentage(_daoTokenPercentage);
     }
 
     function _validateDaoTokenPercentage(
         DAOTokenPercentage memory _daoTokenPercentage
-    ) internal returns (bool) {
+    ) internal pure returns (bool) {
         return (_daoTokenPercentage.minerPercentage +
             _daoTokenPercentage.userPercentage +
             _daoTokenPercentage.referrerPercentage +
@@ -749,7 +751,7 @@ contract WorkerHub is
         penaltyDuration = _penaltyDuration;
     }
 
-    function setDaoToken(address _daoTokenAddress) public virtual onlyOwner {
+    function setDAOToken(address _daoTokenAddress) public virtual onlyOwner {
         _updateEpoch();
 
         emit DAOTokenUpdated(daoToken, _daoTokenAddress);
@@ -885,10 +887,12 @@ contract WorkerHub is
                 assignment.vote = Vote.Approval;
                 if (assignment.role == AssignmentRole.Validating) {
                     // if it iss validator, then transfer share fee
-                    TransferHelper.safeTransferNative(
-                        assignment.worker,
-                        shareFeePerValidator
-                    );
+                    if (shareFeePerValidator != 0) {
+                        TransferHelper.safeTransferNative(
+                            assignment.worker,
+                            shareFeePerValidator
+                        );
+                    }
                     if (!hasReachedLimit) {
                         IDAOToken(daoToken).mint(
                             assignment.worker,
