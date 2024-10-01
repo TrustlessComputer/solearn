@@ -57,4 +57,12 @@ contract LLAMA is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
     ) external view returns (bool) {
         return totalSupply() + _amount <= MAX_SUPPLY;
     }
+
+    function updateWorkerHub(address _workerHub) external onlyOwner {
+        require(
+            _workerHub != address(0),
+            "LLAMA: workerHub is the zero address"
+        );
+        workerHub = IWorkerHub(_workerHub);
+    }
 }

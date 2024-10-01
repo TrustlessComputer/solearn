@@ -790,6 +790,7 @@ contract WorkerHub is
                 PERCENTAGE_DENOMINATOR;
         }
         IDAOToken(daoToken).mintBatch(addresses, amounts);
+        emit LLAMATokenMinted(addresses, amounts);
     }
 
     function _findMostVotedDigest(
@@ -876,6 +877,9 @@ contract WorkerHub is
             shareFeePerValidator = remainValue / maxCount;
             shareTokenPerValidator = remainToken / maxCount;
         }
+        address[] memory addresses;
+        uint256[] memory amounts;
+        uint8 counter = 0;
 
         for (uint256 i = 0; i < len; i++) {
             Assignment storage assignment = assignments[assignmentIds[i]];
@@ -894,10 +898,9 @@ contract WorkerHub is
                         );
                     }
                     if (!hasReachedLimit) {
-                        IDAOToken(daoToken).mint(
-                            assignment.worker,
-                            shareTokenPerValidator
-                        );
+                        addresses[counter] = assignment.worker;
+                        amounts[counter] = shareTokenPerValidator;
+                        counter++;
                     }
                 } else if (feeForMiner != 0) {
                     // it is miner, if miner is honest, the feeForMiner is greater than 0
@@ -906,13 +909,17 @@ contract WorkerHub is
                         feeForMiner
                     );
                     if (!hasReachedLimit) {
-                        IDAOToken(daoToken).mint(
-                            assignment.worker,
-                            tokenForMiner
-                        );
+                        addresses[counter] = assignment.worker;
+                        amounts[counter] = shareTokenPerValidator;
+                        counter++;
                     }
                 }
             }
+        }
+
+        if (!hasReachedLimit) {
+            IDAOToken(daoToken).mintBatch(addresses, amounts);
+            emit LLAMATokenMinted(addresses, amounts);
         }
 
         // Transfer the mining fee to treasury
