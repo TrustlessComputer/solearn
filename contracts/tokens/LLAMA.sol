@@ -9,6 +9,9 @@ import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 contract LLAMA is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
     IWorkerHub public workerHub;
     uint256 public constant MAX_SUPPLY = 21 * 1e6 * 1e18; // 21M
+    uint256 public MAX_SUPPLY_CAP; // 2.1B
+
+    uint256[100] private __gap;
 
     modifier onlyWorkerHub() {
         require(
@@ -31,7 +34,7 @@ contract LLAMA is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
 
     function mint(address to, uint256 amount) public onlyWorkerHub {
         require(
-            totalSupply() + amount <= MAX_SUPPLY,
+            totalSupply() + amount <= MAX_SUPPLY_CAP,
             "LLAMA: max supply exceeded"
         );
         _mint(to, amount);
@@ -45,7 +48,7 @@ contract LLAMA is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
 
         for (uint256 i = 0; i < to.length; i++) {
             require(
-                totalSupply() + amount[i] <= MAX_SUPPLY,
+                totalSupply() + amount[i] <= MAX_SUPPLY_CAP,
                 "LLAMA: max supply exceeded"
             );
             _mint(to[i], amount[i]);
@@ -55,7 +58,7 @@ contract LLAMA is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
     function validateSupplyIncrease(
         uint256 _amount
     ) external view returns (bool) {
-        return totalSupply() + _amount <= MAX_SUPPLY;
+        return totalSupply() + _amount <= MAX_SUPPLY_CAP;
     }
 
     function updateWorkerHub(address _workerHub) external onlyOwner {
@@ -64,5 +67,13 @@ contract LLAMA is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
             "LLAMA: workerHub is the zero address"
         );
         workerHub = IWorkerHub(_workerHub);
+    }
+
+    function updateMaxSupply() external onlyOwner {
+        MAX_SUPPLY_CAP = 21 * 1e8 * 1e18;
+    }
+
+    function getMaxSupply() external view returns (uint256) {
+        return MAX_SUPPLY_CAP;
     }
 }
