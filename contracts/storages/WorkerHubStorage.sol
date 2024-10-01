@@ -45,11 +45,11 @@ abstract contract WorkerHubStorage is IWorkerHub {
     address public treasury;
     uint16 public feePercentage;
     uint16 public feeRatioMinerValidator;
-    uint40 public submitDuration;
-    uint40 public commitDuration;
-    uint40 public revealDuration;
-    uint40 public penaltyDuration;
-    uint40 public unstakeDelayTime;
+    uint40 public submitDuration; //block height
+    uint40 public commitDuration; //block height
+    uint40 public revealDuration; //block height
+    uint40 public penaltyDuration; //block height
+    uint40 public unstakeDelayTime; //block height
     uint8 public minerRequirement;
     uint8 public votingRequirement; //TODO: unused |  Kelvin need to remove
 

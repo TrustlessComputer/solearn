@@ -245,8 +245,7 @@ contract WorkerHub is
         Worker storage miner = miners[msg.sender];
         if (miner.tier == 0) revert NotRegistered();
         if (miner.stake < minerMinimumStake) revert StakeTooLow();
-        if (block.timestamp < miner.activeTime)
-            revert MinerInDeactivationTime();
+        if (block.number < miner.activeTime) revert MinerInDeactivationTime();
 
         address modelAddress = miner.modelAddress;
         minerAddressesByModel[modelAddress].insert(msg.sender);
@@ -283,7 +282,7 @@ contract WorkerHub is
         uint currentUnstake = minerUnstakeRequests[msg.sender].stake;
         minerUnstakeRequests[msg.sender] = UnstakeRequest(
             stakeAmount + currentUnstake,
-            uint40(block.timestamp + unstakeDelayTime)
+            uint40(block.number + unstakeDelayTime)
         );
 
         emit MinerUnregistration(msg.sender);
@@ -306,8 +305,7 @@ contract WorkerHub is
         UnstakeRequest storage unstakeRequest = minerUnstakeRequests[
             msg.sender
         ];
-        if (block.timestamp < unstakeRequest.unlockAt)
-            revert StillBeingLocked();
+        if (block.number < unstakeRequest.unlockAt) revert StillBeingLocked();
 
         uint256 stake = unstakeRequest.stake;
         if (stake == 0) revert NullStake();
@@ -380,7 +378,7 @@ contract WorkerHub is
     }
 
     function _assignMiners(uint256 _inferenceId) private {
-        uint40 expiredAt = uint40(block.timestamp + submitDuration);
+        uint40 expiredAt = uint40(block.number + submitDuration);
         uint40 commitTimeout = expiredAt + commitDuration;
         inferences[_inferenceId].submitTimeout = expiredAt;
         inferences[_inferenceId].commitTimeout = commitTimeout;
@@ -547,7 +545,7 @@ contract WorkerHub is
 
         Inference storage inference = inferences[inferId];
 
-        if (uint40(block.timestamp) > inference.commitTimeout)
+        if (uint40(block.number) > inference.commitTimeout)
             revert CommitTimeout();
         if (inference.status != InferenceStatus.Commit) {
             revert InvalidInferenceStatus();
@@ -589,7 +587,7 @@ contract WorkerHub is
         uint256 inferId = assignment.inferenceId;
         Inference storage inference = inferences[inferId];
 
-        if (uint40(block.timestamp) > inference.revealTimeout)
+        if (uint40(block.number) > inference.revealTimeout)
             revert RevealTimeout();
         if (inference.status == InferenceStatus.Commit) {
             inference.status = InferenceStatus.Reveal;
@@ -664,7 +662,7 @@ contract WorkerHub is
         }
 
         // Set the time miner can join again
-        miner.activeTime = uint40(block.timestamp + penaltyDuration);
+        miner.activeTime = uint40(block.number + penaltyDuration);
 
         if (_isFined) {
             uint256 fine = (minerMinimumStake * finePercentage) /
@@ -804,7 +802,7 @@ contract WorkerHub is
 
         if (
             inference.status == InferenceStatus.Solving &&
-            inference.submitTimeout < block.timestamp &&
+            inference.submitTimeout < block.number &&
             inference.processedMiner != address(0)
         ) {
             inference.status = InferenceStatus.Killed;
@@ -819,7 +817,7 @@ contract WorkerHub is
 
         if (
             inference.status == InferenceStatus.Commit &&
-            inference.commitTimeout < block.timestamp
+            inference.commitTimeout < block.number
         ) {
             // if 2/3 miners approve, then move to reveal phase
             if (
@@ -856,7 +854,7 @@ contract WorkerHub is
 
         if (
             inference.status == InferenceStatus.Reveal &&
-            (inference.revealTimeout < block.timestamp ||
+            (inference.revealTimeout < block.number ||
                 votingInfo[_inferenceId].totalReveal ==
                 votingInfo[_inferenceId].totalCommit)
         ) {
@@ -1124,43 +1122,7 @@ contract WorkerHub is
     ) public view returns (bool) {
         return
             assignments[_assignmentId].output.length == 0 &&
-            block.timestamp <
+            block.number <
             inferences[assignments[_assignmentId].inferenceId].revealTimeout;
     }
-
-    // function getMiningAssignments()
-    //     external
-    //     view
-    //     returns (AssignmentInfo[] memory)
-    // {
-    //     uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
-    //     uint256 assignmentNumber = assignmentIds.length;
-
-    //     uint256 counter = 0;
-    //     for (uint256 i = 0; i < assignmentNumber; ++i)
-    //         if (isAssignmentPending(assignmentIds[i])) counter++;
-
-    //     AssignmentInfo[] memory result = new AssignmentInfo[](counter);
-    //     counter = 0;
-
-    //     for (uint256 i = 0; i < assignmentNumber; ++i)
-    //         if (isAssignmentPending(assignmentIds[i])) {
-    //             Assignment storage assignment = assignments[assignmentIds[i]];
-    //             Inference storage inference = inferences[
-    //                 assignment.inferenceId
-    //             ];
-    //             result[counter++] = AssignmentInfo(
-    //                 assignmentIds[i],
-    //                 assignment.inferenceId,
-    //                 inference.value,
-    //                 inference.input,
-    //                 inference.modelAddress,
-    //                 inference.creator,
-    //                 uint40(block.timestamp) // TODO: kelvin check again
-    //                 // inference.expiredAt
-    //             );
-    //         }
-
-    //     return result;
-    // }
 }
