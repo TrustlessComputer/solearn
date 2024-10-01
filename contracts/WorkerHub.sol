@@ -760,6 +760,8 @@ contract WorkerHub is
     }
 
     function _transferDAOToken(
+        uint256 chainID,
+        address modelAddress,
         uint256 _inferenceId,
         bool _isReferred
     ) internal {
@@ -790,7 +792,15 @@ contract WorkerHub is
                 PERCENTAGE_DENOMINATOR;
         }
         IDAOToken(daoToken).mintBatch(addresses, amounts);
-        emit LLAMATokenMinted(addresses, amounts);
+        emit LLAMATokenMinted(chainID, modelAddress, addresses, amounts);
+    }
+
+    function _getChainID() internal view returns (uint256) {
+        uint256 id;
+        assembly {
+            id := chainid()
+        }
+        return id;
     }
 
     function _findMostVotedDigest(
@@ -840,8 +850,10 @@ contract WorkerHub is
                     PERCENTAGE_DENOMINATOR
             );
         }
+        address modelAddress = inferences[_inferenceId].modelAddress;
+        uint256 chainId = _getChainID();
         if (!hasReachedLimit) {
-            _transferDAOToken(_inferenceId, isReferred);
+            _transferDAOToken(chainId, modelAddress, _inferenceId, isReferred);
         }
 
         uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
@@ -919,7 +931,7 @@ contract WorkerHub is
 
         if (!hasReachedLimit) {
             IDAOToken(daoToken).mintBatch(addresses, amounts);
-            emit LLAMATokenMinted(addresses, amounts);
+            emit LLAMATokenMinted(chainId, modelAddress, addresses, amounts);
         }
 
         // Transfer the mining fee to treasury
@@ -938,6 +950,11 @@ contract WorkerHub is
     function setFeeRatioMinerValidator(uint16 _newRatio) external onlyOwner {
         require(_newRatio <= 10000, "Fee ratio must be <= 10000");
         feeRatioMinerValidator = _newRatio;
+    }
+
+    function setDAOTokenReward(uint256 _newDAOTokenReward) external onlyOwner {
+        require(_newDAOTokenReward != 0, "DAOTokenReward must be > 0");
+        daoTokenReward = _newDAOTokenReward;
     }
 
     function resolveInference(

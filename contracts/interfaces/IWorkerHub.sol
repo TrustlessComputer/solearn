@@ -237,7 +237,12 @@ interface IWorkerHub is IInferable {
         DAOTokenPercentage oldValue,
         DAOTokenPercentage newValue
     );
-    event LLAMATokenMinted(address[] receivers, uint256[] amounts);
+    event LLAMATokenMinted(
+        uint256 chainId,
+        address modelAddress,
+        address[] receivers,
+        uint256[] amounts
+    );
 
     error AlreadyRegistered();
     error AlreadySubmitted();

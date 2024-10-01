@@ -30,7 +30,7 @@ async function deployWorkerHub() {
   const penaltyDuration = 3600;
   const finePercentage = 10_00;
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const daoTokenReward = ethers.parseEther("0.1");
+  const daoTokenReward = ethers.parseEther("10");
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
     userPercentage: 30_00,
