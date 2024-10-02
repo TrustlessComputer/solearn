@@ -1072,7 +1072,7 @@ contract WorkerHub is
                 ].values;
                 for (uint i; i < assignmentIds.length; i++) {
                     //
-                    if (assignments[assignmentIds[i]].revealNonce == 0) {
+                    if (assignments[assignmentIds[i]].digest == bytes32(0)) {
                         _slashMiner(
                             assignments[assignmentIds[i]].worker,
                             false
