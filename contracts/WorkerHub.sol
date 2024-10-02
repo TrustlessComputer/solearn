@@ -266,8 +266,8 @@ contract WorkerHub is
         referrerOf[_referee] = _referrer;
     }
 
-    function registerReferrer(address _referrer, address _referee) external {
-        _registerReferrer(_referrer, _referee);
+    function registerReferrer(address _referrer) external {
+        _registerReferrer(_referrer, msg.sender);
     }
 
     function registerReferrer(
