@@ -266,6 +266,10 @@ contract WorkerHub is
         referrerOf[_referee] = _referrer;
     }
 
+    function registerReferrer(address _referrer, address _referee) external {
+        _registerReferrer(_referrer, _referee);
+    }
+
     function registerReferrer(
         address[] memory _referrers,
         address[] memory _referees
@@ -407,7 +411,6 @@ contract WorkerHub is
         uint256 inferenceId = ++inferenceNumber;
         Inference storage inference = inferences[inferenceId];
 
-        //TODO: mr Issac review the calculating fee logic
         uint256 value = msg.value;
         uint256 feeL2 = (value * feeL2Percentage) / PERCENTAGE_DENOMINATOR;
         uint256 feeTreasury = (value * feeTreasuryPercentage) /
@@ -449,7 +452,6 @@ contract WorkerHub is
 
         address model = inferences[_inferenceId].modelAddress;
         if (minerAddressesByModel[model].size() < minerRequirement)
-            // TODO: check when imp slashing feature
             revert NotEnoughMiners();
 
         Set.AddressSet storage miners = minerAddressesByModel[model];
@@ -807,7 +809,7 @@ contract WorkerHub is
                 PERCENTAGE_DENOMINATOR;
         }
         IDAOToken(daoToken).mintBatch(addresses, amounts);
-        emit LLAMATokenMinted(chainID, modelAddress, addresses, amounts);
+        emit DAOTokenMinted(chainID, modelAddress, addresses, amounts, 2);
     }
 
     function _getChainID() internal view returns (uint256) {
@@ -865,11 +867,6 @@ contract WorkerHub is
                     PERCENTAGE_DENOMINATOR
             );
         }
-        address modelAddress = inferences[_inferenceId].modelAddress;
-        uint256 chainId = _getChainID();
-        if (!hasReachedLimit) {
-            _transferDAOToken(chainId, modelAddress, _inferenceId, isReferred);
-        }
 
         uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
         uint256 len = assignmentIds.length;
@@ -885,6 +882,13 @@ contract WorkerHub is
         uint256 shareTokenPerValidator = 0;
         uint256 remainToken = (daoTokenPercentage.minerPercentage *
             daoTokenReward) / PERCENTAGE_DENOMINATOR;
+
+        // Transsffer DAO token to l2 owner, user and referrer
+        address modelAddress = inferences[_inferenceId].modelAddress;
+        uint256 chainId = _getChainID();
+        if (!hasReachedLimit && remainToken > 0) {
+            _transferDAOToken(chainId, modelAddress, _inferenceId, isReferred);
+        }
 
         // Calculate fee for miner and share fee for validators
         if (isMatchMinerResult) {
@@ -918,48 +922,58 @@ contract WorkerHub is
                 assignment.vote = Vote.Approval;
                 if (assignment.role == AssignmentRole.Validating) {
                     // if it iss validator, then transfer share fee
-                    if (shareFeePerValidator != 0) {
+                    if (shareFeePerValidator > 0) {
                         TransferHelper.safeTransferNative(
                             assignment.worker,
                             shareFeePerValidator
                         );
                     }
-                    if (!hasReachedLimit) {
+                    if (!hasReachedLimit && tokenForMiner > 0) {
                         addresses[counter] = assignment.worker;
                         amounts[counter] = shareTokenPerValidator;
                         counter++;
                     }
                 } else {
-                    if (feeForMiner != 0) {
+                    if (feeForMiner > 0) {
                         // it is miner, if miner is honest, the feeForMiner is greater than 0
                         TransferHelper.safeTransferNative(
                             assignment.worker,
                             feeForMiner
                         );
                     }
-                    if (!hasReachedLimit) {
+                    if (!hasReachedLimit && tokenForMiner > 0) {
                         addresses[counter] = assignment.worker;
-                        amounts[counter] = shareTokenPerValidator;
+                        amounts[counter] = tokenForMiner;
                         counter++;
                     }
                 }
             }
         }
 
-        if (!hasReachedLimit) {
+        if (!hasReachedLimit && remainToken > 0) {
             IDAOToken(daoToken).mintBatch(addresses, amounts);
-            emit LLAMATokenMinted(chainId, modelAddress, addresses, amounts);
+            emit DAOTokenMinted(
+                chainId,
+                modelAddress,
+                addresses,
+                amounts,
+                type(uint256).max
+            );
         }
 
         // Transfer the mining fee to treasury
-        TransferHelper.safeTransferNative(
-            l2Owner,
-            inferences[_inferenceId].feeL2
-        );
-        TransferHelper.safeTransferNative(
-            treasury,
-            inferences[_inferenceId].feeTreasury
-        );
+        if (inferences[_inferenceId].feeL2 > 0) {
+            TransferHelper.safeTransferNative(
+                l2Owner,
+                inferences[_inferenceId].feeL2
+            );
+        }
+        if (inferences[_inferenceId].feeTreasury > 0) {
+            TransferHelper.safeTransferNative(
+                treasury,
+                inferences[_inferenceId].feeTreasury
+            );
+        }
 
         return true;
     }
@@ -1013,7 +1027,7 @@ contract WorkerHub is
                 // Processed
                 inference.status = InferenceStatus.Processed;
                 TransferHelper.safeTransferNative(
-                    inference.creator, // TODO: mr Issac review this line
+                    inference.creator,
                     inference.value + inference.feeL2 + inference.feeTreasury
                 );
 
@@ -1208,8 +1222,6 @@ contract WorkerHub is
             500 *
             (multiplierRes >= 12 ? 12 : multiplierRes);
     }
-
-    // LLAMA token
 
     function getAllMiners() external view returns (Worker[] memory minerData) {
         address[] memory addresses = minerAddresses.values;

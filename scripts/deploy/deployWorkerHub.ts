@@ -17,21 +17,21 @@ async function deployWorkerHub() {
     treasuryAddress,
     `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
   );
-  const feeL2Percentage = 0;
-  const feeTreasuryPercentage = 100_00;
-  const minerMinimumStake = ethers.parseEther("0.1");
-  const minerRequirement = 3;
-  const blockPerEpoch = 600;
-  const rewardPerEpoch = ethers.parseEther("0.38");
-  const submitDuration = 10 * 60;
-  const commitDuration = 10 * 60;
-  const revealDuration = 10 * 60;
-  const unstakeDelayTime = 10 * 60;
-  const penaltyDuration = 3600;
-  const finePercentage = 10_00;
-  const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const daoTokenReward = ethers.parseEther("10");
-  const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
+  const llama_feeL2Percentage = 0;
+  const llama_feeTreasuryPercentage = 100_00;
+  const llama_minerMinimumStake = ethers.parseEther("0.1");
+  const llama_minerRequirement = 3;
+  const llama_blockPerEpoch = 600;
+  const llama_rewardPerEpoch = ethers.parseEther("0.38");
+  const llama_submitDuration = 10 * 60;
+  const llama_commitDuration = 10 * 60;
+  const llama_revealDuration = 10 * 60;
+  const llama_unstakeDelayTime = 10 * 60;
+  const llama_penaltyDuration = 3600;
+  const llama_finePercentage = 10_00;
+  const llama_feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
+  const llama_daoTokenReward = ethers.parseEther("0"); // llama =  10
+  const llama_daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
     userPercentage: 30_00,
     referrerPercentage: 5_00,
@@ -39,30 +39,30 @@ async function deployWorkerHub() {
     l2OwnerPercentage: 10_00,
   };
 
-  const constructorParams = [
+  const llama_constructorParams = [
     l2OwnerAddress,
     treasuryAddress,
-    feeL2Percentage,
-    feeTreasuryPercentage,
-    minerMinimumStake,
-    minerRequirement,
-    blockPerEpoch,
-    rewardPerEpoch,
-    submitDuration,
-    commitDuration,
-    revealDuration,
-    unstakeDelayTime,
-    penaltyDuration,
-    finePercentage,
-    feeRatioMinerValidator,
-    daoTokenReward,
-    daoTokenPercentage,
+    llama_feeL2Percentage,
+    llama_feeTreasuryPercentage,
+    llama_minerMinimumStake,
+    llama_minerRequirement,
+    llama_blockPerEpoch,
+    llama_rewardPerEpoch,
+    llama_submitDuration,
+    llama_commitDuration,
+    llama_revealDuration,
+    llama_unstakeDelayTime,
+    llama_penaltyDuration,
+    llama_finePercentage,
+    llama_feeRatioMinerValidator,
+    llama_daoTokenReward,
+    llama_daoTokenPercentage,
   ];
 
   const workerHub = (await deployOrUpgrade(
     config.workerHubAddress,
     "WorkerHub",
-    constructorParams,
+    llama_constructorParams,
     config,
     true
   )) as unknown as WorkerHub;

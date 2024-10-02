@@ -238,11 +238,12 @@ interface IWorkerHub is IInferable {
         DAOTokenPercentage newValue
     );
     event TreasuryAddressUpdated(address oldAddress, address newAddress);
-    event LLAMATokenMinted(
+    event DAOTokenMinted(
         uint256 chainId,
         address modelAddress,
         address[] receivers,
-        uint256[] amounts
+        uint256[] amounts,
+        uint256 referrerIndex
     );
 
     error AlreadyRegistered();
