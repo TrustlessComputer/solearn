@@ -70,9 +70,10 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(address => Boost) internal boost;
 
     mapping(address => bool) public isReferrer;
-    address daoToken;
+    address public daoToken;
     uint256 public daoTokenReward; // per request (in wei)
     DAOTokenPercentage public daoTokenPercentage;
 
-    uint256[100] private __gap;
+    mapping(address => address) referrerOf;
+    uint256[99] private __gap;
 }

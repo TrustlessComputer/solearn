@@ -257,6 +257,25 @@ contract WorkerHub is
         emit MinerRegistration(msg.sender, tier, msg.value);
     }
 
+    function _registerReferrer(address _referrer, address _referee) internal {
+        require(
+            _referrer != address(0) && _referee != address(0),
+            "Zero address"
+        );
+        require(referrerOf[_referee] == address(0), "Already registered");
+        referrerOf[_referee] = _referrer;
+    }
+
+    function registerReferrer(
+        address[] memory _referrers,
+        address[] memory _referees
+    ) external onlyOwner {
+        require(_referrers.length == _referees.length, "Invalid input");
+        for (uint256 i = 0; i < _referrers.length; i++) {
+            _registerReferrer(_referrers[i], _referees[i]);
+        }
+    }
+
     function forceChangeModelForMiner(
         address _miner,
         address _modelAddress
@@ -399,14 +418,8 @@ contract WorkerHub is
         inference.feeTreasury = feeTreasury;
         inference.value = value - feeL2 - feeTreasury;
         inference.creator = _creator;
-        // inference.referrer = isReferrer[_referrer] ? _referrer : address(0);
-        inference.referrer = address(0);
+        inference.referrer = referrerOf[_creator];
         inference.modelAddress = msg.sender;
-
-        // mark user can be referrer for other user
-        if (!isReferrer[_creator]) {
-            isReferrer[_creator] = true;
-        }
 
         emit NewInference(inferenceId, msg.sender, _creator, value);
 
@@ -475,7 +488,7 @@ contract WorkerHub is
         emit MinerRoleSeized(_assignmentId, inferId, msg.sender);
     }
 
-    // After listen to the new assignment, miner will call this getter to get the assignment role
+    // After listen to the new assignment, miner can call this getter to get the assignment role
     function getRoleByAssigmentId(
         uint256 _assignmentId
     ) external view returns (AssignmentRole) {
@@ -552,13 +565,6 @@ contract WorkerHub is
         }
         countDigest[digest]++;
 
-        // // Transfer the mining fee to treasury
-        // TransferHelper.safeTransferNative(l2Owner, clonedInference.feeL2);
-        // TransferHelper.safeTransferNative(
-        //     treasury,
-        //     clonedInference.feeTreasury
-        // );
-
         emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
         emit SolutionSubmission(_msgSender, _assigmentId);
     }
@@ -587,7 +593,6 @@ contract WorkerHub is
 
         Assignment storage assignment = assignments[_assignId];
         uint256 inferId = assignment.inferenceId;
-
         Inference storage inference = inferences[inferId];
 
         if (uint40(block.number) > inference.commitTimeout)
@@ -651,7 +656,6 @@ contract WorkerHub is
         );
 
         if (commitment != revealHash) revert InvalidReveal();
-
         bytes32 digest = keccak256(abi.encodePacked(_data));
 
         assignment.revealNonce = _nonce;
@@ -742,6 +746,7 @@ contract WorkerHub is
     function setPenaltyDuration(
         uint40 _penaltyDuration
     ) public virtual onlyOwner {
+        require(_penaltyDuration > 0, "Invalid penalty duration");
         _updateEpoch();
 
         emit PenaltyDurationUpdated(penaltyDuration, _penaltyDuration);
@@ -750,6 +755,7 @@ contract WorkerHub is
     }
 
     function setDAOToken(address _daoTokenAddress) public virtual onlyOwner {
+        require(_daoTokenAddress != address(0), "Zero address");
         _updateEpoch();
 
         emit DAOTokenUpdated(daoToken, _daoTokenAddress);
@@ -760,6 +766,7 @@ contract WorkerHub is
     function setTreasuryAddress(
         address _treasuryAddress
     ) public virtual onlyOwner {
+        require(_treasuryAddress != address(0), "Zero address");
         _updateEpoch();
 
         emit TreasuryAddressUpdated(treasury, _treasuryAddress);
@@ -922,12 +929,14 @@ contract WorkerHub is
                         amounts[counter] = shareTokenPerValidator;
                         counter++;
                     }
-                } else if (feeForMiner != 0) {
-                    // it is miner, if miner is honest, the feeForMiner is greater than 0
-                    TransferHelper.safeTransferNative(
-                        assignment.worker,
-                        feeForMiner
-                    );
+                } else {
+                    if (feeForMiner != 0) {
+                        // it is miner, if miner is honest, the feeForMiner is greater than 0
+                        TransferHelper.safeTransferNative(
+                            assignment.worker,
+                            feeForMiner
+                        );
+                    }
                     if (!hasReachedLimit) {
                         addresses[counter] = assignment.worker;
                         amounts[counter] = shareTokenPerValidator;
@@ -1301,40 +1310,4 @@ contract WorkerHub is
             block.number <
             inferences[assignments[_assignmentId].inferenceId].revealTimeout;
     }
-
-    // function getMiningAssignments()
-    //     external
-    //     view
-    //     returns (AssignmentInfo[] memory)
-    // {
-    //     uint256[] memory assignmentIds = assignmentsByMiner[msg.sender].values;
-    //     uint256 assignmentNumber = assignmentIds.length;
-
-    //     uint256 counter = 0;
-    //     for (uint256 i = 0; i < assignmentNumber; ++i)
-    //         if (isAssignmentPending(assignmentIds[i])) counter++;
-
-    //     AssignmentInfo[] memory result = new AssignmentInfo[](counter);
-    //     counter = 0;
-
-    //     for (uint256 i = 0; i < assignmentNumber; ++i)
-    //         if (isAssignmentPending(assignmentIds[i])) {
-    //             Assignment storage assignment = assignments[assignmentIds[i]];
-    //             Inference storage inference = inferences[
-    //                 assignment.inferenceId
-    //             ];
-    //             result[counter++] = AssignmentInfo(
-    //                 assignmentIds[i],
-    //                 assignment.inferenceId,
-    //                 inference.value,
-    //                 inference.input,
-    //                 inference.modelAddress,
-    //                 inference.creator,
-    //                 uint40(block.timestamp) // TODO: kelvin check again
-    //                 // inference.expiredAt
-    //             );
-    //         }
-
-    //     return result;
-    // }
 }
