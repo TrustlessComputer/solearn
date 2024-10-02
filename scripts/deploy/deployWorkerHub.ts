@@ -19,15 +19,15 @@ async function deployWorkerHub() {
   );
   const llama_feeL2Percentage = 0;
   const llama_feeTreasuryPercentage = 100_00;
-  const llama_minerMinimumStake = ethers.parseEther("0.1");
+  const llama_minerMinimumStake = ethers.parseEther("25000");
   const llama_minerRequirement = 3;
   const llama_blockPerEpoch = 600;
   const llama_rewardPerEpoch = ethers.parseEther("0.38");
-  const llama_submitDuration = 10 * 60;
-  const llama_commitDuration = 10 * 60;
-  const llama_revealDuration = 10 * 60;
+  const llama_submitDuration = 10 * 6;
+  const llama_commitDuration = 10 * 6;
+  const llama_revealDuration = 10 * 6;
   const llama_unstakeDelayTime = 10 * 60;
-  const llama_penaltyDuration = 3600;
+  const llama_penaltyDuration = 1200;
   const llama_finePercentage = 10_00;
   const llama_feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
   const llama_daoTokenReward = ethers.parseEther("0"); // llama =  10
