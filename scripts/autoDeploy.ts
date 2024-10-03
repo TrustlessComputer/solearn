@@ -93,6 +93,7 @@ async function deployWorkerHub(
   const constructorParams = [
     l2OwnerAddress,
     treasuryAddress,
+    daoTokenAddress,
     feeL2Percentage,
     feeTreasuryPercentage,
     minerMinimumStake,
