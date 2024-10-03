@@ -3,6 +3,13 @@ import { ethers, network, upgrades } from "hardhat";
 import { IWorkerHub, WorkerHub } from "../../typechain-types";
 import { deployOrUpgrade } from "../lib/utils";
 
+const config = network.config as any;
+const networkName = network.name.toUpperCase();
+
+async function deployToken() {
+  const _MAX_SUPPLY_CAP = ethers.parseEther("2_100_000_000"); //2,1B
+}
+
 async function deployWorkerHub() {
   const config = network.config as any;
   const networkName = network.name.toUpperCase();
@@ -30,7 +37,6 @@ async function deployWorkerHub() {
   const llama_penaltyDuration = 1200;
   const llama_finePercentage = 10_00;
   const llama_feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const llama_minFeeToUse = ethers.parseEther("0.1");
   const llama_daoTokenReward = ethers.parseEther("0"); // llama =  10
   const llama_daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
@@ -56,7 +62,6 @@ async function deployWorkerHub() {
     llama_penaltyDuration,
     llama_finePercentage,
     llama_feeRatioMinerValidator,
-    llama_minFeeToUse,
     llama_daoTokenReward,
     llama_daoTokenPercentage,
   ];
@@ -71,10 +76,3 @@ async function deployWorkerHub() {
 
   console.log(`${networkName}_WORKER_HUB_ADDRESS=${workerHub.target}`);
 }
-
-deployWorkerHub()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });

@@ -75,5 +75,6 @@ abstract contract WorkerHubStorage is IWorkerHub {
     DAOTokenPercentage public daoTokenPercentage;
 
     mapping(address => address) referrerOf;
-    uint256[99] private __gap;
+    uint256 public minFeeToUse; // The minimum fee when register model, it's also the minimum fee to create inference
+    uint256[98] private __gap;
 }

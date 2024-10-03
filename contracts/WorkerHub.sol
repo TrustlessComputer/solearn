@@ -45,6 +45,7 @@ contract WorkerHub is
         uint40 _penaltyDuration,
         uint16 _finePercentage,
         uint16 _feeRatioMinerValidor,
+        uint256 _minFeeToUse,
         uint256 _daoTokenReward,
         DAOTokenPercentage memory _daoTokenPercentage
     ) external initializer {
@@ -74,6 +75,7 @@ contract WorkerHub is
         lastBlock = block.number;
         penaltyDuration = _penaltyDuration;
         finePercentage = _finePercentage;
+        minFeeToUse = _minFeeToUse;
         daoTokenReward = _daoTokenReward;
 
         setDAOTokenPercentage(_daoTokenPercentage);
@@ -185,7 +187,7 @@ contract WorkerHub is
         _updateEpoch();
 
         if (_model == address(0)) revert InvalidModel();
-        if (_minimumFee < 1e17) revert FeeTooLow(); // NOTE: the minimum fee of using this model is 0.1 EAI
+        if (_minimumFee < minFeeToUse) revert FeeTooLow(); // NOTE: the minimum fee of using this model is 0.1 EAI
         if (_tier == 0) revert InvalidTier();
 
         Model storage model = models[_model];
@@ -267,6 +269,7 @@ contract WorkerHub is
     }
 
     function registerReferrer(address _referrer) external {
+        _updateEpoch();
         _registerReferrer(_referrer, msg.sender);
     }
 
@@ -274,6 +277,7 @@ contract WorkerHub is
         address[] memory _referrers,
         address[] memory _referees
     ) external onlyOwner {
+        _updateEpoch();
         require(_referrers.length == _referees.length, "Invalid input");
         for (uint256 i = 0; i < _referrers.length; i++) {
             _registerReferrer(_referrers[i], _referees[i]);
@@ -478,6 +482,8 @@ contract WorkerHub is
     }
 
     function seizeMinerRole(uint256 _assignmentId) external {
+        _updateEpoch();
+
         if (assignments[_assignmentId].worker != msg.sender)
             revert("Only assigned worker can seize the role");
         uint256 inferId = assignments[_assignmentId].inferenceId;
@@ -754,6 +760,23 @@ contract WorkerHub is
         emit PenaltyDurationUpdated(penaltyDuration, _penaltyDuration);
 
         penaltyDuration = _penaltyDuration;
+    }
+
+    function setMinFeeToUse(uint256 _minFeeToUse) public virtual onlyOwner {
+        _updateEpoch();
+
+        emit MinFeeToUseUpdated(minFeeToUse, _minFeeToUse);
+
+        minFeeToUse = _minFeeToUse;
+    }
+
+    function setL2Owner(address _l2OwnerAddress) public virtual onlyOwner {
+        require(_l2OwnerAddress != address(0), "Zero address");
+        _updateEpoch();
+
+        emit L2OwnerUpdated(l2Owner, _l2OwnerAddress);
+
+        l2Owner = _l2OwnerAddress;
     }
 
     function setDAOToken(address _daoTokenAddress) public virtual onlyOwner {

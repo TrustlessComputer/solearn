@@ -232,11 +232,13 @@ interface IWorkerHub is IInferable {
     event PenaltyDurationUpdated(uint40 oldDuration, uint40 newDuration);
     event FinePercentageUpdated(uint16 oldPercent, uint16 newPercent);
     event DAOTokenUpdated(address oldAddress, address newAddress);
+    event L2OwnerUpdated(address oldAddress, address newAddress);
     event DAOTokenRewardUpdated(uint256 oldValue, uint256 newValue);
     event DAOTokenPercentageUpdated(
         DAOTokenPercentage oldValue,
         DAOTokenPercentage newValue
     );
+    event MinFeeToUseUpdated(uint256 oldValue, uint256 newValue);
     event TreasuryAddressUpdated(address oldAddress, address newAddress);
     event DAOTokenMinted(
         uint256 chainId,
