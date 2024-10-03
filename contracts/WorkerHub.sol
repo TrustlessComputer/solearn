@@ -1322,4 +1322,9 @@ contract WorkerHub is
             block.number <
             inferences[assignments[_assignmentId].inferenceId].revealTimeout;
     }
+
+    function streamData(uint256 _assignmentId, bytes memory _data) external {
+        require(_assignmentId <= assignmentNumber, "Invalid assignment id");
+        emit StreamedData(_assignmentId, _data);
+    }
 }

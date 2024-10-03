@@ -245,6 +245,7 @@ interface IWorkerHub is IInferable {
         uint256[] amounts,
         uint256 referrerIndex
     );
+    event StreamedData(uint256 indexed assignmentId, bytes data);
 
     error AlreadyRegistered();
     error AlreadySubmitted();
