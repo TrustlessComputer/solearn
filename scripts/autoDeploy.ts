@@ -1,44 +1,88 @@
 import assert from "assert";
 import { ethers, network, upgrades } from "hardhat";
-import { IWorkerHub, WorkerHub } from "../../typechain-types";
-import { deployOrUpgrade } from "../lib/utils";
+import {
+  DAOToken,
+  HybridModel,
+  IWorkerHub,
+  ModelCollection,
+  Treasury,
+  WorkerHub,
+} from "../typechain-types";
+import { deployOrUpgrade } from "./lib/utils";
+import { EventLog, Signer } from "ethers";
+import path from "path";
+import fs from "fs";
 
 const config = network.config as any;
 const networkName = network.name.toUpperCase();
 
-async function deployToken() {
-  const _MAX_SUPPLY_CAP = ethers.parseEther("2_100_000_000"); //2,1B
+async function deployDAOToken() {
+  console.log("DEPLOY DAO TOKEN...");
+
+  const _MAX_SUPPLY_CAP = ethers.parseEther("2100000000"); //2,1B
+  const tokenName = "FLUX";
+  const tokenSymbol = "FLUX";
+  const initializedParams = [tokenName, tokenSymbol, _MAX_SUPPLY_CAP];
+
+  const daoToken = (await deployOrUpgrade(
+    undefined,
+    "DAOToken",
+    initializedParams,
+    config,
+    true
+  )) as unknown as DAOToken;
+
+  return daoToken.target;
 }
 
-async function deployWorkerHub() {
-  const config = network.config as any;
-  const networkName = network.name.toUpperCase();
+async function deployTreasury(daoTokenAddress: string) {
+  console.log("DEPLOY TREASURY...");
+
+  assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
+  const constructorParams = [daoTokenAddress];
+
+  const treasury = (await deployOrUpgrade(
+    undefined,
+    "Treasury",
+    constructorParams,
+    config,
+    true
+  )) as unknown as Treasury;
+
+  return treasury.target;
+}
+
+async function deployWorkerHub(
+  daoTokenAddress: string,
+  treasuryAddress: string,
+  masterWallet: Signer
+) {
+  console.log("DEPLOY WORKER HUB...");
 
   const l2OwnerAddress = config.l2OwnerAddress;
-  const treasuryAddress = config.treasuryAddress;
   assert.ok(
     l2OwnerAddress,
     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
   );
-  assert.ok(
-    treasuryAddress,
-    `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
-  );
-  const llama_feeL2Percentage = 0;
-  const llama_feeTreasuryPercentage = 100_00;
-  const llama_minerMinimumStake = ethers.parseEther("25000");
-  const llama_minerRequirement = 3;
-  const llama_blockPerEpoch = 600;
-  const llama_rewardPerEpoch = ethers.parseEther("0.38");
-  const llama_submitDuration = 10 * 6;
-  const llama_commitDuration = 10 * 6;
-  const llama_revealDuration = 10 * 6;
-  const llama_unstakeDelayTime = 10 * 60;
-  const llama_penaltyDuration = 1200;
-  const llama_finePercentage = 10_00;
-  const llama_feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const llama_daoTokenReward = ethers.parseEther("0"); // llama =  10
-  const llama_daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
+  assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
+  assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
+
+  const feeL2Percentage = 0;
+  const feeTreasuryPercentage = 100_00;
+  const minerMinimumStake = ethers.parseEther("25000");
+  const minerRequirement = 3;
+  const blockPerEpoch = 600 * 2;
+  const rewardPerEpoch = ethers.parseEther("0.6659");
+  const submitDuration = 10 * 6 * 5;
+  const commitDuration = 10 * 6 * 5;
+  const revealDuration = 10 * 6 * 5;
+  const unstakeDelayTime = 1814400; // NOTE:  1,814,400 blocks = 21 days
+  const penaltyDuration = 1200; // NOTE: 3.3 hours
+  const finePercentage = 10_00;
+  const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
+  const minFeeToUse = ethers.parseEther("0.1");
+  const daoTokenReward = ethers.parseEther("0");
+  const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
     userPercentage: 30_00,
     referrerPercentage: 5_00,
@@ -46,33 +90,225 @@ async function deployWorkerHub() {
     l2OwnerPercentage: 10_00,
   };
 
-  const llama_constructorParams = [
+  const constructorParams = [
     l2OwnerAddress,
     treasuryAddress,
-    llama_feeL2Percentage,
-    llama_feeTreasuryPercentage,
-    llama_minerMinimumStake,
-    llama_minerRequirement,
-    llama_blockPerEpoch,
-    llama_rewardPerEpoch,
-    llama_submitDuration,
-    llama_commitDuration,
-    llama_revealDuration,
-    llama_unstakeDelayTime,
-    llama_penaltyDuration,
-    llama_finePercentage,
-    llama_feeRatioMinerValidator,
-    llama_daoTokenReward,
-    llama_daoTokenPercentage,
+    daoTokenAddress,
+    feeL2Percentage,
+    feeTreasuryPercentage,
+    minerMinimumStake,
+    minerRequirement,
+    blockPerEpoch,
+    rewardPerEpoch,
+    submitDuration,
+    commitDuration,
+    revealDuration,
+    unstakeDelayTime,
+    penaltyDuration,
+    finePercentage,
+    feeRatioMinerValidator,
+    minFeeToUse,
+    daoTokenReward,
+    daoTokenPercentage,
   ];
 
   const workerHub = (await deployOrUpgrade(
-    config.workerHubAddress,
+    undefined,
     "WorkerHub",
-    llama_constructorParams,
+    constructorParams,
     config,
     true
   )) as unknown as WorkerHub;
+  const workerHubAddress = workerHub.target;
 
-  console.log(`${networkName}_WORKER_HUB_ADDRESS=${workerHub.target}`);
+  // DAO TOKEN UPDATE WORKER HUB ADDRESS
+  console.log("DAO TOKEN UPDATE WORKER HUB ADDRESS...");
+  const daoTokenContract = (await getContractInstance(
+    daoTokenAddress,
+    "DAOToken"
+  )) as DAOToken;
+
+  const tx = await daoTokenContract
+    .connect(masterWallet)
+    .updateWorkerHub(workerHubAddress);
+  const receipt = await tx.wait();
+  console.log("Tx hash: ", receipt?.hash);
+  console.log("Tx status: ", receipt?.status);
+
+  return workerHubAddress;
 }
+
+async function deployModelCollection() {
+  console.log("DEPLOY MODEL COLLECTION...");
+
+  const treasuryAddress = config.l2OwnerAddress;
+  assert.ok(
+    treasuryAddress,
+    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+
+  const name = "Eternal AI";
+  const symbol = "";
+  const mintPrice = ethers.parseEther("0");
+  const royaltyReceiver = treasuryAddress;
+  const royalPortion = 5_00;
+  const nextModelId = 300_001; //
+
+  const constructorParams = [
+    name,
+    symbol,
+    mintPrice,
+    royaltyReceiver,
+    royalPortion,
+    nextModelId,
+  ];
+
+  const modelCollection = (await deployOrUpgrade(
+    undefined,
+    "ModelCollection",
+    constructorParams,
+    config,
+    true
+  )) as unknown as ModelCollection;
+  const modelCollectionAddress = modelCollection.target;
+
+  return modelCollectionAddress;
+}
+
+async function deployHybridModel(
+  workerHubAddress: string,
+  collectionAddress: string
+) {
+  console.log("DEPLOY HYBRID MODEL...");
+  const WorkerHub = await ethers.getContractFactory("WorkerHub");
+  const ModelCollection = await ethers.getContractFactory("ModelCollection");
+
+  assert.ok(collectionAddress, `Missing ${networkName}_COLLECTION_ADDRESS !`);
+  assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
+  const modelOwnerAddress = config.l2OwnerAddress;
+  assert.ok(
+    modelOwnerAddress,
+    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+
+  const identifier = 0;
+  const name = "Flux V2";
+  const minHardware = 1;
+  const metadataObj = {
+    version: 1,
+    model_name: "Flux V2",
+    model_type: "image",
+    model_url: "",
+    model_file_hash: "",
+    min_hardware: 1,
+    verifier_url: "",
+    verifier_file_hash: "",
+  };
+  const metadata = JSON.stringify(metadataObj, null, "\t");
+
+  const constructorParams = [
+    workerHubAddress,
+    collectionAddress,
+    identifier,
+    name,
+    metadata,
+  ];
+  const hybridModel = (await deployOrUpgrade(
+    null,
+    "HybridModel",
+    constructorParams,
+    config,
+    true
+  )) as unknown as HybridModel;
+
+  const hybridModelAddress = hybridModel.target;
+
+  // COLLECTION MINT NFT TO MODEL OWNER
+  console.log("COLLECTION MINT NFT TO MODEL OWNER...");
+  const collection = ModelCollection.attach(
+    collectionAddress
+  ) as ModelCollection;
+  const mintReceipt = await (
+    await collection.mint(modelOwnerAddress, metadata, hybridModelAddress)
+  ).wait();
+
+  const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
+    (event: EventLog) => event.eventName === "NewToken"
+  );
+  if (newTokenEvent) {
+    console.log("tokenId: ", newTokenEvent.args?.tokenId);
+  }
+
+  // WORKER HUB REGISTER MODEL
+  console.log("WORKER HUB REGISTER MODEL...");
+  const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
+  const txRegis = await workerHub.registerModel(
+    hybridModelAddress,
+    minHardware,
+    ethers.parseEther("0.1")
+  );
+  const receipt = await txRegis.wait();
+  console.log("Tx hash: ", receipt?.hash);
+  console.log("Tx status: ", receipt?.status);
+
+  return hybridModelAddress;
+}
+
+export async function getContractInstance(
+  proxyAddress: string,
+  contractName: string
+) {
+  const contractFact = await ethers.getContractFactory(contractName);
+  const contractIns = contractFact.attach(proxyAddress);
+
+  return contractIns;
+}
+
+async function saveDeployedAddresses(networkName: string, addresses: any) {
+  const filePath = path.join(__dirname, `../deployedAddresses.json`);
+  let data: { [key: string]: any } = {};
+
+  if (fs.existsSync(filePath)) {
+    data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  }
+
+  data[networkName] = addresses;
+
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
+
+async function main() {
+  const masterWallet = (await ethers.getSigners())[0];
+
+  const daoTokenAddress = await deployDAOToken();
+  const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
+  const workerHubAddress = await deployWorkerHub(
+    daoTokenAddress.toString(),
+    treasuryAddress.toString(),
+    masterWallet
+  );
+  const collectionAddress = await deployModelCollection();
+  const hybridModelAddress = await deployHybridModel(
+    workerHubAddress.toString(),
+    collectionAddress.toString()
+  );
+
+  const deployedAddresses = {
+    daoTokenAddress,
+    treasuryAddress,
+    workerHubAddress,
+    collectionAddress,
+    hybridModelAddress,
+  };
+
+  const networkName = network.name.toUpperCase();
+
+  await saveDeployedAddresses(networkName, deployedAddresses);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

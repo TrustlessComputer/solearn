@@ -7,17 +7,17 @@ async function deployTreasury() {
   const config = network.config as any;
   const networkName = network.name.toUpperCase();
 
-  const llamaTokenAddress = config.llamaTokenAddress;
+  const daoTokenAddress = config.daoTokenAddress;
   const treasuryAddress = config.treasuryAddress;
   assert.ok(
-    llamaTokenAddress,
-    `Missing ${networkName}_LLAMA_TOKEN_ADDRESS from environment variables!`
+    daoTokenAddress,
+    `Missing ${networkName}_DAO_TOKEN_ADDRESS from environment variables!`
   );
 
-  const constructorParams = [llamaTokenAddress];
+  const constructorParams = [daoTokenAddress];
 
   const treasury = (await deployOrUpgrade(
-    config.treasuryAddress,
+    treasuryAddress,
     "Treasury",
     constructorParams,
     config,

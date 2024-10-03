@@ -1,6 +1,6 @@
 import assert from "assert";
 import { ethers, network, upgrades } from "hardhat";
-import { IWorkerHub, WorkerHub } from "../../typechain-types";
+import { DAOToken, IWorkerHub, WorkerHub } from "../../typechain-types";
 import { deployOrUpgrade } from "../lib/utils";
 
 async function deployWorkerHub() {
@@ -9,6 +9,7 @@ async function deployWorkerHub() {
 
   const l2OwnerAddress = config.l2OwnerAddress;
   const treasuryAddress = config.treasuryAddress;
+  const daoTokenAddress = config.daoTokenAddress;
   assert.ok(
     l2OwnerAddress,
     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
@@ -17,22 +18,27 @@ async function deployWorkerHub() {
     treasuryAddress,
     `Missing ${networkName}_TREASURY_ADDRESS from environment variables!`
   );
-  const llama_feeL2Percentage = 0;
-  const llama_feeTreasuryPercentage = 100_00;
-  const llama_minerMinimumStake = ethers.parseEther("25000");
-  const llama_minerRequirement = 3;
-  const llama_blockPerEpoch = 600;
-  const llama_rewardPerEpoch = ethers.parseEther("0.38");
-  const llama_submitDuration = 10 * 6;
-  const llama_commitDuration = 10 * 6;
-  const llama_revealDuration = 10 * 6;
-  const llama_unstakeDelayTime = 10 * 60;
-  const llama_penaltyDuration = 1200;
-  const llama_finePercentage = 10_00;
-  const llama_feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const llama_minFeeToUse = ethers.parseEther("0.1");
-  const llama_daoTokenReward = ethers.parseEther("0"); // llama =  10
-  const llama_daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
+  assert.ok(
+    daoTokenAddress,
+    `Missing ${networkName}_DAO_TOKEN_ADDRESS from environment variables!`
+  );
+
+  const feeL2Percentage = 0;
+  const feeTreasuryPercentage = 100_00;
+  const minerMinimumStake = ethers.parseEther("25000");
+  const minerRequirement = 3;
+  const blockPerEpoch = 600 * 2;
+  const rewardPerEpoch = ethers.parseEther("0.6659");
+  const submitDuration = 10 * 6 * 5;
+  const commitDuration = 10 * 6 * 5;
+  const revealDuration = 10 * 6 * 5;
+  const unstakeDelayTime = 1814400; // NOTE:  1,814,400 blocks = 21 days
+  const penaltyDuration = 1200; // NOTE: 3.3 hours
+  const finePercentage = 10_00;
+  const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
+  const minFeeToUse = ethers.parseEther("0.1");
+  const daoTokenReward = ethers.parseEther("0"); // llama =  10
+  const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
     userPercentage: 30_00,
     referrerPercentage: 5_00,
@@ -40,36 +46,50 @@ async function deployWorkerHub() {
     l2OwnerPercentage: 10_00,
   };
 
-  const llama_constructorParams = [
+  const constructorParams = [
     l2OwnerAddress,
     treasuryAddress,
-    llama_feeL2Percentage,
-    llama_feeTreasuryPercentage,
-    llama_minerMinimumStake,
-    llama_minerRequirement,
-    llama_blockPerEpoch,
-    llama_rewardPerEpoch,
-    llama_submitDuration,
-    llama_commitDuration,
-    llama_revealDuration,
-    llama_unstakeDelayTime,
-    llama_penaltyDuration,
-    llama_finePercentage,
-    llama_feeRatioMinerValidator,
-    llama_minFeeToUse,
-    llama_daoTokenReward,
-    llama_daoTokenPercentage,
+    daoTokenAddress,
+    feeL2Percentage,
+    feeTreasuryPercentage,
+    minerMinimumStake,
+    minerRequirement,
+    blockPerEpoch,
+    rewardPerEpoch,
+    submitDuration,
+    commitDuration,
+    revealDuration,
+    unstakeDelayTime,
+    penaltyDuration,
+    finePercentage,
+    feeRatioMinerValidator,
+    minFeeToUse,
+    daoTokenReward,
+    daoTokenPercentage,
   ];
 
   const workerHub = (await deployOrUpgrade(
     config.workerHubAddress,
     "WorkerHub",
-    llama_constructorParams,
+    constructorParams,
     config,
     true
   )) as unknown as WorkerHub;
 
-  console.log(`${networkName}_WORKER_HUB_ADDRESS=${workerHub.target}`);
+  const workerHubAddress = workerHub.target;
+
+  console.log(`${networkName}_WORKER_HUB_ADDRESS=${workerHubAddress}`);
+
+  if (!config.workerHubAddress) {
+    const DAOTokenFact = await ethers.getContractFactory("DAOToken");
+    const daoToken = DAOTokenFact.attach(daoTokenAddress) as DAOToken;
+
+    const tx = await daoToken.updateWorkerHub(workerHubAddress);
+    const receipt = await tx.wait();
+    console.log("DAO Token updated Worker Hub address:");
+    console.log("Tx hash: ", receipt?.hash);
+    console.log("Tx status: ", receipt?.status);
+  }
 }
 
 deployWorkerHub()

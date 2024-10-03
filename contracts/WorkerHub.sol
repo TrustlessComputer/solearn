@@ -32,6 +32,7 @@ contract WorkerHub is
     function initialize(
         address _l2Owner,
         address _treasury,
+        address _daoToken,
         uint16 _feeL2Percentage,
         uint16 _feeTreasuryPercentage,
         uint256 _minerMinimumStake,
@@ -54,12 +55,15 @@ contract WorkerHub is
         __ReentrancyGuard_init();
 
         require(
-            _l2Owner != address(0) && _treasury != address(0),
+            _l2Owner != address(0) &&
+                _treasury != address(0) &&
+                _daoToken != address(0),
             "Zero address"
         );
 
         l2Owner = _l2Owner;
         treasury = _treasury;
+        daoToken = _daoToken;
         feeL2Percentage = _feeL2Percentage;
         feeTreasuryPercentage = _feeTreasuryPercentage;
         feeRatioMinerValidator = _feeRatioMinerValidor;

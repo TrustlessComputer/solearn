@@ -27,6 +27,8 @@
     "deployHybridModel:mainnet": "npx hardhat run scripts/deploy/deployHybridModel.ts --network mainnet",
     "console:zk_testnet": "npx hardhat console --network zk_testnet",
     "deployModelCollection:zk_testnet": "npx hardhat run scripts/deploy/deployModelCollection.ts --network zk_testnet",
+    "deployDAOToken:zk_testnet": "npx hardhat run scripts/deploy/deployDAOToken.ts --network zk_testnet",
+    "deployTreasury:zk_testnet": "npx hardhat run scripts/deploy/deployTreasury.ts --network zk_testnet",
     "deployWorkerHub:zk_testnet": "npx hardhat run scripts/deploy/deployWorkerHub.ts --network zk_testnet",
     "deployHybridModel:zk_testnet": "npx hardhat run scripts/deploy/deployHybridModel.ts --network zk_testnet",
     "console:zk_mainnet": "npx hardhat console --network zk_mainnet",
@@ -36,6 +38,8 @@
     "deployLLAMAToken:zk_mainnet": "npx hardhat run scripts/deploy/deployLLAMAToken.ts --network zk_mainnet",
     "deployTreasury:zk_mainnet": "npx hardhat run scripts/deploy/deployTreasury.ts --network zk_mainnet",
     "setupWorkerHub:zk_mainnet": "npx hardhat run scripts/workerHubUpdateInfo.ts --network zk_mainnet",
+    "autoDeploy:zk_testnet": "npx hardhat run scripts/autoDeploy.ts --network zk_testnet",
+    "autoDeploy:flux_mainnet": "npx hardhat run scripts/autoDeploy.ts --network flux_mainnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {

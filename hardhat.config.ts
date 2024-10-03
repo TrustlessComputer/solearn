@@ -87,7 +87,7 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.ZK_TESTNET_TREASURY_ADDRESS,
       collectionAddress: process.env.ZK_TESTNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.ZK_TESTNET_WORKER_HUB_ADDRESS,
-      llamaTokenAddress: process.env.ZK_TESTNET_LLAMA_TOKEN_ADDRESS,
+      daoTokenAddress: process.env.ZK_TESTNET_DAO_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       timeout: 500_000,
       gasPrice: 1_000_000_000,
@@ -101,7 +101,21 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.ZK_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.ZK_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.ZK_MAINNET_WORKER_HUB_ADDRESS,
-      llamaTokenAddress: process.env.ZK_MAINNET_LLAMA_TOKEN_ADDRESS,
+      llamaTokenAddress: process.env.ZK_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: true,
+      gasPrice: "auto",
+    } as any,
+    flux_mainnet: {
+      url: "https://rpc.flux.eternalai.org",
+      chainId: 222673,
+      accounts: [process.env.FLUX_MAINNET_PRIVATE_KEY],
+      l2OwnerAddress: process.env.FLUX_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.FLUX_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.FLUX_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.FLUX_MAINNET_WORKER_HUB_ADDRESS,
+      daoTokenAddress: process.env.FLUX_MAINNET_DAO_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
