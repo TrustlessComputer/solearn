@@ -19,7 +19,7 @@ export const deployOrUpgrade = async (
   networkConfig: any,
   isInitializable: boolean
 ) => {
-  console.log(networkConfig);
+  // console.log(networkConfig);
   if (networkConfig.zksync) {
     return deployOrUpgradeZk(
       getMasterWallet(),
@@ -212,11 +212,6 @@ export const getProvider = () => {
 
 export const getMasterWallet = () => {
   const provider = getProvider();
-  console.log(provider);
-  console.log(
-    "hre.network.config.accounts[0] ?? process.env.WALLET_PRIVATE_KEY!: ",
-    hre.network.config.accounts[0] ?? process.env.WALLET_PRIVATE_KEY!
-  );
   return new Wallet(
     hre.network.config.accounts[0] ?? process.env.WALLET_PRIVATE_KEY!,
     provider

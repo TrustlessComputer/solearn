@@ -36,7 +36,9 @@
     "deployLLAMAToken:zk_mainnet": "npx hardhat run scripts/deploy/deployLLAMAToken.ts --network zk_mainnet",
     "deployTreasury:zk_mainnet": "npx hardhat run scripts/deploy/deployTreasury.ts --network zk_mainnet",
     "setupWorkerHub:zk_mainnet": "npx hardhat run scripts/workerHubUpdateInfo.ts --network zk_mainnet",
-    "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
+    "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org",
+    "autoDeploy:zk_testnet": "npx hardhat run scripts/autoDeploy.ts --network zk_testnet",
+    "autoDeploy:flux_mainnet": "npx hardhat run scripts/autoDeploy.ts --network flux_mainnet"
   },
   "devDependencies": {
     "@ericxstone/hardhat-blockscout-verify": "^1.0.2",
