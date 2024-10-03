@@ -93,15 +93,15 @@ const config: HardhatUserConfig = {
       gasPrice: 1_000_000_000,
       blockGasLimit: 100_000_000_000,
     } as any,
-    zk_mainnet: {
+    llama_mainnet: {
       url: "https://rpc.eternalai.bvm.network",
       chainId: 222672,
-      accounts: [process.env.ZK_MAINNET_PRIVATE_KEY],
-      l2OwnerAddress: process.env.ZK_MAINNET_L2_OWNER_ADDRESS,
-      treasuryAddress: process.env.ZK_MAINNET_TREASURY_ADDRESS,
-      collectionAddress: process.env.ZK_MAINNET_COLLECTION_ADDRESS,
-      workerHubAddress: process.env.ZK_MAINNET_WORKER_HUB_ADDRESS,
-      llamaTokenAddress: process.env.ZK_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
+      accounts: [process.env.LLAMA_MAINNET_PRIVATE_KEY],
+      l2OwnerAddress: process.env.LLAMA_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.LLAMA_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.LLAMA_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.LLAMA_MAINNET_WORKER_HUB_ADDRESS,
+      llamaTokenAddress: process.env.LLAMA_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
