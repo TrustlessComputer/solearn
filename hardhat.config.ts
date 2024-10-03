@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "zk_testnet",
+  defaultNetwork: "flux_mainnet",
   solidity: {
     compilers: [
       {
