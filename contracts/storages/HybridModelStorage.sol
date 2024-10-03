@@ -10,6 +10,7 @@ abstract contract HybridModelStorage is IHybridModel {
     string public metadata;
 
     address public workerHub;
+    address public modelCollection;
 
-    uint256[50] private __gap;
+    uint256[49] private __gap;
 }

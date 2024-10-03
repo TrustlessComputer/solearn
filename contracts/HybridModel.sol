@@ -11,16 +11,18 @@ import {IInferable} from "./interfaces/IInferable.sol";
 import {HybridModelStorage} from "./storages/HybridModelStorage.sol";
 
 contract HybridModel is
-HybridModelStorage,
-OwnableUpgradeable,
-PausableUpgradeable,
-ReentrancyGuardUpgradeable {
-    string constant private VERSION = "v0.0.1";
+    HybridModelStorage,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
+    string private constant VERSION = "v0.0.1";
 
     receive() external payable {}
 
     function initialize(
         address _workerHub,
+        address _modelCollection,
         uint256 _identifier,
         string calldata _name,
         string calldata _metadata
@@ -30,9 +32,18 @@ ReentrancyGuardUpgradeable {
         __ReentrancyGuard_init();
 
         workerHub = _workerHub;
+        modelCollection = _modelCollection;
         identifier = _identifier;
         name = _name;
         metadata = _metadata;
+    }
+
+    modifier onlyModelCollection() {
+        require(
+            msg.sender == modelCollection,
+            "Caller is not the modelCollection"
+        );
+        _;
     }
 
     function version() external pure returns (string memory) {
@@ -67,13 +78,16 @@ ReentrancyGuardUpgradeable {
         emit MetadataUpdate(_metadata);
     }
 
-    function setModelId(uint256 _modelId) external {
+    function setModelId(uint256 _modelId) external onlyModelCollection {
         if (identifier != 0) revert ModelIdAlreadySet();
         identifier = _modelId;
         emit IdentifierUpdate(_modelId);
     }
 
-    function infer(bytes calldata _input) external payable whenNotPaused nonReentrant returns (uint256) {
-        return IInferable(workerHub).infer{value: msg.value}(_input, msg.sender);
+    function infer(
+        bytes calldata _input
+    ) external payable whenNotPaused nonReentrant returns (uint256) {
+        return
+            IInferable(workerHub).infer{value: msg.value}(_input, msg.sender);
     }
 }
