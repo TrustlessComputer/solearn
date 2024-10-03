@@ -48,7 +48,7 @@ const config: HardhatUserConfig = {
       blockGasLimit: 2_500_000_000,
     } as any,
     flux_mainnet: {
-      url: "http://rpc.flux.eternalai.org",
+      url: "https://rpc.flux.eternalai.org",
       chainId: 222673,
       accounts: [process.env.FLUX_MAINNET_PRIVATE_KEY],
       l2OwnerAddress: process.env.FLUX_MAINNET_L2_OWNER_ADDRESS,
