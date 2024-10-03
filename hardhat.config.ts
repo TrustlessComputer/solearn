@@ -49,7 +49,7 @@ const config: HardhatUserConfig = {
     } as any,
     flux_mainnet: {
       url: "rpc.flux.eternalai.org",
-      chainId: 222672,
+      chainId: 222673,
       accounts: [process.env.FLUX_MAINNET_PRIVATE_KEY],
       l2OwnerAddress: process.env.FLUX_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.FLUX_MAINNET_TREASURY_ADDRESS,
