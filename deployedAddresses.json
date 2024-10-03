@@ -1,0 +1,9 @@
+{
+  "FLUX_MAINNET": {
+    "daoTokenAddress": "0x2fDF1e58F61EDE27A1BEa5E329A68dcfB081968b",
+    "treasuryAddress": "0xFeb1Db71f0Ff062A2e257b4e6a7209E9d5e6Ce87",
+    "workerHubAddress": "0x430583bDFf80c5BE1536Ed82f9c8090eEF68e2F6",
+    "collectionAddress": "0x747d9e388D71C11F1E69B556e10F50DbbE4C2D3b",
+    "hybridModelAddress": "0x9874732a8699FcA824A9A7d948f6bcD30a141238"
+  }
+}
