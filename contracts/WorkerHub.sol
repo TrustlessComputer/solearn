@@ -312,7 +312,8 @@ contract WorkerHub is
         Worker storage miner = miners[msg.sender];
         if (miner.tier == 0) revert NotRegistered();
         if (miner.stake < minerMinimumStake) revert StakeTooLow();
-        if (block.number < miner.activeTime) revert MinerInDeactivationTime();
+        if (block.timestamp < miner.activeTime)
+            revert MinerInDeactivationTime();
 
         address modelAddress = miner.modelAddress;
         minerAddressesByModel[modelAddress].insert(msg.sender);
