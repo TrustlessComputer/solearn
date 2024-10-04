@@ -7,6 +7,9 @@ import {Random} from "../lib/Random.sol";
 import {Set} from "../lib/Set.sol";
 
 abstract contract WorkerHubStorage is IWorkerHub {
+    // todo: update this value
+    uint256 internal constant CHUNK_MAX_SIZE = 100000;
+
     Random.Randomizer internal randomizer;
 
     mapping(address => Model) public models;
@@ -76,5 +79,9 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     mapping(address => address) referrerOf;
     uint256 public minFeeToUse; // The minimum fee when register model, it's also the minimum fee to create inference
-    uint256[98] private __gap;
+
+    // assignmentId => chunk
+    // chunkId => chunk
+    mapping(uint256 => Chunk) internal chunks;
+    uint256[96] private __gap;
 }

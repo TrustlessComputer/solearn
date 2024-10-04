@@ -533,9 +533,59 @@ contract WorkerHub is
         }
     }
 
+    function submitSolutionInChunks(
+        uint256 _assignmentId,
+        bytes memory _data,
+        uint128 _chunkId,
+        bool _isLastChunk,
+        uint40 _nonce
+    ) public whenNotPaused {
+        _updateEpoch();
+        if (_data.length == 0) revert InvalidData();
+        // Check the msg sender is the assigned miner
+        if (_msgSender() != assignments[_assignmentId].worker) revert Unauthorized();
+        if (assignments[_assignmentId].output.length != 0) revert AlreadySubmitted();
+        uint inferId = assignments[_assignmentId].inferenceId;
+        if (inferences[inferId].status != InferenceStatus.Solving && inferences[inferId].status != InferenceStatus.Reveal) {
+            revert InvalidInferenceStatus();
+        }
+        if (inferences[inferId].status == InferenceStatus.Solving && assignments[_assignmentId].role != AssignmentRole.Mining)
+            revert InvalidRole();
+        if (inferences[inferId].status == InferenceStatus.Solving && !_isLastChunk && _data.length != CHUNK_MAX_SIZE) revert InvalidData();
+        if (assignments[_assignmentId].output.length != 0) revert AlreadySubmitted();
+        // query chunk 
+        Chunk storage chunk = chunks[_assignmentId];
+        if (_isLastChunk && _chunkId == 0) revert MustBeMultipleOfChunkSize();
+        if (chunk.lastChunkId != _chunkId || chunk.isFinal) revert InvalidChunkId();
+        // store chunk
+        chunk.chunks[_chunkId] = _data;
+        chunk.lastChunkId++;
+        chunk.isFinal = _isLastChunk;
+        emit ChunkSubmission(_assignmentId, _chunkId, _msgSender());
+
+        // handle update check sum value
+        bytes32 digest;
+        if (inferences[inferId].status == InferenceStatus.Reveal) {
+            assembly {
+                digest := mload(add(_data, 32))
+            }
+        } else {
+            digest = keccak256(_data);
+        }
+
+        chunk.digestCache = _chunkId == 0 ? digest : keccak256(abi.encodePacked(chunk.digestCache, digest));
+        if (_isLastChunk) {
+            if (inferences[inferId].status == InferenceStatus.Solving) {
+                submitSolution(_assignmentId, abi.encodePacked(chunk.digestCache));
+            } else {
+                reveal(_assignmentId, _nonce, abi.encodePacked(chunk.digestCache));
+            }
+        }
+    }
+
     function submitSolution(
         uint256 _assigmentId,
-        bytes calldata _data
+        bytes memory _data
     ) public virtual whenNotPaused {
         _updateEpoch();
         address _msgSender = msg.sender;

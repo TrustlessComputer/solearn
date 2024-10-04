@@ -131,6 +131,19 @@ interface IWorkerHub is IInferable {
         uint16 l2OwnerPercentage;
     }
 
+    struct Chunk {
+        mapping(uint128 => bytes) chunks;
+        bytes32 digestCache;
+        uint128 lastChunkId;
+        bool isFinal;
+    }
+
+    event ChunkSubmission(
+        uint256 indexed assignmentId,
+        uint256 indexed chunkId,
+        address indexed miner
+    );
+
     event MiningTimeLimitUpdate(uint40 newValue);
 
     event ModelRegistration(
@@ -284,4 +297,6 @@ interface IWorkerHub is IInferable {
     error InvalidReveal();
     error InvalidNonce();
     error AlreadyRevealed();
+    error InvalidChunkId(); 
+    error MustBeMultipleOfChunkSize();
 }
