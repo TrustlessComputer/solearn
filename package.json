@@ -47,6 +47,7 @@
     "deployLLAMAToken:flux_mainnet": "npx hardhat run scripts/deploy/deployLLAMAToken.ts --network flux_mainnet",
     "deployTreasury:flux_mainnet": "npx hardhat run scripts/deploy/deployTreasury.ts --network flux_mainnet",
     "setupWorkerHub:flux_mainnet": "npx hardhat run scripts/workerHubUpdateInfo.ts --network flux_mainnet",
+    "updateHybridModelMetadata:flux_mainnet": "npx hardhat run scripts/updateHybridModelMetadata.ts --network flux_mainnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {
