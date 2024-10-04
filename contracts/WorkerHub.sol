@@ -1045,7 +1045,7 @@ contract WorkerHub is
         ) {
             // if 2/3 miners approve, then move to reveal phase
             if (
-                votingInfo[_inferenceId].totalCommit >=
+                votingInfo[_inferenceId].totalCommit + 1 >=
                 _getThresholdValue(assignmentsByInference[_inferenceId].size())
             ) {
                 inference.status == InferenceStatus.Reveal;

@@ -101,7 +101,7 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.LLAMA_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.LLAMA_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.LLAMA_MAINNET_WORKER_HUB_ADDRESS,
-      llamaTokenAddress: process.env.LLAMA_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
+      daoTokenAddress: process.env.LLAMA_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
