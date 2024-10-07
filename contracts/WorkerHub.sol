@@ -942,6 +942,10 @@ contract WorkerHub is
 
         for (uint256 i = 0; i < len; i++) {
             Assignment storage assignment = assignments[assignmentIds[i]];
+            // Logically, when a worker calls the commit function, it proves that the worker is active.
+            // Calling the reveal function is a natural consequence if the worker is honest.
+            // Therefore, if a worker calls commit but doesn't call reveal, it is highly likely that they are dishonest,
+            // leading to the decision to slash this worker.
             if (assignment.digest != mostVotedDigest) {
                 assignment.vote = Vote.Disapproval;
                 _slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
@@ -1065,9 +1069,7 @@ contract WorkerHub is
                 ].values;
                 for (uint i; i < assignmentIds.length; i++) {
                     //
-                    if (
-                        assignments[assignmentIds[i]].commitment == bytes32(0)
-                    ) {
+                    if (assignments[assignmentIds[i]].digest == bytes32(0)) {
                         _slashMiner(
                             assignments[assignmentIds[i]].worker,
                             false

@@ -20,7 +20,6 @@ async function updateHybridModelMetadata() {
     workerHubAddress,
     `Missing ${networkName}_WORKERHUB_ADDRESS from environment variables!`
   );
-
   const tokenId = 300001;
   const minHardware = BigInt(1);
   const metadataObj = {
