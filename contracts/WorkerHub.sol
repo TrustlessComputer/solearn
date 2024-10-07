@@ -570,6 +570,7 @@ contract WorkerHub is
         assignments[_assigmentId].output = _data; //Record the solution
         bytes32 digest = keccak256(abi.encodePacked(_data)); //Record the solution
         assignments[_assigmentId].digest = digest;
+        assignments[_assigmentId].commitment = digest;
         inference.status = InferenceStatus.Commit;
         inference.assignments.push(_assigmentId);
 
@@ -1069,7 +1070,9 @@ contract WorkerHub is
                 ].values;
                 for (uint i; i < assignmentIds.length; i++) {
                     //
-                    if (assignments[assignmentIds[i]].digest == bytes32(0)) {
+                    if (
+                        assignments[assignmentIds[i]].commitment == bytes32(0)
+                    ) {
                         _slashMiner(
                             assignments[assignmentIds[i]].worker,
                             false
