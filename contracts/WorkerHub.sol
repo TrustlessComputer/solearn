@@ -760,7 +760,6 @@ contract WorkerHub is
     function setPenaltyDuration(
         uint40 _penaltyDuration
     ) public virtual onlyOwner {
-        require(_penaltyDuration > 0, "Invalid penalty duration");
         _updateEpoch();
 
         emit PenaltyDurationUpdated(penaltyDuration, _penaltyDuration);
