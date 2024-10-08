@@ -242,6 +242,7 @@ interface IWorkerHub is IInferable {
     event TreasuryAddressUpdated(address oldAddress, address newAddress);
     event DAOTokenMinted(
         uint256 chainId,
+        uint256 inferenceId,
         address modelAddress,
         address[] receivers,
         uint256[] amounts,

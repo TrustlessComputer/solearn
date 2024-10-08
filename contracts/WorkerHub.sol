@@ -837,7 +837,14 @@ contract WorkerHub is
                 PERCENTAGE_DENOMINATOR;
         }
         IDAOToken(daoToken).mintBatch(addresses, amounts);
-        emit DAOTokenMinted(chainID, modelAddress, addresses, amounts, 2);
+        emit DAOTokenMinted(
+            chainID,
+            _inferenceId,
+            modelAddress,
+            addresses,
+            amounts,
+            2
+        );
     }
 
     function _getChainID() internal view returns (uint256) {
@@ -986,6 +993,7 @@ contract WorkerHub is
             IDAOToken(daoToken).mintBatch(addresses, amounts);
             emit DAOTokenMinted(
                 chainId,
+                _inferenceId,
                 modelAddress,
                 addresses,
                 amounts,
