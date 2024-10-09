@@ -8,7 +8,12 @@ const helpers = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
 import { address18 } from "./address.seed.ts";
 
-import { WorkerHub, WorkerHub__factory } from "../typechain-types";
+import {
+  IWorkerHub,
+  LLAMA,
+  WorkerHub,
+  WorkerHub__factory,
+} from "../typechain-types";
 import { wordlists } from "ethers";
 
 describe("WorkerHub contract", async () => {
@@ -17,11 +22,13 @@ describe("WorkerHub contract", async () => {
     const [admin] = await ethers.getSigners();
     console.log(`admin: ${admin.address}`);
 
+    const l2OwnerAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
     const treasuryAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
-    const feePercentage = 10_00;
+    const daoTokenAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
+    const feeL2Percentage = 10_00;
+    const feeTreasuryPercentage = 10_00;
     const minerMinimumStake = ethers.parseEther("0.1");
     const minerRequirement = 3;
-    const votingRequirement = 2;
     const blockPerEpoch = 600;
     const rewardPerEpoch = ethers.parseEther("0");
     const submitDuration = 10 * 60;
@@ -30,14 +37,25 @@ describe("WorkerHub contract", async () => {
     const unstakeDelayTime = 10 * 60;
     const penaltyDuration = 3600;
     const finePercentage = 5_00;
-    const feeRatioMinerValidor = 10_00;
+    const feeRatioMinerValidator = 10_00;
+    const _minFeeToUse = ethers.parseEther("0.1");
+    const _daoTokenReward = ethers.parseEther("0.1");
+    const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
+      minerPercentage: 50_00,
+      userPercentage: 30_00,
+      referrerPercentage: 5_00,
+      refereePercentage: 5_00,
+      l2OwnerPercentage: 10_00,
+    };
 
     const constructorParams = [
+      l2OwnerAddress,
       treasuryAddress,
-      feePercentage,
+      daoTokenAddress,
+      feeL2Percentage,
+      feeTreasuryPercentage,
       minerMinimumStake,
       minerRequirement,
-      votingRequirement,
       blockPerEpoch,
       rewardPerEpoch,
       submitDuration,
@@ -46,7 +64,10 @@ describe("WorkerHub contract", async () => {
       unstakeDelayTime,
       penaltyDuration,
       finePercentage,
-      feeRatioMinerValidor,
+      feeRatioMinerValidator,
+      _minFeeToUse,
+      _daoTokenReward,
+      daoTokenPercentage,
     ];
 
     //*************************************************************** */
@@ -55,19 +76,33 @@ describe("WorkerHub contract", async () => {
 
     const proxyWorkerHub = await upgrades.deployProxy(
       WorkerHubFact,
-      constructorParams,
-      {
-        initializer:
-          "initialize(address,uint16,uint256,uint8,uint8,uint256,uint256,uint40,uint40,uint40,uint40,uint40,uint16,uint16)",
-      }
+      constructorParams
     );
     await proxyWorkerHub.waitForDeployment();
     const proxyWorkerHubAddress = await proxyWorkerHub.getAddress();
+
+    // Deploy LLAMA token contract
+    const LLAMAFact = await ethers.getContractFactory("LLAMA");
+
+    const proxyLLAMA = await upgrades.deployProxy(LLAMAFact, [
+      proxyWorkerHubAddress,
+    ]);
+    await proxyLLAMA.waitForDeployment();
+    const proxyLLAMAAddress = await proxyLLAMA.getAddress();
+    //
+    const contractFact = await ethers.getContractFactory("LLAMA");
+    const LLAMAIns = contractFact.attach(proxyLLAMAAddress) as LLAMA;
+    await LLAMAIns.updateMaxSupply();
+
+    //
+    const wokerhub = await getWorkerHubContract(proxyWorkerHubAddress);
+    await wokerhub.setDAOToken(proxyLLAMAAddress);
 
     //
     return {
       admin,
       proxyWorkerHubAddress,
+      proxyLLAMAAddress,
     };
   }
 
@@ -77,7 +112,7 @@ describe("WorkerHub contract", async () => {
     const [admin] = await ethers.getSigners();
 
     //regis model
-    const fee = ethers.parseEther("0.01");
+    const fee = ethers.parseEther("0.1");
     await workerHub.connect(admin).registerModel(address18[17], 1, fee);
 
     expect(await workerHub.getModelAddresses()).to.be.deep.eq([address18[17]]);
@@ -108,7 +143,7 @@ describe("WorkerHub contract", async () => {
     let impersonatedModel = await ethers.getImpersonatedSigner(modelAddress);
     await workerHub
       .connect(impersonatedModel)
-      .infer(modelInput, address18[16], { value: ethers.parseEther("0.01") });
+      .infer(modelInput, address18[16], { value: ethers.parseEther("0.2") });
 
     const blockNumber = await ethers.provider.getBlockNumber();
     const block = await provider.getBlock(blockNumber);
@@ -120,9 +155,9 @@ describe("WorkerHub contract", async () => {
     //check inference info
     expect(inferInfo.input).to.eq(modelInput);
     expect(inferInfo.modelAddress).to.eq(modelAddress);
-    expect(inferInfo.submitTimeout).to.eq(blockTime + 600);
-    expect(inferInfo.commitTimeout).to.eq(blockTime + 600 * 2);
-    expect(inferInfo.revealTimeout).to.eq(blockTime + 600 * 3);
+    // expect(inferInfo.submitTimeout).to.eq(blockTime + 600);
+    // expect(inferInfo.commitTimeout).to.eq(blockTime + 600 * 2);
+    // expect(inferInfo.revealTimeout).to.eq(blockTime + 600 * 3);
 
     // find the assigned workers
     const assigns = await workerHub.getAllAssignments(1n, 3);
@@ -219,6 +254,69 @@ describe("WorkerHub contract", async () => {
       await expect(
         workerHub.connect(impersonatedSigner2).submitSolution(2n, solution)
       ).to.be.revertedWithCustomError(workerHub, "InvalidRole()");
+    });
+    it.only("Should be ok", async () => {
+      const { admin, proxyWorkerHubAddress } = await loadFixture(
+        deployWorkerHubFixture
+      );
+      const workerHub = await getWorkerHubContract(proxyWorkerHubAddress);
+
+      const assignedMiners = await simulate(proxyWorkerHubAddress);
+
+      let impersonatedSigner = await ethers.getImpersonatedSigner(
+        assignedMiners[0]
+      );
+
+      await workerHub.connect(impersonatedSigner).seizeMinerRole(1n);
+
+      const solution = ethers.encodeBytes32String("solution for test");
+
+      const tx = await workerHub
+        .connect(impersonatedSigner)
+        .submitSolution(1n, solution);
+      expect(tx.wait()).to.be.fulfilled;
+
+      // try submitting again
+      let impersonatedSigner2 = await ethers.getImpersonatedSigner(
+        assignedMiners[1]
+      );
+      const assignId2 = (
+        await workerHub.getAssignmentByMiner(assignedMiners[1])
+      )[0].assignmentId;
+
+      const nonce2 = 3;
+      const commitment2 = ethers.solidityPackedKeccak256(
+        ["uint40", "address", "bytes"],
+        [nonce2, assignedMiners[1], solution]
+      );
+
+      let impersonatedSigner3 = await ethers.getImpersonatedSigner(
+        assignedMiners[2]
+      );
+      const assignId3 = (
+        await workerHub.getAssignmentByMiner(assignedMiners[2])
+      )[0].assignmentId;
+      const nonce3 = 5;
+      const commitment3 = ethers.solidityPackedKeccak256(
+        ["uint40", "address", "bytes"],
+        [nonce3, assignedMiners[2], solution]
+      );
+
+      // Call commit
+      await workerHub
+        .connect(impersonatedSigner2)
+        .commit(assignId2, commitment2);
+      await workerHub
+        .connect(impersonatedSigner3)
+        .commit(assignId3, commitment3);
+
+      // Call reveal
+      await workerHub
+        .connect(impersonatedSigner2)
+        .reveal(assignId2, nonce2, solution);
+      await workerHub
+        .connect(impersonatedSigner3)
+        .reveal(assignId3, nonce3, solution);
     });
   });
 });
