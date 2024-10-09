@@ -240,13 +240,24 @@ interface IWorkerHub is IInferable {
     );
     event MinFeeToUseUpdated(uint256 oldValue, uint256 newValue);
     event TreasuryAddressUpdated(address oldAddress, address newAddress);
+    enum DAOTokenReceiverRole {
+        Miner,
+        Validator,
+        User,
+        Referrer,
+        Referee,
+        L2Owner
+    }
+    struct DAOTokenReceiverInfor {
+        address receiver;
+        uint256 amount;
+        DAOTokenReceiverRole role;
+    }
     event DAOTokenMinted(
         uint256 chainId,
         uint256 inferenceId,
         address modelAddress,
-        address[] receivers,
-        uint256[] amounts,
-        uint256 referrerIndex
+        DAOTokenReceiverInfor[] receivers
     );
     event StreamedData(uint256 indexed assignmentId, bytes data);
 
