@@ -253,7 +253,7 @@ interface IWorkerHub is IInferable {
         uint256 amount;
         DAOTokenReceiverRole role;
     }
-    event DAOTokenMinted(
+    event DAOTokenMintedV2(
         uint256 chainId,
         uint256 inferenceId,
         address modelAddress,

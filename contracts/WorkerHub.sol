@@ -865,7 +865,7 @@ contract WorkerHub is
                 DAOTokenReceiverRole.User
             );
         }
-        emit DAOTokenMinted(
+        emit DAOTokenMintedV2(
             chainID,
             _inferenceId,
             modelAddress,
@@ -1235,7 +1235,7 @@ contract WorkerHub is
 
         if (notReachedLimit && remainToken > 0) {
             console.log("Minted DAO Token for minerss");
-            emit DAOTokenMinted(
+            emit DAOTokenMintedV2(
                 chainId,
                 _inferenceId,
                 modelAddress,
