@@ -1227,9 +1227,11 @@ contract WorkerHub is
         }
 
         DAOTokenReceiverInfor[]
-            memory receiverInforsClone = new DAOTokenReceiverInfor[](counter);
+            memory receiverInforsClone = new DAOTokenReceiverInfor[](
+                counter - 1
+            );
 
-        for (uint256 i = 0; i < counter; i++) {
+        for (uint256 i = 0; i < counter - 1; i++) {
             receiverInforsClone[i] = receiverInfors[i];
         }
 
