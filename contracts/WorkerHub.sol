@@ -653,11 +653,11 @@ contract WorkerHub is
         Inference storage inference = inferences[inferId];
 
         if (uint40(block.number) > inference.revealTimeout)
-            revert RevealTimeout();
+            revert("RevealTimeout");
         if (inference.status == InferenceStatus.Commit) {
             inference.status = InferenceStatus.Reveal;
         } else if (inference.status != InferenceStatus.Reveal) {
-            revert InvalidInferenceStatus();
+            revert("InvalidInferenceStatus");
         }
 
         // Check the msg sender is the assigned miner
@@ -670,7 +670,7 @@ contract WorkerHub is
             abi.encodePacked(_nonce, msg.sender, _data)
         );
 
-        if (commitment != revealHash) revert InvalidReveal();
+        if (commitment != revealHash) revert("InvalidReveal");
         bytes32 digest = keccak256(abi.encodePacked(_data));
 
         assignment.revealNonce = _nonce;
@@ -925,170 +925,6 @@ contract WorkerHub is
         return _findMostVotedDigest(_inferenceId);
     }
 
-    // function getFilterCommitment(
-    //     uint256 _inferenceId
-    // ) external view returns (bool, address[] memory, uint256[] memory) {
-    //     (bytes32 mostVotedDigest, uint8 maxCount) = _findMostVotedDigest(
-    //         _inferenceId
-    //     );
-
-    //     // Check the maxCount is greater than the voting requirement
-    //     if (
-    //         maxCount <
-    //         _getThresholdValue(assignmentsByInference[_inferenceId].size())
-    //     ) {
-    //         return (false, new address[](0), new uint256[](0));
-    //     }
-
-    //     bool notReachedLimit;
-    //     bool isReferred = inferences[_inferenceId].referrer != address(0);
-    //     if (isReferred) {
-    //         notReachedLimit = IDAOToken(daoToken).validateSupplyIncrease(
-    //             daoTokenReward
-    //         );
-    //     } else {
-    //         notReachedLimit = IDAOToken(daoToken).validateSupplyIncrease(
-    //             (daoTokenReward *
-    //                 (PERCENTAGE_DENOMINATOR -
-    //                     daoTokenPercentage.referrerPercentage -
-    //                     daoTokenPercentage.refereePercentage)) /
-    //                 PERCENTAGE_DENOMINATOR
-    //         );
-    //     }
-
-    //     uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
-    //     uint256 len = assignmentIds.length;
-    //     bool isMatchMinerResult = assignments[assignmentIds[0]].digest ==
-    //         mostVotedDigest;
-
-    //     //EAI
-    //     uint256 feeForMiner = 0;
-    //     uint256 shareFeePerValidator = 0;
-    //     uint256 remainValue = inferences[_inferenceId].value;
-    //     // DAO token
-    //     uint256 tokenForMiner = 0;
-    //     uint256 shareTokenPerValidator = 0;
-    //     uint256 remainToken = (daoTokenPercentage.minerPercentage *
-    //         380000000000000000) / PERCENTAGE_DENOMINATOR;
-
-    //     // Transsffer DAO token to l2 owner, user and referrer
-    //     address modelAddress = inferences[_inferenceId].modelAddress;
-    //     uint256 chainId = _getChainID();
-    //     address[] memory addresses;
-    //     uint256[] memory amounts;
-    //     if (notReachedLimit && remainToken > 0) {
-    //         (addresses, amounts) = get_transferDAOToken(
-    //             chainId,
-    //             modelAddress,
-    //             _inferenceId,
-    //             isReferred
-    //         );
-    //         return (true, addresses, amounts);
-    //     }
-
-    //     // Calculate fee for miner and share fee for validators
-    //     if (isMatchMinerResult) {
-    //         //if miner result is correct, then fee for miner = feeRatioMinerValidator * remainValue / 10000
-    //         feeForMiner =
-    //             (remainValue * feeRatioMinerValidator) /
-    //             PERCENTAGE_DENOMINATOR;
-    //         shareFeePerValidator = (remainValue - feeForMiner) / (maxCount - 1);
-    //         tokenForMiner =
-    //             (remainToken * feeRatioMinerValidator) /
-    //             PERCENTAGE_DENOMINATOR;
-    //         shareTokenPerValidator =
-    //             (remainToken - tokenForMiner) /
-    //             (maxCount - 1);
-    //     } else {
-    //         //if miner result is incorrect, then fee for miner = 0 and all honest validators will share the remainValue
-    //         shareFeePerValidator = remainValue / maxCount;
-    //         shareTokenPerValidator = remainToken / maxCount;
-    //     }
-    //     address[] memory addresses1;
-    //     uint256[] memory amounts1;
-    //     uint8 counter = 0;
-
-    //     for (uint256 i = 0; i < len; i++) {
-    //         Assignment storage assignment = assignments[assignmentIds[i]];
-    //         // Logically, when a worker calls the commit function, it proves that the worker is active.
-    //         // Calling the reveal function is a natural consequence if the worker is honest.
-    //         // Therefore, if a worker calls commit but doesn't call reveal, it is highly likely that they are dishonest,
-    //         // leading to the decision to slash this worker.
-    //         if (assignment.digest != mostVotedDigest) {
-    //             // assignment.vote = Vote.Disapproval;
-    //             // _slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
-    //         } else {
-    //             // process for honest workers
-    //             // assignment.vote = Vote.Approval;
-    //             if (assignment.role == AssignmentRole.Validating) {
-    //                 // if it iss validator, then transfer share fee
-    //                 if (shareFeePerValidator > 0) {
-    //                     // TransferHelper.safeTransferNative(
-    //                     //     assignment.worker,
-    //                     //     shareFeePerValidator
-    //                     // );
-    //                 }
-    //                 if (notReachedLimit && tokenForMiner > 0) {
-    //                     addresses1[counter] = assignment.worker;
-    //                     amounts1[counter] = shareTokenPerValidator;
-    //                     counter++;
-    //                 }
-    //             } else {
-    //                 if (feeForMiner > 0) {
-    //                     // it is miner, if miner is honest, the feeForMiner is greater than 0
-    //                     // TransferHelper.safeTransferNative(
-    //                     //     assignment.worker,
-    //                     //     feeForMiner
-    //                     // );
-    //                 }
-    //                 if (notReachedLimit && tokenForMiner > 0) {
-    //                     addresses1[counter] = assignment.worker;
-    //                     amounts1[counter] = tokenForMiner;
-    //                     counter++;
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     return (true, addresses1, amounts1);
-    // }
-
-    // function get_transferDAOToken(
-    //     uint256 chainID,
-    //     address modelAddress,
-    //     uint256 _inferenceId,
-    //     bool _isReferred
-    // ) internal view returns (address[] memory, uint256[] memory) {
-    //     DAOTokenPercentage memory percentage = daoTokenPercentage;
-    //     address referrer = inferences[_inferenceId].referrer;
-    //     address[] memory addresses;
-    //     uint256[] memory amounts;
-
-    //     addresses[0] = l2Owner;
-    //     addresses[1] = inferences[_inferenceId].creator;
-    //     amounts[0] =
-    //         (daoTokenReward * percentage.l2OwnerPercentage) /
-    //         PERCENTAGE_DENOMINATOR;
-
-    //     if (_isReferred) {
-    //         addresses[2] = referrer;
-    //         amounts[1] =
-    //             (daoTokenReward *
-    //                 (percentage.refereePercentage +
-    //                     percentage.userPercentage)) /
-    //             PERCENTAGE_DENOMINATOR;
-    //         amounts[2] =
-    //             (daoTokenReward * percentage.referrerPercentage) /
-    //             PERCENTAGE_DENOMINATOR;
-    //     } else {
-    //         amounts[1] =
-    //             (daoTokenReward * percentage.userPercentage) /
-    //             PERCENTAGE_DENOMINATOR;
-    //     }
-
-    //     return (addresses, amounts);
-    // }
-
     function _filterCommitment(uint256 _inferenceId) internal returns (bool) {
         (bytes32 mostVotedDigest, uint8 maxCount) = _findMostVotedDigest(
             _inferenceId
@@ -1227,13 +1063,12 @@ contract WorkerHub is
         }
 
         DAOTokenReceiverInfor[]
-            memory receiverInforsClone = new DAOTokenReceiverInfor[](
-                counter - 1
-            );
+            memory receiverInforsClone = new DAOTokenReceiverInfor[](counter);
 
-        for (uint256 i = 0; i < counter - 1; i++) {
+        for (uint256 i = 0; i < counter; i++) {
             receiverInforsClone[i] = receiverInfors[i];
         }
+        // revert("====> 3 Hello mr Jack");
 
         if (notReachedLimit && remainToken > 0) {
             console.log("Minted DAO Token for minerss");
