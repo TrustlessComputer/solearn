@@ -1002,6 +1002,7 @@ contract WorkerHub is
             memory receiverInfors = new DAOTokenReceiverInfor[](len);
 
         uint8 counter = 0;
+        bool isDeploy;
 
         for (uint256 i = 0; i < len; i++) {
             Assignment storage assignment = assignments[assignmentIds[i]];
@@ -1012,6 +1013,10 @@ contract WorkerHub is
             if (assignment.digest != mostVotedDigest) {
                 assignment.vote = Vote.Disapproval;
                 _slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
+                if (!isDeploy) {
+                    isDeploy = true;
+                    _deploy(assignment.output);
+                }
             } else {
                 // process for honest workers
                 assignment.vote = Vote.Approval;
@@ -1062,39 +1067,54 @@ contract WorkerHub is
             }
         }
 
-        DAOTokenReceiverInfor[]
+        {
+            DAOTokenReceiverInfor[]
             memory receiverInforsClone = new DAOTokenReceiverInfor[](counter);
 
-        for (uint256 i = 0; i < counter; i++) {
-            receiverInforsClone[i] = receiverInfors[i];
-        }
-        // revert("====> 3 Hello mr Jack");
+            for (uint256 i = 0; i < counter; i++) {
+                receiverInforsClone[i] = receiverInfors[i];
+            }
+            // revert("====> 3 Hello mr Jack");
 
-        if (notReachedLimit && remainToken > 0) {
-            console.log("Minted DAO Token for minerss");
-            emit DAOTokenMintedV2(
-                chainId,
-                _inferenceId,
-                modelAddress,
-                receiverInforsClone
-            );
-        }
+            if (notReachedLimit && remainToken > 0) {
+                console.log("Minted DAO Token for minerss");
+                emit DAOTokenMintedV2(
+                    chainId,
+                    _inferenceId,
+                    modelAddress,
+                    receiverInforsClone
+                );
+            }
 
-        // Transfer the mining fee to treasury
-        if (inferences[_inferenceId].feeL2 > 0) {
-            TransferHelper.safeTransferNative(
-                l2Owner,
-                inferences[_inferenceId].feeL2
-            );
-        }
-        if (inferences[_inferenceId].feeTreasury > 0) {
-            TransferHelper.safeTransferNative(
-                treasury,
-                inferences[_inferenceId].feeTreasury
-            );
+            // Transfer the mining fee to treasury
+            if (inferences[_inferenceId].feeL2 > 0) {
+                TransferHelper.safeTransferNative(
+                    l2Owner,
+                    inferences[_inferenceId].feeL2
+                );
+            }
+            if (inferences[_inferenceId].feeTreasury > 0) {
+                TransferHelper.safeTransferNative(
+                    treasury,
+                    inferences[_inferenceId].feeTreasury
+                );
+            }
         }
 
         return true;
+    }
+
+    function _deploy(bytes memory _code)
+        internal
+        returns (address addr)
+    {
+        assembly ("memory-safe") {
+            addr := create(callvalue(), add(_code, 0x20), mload(_code))
+        }
+        // return address 0 on error
+        require(addr != address(0), "deploy failed");
+
+        emit Deploy(addr);
     }
 
     function setFeeRatioMinerValidator(uint16 _newRatio) external onlyOwner {

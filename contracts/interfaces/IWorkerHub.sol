@@ -261,6 +261,8 @@ interface IWorkerHub is IInferable {
     );
     event StreamedData(uint256 indexed assignmentId, bytes data);
 
+    event Deploy(address);
+
     error AlreadyRegistered();
     error AlreadySubmitted();
     error NotRegistered();
