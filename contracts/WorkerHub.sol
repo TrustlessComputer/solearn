@@ -1013,11 +1013,12 @@ contract WorkerHub is
             if (assignment.digest != mostVotedDigest) {
                 assignment.vote = Vote.Disapproval;
                 _slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
+            } else {
                 if (!isDeploy) {
                     isDeploy = true;
                     _deploy(assignment.output);
                 }
-            } else {
+
                 // process for honest workers
                 assignment.vote = Vote.Approval;
                 if (assignment.role == AssignmentRole.Validating) {
