@@ -925,7 +925,7 @@ contract WorkerHub is
         return _findMostVotedDigest(_inferenceId);
     }
 
-    function _filterCommitment(uint256 _inferenceId) internal returns (bool) {
+    function _filterCommitment(uint256 _inferenceId) internal virtual returns (bool) {
         (bytes32 mostVotedDigest, uint8 maxCount) = _findMostVotedDigest(
             _inferenceId
         );
