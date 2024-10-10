@@ -6,12 +6,14 @@ import {Set} from "./lib/Set.sol";
 
 interface ICallBack {
     function resultReceived(bytes calldata result) external;
+    function resultReceived(uint originInferId, bytes calldata result) external;
 }
 
 contract WorkerHubScoring is WorkerHub {
     using Set for Set.Uint256Set;
 
     struct InferExtended {
+        address sender;
         address destination;
         uint inferId;
     }
@@ -19,16 +21,16 @@ contract WorkerHubScoring is WorkerHub {
     event Log(string);
 
     // // define storage here
-    // WorkerHub internal workHubInst;
+    address internal workHubAddr;
     // inter => InferExtended
     mapping(uint => InferExtended) internal extendInferInfo;
 
     uint256[100] private __gap2;
 
     // define functions
-    // function setupScoringVar(address payable _workhubAddr) onlyOwner external {
-    //     workHubInst = WorkerHub(_workhubAddr);
-    // }
+    function setupScoringVar(address payable _workhubAddr) onlyOwner external {
+        workHubAddr = _workhubAddr;
+    }
 
     function inferWithCallback(
         uint originInferId,
@@ -38,7 +40,23 @@ contract WorkerHubScoring is WorkerHub {
     )  external payable returns(uint256 inferid) {
        inferid = WorkerHub(payable(address(this))).infer{value: msg.value}(_input, _creator);
 
-       extendInferInfo[inferid] = InferExtended(callback, originInferId);
+       extendInferInfo[inferid] = InferExtended(msg.sender, callback, originInferId);
+    }
+
+    function _fallBackWorkerHub(uint originInferId, bytes memory data) internal {
+        try ICallBack(workHubAddr).resultReceived(originInferId, data) {
+            emit Log("call sucess");
+        } catch {
+            emit Log("external call failed");
+        }
+    }
+
+    function _fallBack(address dest, bytes memory data) internal {
+        try ICallBack(dest).resultReceived(data) {
+            emit Log("call sucess");
+        } catch {
+            emit Log("external call failed");
+        }
     }
 
     // todo: issace add more logic 
@@ -62,10 +80,10 @@ contract WorkerHubScoring is WorkerHub {
         // 
         address desAddr = extendInferInfo[_inferenceId].destination;
         if (desAddr != address(0)) {
-            try ICallBack(desAddr).resultReceived(bytes("")) {
-                emit Log("call sucess");
-            } catch {
-                emit Log("external call failed");
+            if (desAddr == workHubAddr) {
+                _fallBackWorkerHub(extendInferInfo[_inferenceId].inferId, bytes(""));
+            } else {
+                _fallBack(extendInferInfo[_inferenceId].destination, bytes(""));
             }
         }
     }
