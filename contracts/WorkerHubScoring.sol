@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {WorkerHub} from "./WorkerHub.sol";
+import {TransferHelper, WorkerHub} from "./WorkerHub.sol";
 import {Set} from "./lib/Set.sol";
 
 interface ICallBack {
@@ -73,8 +73,73 @@ contract WorkerHubScoring is WorkerHub {
             return false;
         }
 
+        uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
+        uint256 len = assignmentIds.length;
+        bool isMatchMinerResult = assignments[assignmentIds[0]].digest ==
+            mostVotedDigest;
 
-        // todo: do something
+        //EAI
+        uint256 feeForMiner = 0;
+        uint256 shareFeePerValidator = 0;
+        uint256 remainValue = inferences[_inferenceId].value;
+
+        // Calculate fee for miner and share fee for validators
+        if (isMatchMinerResult) {
+            //if miner result is correct, then fee for miner = feeRatioMinerValidator * remainValue / 10000
+            feeForMiner =
+                (remainValue * feeRatioMinerValidator) /
+                PERCENTAGE_DENOMINATOR;
+            shareFeePerValidator = (remainValue - feeForMiner) / (maxCount - 1);
+        } else {
+            //if miner result is incorrect, then fee for miner = 0 and all honest validators will share the remainValue
+            shareFeePerValidator = remainValue / maxCount;
+        }
+
+        for (uint256 i = 0; i < len; i++) {
+            Assignment storage assignment = assignments[assignmentIds[i]];
+            // Logically, when a worker calls the commit function, it proves that the worker is active.
+            // Calling the reveal function is a natural consequence if the worker is honest.
+            // Therefore, if a worker calls commit but doesn't call reveal, it is highly likely that they are dishonest,
+            // leading to the decision to slash this worker.
+            if (assignment.digest != mostVotedDigest) {
+                assignment.vote = Vote.Disapproval;
+                _slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
+            } else {
+                // process for honest workers
+                assignment.vote = Vote.Approval;
+                if (assignment.role == AssignmentRole.Validating) {
+                    // if it iss validator, then transfer share fee
+                    if (shareFeePerValidator > 0) {
+                        TransferHelper.safeTransferNative(
+                            assignment.worker,
+                            shareFeePerValidator
+                        );
+                    }
+                } else {
+                    if (feeForMiner > 0) {
+                        // it is miner, if miner is honest, the feeForMiner is greater than 0
+                        TransferHelper.safeTransferNative(
+                            assignment.worker,
+                            feeForMiner
+                        );
+                    }
+                }
+            }
+        }
+
+        // Transfer the mining fee to treasury
+        if (inferences[_inferenceId].feeL2 > 0) {
+            TransferHelper.safeTransferNative(
+                l2Owner,
+                inferences[_inferenceId].feeL2
+            );
+        }
+        if (inferences[_inferenceId].feeTreasury > 0) {
+            TransferHelper.safeTransferNative(
+                treasury,
+                inferences[_inferenceId].feeTreasury
+            );
+        }
 
         // take result and send it to the callback address
         // 
