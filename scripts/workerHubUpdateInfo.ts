@@ -13,7 +13,7 @@ async function workerHubUpdateInfo() {
   const workerhub = await getWorkerHubContract(config.workerHubAddress);
   console.log("Worker Hub address: ", config.workerHubAddress);
 
-  const reward = ethers.parseEther("0.1");
+  const reward = ethers.parseEther("10");
   const tx = await workerhub.setDAOTokenReward(reward);
   const receipt = await tx.wait();
   console.log("Transaction hash: ", receipt?.hash);
