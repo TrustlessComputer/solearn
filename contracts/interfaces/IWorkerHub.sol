@@ -10,7 +10,8 @@ interface IWorkerHub is IInferable {
         Commit,
         Reveal,
         Processed,
-        Killed
+        Killed,
+        Transferred
     }
 
     enum AssignmentRole {

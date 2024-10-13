@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {TransferHelper, WorkerHub} from "./WorkerHub.sol";
+import {WorkerHub} from "./WorkerHub.sol";
+import {TransferHelper} from "./lib/TransferHelper.sol";
+import {ICallBack} from "./interfaces/ICallBack.sol";
 import {Set} from "./lib/Set.sol";
-
-interface ICallBack {
-    function resultReceived(bytes calldata result) external;
-    function resultReceived(uint originInferId, bytes calldata result) external;
-}
 
 contract WorkerHubScoring is WorkerHub {
     using Set for Set.Uint256Set;
@@ -28,7 +25,7 @@ contract WorkerHubScoring is WorkerHub {
     uint256[100] private __gap2;
 
     // define functions
-    function setupScoringVar(address payable _workhubAddr) onlyOwner external {
+    function setupScoringVar(address payable _workhubAddr) external onlyOwner {
         workHubAddr = _workhubAddr;
     }
 
@@ -37,13 +34,23 @@ contract WorkerHubScoring is WorkerHub {
         bytes calldata _input,
         address _creator,
         address callback
-    )  external payable returns(uint256 inferid) {
-       inferid = WorkerHub(payable(address(this))).infer{value: msg.value}(_input, _creator);
+    ) external payable override returns (uint256 inferid) {
+        inferid = WorkerHub(payable(address(this))).infer{value: msg.value}(
+            _input,
+            _creator
+        );
 
-       extendInferInfo[inferid] = InferExtended(msg.sender, callback, originInferId);
+        extendInferInfo[inferid] = InferExtended(
+            msg.sender,
+            callback,
+            originInferId
+        );
     }
 
-    function _fallBackWorkerHub(uint originInferId, bytes memory data) internal {
+    function _fallBackWorkerHub(
+        uint originInferId,
+        bytes memory data
+    ) internal {
         try ICallBack(workHubAddr).resultReceived(originInferId, data) {
             emit Log("call sucess");
         } catch {
@@ -59,8 +66,10 @@ contract WorkerHubScoring is WorkerHub {
         }
     }
 
-    // todo: issace add more logic 
-    function _filterCommitment(uint256 _inferenceId) internal override returns (bool) {
+    // todo: issace add more logic
+    function _filterCommitment(
+        uint256 _inferenceId
+    ) internal override returns (bool) {
         (bytes32 mostVotedDigest, uint8 maxCount) = _findMostVotedDigest(
             _inferenceId
         );
@@ -142,16 +151,17 @@ contract WorkerHubScoring is WorkerHub {
         }
 
         // take result and send it to the callback address
-        // 
+        //
         address desAddr = extendInferInfo[_inferenceId].destination;
         if (desAddr != address(0)) {
             if (desAddr == workHubAddr) {
-                _fallBackWorkerHub(extendInferInfo[_inferenceId].inferId, bytes(""));
+                _fallBackWorkerHub(
+                    extendInferInfo[_inferenceId].inferId,
+                    bytes("")
+                );
             } else {
                 _fallBack(extendInferInfo[_inferenceId].destination, bytes(""));
             }
         }
     }
-
 }
-
