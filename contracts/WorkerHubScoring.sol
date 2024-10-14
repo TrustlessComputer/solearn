@@ -108,6 +108,7 @@ contract WorkerHubScoring is WorkerHub {
             shareFeePerValidator = remainValue / maxCount;
         }
 
+        bytes memory output;
         for (uint256 i = 0; i < len; i++) {
             Assignment storage assignment = assignments[assignmentIds[i]];
             // Logically, when a worker calls the commit function, it proves that the worker is active.
@@ -118,6 +119,10 @@ contract WorkerHubScoring is WorkerHub {
                 assignment.vote = Vote.Disapproval;
                 _slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
             } else {
+                if (output.length == 0) {
+                    output = assignment.output;
+                }
+
                 // process for honest workers
                 assignment.vote = Vote.Approval;
                 if (assignment.role == AssignmentRole.Validating) {
@@ -161,10 +166,10 @@ contract WorkerHubScoring is WorkerHub {
             if (desAddr == workHubAddr) {
                 _fallBackWorkerHub(
                     extendInferInfo[_inferenceId].inferId,
-                    bytes("0x0A")
+                    output
                 );
             } else {
-                _fallBack(extendInferInfo[_inferenceId].destination, bytes(""));
+                _fallBack(extendInferInfo[_inferenceId].destination, output);
             }
         }
     }
