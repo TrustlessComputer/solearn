@@ -5,6 +5,7 @@ import {WorkerHub} from "./WorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {ICallBack} from "./interfaces/ICallBack.sol";
 import {Set} from "./lib/Set.sol";
+import {console} from "hardhat/console.sol";
 
 contract WorkerHubScoring is WorkerHub {
     using Set for Set.Uint256Set;
@@ -35,10 +36,13 @@ contract WorkerHubScoring is WorkerHub {
         address _creator,
         address callback
     ) external payable override returns (uint256 inferid) {
-        inferid = WorkerHub(payable(address(this))).infer{value: msg.value}(
-            _input,
-            _creator
-        );
+        console.log("inferWithCallback");
+        // inferid = WorkerHub(payable(address(this))).infer{value: msg.value}(
+        //     _input,
+        //     _creator
+        // );
+
+        inferid = infer(_input, _creator);
 
         extendInferInfo[inferid] = InferExtended(
             msg.sender,
@@ -157,7 +161,7 @@ contract WorkerHubScoring is WorkerHub {
             if (desAddr == workHubAddr) {
                 _fallBackWorkerHub(
                     extendInferInfo[_inferenceId].inferId,
-                    bytes("")
+                    bytes("0x0A")
                 );
             } else {
                 _fallBack(extendInferInfo[_inferenceId].destination, bytes(""));

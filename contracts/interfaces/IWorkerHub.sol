@@ -297,4 +297,8 @@ interface IWorkerHub is IInferable {
     error InvalidReveal();
     error InvalidNonce();
     error AlreadyRevealed();
+
+    function getMinFeeToUse(
+        address _modelAddress
+    ) external view returns (uint256);
 }

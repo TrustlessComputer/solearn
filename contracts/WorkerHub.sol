@@ -12,6 +12,8 @@ import {WorkerHubStorage} from "./storages/WorkerHubStorage.sol";
 import {IDAOToken} from "./tokens/IDAOToken.sol";
 import {ICallBack} from "./interfaces/ICallBack.sol";
 import {IHybridModel} from "./interfaces/IHybridModel.sol";
+import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
+
 import {console} from "hardhat/console.sol";
 
 contract WorkerHub is
@@ -42,11 +44,7 @@ contract WorkerHub is
         uint8 _minerRequirement,
         uint256 _blocksPerEpoch,
         uint256 _rewardPerEpoch,
-        uint40 _submitDuration,
-        uint40 _commitDuration,
-        uint40 _revealDuration,
-        uint40 _unstakeDelayTime,
-        uint40 _penaltyDuration,
+        uint256 _duration,
         uint16 _finePercentage,
         uint16 _feeRatioMinerValidor,
         uint256 _minFeeToUse,
@@ -74,18 +72,24 @@ contract WorkerHub is
         minerRequirement = _minerRequirement;
         blocksPerEpoch = _blocksPerEpoch;
         rewardPerEpoch = _rewardPerEpoch;
-        submitDuration = _submitDuration;
-        commitDuration = _commitDuration;
-        revealDuration = _revealDuration;
-        unstakeDelayTime = _unstakeDelayTime;
         maximumTier = 1;
         lastBlock = block.number;
-        penaltyDuration = _penaltyDuration;
         finePercentage = _finePercentage;
         minFeeToUse = _minFeeToUse;
         daoTokenReward = _daoTokenReward;
 
+        splitAndAssignDuration(_duration);
         setDAOTokenPercentage(_daoTokenPercentage);
+    }
+
+    function splitAndAssignDuration(uint256 _duration) internal {
+        require(_duration < 2 ** 200, "Duration too large");
+
+        submitDuration = uint40(_duration >> 160);
+        commitDuration = uint40((_duration << 96) >> 216);
+        revealDuration = uint40((_duration << 136) >> 216);
+        penaltyDuration = uint40((_duration << 176) >> 216);
+        unstakeDelayTime = uint40((_duration << 216) >> 216);
     }
 
     function _validateDaoTokenPercentage(
@@ -416,8 +420,11 @@ contract WorkerHub is
     function infer(
         bytes calldata _input,
         address _creator
-    ) external payable whenNotPaused returns (uint256) {
+    ) public payable whenNotPaused returns (uint256) {
         Model storage model = models[msg.sender];
+        console.log("infer: ", model.tier);
+        console.log("sender: ", msg.sender);
+
         if (model.tier == 0) revert Unauthorized();
 
         if (msg.value < model.minimumFee) revert FeeTooLow();
@@ -1034,8 +1041,12 @@ contract WorkerHub is
         }
 
         // Call scoring model contract
+        //TODO: kelvin add logic ccheck minFee to use scoring contract
         if (modelScoring != address(0)) {
-            IHybridModel(modelScoring).inferWithCallback(
+            uint256 scoringFee = IWorkerHub(workerHubScoring).getMinFeeToUse(
+                modelScoring
+            );
+            IHybridModel(modelScoring).inferWithCallback{value: scoringFee}(
                 _inferenceId,
                 inferences[_inferenceId].input,
                 inferences[_inferenceId].creator,
@@ -1259,6 +1270,12 @@ contract WorkerHub is
 
     function _getThresholdValue(uint x) internal pure returns (uint) {
         return (x * 2) / 3 + (x % 3 == 0 ? 0 : 1);
+    }
+
+    function getMinFeeToUse(
+        address _modelAddress
+    ) external view returns (uint256) {
+        return models[_modelAddress].minimumFee;
     }
 
     function _claimReward(

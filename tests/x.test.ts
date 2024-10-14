@@ -12,9 +12,13 @@ import {
   IWorkerHub,
   LLAMA,
   WorkerHub,
-  WorkerHub__factory,
+  ModelCollection,
+  WorkerHubScoring,
+  DAOToken,
 } from "../typechain-types";
-import { wordlists } from "ethers";
+import { EventLog, wordlists } from "ethers";
+import { proxy } from "../typechain-types/@openzeppelin/contracts/index.js";
+import { HybridModel } from "../typechain-types/contracts/HybridModel";
 
 describe("WorkerHub contract", async () => {
   const { provider } = ethers;
@@ -22,9 +26,81 @@ describe("WorkerHub contract", async () => {
     const [admin] = await ethers.getSigners();
     console.log(`admin: ${admin.address}`);
 
+    const proxyLLAMAAddress = await deployDAOToken();
+    const modelCollectionAddress = await deployModelCollection();
+    const proxyWorkerHubAddress = await deployWorkerHub(proxyLLAMAAddress);
+    const hybridModelAddress = await deployHybridModel(
+      proxyWorkerHubAddress,
+      modelCollectionAddress
+    );
+    const proxyWorkerHubScoringAddress = await deployWorkerHubScoring(
+      proxyLLAMAAddress,
+      proxyWorkerHubAddress
+    );
+    const scoringModelAddress = await deployScoringModel(
+      proxyWorkerHubScoringAddress,
+      proxyWorkerHubAddress,
+      modelCollectionAddress
+    );
+
+    return {
+      admin,
+      proxyLLAMAAddress,
+      proxyWorkerHubAddress,
+      hybridModelAddress,
+      proxyWorkerHubScoringAddress,
+      scoringModelAddress,
+    };
+  }
+
+  async function deployModelCollection() {
+    const treasuryAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
+
+    const name = "Eternal AI";
+    const symbol = "";
+    const mintPrice = ethers.parseEther("0");
+    const royaltyReceiver = treasuryAddress;
+    const royalPortion = 5_00;
+    const nextModelId = 300_001; //TODO: need to change before deployment
+
+    const constructorParams = [
+      name,
+      symbol,
+      mintPrice,
+      royaltyReceiver,
+      royalPortion,
+      nextModelId,
+    ];
+
+    const contractFact = await ethers.getContractFactory("ModelCollection");
+
+    const proxy = await upgrades.deployProxy(contractFact, constructorParams);
+    await proxy.waitForDeployment();
+    return await proxy.getAddress();
+  }
+
+  async function deployDAOToken() {
+    const LLAMAFact = await ethers.getContractFactory("DAOToken");
+    // const address0 = ethers.ZeroAddress;
+    const name = "LLAMA";
+    const symbol = "LLAMA";
+    const _MAX_SUPPLY_CAP = ethers.parseEther("2100000000");
+
+    const proxyLLAMA = await upgrades.deployProxy(LLAMAFact, [
+      name,
+      symbol,
+      _MAX_SUPPLY_CAP,
+    ]);
+    await proxyLLAMA.waitForDeployment();
+    const proxyLLAMAAddress = await proxyLLAMA.getAddress();
+
+    return proxyLLAMAAddress;
+  }
+
+  async function deployWorkerHub(daoTokenAddress: string) {
     const l2OwnerAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
     const treasuryAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
-    const daoTokenAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
+    // const daoTokenAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
     const feeL2Percentage = 10_00;
     const feeTreasuryPercentage = 10_00;
     const minerMinimumStake = ethers.parseEther("0.1");
@@ -70,8 +146,6 @@ describe("WorkerHub contract", async () => {
       daoTokenPercentage,
     ];
 
-    //*************************************************************** */
-    console.log("WorkerHub.deploying ...");
     const WorkerHubFact = await ethers.getContractFactory("WorkerHub");
 
     const proxyWorkerHub = await upgrades.deployProxy(
@@ -81,41 +155,246 @@ describe("WorkerHub contract", async () => {
     await proxyWorkerHub.waitForDeployment();
     const proxyWorkerHubAddress = await proxyWorkerHub.getAddress();
 
-    // Deploy LLAMA token contract
-    const LLAMAFact = await ethers.getContractFactory("LLAMA");
+    //*************************************************************** */
+    const contractFact = await ethers.getContractFactory("DAOToken");
+    const LLAMAIns = contractFact.attach(daoTokenAddress) as DAOToken;
+    await LLAMAIns.updateWorkerHub(proxyWorkerHubAddress);
 
-    const proxyLLAMA = await upgrades.deployProxy(LLAMAFact, [
-      proxyWorkerHubAddress,
-    ]);
-    await proxyLLAMA.waitForDeployment();
-    const proxyLLAMAAddress = await proxyLLAMA.getAddress();
-    //
-    const contractFact = await ethers.getContractFactory("LLAMA");
-    const LLAMAIns = contractFact.attach(proxyLLAMAAddress) as LLAMA;
-    await LLAMAIns.updateMaxSupply();
-
-    //
-    const wokerhub = await getWorkerHubContract(proxyWorkerHubAddress);
-    await wokerhub.setDAOToken(proxyLLAMAAddress);
-
-    //
-    return {
-      admin,
-      proxyWorkerHubAddress,
-      proxyLLAMAAddress,
-    };
+    return proxyWorkerHubAddress;
   }
 
-  async function simulate(wokerHubAddress: string) {
-    const workerHub = await getWorkerHubContract(wokerHubAddress);
+  async function deployHybridModel(
+    workerHubAddress: string,
+    collectionAddress: string
+  ) {
+    const identifier = 0;
+    const name = "Flux V2";
+    const minHardware = 1;
+    const metadataObj = {
+      version: 1,
+      model_name: "Flux V2",
+      model_type: "image",
+      model_url: "",
+      model_file_hash: "",
+      min_hardware: 1,
+      verifier_url: "",
+      verifier_file_hash: "",
+    };
+    const metadata = JSON.stringify(metadataObj, null, "\t");
+
+    const constructorParams = [
+      workerHubAddress,
+      collectionAddress,
+      identifier,
+      name,
+      metadata,
+    ];
+
+    const contractFact = await ethers.getContractFactory("HybridModel");
+
+    const proxy = await upgrades.deployProxy(contractFact, constructorParams);
+    await proxy.waitForDeployment();
+    const proxyAddress = await proxy.getAddress();
+
+    //
+    const WorkerHub = await ethers.getContractFactory("WorkerHub");
+    const ModelCollection = await ethers.getContractFactory("ModelCollection");
+    const modelOwnerAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
+
+    const collection = ModelCollection.attach(
+      collectionAddress
+    ) as ModelCollection;
+    const mintReceipt = await (
+      await collection.mint(modelOwnerAddress, metadata, proxyAddress)
+    ).wait();
+
+    const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
+      (event: EventLog) => event.eventName === "NewToken"
+    );
+    if (newTokenEvent) {
+      console.log("tokenId:", newTokenEvent.args?.tokenId);
+    }
+
+    const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
+    await workerHub.registerModel(
+      proxyAddress,
+      minHardware,
+      ethers.parseEther("0.1")
+    );
+
+    return proxyAddress;
+  }
+
+  async function deployWorkerHubScoring(
+    daoTokenAddress: string,
+    workerHubAddress: string
+  ) {
+    const l2OwnerAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
+    const treasuryAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
+    // const daoTokenAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
+    const feeL2Percentage = 10_00;
+    const feeTreasuryPercentage = 10_00;
+    const minerMinimumStake = ethers.parseEther("0.1");
+    const minerRequirement = 3;
+    const blockPerEpoch = 600;
+    const rewardPerEpoch = ethers.parseEther("0");
+    const submitDuration = 10 * 60;
+    const commitDuration = 10 * 60;
+    const revealDuration = 10 * 60;
+    const unstakeDelayTime = 10 * 60;
+    const penaltyDuration = 3600;
+    const finePercentage = 5_00;
+    const feeRatioMinerValidator = 10_00;
+    const _minFeeToUse = ethers.parseEther("0.1");
+    const _daoTokenReward = ethers.parseEther("0.1");
+    const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
+      minerPercentage: 50_00,
+      userPercentage: 30_00,
+      referrerPercentage: 5_00,
+      refereePercentage: 5_00,
+      l2OwnerPercentage: 10_00,
+    };
+
+    const constructorParams = [
+      l2OwnerAddress,
+      treasuryAddress,
+      daoTokenAddress,
+      feeL2Percentage,
+      feeTreasuryPercentage,
+      minerMinimumStake,
+      minerRequirement,
+      blockPerEpoch,
+      rewardPerEpoch,
+      submitDuration,
+      commitDuration,
+      revealDuration,
+      unstakeDelayTime,
+      penaltyDuration,
+      finePercentage,
+      feeRatioMinerValidator,
+      _minFeeToUse,
+      _daoTokenReward,
+      daoTokenPercentage,
+    ];
+
+    const WorkerHubFact = await ethers.getContractFactory("WorkerHubScoring");
+
+    const proxyWorkerHub = await upgrades.deployProxy(
+      WorkerHubFact,
+      constructorParams
+    );
+    await proxyWorkerHub.waitForDeployment();
+    const proxyWorkerHubScoringAddress = await proxyWorkerHub.getAddress();
+
+    //*************************************************************** */
+    const contractFactScoring = await ethers.getContractFactory(
+      "WorkerHubScoring"
+    );
+    const workerHubScoringIns = contractFactScoring.attach(
+      proxyWorkerHubScoringAddress
+    ) as WorkerHubScoring;
+    await workerHubScoringIns.setupScoringVar(workerHubAddress);
+
+    return proxyWorkerHubScoringAddress;
+  }
+
+  async function deployScoringModel(
+    workerHubScoringAddress: string,
+    workerHubAddress: string,
+    collectionAddress: string
+  ) {
+    const identifier = 0;
+    const name = "Scoring V2";
+    const minHardware = 1;
+    const metadataObj = {
+      version: 1,
+      model_name: "Scoring V2",
+      model_type: "Scoring",
+      model_url: "",
+      model_file_hash: "",
+      min_hardware: 1,
+      verifier_url: "",
+      verifier_file_hash: "",
+    };
+    const metadata = JSON.stringify(metadataObj, null, "\t");
+
+    const constructorParams = [
+      workerHubScoringAddress,
+      collectionAddress,
+      identifier,
+      name,
+      metadata,
+    ];
+
+    const contractFact = await ethers.getContractFactory("HybridModel");
+
+    const proxy = await upgrades.deployProxy(contractFact, constructorParams);
+    await proxy.waitForDeployment();
+    const proxyAddress = await proxy.getAddress();
+
+    //
+    const WorkerHubScoring = await ethers.getContractFactory(
+      "WorkerHubScoring"
+    );
+    const ModelCollection = await ethers.getContractFactory("ModelCollection");
+    const modelOwnerAddress = "0xb9Ec1345357A10CFc3C43d7455238881048d1f63";
+
+    const collection = ModelCollection.attach(
+      collectionAddress
+    ) as ModelCollection;
+    const mintReceipt = await (
+      await collection.mint(modelOwnerAddress, metadata, proxyAddress)
+    ).wait();
+
+    const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
+      (event: EventLog) => event.eventName === "NewToken"
+    );
+    if (newTokenEvent) {
+      console.log("tokenId:", newTokenEvent.args?.tokenId);
+    }
+    console.log("workerHubScoringAddress: ", workerHubScoringAddress);
+
+    const workerHubScoring = WorkerHubScoring.attach(
+      workerHubScoringAddress
+    ) as WorkerHubScoring;
+    await workerHubScoring.registerModel(
+      proxyAddress,
+      minHardware,
+      ethers.parseEther("0.1")
+    );
+
+    const x = await workerHubScoring.models(proxyAddress);
+    console.log("===>Scoring model info: ", x);
+
+    //* *************************************************************** */
+    const WorkerHubFact = await ethers.getContractFactory("WorkerHub");
+    const workerHub = WorkerHubFact.attach(workerHubAddress) as WorkerHub;
+    await workerHub.setScoringInfo(workerHubScoringAddress, proxyAddress);
+
+    return proxyAddress;
+  }
+
+  async function simulate(
+    workerHubAddress: string,
+    workerHubScoringAddress: string,
+    hybridModelAddress: string,
+    scoringModelAddress: string
+  ) {
+    const workerHub = await getWorkerHubContract(workerHubAddress);
+    const workerHubScoring = (await getContractInstance(
+      "WorkerHubScoring",
+      workerHubScoringAddress
+    )) as WorkerHubScoring;
 
     const [admin] = await ethers.getSigners();
 
-    //regis model
-    const fee = ethers.parseEther("0.1");
-    await workerHub.connect(admin).registerModel(address18[17], 1, fee);
-
-    expect(await workerHub.getModelAddresses()).to.be.deep.eq([address18[17]]);
+    //check regis model
+    expect(await workerHub.getModelAddresses()).to.be.deep.eq([
+      hybridModelAddress,
+    ]);
+    expect(await workerHubScoring.getModelAddresses()).to.be.deep.eq([
+      scoringModelAddress,
+    ]);
 
     // Set the balance of the impersonated account
     const hexBalance = "0x" + ethers.parseEther("100").toString(16);
@@ -132,18 +411,27 @@ describe("WorkerHub contract", async () => {
         .registerMiner(1, { value: ethers.parseEther("0.1") });
 
       await workerHub.connect(impersonatedSigner).joinForMinting();
+
+      await workerHubScoring
+        .connect(impersonatedSigner)
+        .registerMiner(1, { value: ethers.parseEther("0.1") });
+
+      await workerHubScoring.connect(impersonatedSigner).joinForMinting();
     }
-
     expect((await workerHub.getMinerAddresses()).length).to.eq(18);
+    expect((await workerHubScoring.getMinerAddresses()).length).to.eq(18);
 
-    // simulate contract model call to workerhub to create inference
+    // simulate contract model call to worker hub to create inference
+    const hybridModelIns = (await getContractInstance(
+      "HybridModel",
+      hybridModelAddress
+    )) as HybridModel;
 
-    const modelAddress = address18[17];
     const modelInput = ethers.encodeBytes32String("test");
-    let impersonatedModel = await ethers.getImpersonatedSigner(modelAddress);
-    await workerHub
-      .connect(impersonatedModel)
-      .infer(modelInput, address18[16], { value: ethers.parseEther("0.2") });
+    let impersonatedUser = await ethers.getImpersonatedSigner(address18[16]);
+    await hybridModelIns
+      .connect(impersonatedUser)
+      .infer(modelInput, { value: ethers.parseEther("0.2") });
 
     const blockNumber = await ethers.provider.getBlockNumber();
     const block = await provider.getBlock(blockNumber);
@@ -154,7 +442,8 @@ describe("WorkerHub contract", async () => {
     const inferInfo = await workerHub.getInferenceInfo(1n);
     //check inference info
     expect(inferInfo.input).to.eq(modelInput);
-    expect(inferInfo.modelAddress).to.eq(modelAddress);
+    expect(inferInfo.modelAddress).to.eq(hybridModelAddress);
+
     // expect(inferInfo.submitTimeout).to.eq(blockTime + 600);
     // expect(inferInfo.commitTimeout).to.eq(blockTime + 600 * 2);
     // expect(inferInfo.revealTimeout).to.eq(blockTime + 600 * 3);
@@ -174,6 +463,13 @@ describe("WorkerHub contract", async () => {
     return workerHub as WorkerHub;
   }
 
+  async function getContractInstance(name: string, address: string) {
+    const contractFact = await ethers.getContractFactory(name);
+    const contractIns = contractFact.attach(address);
+
+    return contractIns;
+  }
+
   describe("WorkerHub contract", async () => {
     it("should deploy WorkerHub contract", async () => {
       const { admin, proxyWorkerHubAddress } = await loadFixture(
@@ -186,20 +482,40 @@ describe("WorkerHub contract", async () => {
     });
 
     it("should simulate --> create inference + assign task to workers", async () => {
-      const { admin, proxyWorkerHubAddress } = await loadFixture(
-        deployWorkerHubFixture
-      );
+      const {
+        admin,
+        proxyLLAMAAddress,
+        proxyWorkerHubAddress,
+        hybridModelAddress,
+        proxyWorkerHubScoringAddress,
+        scoringModelAddress,
+      } = await loadFixture(deployWorkerHubFixture);
 
-      await simulate(proxyWorkerHubAddress);
+      await simulate(
+        proxyWorkerHubAddress,
+        proxyWorkerHubScoringAddress,
+        hybridModelAddress,
+        scoringModelAddress
+      );
     });
 
     it("should seize the miner role", async () => {
-      const { admin, proxyWorkerHubAddress } = await loadFixture(
-        deployWorkerHubFixture
-      );
+      const {
+        admin,
+        proxyLLAMAAddress,
+        proxyWorkerHubAddress,
+        hybridModelAddress,
+        proxyWorkerHubScoringAddress,
+        scoringModelAddress,
+      } = await loadFixture(deployWorkerHubFixture);
       const workerHub = await getWorkerHubContract(proxyWorkerHubAddress);
 
-      const assignedMiners = await simulate(proxyWorkerHubAddress);
+      const assignedMiners = await simulate(
+        proxyWorkerHubAddress,
+        proxyWorkerHubScoringAddress,
+        hybridModelAddress,
+        scoringModelAddress
+      );
 
       for await (let i of Array(3).keys()) {
         let impersonatedSigner = await ethers.getImpersonatedSigner(
@@ -225,13 +541,24 @@ describe("WorkerHub contract", async () => {
         assignedMiners[0]
       );
     });
+
     it("Should submit solution", async () => {
-      const { admin, proxyWorkerHubAddress } = await loadFixture(
-        deployWorkerHubFixture
-      );
+      const {
+        admin,
+        proxyLLAMAAddress,
+        proxyWorkerHubAddress,
+        hybridModelAddress,
+        proxyWorkerHubScoringAddress,
+        scoringModelAddress,
+      } = await loadFixture(deployWorkerHubFixture);
       const workerHub = await getWorkerHubContract(proxyWorkerHubAddress);
 
-      const assignedMiners = await simulate(proxyWorkerHubAddress);
+      const assignedMiners = await simulate(
+        proxyWorkerHubAddress,
+        proxyWorkerHubScoringAddress,
+        hybridModelAddress,
+        scoringModelAddress
+      );
 
       let impersonatedSigner = await ethers.getImpersonatedSigner(
         assignedMiners[0]
@@ -255,13 +582,24 @@ describe("WorkerHub contract", async () => {
         workerHub.connect(impersonatedSigner2).submitSolution(2n, solution)
       ).to.be.revertedWithCustomError(workerHub, "InvalidRole()");
     });
+
     it.only("Should be ok", async () => {
-      const { admin, proxyWorkerHubAddress } = await loadFixture(
-        deployWorkerHubFixture
-      );
+      const {
+        admin,
+        proxyLLAMAAddress,
+        proxyWorkerHubAddress,
+        hybridModelAddress,
+        proxyWorkerHubScoringAddress,
+        scoringModelAddress,
+      } = await loadFixture(deployWorkerHubFixture);
       const workerHub = await getWorkerHubContract(proxyWorkerHubAddress);
 
-      const assignedMiners = await simulate(proxyWorkerHubAddress);
+      const assignedMiners = await simulate(
+        proxyWorkerHubAddress,
+        proxyWorkerHubScoringAddress,
+        hybridModelAddress,
+        scoringModelAddress
+      );
 
       let impersonatedSigner = await ethers.getImpersonatedSigner(
         assignedMiners[0]
@@ -310,7 +648,7 @@ describe("WorkerHub contract", async () => {
         .connect(impersonatedSigner3)
         .commit(assignId3, commitment3);
 
-      // Call reveal
+      // // Call reveal
       await workerHub
         .connect(impersonatedSigner2)
         .reveal(assignId2, nonce2, solution);
