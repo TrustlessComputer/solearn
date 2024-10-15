@@ -851,15 +851,15 @@ contract WorkerHub is
             )
         );
         if (_isReferred) {
-            uint256 userAmt = (daoTokenReward * percentage.refereePercentage) /
-                PERCENTAGE_DENOMINATOR;
+            uint256 refereeAmt = (daoTokenReward *
+                percentage.refereePercentage) / PERCENTAGE_DENOMINATOR;
             uint256 refererAmt = (daoTokenReward *
                 percentage.referrerPercentage) / PERCENTAGE_DENOMINATOR;
 
             daoReceivers.push(
                 DAOTokenReceiverInfor(
                     inferences[_inferenceId].creator,
-                    userAmt,
+                    refereeAmt,
                     DAOTokenReceiverRole.Referee
                 )
             );
@@ -1032,25 +1032,25 @@ contract WorkerHub is
         }
 
         // mint DAO token
-        uint256 length = daoReceiversInfo[_inferenceId].length;
-        if (notReachedLimit && length > 0) {
-            DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
-                _inferenceId
-            ];
-            for (uint256 i = 0; i < len; i++) {
-                IDAOToken(daoToken).mint(
-                    receiversInf[i].receiver,
-                    receiversInf[i].amount
-                );
-            }
+        // uint256 length = daoReceiversInfo[_inferenceId].length;
+        // if (notReachedLimit && length > 0) {
+        //     DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
+        //         _inferenceId
+        //     ];
+        //     for (uint256 i = 0; i < len; i++) {
+        //         IDAOToken(daoToken).mint(
+        //             receiversInf[i].receiver,
+        //             receiversInf[i].amount
+        //         );
+        //     }
 
-            emit DAOTokenMintedV2(
-                _getChainID(),
-                _inferenceId,
-                inferences[_inferenceId].modelAddress,
-                receiversInf
-            );
-        }
+        //     emit DAOTokenMintedV2(
+        //         _getChainID(),
+        //         _inferenceId,
+        //         inferences[_inferenceId].modelAddress,
+        //         receiversInf
+        //     );
+        // }
 
         // Transfer the mining fee to treasury
         if (inferences[_inferenceId].feeL2 > 0) {
@@ -1169,29 +1169,31 @@ contract WorkerHub is
             if (!_filterCommitment(_inferenceId)) {
                 // edisable workers not call reveal and refund to user
                 // Processed
-                TransferHelper.safeTransferNative(
-                    inference.creator,
-                    inference.value + inference.feeL2 + inference.feeTreasury
-                );
-
-                // disable workers not call reveal
-                uint256[] memory assignmentIds = assignmentsByInference[
-                    _inferenceId
-                ].values;
-                for (uint i; i < assignmentIds.length; i++) {
-                    //
-                    if (assignments[assignmentIds[i]].digest == bytes32(0)) {
-                        _slashMiner(
-                            assignments[assignmentIds[i]].worker,
-                            false
-                        );
-                    }
-                    inference.status = InferenceStatus.Processed;
-                }
+                _handleNotEnoughVote(_inferenceId);
+                inference.status = InferenceStatus.Processed;
             }
         }
 
         emit InferenceStatusUpdate(_inferenceId, inference.status);
+    }
+
+    function _handleNotEnoughVote(uint256 _inferenceId) internal virtual {
+        Inference memory inference = inferences[_inferenceId];
+
+        TransferHelper.safeTransferNative(
+            inference.creator,
+            inference.value + inference.feeL2 + inference.feeTreasury
+        );
+
+        // disable workers not call reveal
+        uint256[] memory assignmentIds = assignmentsByInference[_inferenceId]
+            .values;
+        for (uint i; i < assignmentIds.length; i++) {
+            //
+            if (assignments[assignmentIds[i]].digest == bytes32(0)) {
+                _slashMiner(assignments[assignmentIds[i]].worker, false);
+            }
+        }
     }
 
     function setScoringInfo(
@@ -1269,7 +1271,13 @@ contract WorkerHub is
                     DAOTokenReceiverRole.User
                 )
             );
-            IDAOToken(daoToken).mint(receiver, userDAOTokenReceive);
+
+            for (uint256 i = 0; i <= len; i++) {
+                IDAOToken(daoToken).mint(
+                    receiversInf[i].receiver,
+                    receiversInf[i].amount
+                );
+            }
 
             emit DAOTokenMintedV2(
                 _getChainID(),
@@ -1280,6 +1288,12 @@ contract WorkerHub is
         }
 
         inference.status = InferenceStatus.Transferred;
+    }
+
+    function prepareMintingData(
+        DAOTokenReceiverInfor[] memory _receiversInfo
+    ) internal view returns (bytes memory) {
+        return abi.encode(_receiversInfo);
     }
 
     function resultReceived(bytes calldata result) external virtual {

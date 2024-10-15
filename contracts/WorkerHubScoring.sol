@@ -161,20 +161,36 @@ contract WorkerHubScoring is WorkerHub {
         }
 
         // take result and send it to the callback address
+        _callBack(_inferenceId, output);
+
+        inferences[_inferenceId].status = InferenceStatus.Processed;
+
+        return true;
+    }
+
+    function _callBack(
+        uint256 _inferenceId,
+        bytes memory _output
+    ) internal virtual {
+        // take result and send it to the callback address
         address desAddr = extendInferInfo[_inferenceId].destination;
         if (desAddr != address(0)) {
             if (desAddr == workHubAddr) {
                 _fallBackWorkerHub(
                     extendInferInfo[_inferenceId].inferId,
-                    output
+                    _output
                 );
             } else {
-                _fallBack(extendInferInfo[_inferenceId].destination, output);
+                _fallBack(extendInferInfo[_inferenceId].destination, _output);
             }
         }
-        inferences[_inferenceId].status = InferenceStatus.Processed;
+    }
 
-        return true;
+    function _handleNotEnoughVote(uint256 _inferenceId) internal override {
+        super._handleNotEnoughVote(_inferenceId);
+
+        //
+        _callBack(_inferenceId, "0x01");
     }
 
     function _validatateSolution(bytes calldata _data) internal pure override {
@@ -186,6 +202,10 @@ contract WorkerHubScoring is WorkerHub {
             resultValue >= 1 && resultValue <= 10,
             "Result must be between 1 and 10"
         );
+    }
+
+    function resultReceived(bytes calldata result) external override {
+        revert("Not implemented");
     }
 
     function resultReceived(
