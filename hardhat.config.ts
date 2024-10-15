@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "zk_testnet",
   solidity: {
     compilers: [
       {
@@ -87,6 +87,8 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.ZK_TESTNET_TREASURY_ADDRESS,
       collectionAddress: process.env.ZK_TESTNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.ZK_TESTNET_WORKER_HUB_ADDRESS,
+      workerHubScoringAddress:
+        process.env.ZK_TESTNET_WORKER_HUB_SCORING_ADDRESS,
       daoTokenAddress: process.env.ZK_TESTNET_DAO_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       timeout: 500_000,
@@ -101,6 +103,8 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.LLAMA_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.LLAMA_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.LLAMA_MAINNET_WORKER_HUB_ADDRESS,
+      workerHubScoringAddress:
+        process.env.LLAMA_MAINNET_WORKER_HUB_SCORING_ADDRESS,
       daoTokenAddress: process.env.LLAMA_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
@@ -115,6 +119,8 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.FLUX_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.FLUX_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.FLUX_MAINNET_WORKER_HUB_ADDRESS,
+      workerHubScoringAddress:
+        process.env.FLUX_MAINNET_WORKER_HUB_SCORING_ADDRESS,
       daoTokenAddress: process.env.FLUX_MAINNET_DAO_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.

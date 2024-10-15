@@ -1,10 +1,10 @@
 import assert from "assert";
 import { ethers, network, upgrades } from "hardhat";
-import { DAOToken, IWorkerHub, WorkerHub } from "../../typechain-types";
+import { IWorkerHub, WorkerHubScoring } from "../../typechain-types";
 import { deployOrUpgrade } from "../lib/utils";
 import { combineDurations } from "../utils";
 
-async function deployWorkerHub() {
+async function deployWorkerHubScoring() {
   const config = network.config as any;
   const networkName = network.name.toUpperCase();
 
@@ -29,16 +29,16 @@ async function deployWorkerHub() {
   const minerMinimumStake = ethers.parseEther("25000");
   const minerRequirement = 3;
   const blockPerEpoch = 600 * 2;
-  const rewardPerEpoch = ethers.parseEther("0.38");
+  const rewardPerEpoch = ethers.parseEther("0.38"); //ethers.parseEther("0.6659");
   const submitDuration = 10 * 6 * 5;
   const commitDuration = 10 * 6 * 5;
   const revealDuration = 10 * 6 * 5;
   const unstakeDelayTime = 1814400; // NOTE:  1,814,400 blocks = 21 days
-  const penaltyDuration = 1200; // NOTE: 3.3 hours
-  const finePercentage = 10_00;
+  const penaltyDuration = 0; // NOTE: 3.3 hours
+  const finePercentage = 0;
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const minFeeToUse = ethers.parseEther("0.1");
-  const daoTokenReward = ethers.parseEther("0"); // llama =  10
+  const minFeeToUse = ethers.parseEther("0");
+  const daoTokenReward = ethers.parseEther("0"); //
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
     userPercentage: 30_00,
@@ -73,31 +73,22 @@ async function deployWorkerHub() {
     daoTokenPercentage,
   ];
 
-  const workerHub = (await deployOrUpgrade(
-    config.workerHubAddress,
-    "WorkerHub",
+  const workerHubScoring = (await deployOrUpgrade(
+    config.workerHubScoringAddress,
+    "WorkerHubScoring",
     constructorParams,
     config,
     true
-  )) as unknown as WorkerHub;
+  )) as unknown as WorkerHubScoring;
 
-  const workerHubAddress = workerHub.target;
+  const workerHubScoringAddress = workerHubScoring.target;
 
-  console.log(`${networkName}_WORKER_HUB_ADDRESS=${workerHubAddress}`);
-
-  if (!config.workerHubAddress) {
-    const DAOTokenFact = await ethers.getContractFactory("DAOToken");
-    const daoToken = DAOTokenFact.attach(daoTokenAddress) as DAOToken;
-
-    const tx = await daoToken.updateWorkerHub(workerHubAddress);
-    const receipt = await tx.wait();
-    console.log("DAO Token updated Worker Hub address:");
-    console.log("Tx hash: ", receipt?.hash);
-    console.log("Tx status: ", receipt?.status);
-  }
+  console.log(
+    `${networkName}_WORKER_HUB_SCORING_ADDRESS=${workerHubScoringAddress}`
+  );
 }
 
-deployWorkerHub()
+deployWorkerHubScoring()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

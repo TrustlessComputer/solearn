@@ -14,8 +14,6 @@ import {ICallBack} from "./interfaces/ICallBack.sol";
 import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 
-import {console} from "hardhat/console.sol";
-
 contract WorkerHub is
     WorkerHubStorage,
     OwnableUpgradeable,
@@ -422,16 +420,32 @@ contract WorkerHub is
         address _creator
     ) public payable whenNotPaused returns (uint256) {
         Model storage model = models[msg.sender];
-        console.log("infer: ", model.tier);
-        console.log("sender: ", msg.sender);
-
         if (model.tier == 0) revert Unauthorized();
 
-        if (msg.value < model.minimumFee) revert FeeTooLow();
+        uint256 scoringFee = _validateEnoughFeeToUse(model.minimumFee);
+        return _infer(_input, _creator, scoringFee);
+    }
+
+    function _validateEnoughFeeToUse(
+        uint256 _modelMinimumFee
+    ) internal view virtual returns (uint256) {
+        uint256 scoringFee = IWorkerHub(workerHubScoring).getMinFeeToUse(
+            modelScoring
+        );
+        if (msg.value < _modelMinimumFee + scoringFee) revert("Fee too low");
+
+        return scoringFee;
+    }
+
+    function _infer(
+        bytes calldata _input,
+        address _creator,
+        uint256 _scoringFee
+    ) internal returns (uint256) {
         uint256 inferenceId = ++inferenceNumber;
         Inference storage inference = inferences[inferenceId];
 
-        uint256 value = msg.value;
+        uint256 value = msg.value - _scoringFee;
         uint256 feeL2 = (value * feeL2Percentage) / PERCENTAGE_DENOMINATOR;
         uint256 feeTreasury = (value * feeTreasuryPercentage) /
             PERCENTAGE_DENOMINATOR;
@@ -545,13 +559,16 @@ contract WorkerHub is
         }
     }
 
+    function _validatateSolution(bytes calldata _data) internal pure virtual {
+        if (_data.length == 0) revert InvalidData();
+    }
+
     function submitSolution(
         uint256 _assigmentId,
         bytes calldata _data
     ) public virtual whenNotPaused {
         _updateEpoch();
-        address _msgSender = msg.sender;
-        if (_data.length == 0) revert InvalidData();
+        _validatateSolution(_data);
 
         // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
         if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
@@ -564,7 +581,7 @@ contract WorkerHub is
         uint256 inferId = clonedAssignments.inferenceId;
 
         // Check the msg sender is the assigned miner
-        if (_msgSender != clonedAssignments.worker) revert Unauthorized();
+        if (msg.sender != clonedAssignments.worker) revert Unauthorized();
         if (clonedAssignments.role != AssignmentRole.Mining)
             revert InvalidRole();
 
@@ -591,7 +608,7 @@ contract WorkerHub is
         countDigest[digest]++;
 
         emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
-        emit SolutionSubmission(_msgSender, _assigmentId);
+        emit SolutionSubmission(msg.sender, _assigmentId);
     }
 
     modifier onlyActiveWorker() {
@@ -649,11 +666,11 @@ contract WorkerHub is
     function reveal(
         uint256 _assignId,
         uint40 _nonce,
-        bytes memory _data
+        bytes calldata _data
     ) public virtual whenNotPaused {
         _updateEpoch();
 
-        if (_data.length == 0) revert InvalidData();
+        _validatateSolution(_data);
         if (_nonce == 0) revert InvalidNonce();
 
         Assignment storage assignment = assignments[_assignId];
@@ -843,7 +860,7 @@ contract WorkerHub is
                 DAOTokenReceiverInfor(
                     inferences[_inferenceId].creator,
                     userAmt,
-                    DAOTokenReceiverRole.User
+                    DAOTokenReceiverRole.Referee
                 )
             );
             daoReceivers.push(
@@ -853,17 +870,7 @@ contract WorkerHub is
                     DAOTokenReceiverRole.Referrer
                 )
             );
-        } else {
-            daoReceivers.push(
-                DAOTokenReceiverInfor(
-                    inferences[_inferenceId].creator,
-                    0,
-                    DAOTokenReceiverRole.User
-                )
-            );
         }
-
-        console.log("Minted DAO Token");
     }
 
     function _getChainID() internal view returns (uint256) {
@@ -1000,7 +1007,6 @@ contract WorkerHub is
                         );
 
                         counter++;
-                        console.log("counter: ", counter);
                     }
                 } else {
                     if (feeForMiner > 0) {
@@ -1020,10 +1026,30 @@ contract WorkerHub is
                         );
 
                         counter++;
-                        console.log("counter: ", counter);
                     }
                 }
             }
+        }
+
+        // mint DAO token
+        uint256 length = daoReceiversInfo[_inferenceId].length;
+        if (notReachedLimit && length > 0) {
+            DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
+                _inferenceId
+            ];
+            for (uint256 i = 0; i < len; i++) {
+                IDAOToken(daoToken).mint(
+                    receiversInf[i].receiver,
+                    receiversInf[i].amount
+                );
+            }
+
+            emit DAOTokenMintedV2(
+                _getChainID(),
+                _inferenceId,
+                inferences[_inferenceId].modelAddress,
+                receiversInf
+            );
         }
 
         // Transfer the mining fee to treasury
@@ -1041,11 +1067,13 @@ contract WorkerHub is
         }
 
         // Call scoring model contract
-        //TODO: kelvin add logic ccheck minFee to use scoring contract
-        if (modelScoring != address(0)) {
+        if (
+            modelScoring != address(0) && notReachedLimit && daoTokenReward > 0
+        ) {
             uint256 scoringFee = IWorkerHub(workerHubScoring).getMinFeeToUse(
                 modelScoring
             );
+
             IHybridModel(modelScoring).inferWithCallback{value: scoringFee}(
                 _inferenceId,
                 inferences[_inferenceId].input,
@@ -1053,6 +1081,7 @@ contract WorkerHub is
                 address(this)
             );
         }
+        inferences[_inferenceId].status = InferenceStatus.Processed;
 
         return true;
     }
@@ -1138,8 +1167,6 @@ contract WorkerHub is
             // if 2/3 miners approve, then mark this infer as processed and trigger resolve infer again
             // else slash miner has not submitted solution and use miner's answer as result
             if (!_filterCommitment(_inferenceId)) {
-                console.log("Reveal 1");
-
                 // edisable workers not call reveal and refund to user
                 // Processed
                 TransferHelper.safeTransferNative(
@@ -1159,9 +1186,9 @@ contract WorkerHub is
                             false
                         );
                     }
+                    inference.status = InferenceStatus.Processed;
                 }
             }
-            inference.status = InferenceStatus.Processed;
         }
 
         emit InferenceStatusUpdate(_inferenceId, inference.status);
@@ -1204,7 +1231,7 @@ contract WorkerHub is
     function resultReceived(
         uint _originInferId,
         bytes calldata _result
-    ) external onlyWorkerHubScoring {
+    ) external virtual onlyWorkerHubScoring {
         Inference storage inference = inferences[_originInferId];
 
         if (inference.status != InferenceStatus.Processed)
@@ -1212,15 +1239,14 @@ contract WorkerHub is
 
         // Assuming the result contains a single uint8 value
         require(_result.length == 1, "Invalid result length");
-        uint8 resultValue = uint8(_result[0]);
 
-        // Ensure the resultValue is between 1 and 10
+        uint8 resultValue = uint8(_result[0]);
         require(
             resultValue >= 1 && resultValue <= 10,
             "Result must be between 1 and 10"
         );
 
-        bool isReferred = inferences[_originInferId].referrer != address(0);
+        bool isReferred = inference.referrer != address(0);
         bool notReachedLimit = _validateDAOSupplyIncrease(isReferred);
         if (!notReachedLimit) {
             revert("DAO Token supply limit reached");
@@ -1234,25 +1260,26 @@ contract WorkerHub is
             _originInferId
         ];
         uint256 len = receiversInf.length;
+        if (len > 0) {
+            address receiver = inference.creator;
+            daoReceiversInfo[_originInferId].push(
+                DAOTokenReceiverInfor(
+                    receiver,
+                    userDAOTokenReceive,
+                    DAOTokenReceiverRole.User
+                )
+            );
+            IDAOToken(daoToken).mint(receiver, userDAOTokenReceive);
 
-        for (uint256 i = 0; i < len; i++) {
-            if (receiversInf[i].role == DAOTokenReceiverRole.User) {
-                receiversInf[i].amount += userDAOTokenReceive;
-            }
-            IDAOToken(daoToken).mint(
-                receiversInf[i].receiver,
-                receiversInf[i].amount
+            emit DAOTokenMintedV2(
+                _getChainID(),
+                _originInferId,
+                inference.modelAddress,
+                receiversInf
             );
         }
 
         inference.status = InferenceStatus.Transferred;
-
-        emit DAOTokenMintedV2(
-            _getChainID(),
-            _originInferId,
-            inferences[_originInferId].modelAddress,
-            receiversInf
-        );
     }
 
     function resultReceived(bytes calldata result) external virtual {

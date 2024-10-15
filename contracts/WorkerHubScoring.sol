@@ -5,7 +5,6 @@ import {WorkerHub} from "./WorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {ICallBack} from "./interfaces/ICallBack.sol";
 import {Set} from "./lib/Set.sol";
-import {console} from "hardhat/console.sol";
 
 contract WorkerHubScoring is WorkerHub {
     using Set for Set.Uint256Set;
@@ -36,12 +35,6 @@ contract WorkerHubScoring is WorkerHub {
         address _creator,
         address callback
     ) external payable override returns (uint256 inferid) {
-        console.log("inferWithCallback");
-        // inferid = WorkerHub(payable(address(this))).infer{value: msg.value}(
-        //     _input,
-        //     _creator
-        // );
-
         inferid = infer(_input, _creator);
 
         extendInferInfo[inferid] = InferExtended(
@@ -49,6 +42,14 @@ contract WorkerHubScoring is WorkerHub {
             callback,
             originInferId
         );
+    }
+
+    function _validateEnoughFeeToUse(
+        uint256 _modelMinimumFee
+    ) internal view override returns (uint256) {
+        if (msg.value < _modelMinimumFee) revert("Fee too low");
+
+        return 0;
     }
 
     function _fallBackWorkerHub(
@@ -160,7 +161,6 @@ contract WorkerHubScoring is WorkerHub {
         }
 
         // take result and send it to the callback address
-        //
         address desAddr = extendInferInfo[_inferenceId].destination;
         if (desAddr != address(0)) {
             if (desAddr == workHubAddr) {
@@ -172,5 +172,26 @@ contract WorkerHubScoring is WorkerHub {
                 _fallBack(extendInferInfo[_inferenceId].destination, output);
             }
         }
+        inferences[_inferenceId].status = InferenceStatus.Processed;
+
+        return true;
+    }
+
+    function _validatateSolution(bytes calldata _data) internal pure override {
+        // Assuming the result contains a single uint8 value
+        require(_data.length == 1, "Invalid result length");
+
+        uint8 resultValue = uint8(_data[0]);
+        require(
+            resultValue >= 1 && resultValue <= 10,
+            "Result must be between 1 and 10"
+        );
+    }
+
+    function resultReceived(
+        uint _originInferId,
+        bytes calldata _result
+    ) external override {
+        revert("Not implemented");
     }
 }

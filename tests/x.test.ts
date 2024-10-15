@@ -19,6 +19,7 @@ import {
 import { EventLog, wordlists } from "ethers";
 import { proxy } from "../typechain-types/@openzeppelin/contracts/index.js";
 import { HybridModel } from "../typechain-types/contracts/HybridModel";
+import { combineDurations } from "../scripts/utils";
 
 describe("WorkerHub contract", async () => {
   const { provider } = ethers;
@@ -123,6 +124,13 @@ describe("WorkerHub contract", async () => {
       refereePercentage: 5_00,
       l2OwnerPercentage: 10_00,
     };
+    const duration = combineDurations(
+      submitDuration,
+      commitDuration,
+      revealDuration,
+      unstakeDelayTime,
+      penaltyDuration
+    );
 
     const constructorParams = [
       l2OwnerAddress,
@@ -134,11 +142,7 @@ describe("WorkerHub contract", async () => {
       minerRequirement,
       blockPerEpoch,
       rewardPerEpoch,
-      submitDuration,
-      commitDuration,
-      revealDuration,
-      unstakeDelayTime,
-      penaltyDuration,
+      duration,
       finePercentage,
       feeRatioMinerValidator,
       _minFeeToUse,
@@ -254,6 +258,13 @@ describe("WorkerHub contract", async () => {
       refereePercentage: 5_00,
       l2OwnerPercentage: 10_00,
     };
+    const duration = combineDurations(
+      submitDuration,
+      commitDuration,
+      revealDuration,
+      unstakeDelayTime,
+      penaltyDuration
+    );
 
     const constructorParams = [
       l2OwnerAddress,
@@ -265,11 +276,7 @@ describe("WorkerHub contract", async () => {
       minerRequirement,
       blockPerEpoch,
       rewardPerEpoch,
-      submitDuration,
-      commitDuration,
-      revealDuration,
-      unstakeDelayTime,
-      penaltyDuration,
+      duration,
       finePercentage,
       feeRatioMinerValidator,
       _minFeeToUse,
@@ -648,13 +655,119 @@ describe("WorkerHub contract", async () => {
         .connect(impersonatedSigner3)
         .commit(assignId3, commitment3);
 
-      // // Call reveal
+      // Call reveal
       await workerHub
         .connect(impersonatedSigner2)
         .reveal(assignId2, nonce2, solution);
       await workerHub
         .connect(impersonatedSigner3)
         .reveal(assignId3, nonce3, solution);
+
+      // Check scoring hub
+      const workerHubScoring = (await getContractInstance(
+        "WorkerHubScoring",
+        proxyWorkerHubScoringAddress
+      )) as WorkerHubScoring;
+
+      // Get inference id
+      const inferenceId = await workerHub.inferenceNumber();
+      expect(inferenceId).to.eq(1n);
+
+      // get and compare thee first inference info of worker hub and worker hub scoring
+      let inferenceInfo = await workerHub.getInferenceInfo(inferenceId);
+      let scoringInferenceInfo = await workerHubScoring.getInferenceInfo(
+        inferenceId
+      );
+      expect(inferenceInfo.creator).to.be.deep.eq(scoringInferenceInfo.creator);
+      expect(inferenceInfo.creator).to.be.deep.eq(address18[16]);
+      expect(inferenceInfo.input).to.be.deep.eq(scoringInferenceInfo.input);
+      expect(inferenceInfo.status).to.be.deep.eq(4);
+      expect(inferenceInfo.feeL2).to.be.eq(ethers.parseEther("0.01"));
+      expect(inferenceInfo.feeTreasury).to.be.eq(ethers.parseEther("0.01"));
+      expect(inferenceInfo.value).to.be.eq(ethers.parseEther("0.08"));
+      expect(scoringInferenceInfo.feeL2).to.be.eq(ethers.parseEther("0.01"));
+      expect(scoringInferenceInfo.feeTreasury).to.be.eq(
+        ethers.parseEther("0.01")
+      );
+      expect(scoringInferenceInfo.value).to.be.eq(ethers.parseEther("0.08"));
+      //
+      const assigns = await workerHubScoring.getAllAssignments(1n, 3);
+      const assignedScoringMiners = assigns.map((a) => a.worker);
+      expect(assignedScoringMiners.length).to.eq(3);
+
+      let impersonatedSignerScore1 = await ethers.getImpersonatedSigner(
+        assignedScoringMiners[0]
+      );
+      let impersonatedSignerScore2 = await ethers.getImpersonatedSigner(
+        assignedScoringMiners[1]
+      );
+      let impersonatedSignerScore3 = await ethers.getImpersonatedSigner(
+        assignedScoringMiners[2]
+      );
+
+      await workerHubScoring
+        .connect(impersonatedSignerScore1)
+        .seizeMinerRole(1n);
+
+      // const solutionScore = ethers.encodeBytes32String("10");
+      const solutionScore = ethers.hexlify("0x0A");
+      console.log("solutionScore: ", solutionScore);
+      const txScore = await workerHubScoring
+        .connect(impersonatedSignerScore1)
+        .submitSolution(1n, solutionScore);
+
+      expect(txScore.wait()).to.be.fulfilled;
+
+      // Prepare for commitment
+      const assignScoreId2 = (
+        await workerHubScoring.getAssignmentByMiner(assignedScoringMiners[1])
+      )[0].assignmentId;
+
+      const nonceScore2 = 3;
+      const commitmentScore2 = ethers.solidityPackedKeccak256(
+        ["uint40", "address", "bytes"],
+        [nonceScore2, assignedScoringMiners[1], solutionScore]
+      );
+
+      const assignScoreId3 = (
+        await workerHubScoring.getAssignmentByMiner(assignedScoringMiners[2])
+      )[0].assignmentId;
+      const nonceScore3 = 5;
+      const commitmentScore3 = ethers.solidityPackedKeccak256(
+        ["uint40", "address", "bytes"],
+        [nonceScore3, assignedScoringMiners[2], solutionScore]
+      );
+
+      // Call commit
+      await workerHubScoring
+        .connect(impersonatedSignerScore2)
+        .commit(assignScoreId2, commitmentScore2);
+      await workerHubScoring
+        .connect(impersonatedSignerScore3)
+        .commit(assignScoreId3, commitmentScore3);
+
+      // Call reveal
+      await workerHubScoring
+        .connect(impersonatedSignerScore2)
+        .reveal(assignScoreId2, nonceScore2, solutionScore);
+      await workerHubScoring
+        .connect(impersonatedSignerScore3)
+        .reveal(assignScoreId3, nonceScore3, solutionScore);
+
+      //
+      const userAddress = inferenceInfo.creator;
+      const daoToken = (await getContractInstance(
+        "DAOToken",
+        proxyLLAMAAddress
+      )) as DAOToken;
+      const userBalance = await daoToken.balanceOf(userAddress);
+      expect(userBalance).to.be.eq(ethers.parseEther("0.03"));
+      inferenceInfo = await workerHub.getInferenceInfo(inferenceId);
+      scoringInferenceInfo = await workerHubScoring.getInferenceInfo(
+        inferenceId
+      );
+      expect(inferenceInfo.status).to.be.deep.eq(6);
+      expect(scoringInferenceInfo.status).to.be.deep.eq(4);
     });
   });
 });
