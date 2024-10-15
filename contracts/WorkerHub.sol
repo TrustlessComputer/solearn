@@ -818,17 +818,22 @@ contract WorkerHub is
         if (_isReferred) {
             uint256 l2OwnerAmt = (daoTokenReward *
                 percentage.l2OwnerPercentage) / PERCENTAGE_DENOMINATOR;
-            uint256 userAmt = (daoTokenReward *
-                (percentage.refereePercentage + percentage.userPercentage)) /
+            uint256 userAmt = (daoTokenReward * percentage.userPercentage) /
                 PERCENTAGE_DENOMINATOR;
+            uint256 refereeAmt = (daoTokenReward *
+                percentage.refereePercentage) / PERCENTAGE_DENOMINATOR;
             uint256 refererAmt = (daoTokenReward *
                 percentage.referrerPercentage) / PERCENTAGE_DENOMINATOR;
 
             IDAOToken(daoToken).mint(l2Owner, l2OwnerAmt);
             IDAOToken(daoToken).mint(inferences[_inferenceId].creator, userAmt);
             IDAOToken(daoToken).mint(referrer, refererAmt);
+            IDAOToken(daoToken).mint(
+                inferences[_inferenceId].creator,
+                refereeAmt
+            );
 
-            receiverInfors = new DAOTokenReceiverInfor[](3);
+            receiverInfors = new DAOTokenReceiverInfor[](4);
             receiverInfors[0] = DAOTokenReceiverInfor(
                 l2Owner,
                 l2OwnerAmt,
@@ -843,6 +848,11 @@ contract WorkerHub is
                 referrer,
                 refererAmt,
                 DAOTokenReceiverRole.Referrer
+            );
+            receiverInfors[3] = DAOTokenReceiverInfor(
+                inferences[_inferenceId].creator,
+                refereeAmt,
+                DAOTokenReceiverRole.Referee
             );
         } else {
             uint256 l2OwnerAmt = (daoTokenReward *
@@ -899,24 +909,6 @@ contract WorkerHub is
             }
         }
         return (mostVotedDigest, maxCount);
-    }
-
-    function getFilterCommitment1(
-        uint256 _inferenceId
-    ) external returns (bool) {
-        (bytes32 mostVotedDigest, uint8 maxCount) = _findMostVotedDigest(
-            _inferenceId
-        );
-
-        // Check the maxCount is greater than the voting requirement
-        if (
-            maxCount <
-            _getThresholdValue(assignmentsByInference[_inferenceId].size())
-        ) {
-            return false;
-        }
-
-        return true;
     }
 
     function findMostVotedDigest(
@@ -1068,7 +1060,6 @@ contract WorkerHub is
         for (uint256 i = 0; i < counter; i++) {
             receiverInforsClone[i] = receiverInfors[i];
         }
-        // revert("====> 3 Hello mr Jack");
 
         if (notReachedLimit && remainToken > 0) {
             console.log("Minted DAO Token for minerss");
