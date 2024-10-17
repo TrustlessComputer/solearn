@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "fans_mainnet",
+  defaultNetwork: "hermes_mainnet",
   solidity: {
     compilers: [
       {
@@ -134,6 +134,20 @@ const config: HardhatUserConfig = {
       collectionAddress: process.env.FANS_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.FANS_MAINNET_WORKER_HUB_ADDRESS,
       daoTokenAddress: process.env.FANS_MAINNET_DAO_TOKEN_ADDRESS,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: true,
+      gasPrice: "auto",
+    } as any,
+    hermes_mainnet: {
+      url: "https://rpc.hermeschain.eternalai.org",
+      chainId: 45762,
+      accounts: [process.env.HERMES_MAINNET_PRIVATE_KEY],
+      l2OwnerAddress: process.env.HERMES_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.HERMES_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.HERMES_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.HERMES_MAINNET_WORKER_HUB_ADDRESS,
+      daoTokenAddress: process.env.HERMES_MAINNET_DAO_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
