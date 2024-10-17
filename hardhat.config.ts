@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
-import "@matterlabs/hardhat-zksync";
+// import "@matterlabs/hardhat-zksync-upgradable";
 import "@nomicfoundation/hardhat-toolbox";
+import "@matterlabs/hardhat-zksync";
 import "@nomiclabs/hardhat-solhint";
 import "@openzeppelin/hardhat-upgrades";
 import "hardhat-deploy";
@@ -18,6 +19,14 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: "0.8.19",
+        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+      },
+      {
+        version: "0.8.20",
+        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+      },
+      {
+        version: "0.8.0",
         settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
       },
     ],
@@ -84,12 +93,12 @@ const config: HardhatUserConfig = {
       zksync: true,
       accounts: [process.env.ZK_TESTNET_PRIVATE_KEY],
       l2OwnerAddress: process.env.ZK_TESTNET_L2_OWNER_ADDRESS,
+      daoTokenAddress: process.env.ZK_TESTNET_DAO_TOKEN_ADDRESS,
       treasuryAddress: process.env.ZK_TESTNET_TREASURY_ADDRESS,
       collectionAddress: process.env.ZK_TESTNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.ZK_TESTNET_WORKER_HUB_ADDRESS,
       workerHubScoringAddress:
         process.env.ZK_TESTNET_WORKER_HUB_SCORING_ADDRESS,
-      daoTokenAddress: process.env.ZK_TESTNET_DAO_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       timeout: 500_000,
       gasPrice: 1_000_000_000,
@@ -100,12 +109,12 @@ const config: HardhatUserConfig = {
       chainId: 222672,
       accounts: [process.env.LLAMA_MAINNET_PRIVATE_KEY],
       l2OwnerAddress: process.env.LLAMA_MAINNET_L2_OWNER_ADDRESS,
+      daoTokenAddress: process.env.LLAMA_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
       treasuryAddress: process.env.LLAMA_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.LLAMA_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.LLAMA_MAINNET_WORKER_HUB_ADDRESS,
       workerHubScoringAddress:
         process.env.LLAMA_MAINNET_WORKER_HUB_SCORING_ADDRESS,
-      daoTokenAddress: process.env.LLAMA_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
@@ -116,12 +125,12 @@ const config: HardhatUserConfig = {
       chainId: 222673,
       accounts: [process.env.FLUX_MAINNET_PRIVATE_KEY],
       l2OwnerAddress: process.env.FLUX_MAINNET_L2_OWNER_ADDRESS,
+      daoTokenAddress: process.env.FLUX_MAINNET_DAO_TOKEN_ADDRESS,
       treasuryAddress: process.env.FLUX_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.FLUX_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.FLUX_MAINNET_WORKER_HUB_ADDRESS,
       workerHubScoringAddress:
         process.env.FLUX_MAINNET_WORKER_HUB_SCORING_ADDRESS,
-      daoTokenAddress: process.env.FLUX_MAINNET_DAO_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
