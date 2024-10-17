@@ -12,5 +12,12 @@
     "workerHubAddress": "0x9fAc4FAB4357a26d9369a6C5Fc53c0097a6df64B",
     "collectionAddress": "0x1DC6c6B92371C5a2A35424e4579656865f0f8CA5",
     "hybridModelAddress": "0x8699900Ba420A243eC48Bb63Fa1474C27312aE15"
+  },
+  "HERMES_MAINNET": {
+    "daoTokenAddress": "0x5211b000CCe15fd7aC100E75a157a876dd30bef0",
+    "treasuryAddress": "0x0B8fc366C27b8E2Ca8D99e569D8628c0D3351E94",
+    "workerHubAddress": "0x87e9B8630c1E20dd86451AE15aF7663D006f089c",
+    "collectionAddress": "0x97c671381daBAe0ae24554120dcE2E9B0baEb3CD",
+    "hybridModelAddress": "0x6Ee733b0923aC74d605FbD651b412bd0849A15f5"
   }
 }
