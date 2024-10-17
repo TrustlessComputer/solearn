@@ -47,7 +47,7 @@ async function deployHybridModel() {
   const metadataObj = {
     version: 1,
     model_name: "Scoring",
-    model_type: "scoring",
+    model_type: "score",
     model_url: "",
     model_file_hash: "",
     min_hardware: 1,
@@ -103,11 +103,6 @@ async function deployHybridModel() {
   console.log(
     `Contract HybridModelScoring is registered to WorkerHubScoring: ${receiptRegis?.status}`
   );
-
-  // WorkerHubScoring setupScoringVar
-  const txSetup = await workerHubScoring.setupScoringVar(workerHubAddress);
-  const receiptSetup = await txSetup.wait();
-  console.log(`Contract WorkerHubScoring setup state: ${receiptSetup?.status}`);
 
   // WorkerHub setScoringInfo
   const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;

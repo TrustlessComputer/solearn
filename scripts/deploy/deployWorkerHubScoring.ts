@@ -11,6 +11,7 @@ async function deployWorkerHubScoring() {
   const l2OwnerAddress = config.l2OwnerAddress;
   const treasuryAddress = config.treasuryAddress;
   const daoTokenAddress = config.daoTokenAddress;
+  const workerHubAddress = config.workerHubAddress;
   assert.ok(
     l2OwnerAddress,
     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
@@ -22,6 +23,10 @@ async function deployWorkerHubScoring() {
   assert.ok(
     daoTokenAddress,
     `Missing ${networkName}_DAO_TOKEN_ADDRESS from environment variables!`
+  );
+  assert.ok(
+    workerHubAddress,
+    `Missing ${networkName}_WORKER_HUB_ADDRESS from environment variables!`
   );
 
   const feeL2Percentage = 0;
@@ -82,6 +87,23 @@ async function deployWorkerHubScoring() {
   )) as unknown as WorkerHubScoring;
 
   const workerHubScoringAddress = workerHubScoring.target;
+
+  if (!config.workerHubScoringAddress) {
+    const WorkerHubScoring = await ethers.getContractFactory(
+      "WorkerHubScoring"
+    );
+
+    const workerHubScoring = WorkerHubScoring.attach(
+      workerHubScoringAddress
+    ) as WorkerHubScoring;
+
+    // WorkerHubScoring setupScoringVar
+    const txSetup = await workerHubScoring.setupScoringVar(workerHubAddress);
+    const receiptSetup = await txSetup.wait();
+    console.log(
+      `Contract WorkerHubScoring setup state: ${receiptSetup?.status}`
+    );
+  }
 
   console.log(
     `${networkName}_WORKER_HUB_SCORING_ADDRESS=${workerHubScoringAddress}`
