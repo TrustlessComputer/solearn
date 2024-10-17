@@ -1400,6 +1400,20 @@ contract WorkerHub is
         return inferences[_inferenceId];
     }
 
+    function getAssignmentByInferenceId(
+        uint256 _inferId
+    ) external view returns (Assignment[] memory) {
+        uint256[] memory assignmentIds = assignmentsByInference[_inferId]
+            .values;
+        uint count = assignmentIds.length;
+        Assignment[] memory result = new Assignment[](count);
+
+        for (uint i = 0; i < count; ++i) {
+            result[i] = assignments[assignmentIds[i]];
+        }
+        return result;
+    }
+
     function getAssignmentByMiner(
         address _minerAddr
     ) external view returns (AssignmentInfo[] memory) {
