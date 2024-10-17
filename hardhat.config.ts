@@ -13,11 +13,15 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "fans_mainnet",
   solidity: {
     compilers: [
       {
         version: "0.8.19",
+        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+      },
+      {
+        version: "0.8.20",
         settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
       },
     ],
@@ -116,6 +120,20 @@ const config: HardhatUserConfig = {
       collectionAddress: process.env.FLUX_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.FLUX_MAINNET_WORKER_HUB_ADDRESS,
       daoTokenAddress: process.env.FLUX_MAINNET_DAO_TOKEN_ADDRESS,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: true,
+      gasPrice: "auto",
+    } as any,
+    fans_mainnet: {
+      url: "https://rpc.fans.l2aas.com",
+      chainId: 45761,
+      accounts: [process.env.FANS_MAINNET_PRIVATE_KEY],
+      l2OwnerAddress: process.env.FANS_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.FANS_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.FANS_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.FANS_MAINNET_WORKER_HUB_ADDRESS,
+      daoTokenAddress: process.env.FANS_MAINNET_DAO_TOKEN_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,

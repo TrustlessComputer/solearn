@@ -20,8 +20,8 @@ async function deployDAOToken() {
   console.log("DEPLOY DAO TOKEN...");
 
   const _MAX_SUPPLY_CAP = ethers.parseEther("2100000000"); //2,1B
-  const tokenName = "FLUX";
-  const tokenSymbol = "FLUX";
+  const tokenName = "FANS";
+  const tokenSymbol = "FANS";
   const initializedParams = [tokenName, tokenSymbol, _MAX_SUPPLY_CAP];
 
   const daoToken = (await deployOrUpgrade(
@@ -69,7 +69,7 @@ async function deployWorkerHub(
 
   const feeL2Percentage = 0;
   const feeTreasuryPercentage = 100_00;
-  const minerMinimumStake = ethers.parseEther("25000");
+  const minerMinimumStake = ethers.parseEther("1");
   const minerRequirement = 3;
   const blockPerEpoch = 600 * 2;
   const rewardPerEpoch = ethers.parseEther("0.6659");
@@ -77,11 +77,11 @@ async function deployWorkerHub(
   const commitDuration = 10 * 6 * 5;
   const revealDuration = 10 * 6 * 5;
   const unstakeDelayTime = 1814400; // NOTE:  1,814,400 blocks = 21 days
-  const penaltyDuration = 1200; // NOTE: 3.3 hours
-  const finePercentage = 10_00;
+  const penaltyDuration = 0; // NOTE: 3.3 hours
+  const finePercentage = 0;
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const minFeeToUse = ethers.parseEther("0.1");
-  const daoTokenReward = ethers.parseEther("0");
+  const minFeeToUse = ethers.parseEther("0");
+  const daoTokenReward = ethers.parseEther("10");
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
     userPercentage: 30_00,
@@ -126,7 +126,7 @@ async function deployWorkerHub(
   const daoTokenContract = (await getContractInstance(
     daoTokenAddress,
     "DAOToken"
-  )) as DAOToken;
+  )) as unknown as DAOToken;
 
   const tx = await daoTokenContract
     .connect(masterWallet)
@@ -152,7 +152,7 @@ async function deployModelCollection() {
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
-  const nextModelId = 300_001; //
+  const nextModelId = 400_001; //
 
   const constructorParams = [
     name,
@@ -192,11 +192,11 @@ async function deployHybridModel(
   );
 
   const identifier = 0;
-  const name = "Flux V2";
+  const name = "Fans V2";
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "Flux V2",
+    model_name: "Fans V2",
     model_type: "image",
     model_url: "",
     model_file_hash: "",
@@ -245,7 +245,7 @@ async function deployHybridModel(
   const txRegis = await workerHub.registerModel(
     hybridModelAddress,
     minHardware,
-    ethers.parseEther("0.1")
+    ethers.parseEther("0")
   );
   const receipt = await txRegis.wait();
   console.log("Tx hash: ", receipt?.hash);
