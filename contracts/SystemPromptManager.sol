@@ -170,6 +170,15 @@ OwnableUpgradeable {
         hybridModel = _hybridModel;
     }
 
+    function claimFee() external {
+        uint256 totalFee = fees[msg.sender];
+        fees[msg.sender] = 0;
+        (bool success, ) = owner().call{value: totalFee}("");
+        if (!success) revert FailedTransfer();
+
+        emit FeesClaimed(msg.sender, totalFee);
+    }
+
     function infer(uint _tokenId, bytes calldata _calldata) external payable {
         // 
         TokenMetaData memory data = datas[_tokenId];

@@ -32,6 +32,7 @@ IERC2981Upgradeable {
         bytes data,
         uint fee
     );
+    event FeesClaimed(address indexed claimer, uint amount);
 
     error AlreadyMinted();
     error Authorized();
