@@ -20,14 +20,14 @@ async function updateHybridModelMetadata() {
     workerHubAddress,
     `Missing ${networkName}_WORKERHUB_ADDRESS from environment variables!`
   );
-  const tokenId = 300001;
+  const tokenId = 500001;
   const minHardware = BigInt(1);
   const metadataObj = {
     version: 1,
-    model_name: "FLUX.1 [dev] quantized (fp8)",
+    model_name: "HERMES [dev] quantized (fp8)",
     model_type: "image",
     model_url:
-      "https://gateway.lighthouse.storage/ipfs/bafkreighidvjm5wlzwkckfdb6tx3h6aennspxfmzbxzgeps2t4dhxehxuq",
+      "https://gateway.lighthouse.storage/ipfs/bafkreifm6m4fim2spgym7ev4g5j2twzamrms6nr6fnqaxh5u47fo2donyy",
     model_file_hash: "",
     min_hardware: 1,
     verifier_url: "",
