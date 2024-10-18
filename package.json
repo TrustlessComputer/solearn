@@ -50,6 +50,10 @@
     "setupWorkerHub:flux_mainnet": "npx hardhat run scripts/workerHubUpdateInfo.ts --network flux_mainnet",
     "updateHybridModelMetadata:flux_mainnet": "npx hardhat run scripts/updateHybridModelMetadata.ts --network flux_mainnet",
     "workerHubUpdatePenaltyParams:flux_mainnet": "npx hardhat run scripts/workerHubUpdatePenaltyParams.ts --network flux_mainnet",
+    "deployWorkerHub:fans_mainnet": "npx hardhat run scripts/deploy/deployWorkerHub.ts --network fans_mainnet",
+    "autoDeploy:fans_mainnet": "npx hardhat run scripts/autoDeploy.ts --network fans_mainnet",
+    "autoDeploy:hermes_mainnet": "npx hardhat run scripts/autoDeploy.ts --network hermes_mainnet",
+    "updateHybridModelMetadata:hermes_mainnet": "npx hardhat run scripts/updateHybridModelMetadata.ts --network hermes_mainnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {
