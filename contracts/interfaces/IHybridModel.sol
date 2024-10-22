@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { IModel } from "./IModel.sol";
+import {IModel} from "./IModel.sol";
 
 interface IHybridModel is IModel {
     event WorkerHubUpdate(address newAddress);
@@ -18,5 +18,14 @@ interface IHybridModel is IModel {
     function metadata() external view returns (string memory metadata);
     function name() external view returns (string memory name);
 
-    function infer(bytes calldata _data) external payable returns (uint256 referenceId);
+    function infer(
+        bytes calldata _data
+    ) external payable returns (uint256 referenceId);
+
+    function inferWithCallback(
+        uint originInferId,
+        bytes calldata _input,
+        address _creator,
+        address callback
+    ) external payable returns (uint256 inferid);
 }

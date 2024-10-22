@@ -5,9 +5,7 @@ import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-
 import {IInferable} from "./interfaces/IInferable.sol";
-
 import {HybridModelStorage} from "./storages/HybridModelStorage.sol";
 
 contract HybridModel is
@@ -89,5 +87,19 @@ contract HybridModel is
     ) external payable whenNotPaused nonReentrant returns (uint256) {
         return
             IInferable(workerHub).infer{value: msg.value}(_input, msg.sender);
+    }
+
+    function inferWithCallback(
+        uint _originInferId,
+        bytes calldata _input,
+        address _creator,
+        address _callback
+    ) external payable returns (uint256 inferenceId) {
+        inferenceId = IInferable(workerHub).inferWithCallback{value: msg.value}(
+            _originInferId,
+            _input,
+            _creator,
+            _callback
+        );
     }
 }
