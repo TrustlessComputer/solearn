@@ -596,7 +596,7 @@ contract WorkerHub is
         Inference storage inference = inferences[inferId];
 
         assignments[_assigmentId].output = _data; //Record the solution
-        bytes32 digest = keccak256(abi.encodePacked(_data)); //Record the solution
+        bytes32 digest = keccak256(abi.encodePacked(inferId, _data)); //Record the solution
         assignments[_assigmentId].digest = digest;
         assignments[_assigmentId].commitment = digest;
         inference.status = InferenceStatus.Commit;
@@ -698,7 +698,7 @@ contract WorkerHub is
         );
 
         if (commitment != revealHash) revert("InvalidReveal");
-        bytes32 digest = keccak256(abi.encodePacked(_data));
+        bytes32 digest = keccak256(abi.encodePacked(inferId, _data));
 
         assignment.revealNonce = _nonce;
         assignment.output = _data;

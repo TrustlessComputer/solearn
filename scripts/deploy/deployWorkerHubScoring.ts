@@ -26,10 +26,10 @@ async function deployWorkerHubScoring() {
 
   const feeL2Percentage = 0;
   const feeTreasuryPercentage = 100_00;
-  const minerMinimumStake = ethers.parseEther("25000");
+  const minerMinimumStake = ethers.parseEther("0.1");
   const minerRequirement = 3;
   const blockPerEpoch = 600 * 2;
-  const rewardPerEpoch = ethers.parseEther("0.38"); //ethers.parseEther("0.6659");
+  const rewardPerEpoch = ethers.parseEther("0"); //ethers.parseEther("0.6659");
   const submitDuration = 10 * 6 * 5;
   const commitDuration = 10 * 6 * 5;
   const revealDuration = 10 * 6 * 5;
