@@ -14,7 +14,7 @@ async function deployLLAMAToken() {
   );
 
   const llamaToken = (await deployOrUpgrade(
-    config.llamaTokenAddress,
+    config.daoTokenAddress,
     "LLAMA",
     [workerHubAddress],
     config,
