@@ -32,6 +32,13 @@ contract LLAMA is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
         workerHub = IWorkerHub(_workerHub);
     }
 
+    function name() public pure override returns (string memory) {
+        return "AGI";
+    }
+    function symbol() public pure override returns (string memory) {
+        return "AGI";
+    }
+
     function mint(address to, uint256 amount) public onlyWorkerHub {
         require(
             totalSupply() + amount <= MAX_SUPPLY_CAP,
