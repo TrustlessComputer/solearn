@@ -33,10 +33,10 @@ contract DAOToken is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
     }
 
     function name() public pure override returns (string memory) {
-        return "IMAGINE";
+        return "UNCENSORED";
     }
     function symbol() public pure override returns (string memory) {
-        return "IMAGINE";
+        return "UNCENSORED";
     }
 
     function mint(address to, uint256 amount) public onlyWorkerHub {
