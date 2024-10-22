@@ -48,6 +48,7 @@
     "console:flux_mainnet": "npx hardhat console --network flux_mainnet",
     "deployModelCollection:flux_mainnet": "npx hardhat run scripts/deploy/deployModelCollection.ts --network flux_mainnet",
     "deployHybridModel:flux_mainnet": "npx hardhat run scripts/deploy/deployHybridModel.ts --network flux_mainnet",
+    "deployHybridModelScoring:flux_mainnet": "npx hardhat run scripts/deploy/deployHybridModelScoring.ts --network flux_mainnet",
     "deployWorkerHub:flux_mainnet": "npx hardhat run scripts/deploy/deployWorkerHub.ts --network flux_mainnet",
     "deployWorkerHubScoring:flux_mainnet": "npx hardhat run scripts/deploy/deployWorkerHubScoring.ts --network flux_mainnet",
     "deployDAOToken:flux_mainnet": "npx hardhat run scripts/deploy/deployDAOToken.ts --network flux_mainnet",
