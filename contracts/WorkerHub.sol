@@ -423,6 +423,7 @@ contract WorkerHub is
         if (model.tier == 0) revert Unauthorized();
 
         uint256 scoringFee = _validateEnoughFeeToUse(model.minimumFee);
+
         return _infer(_input, _creator, scoringFee);
     }
 
@@ -843,11 +844,22 @@ contract WorkerHub is
 
         uint256 l2OwnerAmt = (daoTokenReward * percentage.l2OwnerPercentage) /
             PERCENTAGE_DENOMINATOR;
+        uint256 userAmt = (daoTokenReward * percentage.userPercentage) /
+            PERCENTAGE_DENOMINATOR;
+
         daoReceivers.push(
             DAOTokenReceiverInfor(
                 l2Owner,
                 l2OwnerAmt,
                 DAOTokenReceiverRole.L2Owner
+            )
+        );
+
+        daoReceivers.push(
+            DAOTokenReceiverInfor(
+                inferences[_inferenceId].creator,
+                userAmt,
+                DAOTokenReceiverRole.User
             )
         );
         if (_isReferred) {
@@ -1032,25 +1044,25 @@ contract WorkerHub is
         }
 
         // mint DAO token
-        // uint256 length = daoReceiversInfo[_inferenceId].length;
-        // if (notReachedLimit && length > 0) {
-        //     DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
-        //         _inferenceId
-        //     ];
-        //     for (uint256 i = 0; i < len; i++) {
-        //         IDAOToken(daoToken).mint(
-        //             receiversInf[i].receiver,
-        //             receiversInf[i].amount
-        //         );
-        //     }
+        uint256 length = daoReceiversInfo[_inferenceId].length;
+        if (notReachedLimit && length > 0) {
+            DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
+                _inferenceId
+            ];
+            for (uint256 i = 0; i < len; i++) {
+                IDAOToken(daoToken).mint(
+                    receiversInf[i].receiver,
+                    receiversInf[i].amount
+                );
+            }
 
-        //     emit DAOTokenMintedV2(
-        //         _getChainID(),
-        //         _inferenceId,
-        //         inferences[_inferenceId].modelAddress,
-        //         receiversInf
-        //     );
-        // }
+            emit DAOTokenMintedV2(
+                _getChainID(),
+                _inferenceId,
+                inferences[_inferenceId].modelAddress,
+                receiversInf
+            );
+        }
 
         // Transfer the mining fee to treasury
         if (inferences[_inferenceId].feeL2 > 0) {
@@ -1068,7 +1080,10 @@ contract WorkerHub is
 
         // Call scoring model contract
         if (
-            modelScoring != address(0) && notReachedLimit && daoTokenReward > 0
+            false &&
+            modelScoring != address(0) &&
+            notReachedLimit &&
+            daoTokenReward > 0
         ) {
             uint256 scoringFee = IWorkerHub(workerHubScoring).getMinFeeToUse(
                 modelScoring
@@ -1081,7 +1096,7 @@ contract WorkerHub is
                 address(this)
             );
         }
-        inferences[_inferenceId].status = InferenceStatus.Processed;
+        inferences[_inferenceId].status = InferenceStatus.Transferred;
 
         return true;
     }
