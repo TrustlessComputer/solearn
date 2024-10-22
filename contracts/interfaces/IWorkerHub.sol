@@ -157,6 +157,14 @@ interface IWorkerHub is IInferable {
         address indexed creator,
         uint256 value
     );
+
+    event NewScoringInference(
+        uint256 indexed inferenceId,
+        address indexed model,
+        address indexed creator,
+        uint256 value,
+        uint256 originInferenceId
+    );
     // event InferenceDisputation(address indexed validator, uint256 indexed assigmentId);
     event InferenceStatusUpdate(
         uint256 indexed inferenceId,

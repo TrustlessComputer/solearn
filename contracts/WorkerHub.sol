@@ -442,7 +442,7 @@ contract WorkerHub is
         bytes calldata _input,
         address _creator,
         uint256 _scoringFee
-    ) internal returns (uint256) {
+    ) internal virtual returns (uint256) {
         uint256 inferenceId = ++inferenceNumber;
         Inference storage inference = inferences[inferenceId];
 
@@ -477,7 +477,7 @@ contract WorkerHub is
         emit TopUpInfer(_inferenceId, inference.creator, inference.value);
     }
 
-    function _assignMiners(uint256 _inferenceId) private {
+    function _assignMiners(uint256 _inferenceId) internal {
         uint40 expiredAt = uint40(block.number + submitDuration);
         uint40 commitTimeout = expiredAt + commitDuration;
         inferences[_inferenceId].submitTimeout = expiredAt;

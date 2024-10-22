@@ -35,13 +35,49 @@ contract WorkerHubScoring is WorkerHub {
         address _creator,
         address callback
     ) external payable override returns (uint256 inferid) {
-        inferid = infer(_input, _creator);
+        uint256 inferenceId = inferenceNumber;
 
-        extendInferInfo[inferid] = InferExtended(
+        extendInferInfo[++inferenceId] = InferExtended(
             msg.sender,
             callback,
             originInferId
         );
+
+        inferid = infer(_input, _creator);
+    }
+
+    function _infer(
+        bytes calldata _input,
+        address _creator,
+        uint256 _scoringFee
+    ) internal override returns (uint256) {
+        uint256 inferenceId = ++inferenceNumber;
+        Inference storage inference = inferences[inferenceId];
+
+        uint256 value = msg.value - _scoringFee;
+        uint256 feeL2 = (value * feeL2Percentage) / PERCENTAGE_DENOMINATOR;
+        uint256 feeTreasury = (value * feeTreasuryPercentage) /
+            PERCENTAGE_DENOMINATOR;
+
+        inference.input = _input;
+        inference.feeL2 = feeL2;
+        inference.feeTreasury = feeTreasury;
+        inference.value = value - feeL2 - feeTreasury;
+        inference.creator = _creator;
+        inference.referrer = referrerOf[_creator];
+        inference.modelAddress = msg.sender;
+
+        emit NewScoringInference(
+            inferenceId,
+            msg.sender,
+            _creator,
+            value,
+            extendInferInfo[inferenceId].inferId
+        );
+
+        super._assignMiners(inferenceId);
+
+        return inferenceId;
     }
 
     function _validateEnoughFeeToUse(
