@@ -261,4 +261,16 @@ contract ModelCollection is
     ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
         super._burn(_tokenId);
     }
+
+    function setModelId(
+        address _model,
+        uint256 tokenId
+    ) internal returns (uint256) {
+        if (_model == address(0)) revert InvalidModel();
+
+        models[tokenId] = _model;
+        IModel(_model).setModelId(tokenId);
+
+        return tokenId;
+    }
 }

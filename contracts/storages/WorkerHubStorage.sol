@@ -78,6 +78,6 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint256 public minFeeToUse; // The minimum fee when register model, it's also the minimum fee to create inference
     address public workerHubScoring;
     address public modelScoring;
-    mapping(uint256 inferId => DAOTokenReceiverInfor[]) daoReceiversInfo;
+    mapping(uint256 inferId => DAOTokenReceiverInfor[]) public daoReceiversInfo;
     uint256[95] private __gap;
 }
