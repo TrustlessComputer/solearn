@@ -18,7 +18,7 @@ contract WorkerHubScoring is WorkerHub {
     event Log(string);
 
     // // define storage here
-    address internal workHubAddr;
+    address public workHubAddr;
     // inter => InferExtended
     mapping(uint => InferExtended) internal extendInferInfo;
 
