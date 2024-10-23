@@ -154,6 +154,7 @@ const config: HardhatUserConfig = {
       collectionAddress: process.env.HERMES_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.HERMES_MAINNET_WORKER_HUB_ADDRESS,
       daoTokenAddress: process.env.HERMES_MAINNET_DAO_TOKEN_ADDRESS,
+workerHubScoringAddress:  process.env.HERMES_MAINNET_WORKER_HUB_SCORING_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
