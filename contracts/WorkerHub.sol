@@ -564,6 +564,7 @@ contract WorkerHub is
         if (_data.length == 0) revert InvalidData();
     }
 
+    // 0xe84dee6b
     function submitSolution(
         uint256 _assigmentId,
         bytes calldata _data
@@ -626,6 +627,7 @@ contract WorkerHub is
             revert InvalidMiner();
     }
 
+    // 0xf2f03877
     function commit(
         uint256 _assignId,
         bytes32 _commitment
@@ -663,7 +665,7 @@ contract WorkerHub is
             emit InferenceStatusUpdate(inferId, InferenceStatus.Reveal);
         }
     }
-
+    // 0x121a301d
     function reveal(
         uint256 _assignId,
         uint40 _nonce,
@@ -930,6 +932,12 @@ contract WorkerHub is
         }
     }
 
+    function validateDAOSupplyIncrease(
+        bool _isReferred
+    ) external view returns (bool notReachedLimit) {
+        return _validateDAOSupplyIncrease(_isReferred);
+    }
+
     function _filterCommitment(
         uint256 _inferenceId
     ) internal virtual returns (bool) {
@@ -1049,7 +1057,7 @@ contract WorkerHub is
             DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
                 _inferenceId
             ];
-            for (uint256 i = 0; i < len; i++) {
+            for (uint256 i = 0; i < length; i++) {
                 IDAOToken(daoToken).mint(
                     receiversInf[i].receiver,
                     receiversInf[i].amount
@@ -1111,6 +1119,7 @@ contract WorkerHub is
         daoTokenReward = _newDAOTokenReward;
     }
 
+    // 0x6029e786
     function resolveInference(
         uint256 _inferenceId
     ) public virtual whenNotPaused {
