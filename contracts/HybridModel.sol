@@ -76,7 +76,7 @@ contract HybridModel is
         emit MetadataUpdate(_metadata);
     }
 
-    function setModelId(uint256 _modelId) external onlyModelCollection {
+    function setModelId(uint256 _modelId) external onlyOwner {
         if (identifier != 0) revert ModelIdAlreadySet();
         identifier = _modelId;
         emit IdentifierUpdate(_modelId);
