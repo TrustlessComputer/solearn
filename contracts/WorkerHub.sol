@@ -459,7 +459,7 @@ contract WorkerHub is
         inference.referrer = referrerOf[_creator];
         inference.modelAddress = msg.sender;
 
-        emit NewInference(inferenceId, msg.sender, _creator, value);
+        emit NewInference(inferenceId, msg.sender, _creator, value, 0);
 
         _assignMiners(inferenceId);
 

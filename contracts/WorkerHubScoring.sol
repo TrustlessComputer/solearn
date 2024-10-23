@@ -67,7 +67,7 @@ contract WorkerHubScoring is WorkerHub {
         inference.referrer = referrerOf[_creator];
         inference.modelAddress = msg.sender;
 
-        emit NewScoringInference(
+        emit NewInference(
             inferenceId,
             msg.sender,
             _creator,
