@@ -4,13 +4,12 @@ import { ethers, network, upgrades } from "hardhat";
 import {
   HybridModel,
   ModelCollection,
-  SystemPromptAgent,
+  SystemPromptManager,
   WorkerHub,
 } from "../../typechain-types";
-import { EventLog, Log } from "ethers";
 import { deployOrUpgrade } from "../lib/utils";
 
-async function deploySystemPromptAgent() {
+async function deploySystemPromptManager() {
   const config = network.config as any;
   const networkName = network.name.toUpperCase();
 
@@ -25,8 +24,9 @@ async function deploySystemPromptAgent() {
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = l2OwnerAddress;
   const royalPortion = 5_00;
-  const nextModelId = 300_001; //TODO: need to change before deployment
+  const nextModelId = 1; //TODO: need to change before deployment
   const hybridModelAddress = config.hybridModelAddress;
+  const workerHubAddress = config.workerHubAddress;
 
   const constructorParams = [
     name,
@@ -36,22 +36,23 @@ async function deploySystemPromptAgent() {
     royalPortion,
     nextModelId,
     hybridModelAddress,
+    workerHubAddress,
   ];
 
-  const sysPromptAgent = (await deployOrUpgrade(
-    config.collectionAddress,
-    "SystemPromptAgent",
+  const sysPromptManager = (await deployOrUpgrade(
+    config.systemPromptManagerAddress,
+    "SystemPromptManager",
     constructorParams,
     config,
     true
-  )) as unknown as SystemPromptAgent;
+  )) as unknown as SystemPromptManager;
 
   console.log(
-    `${networkName}_SYSTEM_PROMPT_AGENT_ADDRESS=${sysPromptAgent.target}`
+    `${networkName}_SYSTEM_PROMPT_MANAGER_ADDRESS=${sysPromptManager.target}`
   );
 }
 
-deploySystemPromptAgent()
+deploySystemPromptManager()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

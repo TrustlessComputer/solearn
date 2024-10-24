@@ -6,7 +6,7 @@ import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC7
 import {IERC721EnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721EnumerableUpgradeable.sol";
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 
-interface ISystemPromptAgent is
+interface ISystemPromptManager is
     IERC721Upgradeable,
     IERC721MetadataUpgradeable,
     IERC721EnumerableUpgradeable,
@@ -32,7 +32,9 @@ interface ISystemPromptAgent is
         uint256 indexed tokenId,
         address indexed caller,
         bytes data,
-        uint fee
+        uint fee,
+        string externalData,
+        uint256 inferenceId
     );
     event FeesClaimed(address indexed claimer, uint amount);
 
@@ -69,7 +71,7 @@ interface ISystemPromptAgent is
     ) external returns (uint256 tokenId);
 
     struct TokenMetaData {
-        uint fee;
-        bytes sysPrompt;
+        uint256 fee;
+        bytes[] sysPrompts;
     }
 }

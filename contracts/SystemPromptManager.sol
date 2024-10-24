@@ -14,11 +14,12 @@ import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/to
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {IModel} from "./interfaces/IModel.sol";
+import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
+import {TransferHelper} from "./lib/TransferHelper.sol";
+import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
 
-import {SystemPromptAgentStorage} from "./storages/SystemPromptAgentStorage.sol";
-
-contract SystemPromptAgent is
-    SystemPromptAgentStorage,
+contract SystemPromptManager is
+    SystemPromptManagerStorage,
     EIP712Upgradeable,
     ERC721EnumerableUpgradeable,
     ERC721PausableUpgradeable,
@@ -43,8 +44,14 @@ contract SystemPromptAgent is
         address _royaltyReceiver,
         uint16 _royaltyPortion,
         uint256 _nextTokenId,
-        address _hybridModel
+        address _hybridModel,
+        address _workerHub
     ) external initializer {
+        require(
+            _hybridModel != address(0) && _workerHub != address(0),
+            "Zero address"
+        );
+
         __ERC721_init(_name, _symbol);
         __ERC721Pausable_init();
         __Ownable_init();
@@ -54,6 +61,7 @@ contract SystemPromptAgent is
         royaltyPortion = _royaltyPortion;
         nextTokenId = _nextTokenId;
         hybridModel = _hybridModel;
+        workerHub = _workerHub;
 
         isManager[owner()] = true;
     }
@@ -106,11 +114,13 @@ contract SystemPromptAgent is
         uint _fee,
         uint256 tokenId
     ) internal returns (uint256) {
-        if (_data.length != 0) revert InvalidNFTData();
+        if (_data.length == 0) revert InvalidNFTData();
 
         _safeMint(_to, tokenId);
         _setTokenURI(tokenId, _uri);
-        datas[tokenId] = TokenMetaData(_fee, _data);
+        // datas[tokenId] = TokenMetaData({fee: _fee, sysPrompts: [_data]});
+        datas[tokenId].fee = _fee;
+        datas[tokenId].sysPrompts.push(_data);
 
         emit NewToken(tokenId, _uri, _data, _fee, msg.sender);
 
@@ -124,7 +134,7 @@ contract SystemPromptAgent is
         bytes calldata _data,
         uint _fee
     ) external payable returns (uint256) {
-        while (datas[nextTokenId].sysPrompt.length != 0) {
+        while (datas[nextTokenId].sysPrompts.length != 0) {
             nextTokenId++;
         }
         uint256 tokenId = nextTokenId++;
@@ -147,7 +157,7 @@ contract SystemPromptAgent is
         address signer = ECDSAUpgradeable.recover(hash, v, r, s);
         if (signer != _manager || !isManager[_manager])
             revert InvalidSignature();
-        while (datas[nextTokenId].sysPrompt.length != 0) {
+        while (datas[nextTokenId].sysPrompts.length != 0) {
             nextTokenId++;
         }
         uint256 tokenId = nextTokenId++;
@@ -190,7 +200,7 @@ contract SystemPromptAgent is
         require(msg.sender == _ownerOf(_tokenId), "Invalid token owner");
 
         if (_data.length != 0) {
-            datas[_tokenId].sysPrompt = _data;
+            datas[_tokenId].sysPrompts.push(_data);
         }
 
         if (datas[_tokenId].fee != _fee) {
@@ -213,17 +223,88 @@ contract SystemPromptAgent is
         emit FeesClaimed(msg.sender, totalFee);
     }
 
-    function infer(uint _tokenId, bytes calldata _calldata) external payable {
-        //
-        TokenMetaData memory data = datas[_tokenId];
-        require(data.sysPrompt.length != 0, "Invalid system prompt");
-        require(msg.value >= data.fee, "Invalid fee");
+    function _concatSystemPrompts(
+        uint256 _tokenId
+    ) internal virtual returns (bytes memory) {
+        bytes[] memory sysPrompts = datas[_tokenId].sysPrompts;
+        uint256 len = sysPrompts.length;
+        bytes memory concatedPrompt;
 
-        earnedFees[_ownerOf(_tokenId)] += data.fee;
-        bytes memory fwdData = abi.encodePacked(data.sysPrompt, _calldata);
-        IHybridModel(hybridModel).infer{value: msg.value - data.fee}(fwdData);
+        for (uint256 i = 0; i < len; i++) {
+            concatedPrompt = abi.encodePacked(
+                concatedPrompt,
+                sysPrompts[i],
+                ";"
+            );
+        }
 
-        emit InferencePerformed(_tokenId, msg.sender, _calldata, data.fee);
+        return concatedPrompt;
+    }
+
+    function topUpPoolBalance(uint256 _tokenId) external payable {
+        poolBalance[_tokenId] += msg.value;
+    }
+
+    function getAgentFee(uint256 _agentId) external view returns (uint256) {
+        return datas[_agentId].fee;
+    }
+
+    function infer(
+        uint256 _tokenId,
+        bytes calldata _calldata,
+        string calldata _externalData
+    ) external payable {
+        require(
+            datas[_tokenId].sysPrompts.length != 0,
+            "Invalid system prompt"
+        );
+        require(msg.value >= datas[_tokenId].fee, "Invalid fee");
+
+        bytes memory fwdData = abi.encodePacked(
+            _concatSystemPrompts(_tokenId),
+            _calldata
+        );
+        uint256 estFeeWH = IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
+        uint256 inferId = 0;
+
+        if (msg.value < estFeeWH && poolBalance[_tokenId] >= estFeeWH) {
+            unchecked {
+                poolBalance[_tokenId] -= estFeeWH;
+            }
+
+            inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+                fwdData,
+                msg.sender
+            );
+
+            if (msg.value > 0) {
+                TransferHelper.safeTransferNative(
+                    _ownerOf(_tokenId),
+                    msg.value
+                );
+            }
+        } else if (msg.value >= estFeeWH) {
+            inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+                fwdData,
+                msg.sender
+            );
+
+            uint256 remain = msg.value - estFeeWH;
+            if (remain > 0) {
+                TransferHelper.safeTransferNative(_ownerOf(_tokenId), remain);
+            }
+        } else {
+            revert("Insufficient funds");
+        }
+
+        emit InferencePerformed(
+            _tokenId,
+            msg.sender,
+            fwdData,
+            datas[_tokenId].fee,
+            _externalData,
+            inferId
+        );
     }
 
     function dataOf(

@@ -94,6 +94,11 @@ const config: HardhatUserConfig = {
       workerHubScoringAddress:
         process.env.ZK_TESTNET_WORKER_HUB_SCORING_ADDRESS,
       daoTokenAddress: process.env.ZK_TESTNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.ZK_TESTNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.ZK_TESTNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.ZK_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       allowUnlimitedContractSize: true,
       timeout: 500_000,
       gasPrice: 1_000_000_000,
@@ -113,8 +118,8 @@ const config: HardhatUserConfig = {
       hybridModelAddress: process.env.LLAMA_MAINNET_HYBRID_MODEL_ADDRESS,
       hybridModelScoringAddress:
         process.env.LLAMA_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
-      systemPromptAgentAddress:
-        process.env.LLAMA_MAINNET_SYSTEM_PROMPT_AGENT_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.LLAMA_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
@@ -134,8 +139,8 @@ const config: HardhatUserConfig = {
       hybridModelAddress: process.env.FLUX_MAINNET_HYBRID_MODEL_ADDRESS,
       hybridModelScoringAddress:
         process.env.FLUX_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
-      systemPromptAgentAddress:
-        process.env.FLUX_MAINNET_SYSTEM_PROMPT_AGENT_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.FLUX_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
@@ -155,8 +160,8 @@ const config: HardhatUserConfig = {
       hybridModelAddress: process.env.FANS_MAINNET_HYBRID_MODEL_ADDRESS,
       hybridModelScoringAddress:
         process.env.FANS_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
-      systemPromptAgentAddress:
-        process.env.FANS_MAINNET_SYSTEM_PROMPT_AGENT_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.FANS_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
@@ -176,8 +181,8 @@ const config: HardhatUserConfig = {
       hybridModelAddress: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS,
       hybridModelScoringAddress:
         process.env.HERMES_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
-      systemPromptAgentAddress:
-        process.env.HERMES_MAINNET_SYSTEM_PROMPT_AGENT_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.HERMES_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
