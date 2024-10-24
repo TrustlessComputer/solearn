@@ -6,18 +6,18 @@
     "collectionAddress": "0x747d9e388D71C11F1E69B556e10F50DbbE4C2D3b",
     "hybridModelAddress": "0x9874732a8699FcA824A9A7d948f6bcD30a141238"
   },
-  "FANS_MAINNET": {
-    "daoTokenAddress": "0x8FC45ABfBff9bDbE2264541053349AD857028B1c",
-    "treasuryAddress": "0xcb5Bb963DD5cCc480907bDd188d7570ce0768fE7",
-    "workerHubAddress": "0x9fAc4FAB4357a26d9369a6C5Fc53c0097a6df64B",
-    "collectionAddress": "0x1DC6c6B92371C5a2A35424e4579656865f0f8CA5",
-    "hybridModelAddress": "0x8699900Ba420A243eC48Bb63Fa1474C27312aE15"
-  },
   "HERMES_MAINNET": {
     "daoTokenAddress": "0x5211b000CCe15fd7aC100E75a157a876dd30bef0",
     "treasuryAddress": "0x0B8fc366C27b8E2Ca8D99e569D8628c0D3351E94",
     "workerHubAddress": "0x87e9B8630c1E20dd86451AE15aF7663D006f089c",
     "collectionAddress": "0x97c671381daBAe0ae24554120dcE2E9B0baEb3CD",
     "hybridModelAddress": "0x6Ee733b0923aC74d605FbD651b412bd0849A15f5"
+  },
+  "FANS_MAINNET": {
+    "daoTokenAddress": "0x7aD12087451b52077012A11ddd1A942369FcCfEa",
+    "treasuryAddress": "0x191dbAC298bB341a52Ae9632c2e6424833689a39",
+    "workerHubAddress": "0x5fD61D186E7181917736fB61685528f13453b336",
+    "collectionAddress": "0xC97397eFD32a745a02E5B04D837300569273392E",
+    "hybridModelAddress": "0xC697B778B696b61aC90F0fF1388f17c3C36DBcC1"
   }
 }

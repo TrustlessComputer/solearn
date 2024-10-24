@@ -82,7 +82,7 @@ async function deployWorkerHub(
   const finePercentage = 0;
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
   const minFeeToUse = ethers.parseEther("0");
-  const daoTokenReward = ethers.parseEther("10");
+  const daoTokenReward = ethers.parseEther("0");
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
     userPercentage: 30_00,
@@ -197,11 +197,11 @@ async function deployHybridModel(
   );
 
   const identifier = 0;
-  const name = "Fans V2";
+  const name = "FANS V2";
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "Fans V2",
+    model_name: "FANS V2",
     model_type: "image",
     model_url: "",
     model_file_hash: "",
