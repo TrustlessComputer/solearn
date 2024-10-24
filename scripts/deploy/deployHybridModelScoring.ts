@@ -65,7 +65,7 @@ async function deployHybridModel() {
     metadata,
   ];
   const hybridModel = (await deployOrUpgrade(
-    null,
+    config.hybridModelScoringAddress,
     "HybridModel",
     constructorParams,
     config,
@@ -77,48 +77,52 @@ async function deployHybridModel() {
   );
   console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.target}`);
 
-  const collection = ModelCollection.attach(
-    config.collectionAddress
-  ) as ModelCollection;
-  const mintReceipt = await (
-    await collection.mint(modelOwnerAddress, metadata, hybridModel.target)
-  ).wait();
+  if (!config.hybridModelScoringAddress) {
+    const collection = ModelCollection.attach(
+      config.collectionAddress
+    ) as ModelCollection;
+    const mintReceipt = await (
+      await collection.mint(modelOwnerAddress, metadata, hybridModel.target)
+    ).wait();
 
-  const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
-    (event: EventLog) => event.eventName === "NewToken"
-  );
-  if (newTokenEvent) {
-    console.log("tokenId:", newTokenEvent.args?.tokenId);
+    const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
+      (event: EventLog) => event.eventName === "NewToken"
+    );
+    if (newTokenEvent) {
+      console.log("tokenId:", newTokenEvent.args?.tokenId);
+    }
+
+    const workerHubScoring = WorkerHubScoring.attach(
+      workerHubScoringAddress
+    ) as WorkerHubScoring;
+    const txRegis = await workerHubScoring.registerModel(
+      hybridModel.target,
+      minHardware,
+      ethers.parseEther("0")
+    );
+    const receiptRegis = await txRegis.wait();
+    console.log(
+      `Contract HybridModelScoring is registered to WorkerHubScoring: ${receiptRegis?.status}`
+    );
+
+    // WorkerHubScoring setupScoringVar
+    const txSetup = await workerHubScoring.setupScoringVar(workerHubAddress);
+    const receiptSetup = await txSetup.wait();
+    console.log(
+      `Contract WorkerHubScoring setup state: ${receiptSetup?.status}`
+    );
+
+    // WorkerHub setScoringInfo
+    const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
+    const txSetup2 = await workerHub.setScoringInfo(
+      workerHubScoringAddress,
+      hybridModel.target
+    );
+    const receiptSetup2 = await txSetup2.wait();
+    console.log(
+      `Contract WorkerHub setup Scoring Info: ${receiptSetup2?.status}`
+    );
   }
-
-  const workerHubScoring = WorkerHubScoring.attach(
-    workerHubScoringAddress
-  ) as WorkerHubScoring;
-  const txRegis = await workerHubScoring.registerModel(
-    hybridModel.target,
-    minHardware,
-    ethers.parseEther("0")
-  );
-  const receiptRegis = await txRegis.wait();
-  console.log(
-    `Contract HybridModelScoring is registered to WorkerHubScoring: ${receiptRegis?.status}`
-  );
-
-  // WorkerHubScoring setupScoringVar
-  const txSetup = await workerHubScoring.setupScoringVar(workerHubAddress);
-  const receiptSetup = await txSetup.wait();
-  console.log(`Contract WorkerHubScoring setup state: ${receiptSetup?.status}`);
-
-  // WorkerHub setScoringInfo
-  const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
-  const txSetup2 = await workerHub.setScoringInfo(
-    workerHubScoringAddress,
-    hybridModel.target
-  );
-  const receiptSetup2 = await txSetup2.wait();
-  console.log(
-    `Contract WorkerHub setup Scoring Info: ${receiptSetup2?.status}`
-  );
 }
 
 deployHybridModel()

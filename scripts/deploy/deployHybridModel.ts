@@ -52,7 +52,7 @@ async function deployHybridModel() {
     metadata,
   ];
   const hybridModel = (await deployOrUpgrade(
-    null,
+    config.hybridModelAddress,
     "HybridModel",
     constructorParams,
     config,
@@ -63,28 +63,31 @@ async function deployHybridModel() {
     `Contract HybridModel has been deployed to address ${hybridModel.target}`
   );
 
-  const collection = ModelCollection.attach(
-    config.collectionAddress
-  ) as ModelCollection;
-  const mintReceipt = await (
-    await collection.mint(modelOwnerAddress, metadata, hybridModel.target)
-  ).wait();
+  if (!config.hybridModelAddress) {
+    const collection = ModelCollection.attach(
+      config.collectionAddress
+    ) as ModelCollection;
+    const mintReceipt = await (
+      await collection.mint(modelOwnerAddress, metadata, hybridModel.target)
+    ).wait();
 
-  const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
-    (event: EventLog) => event.eventName === "NewToken"
-  );
-  if (newTokenEvent) {
-    console.log("tokenId:", newTokenEvent.args?.tokenId);
+    const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
+      (event: EventLog) => event.eventName === "NewToken"
+    );
+    if (newTokenEvent) {
+      console.log("tokenId:", newTokenEvent.args?.tokenId);
+    }
+
+    const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
+    await workerHub.registerModel(
+      hybridModel.target,
+      minHardware,
+      ethers.parseEther("0.1")
+    );
+
+    console.log(`Contract HybridModel is registered to WorkerHub`);
   }
 
-  const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
-  await workerHub.registerModel(
-    hybridModel.target,
-    minHardware,
-    ethers.parseEther("0.1")
-  );
-
-  console.log(`Contract HybridModel is registered to WorkerHub`);
   console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.target}`);
 }
 

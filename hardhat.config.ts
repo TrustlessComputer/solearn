@@ -110,6 +110,11 @@ const config: HardhatUserConfig = {
       workerHubScoringAddress:
         process.env.LLAMA_MAINNET_WORKER_HUB_SCORING_ADDRESS,
       daoTokenAddress: process.env.LLAMA_MAINNET_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
+      hybridModelAddress: process.env.LLAMA_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.LLAMA_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptAgentAddress:
+        process.env.LLAMA_MAINNET_SYSTEM_PROMPT_AGENT_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
@@ -126,6 +131,11 @@ const config: HardhatUserConfig = {
       workerHubScoringAddress:
         process.env.FLUX_MAINNET_WORKER_HUB_SCORING_ADDRESS,
       daoTokenAddress: process.env.FLUX_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.FLUX_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.FLUX_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptAgentAddress:
+        process.env.FLUX_MAINNET_SYSTEM_PROMPT_AGENT_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
@@ -142,6 +152,11 @@ const config: HardhatUserConfig = {
       workerHubScoringAddress:
         process.env.FANS_MAINNET_WORKER_HUB_SCORING_ADDRESS,
       daoTokenAddress: process.env.FANS_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.FANS_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.FANS_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptAgentAddress:
+        process.env.FANS_MAINNET_SYSTEM_PROMPT_AGENT_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
@@ -158,6 +173,11 @@ const config: HardhatUserConfig = {
       daoTokenAddress: process.env.HERMES_MAINNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.HERMES_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.HERMES_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptAgentAddress:
+        process.env.HERMES_MAINNET_SYSTEM_PROMPT_AGENT_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: true,
