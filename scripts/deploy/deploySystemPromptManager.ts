@@ -50,6 +50,32 @@ async function deploySystemPromptManager() {
   console.log(
     `${networkName}_SYSTEM_PROMPT_MANAGER_ADDRESS=${sysPromptManager.target}`
   );
+
+  // // Mint
+  // const Fact = await ethers.getContractFactory("SystemPromptManager");
+  // const ins = Fact.attach(sysPromptManager.target) as SystemPromptManager;
+  // //
+  // const metadataObj = {
+  //   agent_uri: "ipfs://meta",
+  // };
+  // const metadata = JSON.stringify(metadataObj, null, "\t");
+  // const linkPrompt = "ifps://systemprompt";
+
+  // const nftOwner = (await ethers.getSigners())[0].address;
+  // const uri = metadata;
+  // const data = ethers.toUtf8Bytes(linkPrompt);
+  // const fee = ethers.parseEther("0");
+  // const txMint = await ins.mint(nftOwner, uri, data, fee);
+  // const res = await txMint.wait();
+  // console.log(`Minted tx hash: ${res?.hash}`);
+  // console.log(`Minted status: ${res?.status}`);
+  // //
+  // const txTopup = await ins.topUpPoolBalance(1n, {
+  //   value: ethers.parseEther("20"),
+  // });
+  // const resTopup = await txTopup.wait();
+  // console.log(`Topup tx hash: ${resTopup?.hash}`);
+  // console.log(`Topup status: ${resTopup?.status}`);
 }
 
 deploySystemPromptManager()

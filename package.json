@@ -63,8 +63,10 @@
     "autoDeploy:hermes_mainnet": "npx hardhat run scripts/autoDeploy.ts --network hermes_mainnet",
     "deployWorkerHub:hermes_mainnet": "npx hardhat run scripts/deploy/deployWorkerHub.ts --network hermes_mainnet",
     "deployWorkerHubScoring:hermes_mainnet": "npx hardhat run scripts/deploy/deployWorkerHubScoring.ts --network hermes_mainnet",
+    "deployHybridModel:hermes_mainnet": "npx hardhat run scripts/deploy/deployHybridModel.ts --network hermes_mainnet",
     "deployHybridModelScoring:hermes_mainnet": "npx hardhat run scripts/deploy/deployHybridModelScoring.ts --network hermes_mainnet",
     "deployDAOToken:hermes_mainnet": "npx hardhat run scripts/deploy/deployDAOToken.ts --network hermes_mainnet",
+    "deploySystemPromptManager:hermes_mainnet": "npx hardhat run scripts/deploy/deploySystemPromptManager.ts --network hermes_mainnet",
     "updateHybridModelMetadata:hermes_mainnet": "npx hardhat run scripts/updateHybridModelMetadata.ts --network hermes_mainnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
