@@ -102,4 +102,11 @@ contract HybridModel is
             _callback
         );
     }
+
+    function infer(
+        bytes calldata _input,
+        address creator
+    ) external payable whenNotPaused nonReentrant returns (uint256) {
+        return IInferable(workerHub).infer{value: msg.value}(_input, creator);
+    }
 }
