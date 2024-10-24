@@ -75,7 +75,9 @@ async function deployHybridModel() {
   console.log(
     `Contract HybridModel has been deployed to address ${hybridModel.target}`
   );
-  console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.target}`);
+  console.log(
+    `${networkName}_HYBRID_MODEL_SCORING_ADDRESS=${hybridModel.target}`
+  );
 
   const collection = ModelCollection.attach(
     config.collectionAddress
