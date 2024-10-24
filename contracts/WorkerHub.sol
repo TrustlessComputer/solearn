@@ -846,8 +846,8 @@ contract WorkerHub is
 
         uint256 l2OwnerAmt = (daoTokenReward * percentage.l2OwnerPercentage) /
             PERCENTAGE_DENOMINATOR;
-        uint256 userAmt = (daoTokenReward * percentage.userPercentage) /
-            PERCENTAGE_DENOMINATOR;
+        // uint256 userAmt = (daoTokenReward * percentage.userPercentage) /
+        //     PERCENTAGE_DENOMINATOR;
 
         daoReceivers.push(
             DAOTokenReceiverInfor(
@@ -857,13 +857,13 @@ contract WorkerHub is
             )
         );
 
-        daoReceivers.push(
-            DAOTokenReceiverInfor(
-                inferences[_inferenceId].creator,
-                userAmt,
-                DAOTokenReceiverRole.User
-            )
-        );
+        // daoReceivers.push(
+        //     DAOTokenReceiverInfor(
+        //         inferences[_inferenceId].creator,
+        //         userAmt,
+        //         DAOTokenReceiverRole.User
+        //     )
+        // );
         if (_isReferred) {
             uint256 refereeAmt = (daoTokenReward *
                 percentage.refereePercentage) / PERCENTAGE_DENOMINATOR;
@@ -995,8 +995,6 @@ contract WorkerHub is
             shareTokenPerValidator = remainToken / maxCount;
         }
 
-        uint8 counter = 0; //TODO: kelvin remove
-
         for (uint256 i = 0; i < len; i++) {
             Assignment storage assignment = assignments[assignmentIds[i]];
             // Logically, when a worker calls the commit function, it proves that the worker is active.
@@ -1025,8 +1023,6 @@ contract WorkerHub is
                                 DAOTokenReceiverRole.Validator
                             )
                         );
-
-                        counter++;
                     }
                 } else {
                     if (feeForMiner > 0) {
@@ -1044,33 +1040,31 @@ contract WorkerHub is
                                 DAOTokenReceiverRole.Miner
                             )
                         );
-
-                        counter++;
                     }
                 }
             }
         }
 
         // mint DAO token
-        uint256 length = daoReceiversInfo[_inferenceId].length;
-        if (notReachedLimit && length > 0) {
-            DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
-                _inferenceId
-            ];
-            for (uint256 i = 0; i < length; i++) {
-                IDAOToken(daoToken).mint(
-                    receiversInf[i].receiver,
-                    receiversInf[i].amount
-                );
-            }
+        // uint256 length = daoReceiversInfo[_inferenceId].length;
+        // if (notReachedLimit && length > 0) {
+        //     DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
+        //         _inferenceId
+        //     ];
+        //     for (uint256 i = 0; i < length; i++) {
+        //         IDAOToken(daoToken).mint(
+        //             receiversInf[i].receiver,
+        //             receiversInf[i].amount
+        //         );
+        //     }
 
-            emit DAOTokenMintedV2(
-                _getChainID(),
-                _inferenceId,
-                inferences[_inferenceId].modelAddress,
-                receiversInf
-            );
-        }
+        //     emit DAOTokenMintedV2(
+        //         _getChainID(),
+        //         _inferenceId,
+        //         inferences[_inferenceId].modelAddress,
+        //         receiversInf
+        //     );
+        // }
 
         // Transfer the mining fee to treasury
         if (inferences[_inferenceId].feeL2 > 0) {
@@ -1088,10 +1082,7 @@ contract WorkerHub is
 
         // Call scoring model contract
         if (
-            false &&
-            modelScoring != address(0) &&
-            notReachedLimit &&
-            daoTokenReward > 0
+            modelScoring != address(0) && notReachedLimit && daoTokenReward > 0
         ) {
             uint256 scoringFee = IWorkerHub(workerHubScoring).getMinFeeToUse(
                 modelScoring
@@ -1104,7 +1095,7 @@ contract WorkerHub is
                 address(this)
             );
         }
-        inferences[_inferenceId].status = InferenceStatus.Transferred;
+        inferences[_inferenceId].status = InferenceStatus.Processed;
 
         return true;
     }
@@ -1282,15 +1273,14 @@ contract WorkerHub is
         uint256 userDAOTokenReceive = _calculateUserDAOTokenReceived(
             resultValue
         );
-        DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
+        DAOTokenReceiverInfor[] storage receiversInf = daoReceiversInfo[
             _originInferId
         ];
         uint256 len = receiversInf.length;
         if (len > 0) {
-            address receiver = inference.creator;
-            daoReceiversInfo[_originInferId].push(
+            receiversInf.push(
                 DAOTokenReceiverInfor(
-                    receiver,
+                    inference.creator,
                     userDAOTokenReceive,
                     DAOTokenReceiverRole.User
                 )
@@ -1314,13 +1304,8 @@ contract WorkerHub is
         inference.status = InferenceStatus.Transferred;
     }
 
-    function prepareMintingData(
-        DAOTokenReceiverInfor[] memory _receiversInfo
-    ) internal view returns (bytes memory) {
-        return abi.encode(_receiversInfo);
-    }
-
     function resultReceived(bytes calldata result) external virtual {
+        result;
         revert("Not implemented");
     }
 

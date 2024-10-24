@@ -20,7 +20,7 @@ contract WorkerHubScoring is WorkerHub {
     // // define storage here
     address public workHubAddr;
     // inter => InferExtended
-    mapping(uint => InferExtended) internal extendInferInfo;
+    mapping(uint => InferExtended) public extendInferInfo;
 
     uint256[100] private __gap2;
 
@@ -229,7 +229,9 @@ contract WorkerHubScoring is WorkerHub {
         _callBack(_inferenceId, "0x01");
     }
 
-    function _validatateSolution(bytes calldata _data) internal pure override {
+    function _validatateSolution(
+        bytes calldata _data
+    ) internal pure override(WorkerHub) {
         // Assuming the result contains a single uint8 value
         require(_data.length == 1, "Invalid result length");
 
@@ -238,6 +240,10 @@ contract WorkerHubScoring is WorkerHub {
             resultValue >= 1 && resultValue <= 10,
             "Result must be between 1 and 10"
         );
+    }
+
+    function getScore(uint256 _assignId) external view returns (uint8) {
+        return uint8(assignments[_assignId].output[0]);
     }
 
     function resultReceived(bytes calldata result) external override {

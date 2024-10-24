@@ -12,6 +12,7 @@ import { deployOrUpgrade } from "./lib/utils";
 import { EventLog, Signer } from "ethers";
 import path from "path";
 import fs from "fs";
+import { combineDurations } from "./utils";
 
 const config = network.config as any;
 const networkName = network.name.toUpperCase();
@@ -20,8 +21,8 @@ async function deployDAOToken() {
   console.log("DEPLOY DAO TOKEN...");
 
   const _MAX_SUPPLY_CAP = ethers.parseEther("2100000000"); //2,1B
-  const tokenName = "HERMES";
-  const tokenSymbol = "HERMES";
+  const tokenName = "FANS";
+  const tokenSymbol = "FANS";
   const initializedParams = [tokenName, tokenSymbol, _MAX_SUPPLY_CAP];
 
   const daoToken = (await deployOrUpgrade(
@@ -69,7 +70,7 @@ async function deployWorkerHub(
 
   const feeL2Percentage = 0;
   const feeTreasuryPercentage = 100_00;
-  const minerMinimumStake = ethers.parseEther("25000");
+  const minerMinimumStake = ethers.parseEther("0.1");
   const minerRequirement = 3;
   const blockPerEpoch = 600 * 2;
   const rewardPerEpoch = ethers.parseEther("0.38");
@@ -80,7 +81,7 @@ async function deployWorkerHub(
   const penaltyDuration = 0; // NOTE: 3.3 hours
   const finePercentage = 0;
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const minFeeToUse = ethers.parseEther("0.1");
+  const minFeeToUse = ethers.parseEther("0");
   const daoTokenReward = ethers.parseEther("10");
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
@@ -89,6 +90,14 @@ async function deployWorkerHub(
     refereePercentage: 5_00,
     l2OwnerPercentage: 10_00,
   };
+
+  const duration = combineDurations(
+    submitDuration,
+    commitDuration,
+    revealDuration,
+    unstakeDelayTime,
+    penaltyDuration
+  );
 
   const constructorParams = [
     l2OwnerAddress,
@@ -100,11 +109,7 @@ async function deployWorkerHub(
     minerRequirement,
     blockPerEpoch,
     rewardPerEpoch,
-    submitDuration,
-    commitDuration,
-    revealDuration,
-    unstakeDelayTime,
-    penaltyDuration,
+    duration,
     finePercentage,
     feeRatioMinerValidator,
     minFeeToUse,
@@ -152,7 +157,7 @@ async function deployModelCollection() {
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
-  const nextModelId = 500_001; //
+  const nextModelId = 400_001; //
 
   const constructorParams = [
     name,
@@ -192,11 +197,11 @@ async function deployHybridModel(
   );
 
   const identifier = 0;
-  const name = "Hermes V2";
+  const name = "Fans V2";
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "Hermes V2",
+    model_name: "Fans V2",
     model_type: "image",
     model_url: "",
     model_file_hash: "",
@@ -224,12 +229,15 @@ async function deployHybridModel(
   const hybridModelAddress = hybridModel.target;
 
   // COLLECTION MINT NFT TO MODEL OWNER
+  const signer1 = (await ethers.getSigners())[0];
   console.log("COLLECTION MINT NFT TO MODEL OWNER...");
   const collection = ModelCollection.attach(
     collectionAddress
   ) as ModelCollection;
   const mintReceipt = await (
-    await collection.mint(modelOwnerAddress, metadata, hybridModelAddress)
+    await collection
+      .connect(signer1)
+      .mint(modelOwnerAddress, metadata, hybridModelAddress)
   ).wait();
 
   const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
@@ -245,7 +253,7 @@ async function deployHybridModel(
   const txRegis = await workerHub.registerModel(
     hybridModelAddress,
     minHardware,
-    ethers.parseEther("0.1")
+    ethers.parseEther("0")
   );
   const receipt = await txRegis.wait();
   console.log("Tx hash: ", receipt?.hash);
