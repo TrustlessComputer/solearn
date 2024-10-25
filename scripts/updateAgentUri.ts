@@ -30,6 +30,11 @@ async function updateAgentUri() {
 
   console.log(`Update URI tx hash: ${resUpdateUri?.hash}`);
   console.log(`Update URI status: ${resUpdateUri?.status}`);
+
+  // get the uri from system prompt manager contract
+  const agentUri = await ins.tokenURI(agentId);
+  console.log("=====================================");
+  console.log("New agent URI: ", agentUri);
 }
 
 updateAgentUri()

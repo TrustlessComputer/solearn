@@ -28,6 +28,15 @@ async function updateAgentPrompt() {
   const resUpdatePrompt = await txUpdatePrompt.wait();
   console.log(`Update Prompt tx hash: ${resUpdatePrompt?.hash}`);
   console.log(`Update Prompt status: ${resUpdatePrompt?.status}`);
+
+  // get the uri from system prompt manager contract
+  const agentPrompt = await ins.getAgentSystemPrompt(agentId);
+  console.log("=====================================");
+  console.log("New agent prompt: ", agentPrompt[0]);
+  console.log(
+    "New agent prompt (string): ",
+    ethers.toUtf8String(agentPrompt[0])
+  );
 }
 
 updateAgentPrompt()
