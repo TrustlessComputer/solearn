@@ -134,6 +134,8 @@ contract SystemPromptManager is
         bytes calldata _data,
         uint _fee
     ) external payable returns (uint256) {
+        require(msg.value >= mintPrice, "Invalid minting fee");
+
         while (datas[nextTokenId].sysPrompts.length != 0) {
             nextTokenId++;
         }
