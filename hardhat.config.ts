@@ -1,8 +1,8 @@
 import { HardhatUserConfig } from "hardhat/config";
-import "@matterlabs/hardhat-zksync";
 import "@nomicfoundation/hardhat-toolbox";
-import "@nomiclabs/hardhat-solhint";
 import "@openzeppelin/hardhat-upgrades";
+import "@matterlabs/hardhat-zksync";
+import "@nomiclabs/hardhat-solhint";
 import "hardhat-deploy";
 import "dotenv/config";
 import "hardhat-contract-sizer";
@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hermes_mainnet",
+  defaultNetwork: "hardhat",
   solidity: {
     compilers: [
       {
