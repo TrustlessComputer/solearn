@@ -112,19 +112,19 @@ contract SystemPromptManager is
         string calldata _uri,
         bytes calldata _data,
         uint _fee,
-        uint256 tokenId
+        uint256 agentId
     ) internal returns (uint256) {
         if (_data.length == 0) revert InvalidNFTData();
 
-        _safeMint(_to, tokenId);
-        _setTokenURI(tokenId, _uri);
-        // datas[tokenId] = TokenMetaData({fee: _fee, sysPrompts: [_data]});
-        datas[tokenId].fee = _fee;
-        datas[tokenId].sysPrompts.push(_data);
+        _safeMint(_to, agentId);
+        _setTokenURI(agentId, _uri);
+        // datas[agentId] = TokenMetaData({fee: _fee, sysPrompts: [_data]});
+        datas[agentId].fee = _fee;
+        datas[agentId].sysPrompts.push(_data);
 
-        emit NewToken(tokenId, _uri, _data, _fee, msg.sender);
+        emit NewToken(agentId, _uri, _data, _fee, msg.sender);
 
-        return tokenId;
+        return agentId;
     }
 
     /// @notice This function open minting role to public users
@@ -183,31 +183,54 @@ contract SystemPromptManager is
         if (!success) revert FailedTransfer();
     }
 
-    function updateTokenURI(
-        uint256 _tokenId,
-        string calldata _uri
-    ) external onlyOwner {
-        _setTokenURI(_tokenId, _uri);
-        emit TokenURIUpdate(_tokenId, _uri);
+    function updateAgentURI(uint256 _agentId, string calldata _uri) external {
+        require(msg.sender == _ownerOf(_agentId), "Invalid token owner");
+        require(bytes(_uri).length != 0, "Invalid URI");
+
+        _setTokenURI(_agentId, _uri);
+        emit AgentURIUpdate(_agentId, _uri);
     }
 
-    function updateTokenData(
-        uint256 _tokenId,
-        bytes calldata _data,
-        uint _fee
+    function updateAgentData(
+        uint256 _agentId,
+        bytes calldata _sysPrompt,
+        uint256 _promptIdx
     ) external {
-        require(_data.length != 0, "Invalid data input");
-        require(msg.sender == _ownerOf(_tokenId), "Invalid token owner");
+        require(_sysPrompt.length != 0, "Invalid system prompt input");
+        require(msg.sender == _ownerOf(_agentId), "Invalid agent owner");
+        uint256 len = datas[_agentId].sysPrompts.length;
+        require(_promptIdx < len, "Invalid prompt index");
 
-        if (_data.length != 0) {
-            datas[_tokenId].sysPrompts.push(_data);
+        emit AgentDataUpdate(
+            _agentId,
+            _promptIdx,
+            datas[_agentId].sysPrompts[_promptIdx],
+            _sysPrompt
+        );
+
+        datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
+    }
+
+    function addNewAgentData(
+        uint256 _agentId,
+        bytes calldata _sysPrompt
+    ) external {
+        require(_sysPrompt.length != 0, "Invalid data input");
+        require(msg.sender == _ownerOf(_agentId), "Invalid token owner");
+
+        datas[_agentId].sysPrompts.push(_sysPrompt);
+
+        emit AgentDataAddNew(_agentId, datas[_agentId].sysPrompts);
+    }
+
+    function updateAgentFee(uint256 _agentId, uint _fee) external {
+        require(msg.sender == _ownerOf(_agentId), "Invalid token owner");
+
+        if (datas[_agentId].fee != _fee) {
+            datas[_agentId].fee = _fee;
         }
 
-        if (datas[_tokenId].fee != _fee) {
-            datas[_tokenId].fee = _fee;
-        }
-
-        emit TokenDataUpdate(_tokenId, _data, _fee);
+        emit AgentFeeUpdate(_agentId, _fee);
     }
 
     function setHybridModel(address _hybridModel) external onlyOwner {
@@ -224,9 +247,9 @@ contract SystemPromptManager is
     }
 
     function _concatSystemPrompts(
-        uint256 _tokenId
+        uint256 _agentId
     ) internal virtual returns (bytes memory) {
-        bytes[] memory sysPrompts = datas[_tokenId].sysPrompts;
+        bytes[] memory sysPrompts = datas[_agentId].sysPrompts;
         uint256 len = sysPrompts.length;
         bytes memory concatedPrompt;
 
@@ -241,35 +264,43 @@ contract SystemPromptManager is
         return concatedPrompt;
     }
 
-    function topUpPoolBalance(uint256 _tokenId) external payable {
-        poolBalance[_tokenId] += msg.value;
+    function topUpPoolBalance(uint256 _agentId) external payable {
+        poolBalance[_agentId] += msg.value;
+
+        emit TopUpPoolBalance(_agentId, msg.sender, msg.value);
     }
 
     function getAgentFee(uint256 _agentId) external view returns (uint256) {
         return datas[_agentId].fee;
     }
 
+    function getAgentSystemPrompt(
+        uint256 _agentId
+    ) external view returns (bytes[] memory) {
+        return datas[_agentId].sysPrompts;
+    }
+
     function infer(
-        uint256 _tokenId,
+        uint256 _agentId,
         bytes calldata _calldata,
         string calldata _externalData
     ) external payable {
         require(
-            datas[_tokenId].sysPrompts.length != 0,
+            datas[_agentId].sysPrompts.length != 0,
             "Invalid system prompt"
         );
-        require(msg.value >= datas[_tokenId].fee, "Invalid fee");
+        require(msg.value >= datas[_agentId].fee, "Invalid fee");
 
         bytes memory fwdData = abi.encodePacked(
-            _concatSystemPrompts(_tokenId),
+            _concatSystemPrompts(_agentId),
             _calldata
         );
         uint256 estFeeWH = IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
         uint256 inferId = 0;
 
-        if (msg.value < estFeeWH && poolBalance[_tokenId] >= estFeeWH) {
+        if (msg.value < estFeeWH && poolBalance[_agentId] >= estFeeWH) {
             unchecked {
-                poolBalance[_tokenId] -= estFeeWH;
+                poolBalance[_agentId] -= estFeeWH;
             }
 
             inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
@@ -279,7 +310,7 @@ contract SystemPromptManager is
 
             if (msg.value > 0) {
                 TransferHelper.safeTransferNative(
-                    _ownerOf(_tokenId),
+                    _ownerOf(_agentId),
                     msg.value
                 );
             }
@@ -291,33 +322,33 @@ contract SystemPromptManager is
 
             uint256 remain = msg.value - estFeeWH;
             if (remain > 0) {
-                TransferHelper.safeTransferNative(_ownerOf(_tokenId), remain);
+                TransferHelper.safeTransferNative(_ownerOf(_agentId), remain);
             }
         } else {
             revert("Insufficient funds");
         }
 
         emit InferencePerformed(
-            _tokenId,
+            _agentId,
             msg.sender,
             fwdData,
-            datas[_tokenId].fee,
+            datas[_agentId].fee,
             _externalData,
             inferId
         );
     }
 
     function dataOf(
-        uint256 _tokenId
+        uint256 _agentId
     ) external view returns (TokenMetaData memory) {
-        return datas[_tokenId];
+        return datas[_agentId];
     }
 
     function royaltyInfo(
-        uint256 _tokenId,
+        uint256 _agentId,
         uint256 _salePrice
     ) external view returns (address, uint256) {
-        _tokenId;
+        _agentId;
         return (
             royaltyReceiver,
             (_salePrice * royaltyPortion) / PORTION_DENOMINATOR
@@ -325,7 +356,7 @@ contract SystemPromptManager is
     }
 
     function tokenURI(
-        uint256 _tokenId
+        uint256 _agentId
     )
         public
         view
@@ -336,7 +367,7 @@ contract SystemPromptManager is
         )
         returns (string memory)
     {
-        return super.tokenURI(_tokenId);
+        return super.tokenURI(_agentId);
     }
 
     function supportsInterface(
@@ -360,7 +391,7 @@ contract SystemPromptManager is
     function _beforeTokenTransfer(
         address _from,
         address _to,
-        uint256 _tokenId,
+        uint256 _agentId,
         uint256 _batchSize
     )
         internal
@@ -370,12 +401,12 @@ contract SystemPromptManager is
             ERC721PausableUpgradeable
         )
     {
-        super._beforeTokenTransfer(_from, _to, _tokenId, _batchSize);
+        super._beforeTokenTransfer(_from, _to, _agentId, _batchSize);
     }
 
     function _burn(
-        uint256 _tokenId
+        uint256 _agentId
     ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
-        super._burn(_tokenId);
+        super._burn(_agentId);
     }
 }

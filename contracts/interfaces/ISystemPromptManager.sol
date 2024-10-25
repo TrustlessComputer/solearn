@@ -26,8 +26,15 @@ interface ISystemPromptManager is
         uint fee,
         address indexed minter
     );
-    event TokenURIUpdate(uint256 indexed tokenId, string uri);
-    event TokenDataUpdate(uint256 indexed tokenId, bytes sysPrompt, uint fee);
+    event AgentURIUpdate(uint256 indexed agentId, string uri);
+    event AgentDataUpdate(
+        uint256 indexed agentId,
+        uint256 promptIndex,
+        bytes oldSysPrompt,
+        bytes newSysPrompt
+    );
+    event AgentDataAddNew(uint256 indexed agentId, bytes[] sysPrompt);
+    event AgentFeeUpdate(uint256 indexed agentId, uint fee);
     event InferencePerformed(
         uint256 indexed tokenId,
         address indexed caller,
@@ -37,6 +44,7 @@ interface ISystemPromptManager is
         uint256 inferenceId
     );
     event FeesClaimed(address indexed claimer, uint amount);
+    event TopUpPoolBalance(uint256 agentId, address caller, uint256 amount);
 
     error AlreadyMinted();
     error Authorized();

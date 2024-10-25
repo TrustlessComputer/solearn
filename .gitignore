@@ -24,4 +24,4 @@ cache_forge
 out
 
 !artifacts-zk/contracts/WorkerHub.sol/WorkerHub.json
-!artifacts-zk/contracts/SystemPromptManager.sol/SystemPromptManagers.json
+!artifacts-zk/contracts/SystemPromptManager.sol/SystemPromptManager.json
