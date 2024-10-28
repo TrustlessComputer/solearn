@@ -79,5 +79,6 @@ abstract contract WorkerHubStorage is IWorkerHub {
     address public workerHubScoring;
     address public modelScoring;
     mapping(uint256 inferId => DAOTokenReceiverInfor[]) public daoReceiversInfo;
-    uint256[95] private __gap;
+    address public wEAI;
+    uint256[94] private __gap;
 }

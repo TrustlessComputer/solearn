@@ -73,6 +73,7 @@
     "deployWorkerHubScoring:base_mainnet": "npx hardhat run scripts/deploy/deployWorkerHubScoring.ts --network base_mainnet",
     "deployHybridModelScoring:base_mainnet": "npx hardhat run scripts/deploy/deployHybridModelScoring.ts --network base_mainnet",
     "autoDeploy:base_mainnet": "npx hardhat run scripts/autoDeploy.ts --network base_mainnet",
+    "autoDeploy:base_testnet": "npx hardhat run scripts/autoDeploy.ts --network base_testnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {

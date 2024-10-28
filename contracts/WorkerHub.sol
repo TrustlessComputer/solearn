@@ -78,6 +78,7 @@ contract WorkerHub is
 
         splitAndAssignDuration(_duration);
         setDAOTokenPercentage(_daoTokenPercentage);
+        wEAI = 0x87C51CD469A0E1E2aF0e0e597fD88D9Ae4BaA967;
     }
 
     function splitAndAssignDuration(uint256 _duration) internal {
@@ -248,24 +249,33 @@ contract WorkerHub is
         emit ModelMinimumFeeUpdate(_model, _minimumFee);
     }
 
-    function registerMiner(uint16 tier) external payable whenNotPaused {
+    function registerMiner(
+        uint16 tier,
+        uint256 wEAIAmt
+    ) external whenNotPaused {
         _updateEpoch();
 
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
-        if (msg.value < minerMinimumStake) revert StakeTooLow();
+        if (wEAIAmt < minerMinimumStake) revert StakeTooLow();
 
         Worker storage miner = miners[msg.sender];
         if (miner.tier != 0) revert AlreadyRegistered();
 
-        miner.stake = msg.value;
+        miner.stake = wEAIAmt;
         miner.tier = tier;
 
         address modelAddress = modelAddresses.values[
             randomizer.randomUint256() % modelAddresses.size()
         ];
         miner.modelAddress = modelAddress;
+        TransferHelper.safeTransferFrom(
+            wEAI,
+            msg.sender,
+            address(this),
+            wEAIAmt
+        );
 
-        emit MinerRegistration(msg.sender, tier, msg.value);
+        emit MinerRegistration(msg.sender, tier, wEAIAmt);
     }
 
     function _registerReferrer(address _referrer, address _referee) internal {
@@ -361,15 +371,21 @@ contract WorkerHub is
         emit MinerUnregistration(msg.sender);
     }
 
-    function increaseMinerStake() external payable whenNotPaused {
+    function increaseMinerStake(uint256 wEAIAmt) external whenNotPaused {
         _updateEpoch();
 
         Worker storage miner = miners[msg.sender];
         if (miner.tier == 0) revert NotRegistered();
 
-        miner.stake += msg.value;
+        miner.stake += wEAIAmt;
+        TransferHelper.safeTransferFrom(
+            wEAI,
+            msg.sender,
+            address(this),
+            wEAIAmt
+        );
 
-        emit MinerExtraStake(msg.sender, msg.value);
+        emit MinerExtraStake(msg.sender, wEAIAmt);
     }
 
     function unstakeForMiner() external {
@@ -383,7 +399,8 @@ contract WorkerHub is
         uint256 stake = unstakeRequest.stake;
         if (stake == 0) revert NullStake();
         unstakeRequest.stake = 0;
-        TransferHelper.safeTransferNative(msg.sender, stake);
+        // TransferHelper.safeTransferNative(msg.sender, stake);
+        TransferHelper.safeTransfer(wEAI, msg.sender, stake);
 
         emit MinerUnstake(msg.sender, stake);
     }
@@ -769,7 +786,9 @@ contract WorkerHub is
 
             // reset boost
             boost[_miner].reserved1 = 0;
-            TransferHelper.safeTransferNative(treasury, fine);
+            // TransferHelper.safeTransferNative(treasury, fine);
+
+            TransferHelper.safeTransfer(wEAI, treasury, fine);
 
             emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
             return;
@@ -1014,6 +1033,11 @@ contract WorkerHub is
                             assignment.worker,
                             shareFeePerValidator
                         );
+                        // TransferHelper.safeTransfer(
+                        //     wEAI,
+                        //     assignment.worker,
+                        //     shareFeePerValidator
+                        // );
                     }
                     if (notReachedLimit && tokenForMiner > 0) {
                         daoReceiversInfo[_inferenceId].push(
@@ -1031,6 +1055,11 @@ contract WorkerHub is
                             assignment.worker,
                             feeForMiner
                         );
+                        // TransferHelper.safeTransfer(
+                        //     wEAI,
+                        //     assignment.worker,
+                        //     feeForMiner
+                        // );
                     }
                     if (notReachedLimit && tokenForMiner > 0) {
                         daoReceiversInfo[_inferenceId].push(
@@ -1072,12 +1101,22 @@ contract WorkerHub is
                 l2Owner,
                 inferences[_inferenceId].feeL2
             );
+            // TransferHelper.safeTransfer(
+            //     wEAI,
+            //     l2Owner,
+            //     inferences[_inferenceId].feeL2
+            // );
         }
         if (inferences[_inferenceId].feeTreasury > 0) {
             TransferHelper.safeTransferNative(
                 treasury,
                 inferences[_inferenceId].feeTreasury
             );
+            // TransferHelper.safeTransfer(
+            //     wEAI,
+            //     treasury,
+            //     inferences[_inferenceId].feeTreasury
+            // );
         }
 
         // Call scoring model contract
@@ -1132,6 +1171,11 @@ contract WorkerHub is
                 inference.creator,
                 inference.value + inference.feeL2 + inference.feeTreasury
             );
+            // TransferHelper.safeTransfer(
+            //     wEAI,
+            //     inference.creator,
+            //     inference.value + inference.feeL2 + inference.feeTreasury
+            // );
 
             // slash miner
             _slashMiner(inference.processedMiner, true);
@@ -1155,6 +1199,11 @@ contract WorkerHub is
                     inference.creator,
                     inference.value + inference.feeL2 + inference.feeTreasury
                 );
+                // TransferHelper.safeTransfer(
+                //     wEAI,
+                //     inference.creator,
+                //     inference.value + inference.feeL2 + inference.feeTreasury
+                // );
 
                 // slash validator not submitted commit hash
                 uint256[] memory assignmentIds = assignmentsByInference[
@@ -1201,6 +1250,12 @@ contract WorkerHub is
             inference.creator,
             inference.value + inference.feeL2 + inference.feeTreasury
         );
+
+        // TransferHelper.safeTransfer(
+        //     wEAI,
+        //     inference.creator,
+        //     inference.value + inference.feeL2 + inference.feeTreasury
+        // );
 
         // disable workers not call reveal
         uint256[] memory assignmentIds = assignmentsByInference[_inferenceId]
@@ -1338,7 +1393,8 @@ contract WorkerHub is
         miners[_miner].lastClaimedEpoch = currentEpoch;
         if (rewardAmount > 0 && _isTransfer) {
             minerRewards[_miner] = 0;
-            TransferHelper.safeTransferNative(_miner, rewardAmount);
+            // TransferHelper.safeTransferNative(_miner, rewardAmount);
+            TransferHelper.safeTransfer(wEAI, _miner, rewardAmount);
 
             emit RewardClaim(_miner, rewardAmount);
         } else if (rewardAmount > 0) {

@@ -18,11 +18,19 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: "0.8.19",
-        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+        settings: {
+          optimizer: { enabled: true, runs: 2000000 },
+          viaIR: true,
+          evmVersion: "paris",
+        },
       },
       {
         version: "0.8.20",
-        settings: { optimizer: { enabled: true, runs: 200 }, viaIR: true },
+        settings: {
+          optimizer: { enabled: true, runs: 2000000 },
+          viaIR: true,
+          evmVersion: "paris",
+        },
       },
     ],
   },
@@ -210,7 +218,7 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
     } as any,
     base_testnet: {
-      url: "https://rpc.notadegen.com/base/sepolia",
+      url: "https://base-sepolia.blockpi.network/v1/rpc/public",
       chainId: 84532,
       accounts: [process.env.BASE_TESTNET_PRIVATE_KEY],
       l2OwnerAddress: process.env.BASE_TESTNET_L2_OWNER_ADDRESS,
