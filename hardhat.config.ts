@@ -188,6 +188,27 @@ const config: HardhatUserConfig = {
       zksync: true,
       gasPrice: "auto",
     } as any,
+    base_mainnet: {
+      url: "https://base.llamarpc.com",
+      chainId: 8453,
+      accounts: [process.env.BASE_MAINNET_PRIVATE_KEY],
+      l2OwnerAddress: process.env.BASE_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.BASE_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.BASE_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.BASE_MAINNET_WORKER_HUB_ADDRESS,
+      daoTokenAddress: process.env.BASE_MAINNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.BASE_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.BASE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
   },
   namedAccounts: {
     deployer: 0,

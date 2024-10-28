@@ -70,6 +70,9 @@
     "updateAgentUri:hermes_mainnet": "npx hardhat run scripts/updateAgentUri.ts --network hermes_mainnet",
     "updateAgentPrompt:hermes_mainnet": "npx hardhat run scripts/updateAgentPrompt.ts --network hermes_mainnet",
     "updateHybridModelMetadata:hermes_mainnet": "npx hardhat run scripts/updateHybridModelMetadata.ts --network hermes_mainnet",
+    "deployWorkerHubScoring:base_mainnet": "npx hardhat run scripts/deploy/deployWorkerHubScoring.ts --network base_mainnet",
+    "deployHybridModelScoring:base_mainnet": "npx hardhat run scripts/deploy/deployHybridModelScoring.ts --network base_mainnet",
+    "autoDeploy:base_mainnet": "npx hardhat run scripts/autoDeploy.ts --network base_mainnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {
