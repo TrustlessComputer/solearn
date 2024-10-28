@@ -19,6 +19,10 @@ import { combineDurations } from "./utils";
 const config = network.config as any;
 const networkName = network.name.toUpperCase();
 
+async function getContractFactory(contractName: string) {
+  return await ethers.getContractFactory(contractName);
+}
+
 async function deployDAOToken() {
   console.log("DEPLOY DAO TOKEN...");
 
@@ -27,13 +31,12 @@ async function deployDAOToken() {
   const tokenSymbol = "FANS";
   const initializedParams = [tokenName, tokenSymbol, _MAX_SUPPLY_CAP];
 
-  const daoToken = (await deployOrUpgrade(
-    undefined,
-    "DAOToken",
-    initializedParams,
-    config,
-    true
-  )) as unknown as DAOToken;
+  const DAOTokeFac = await getContractFactory("DAOToken");
+
+  const daoToken = await upgrades.deployProxy(DAOTokeFac, initializedParams, {
+    initializer: "initialize(string,string,uint256)",
+  });
+  await daoToken.waitForDeployment();
 
   return daoToken.target;
 }
@@ -44,13 +47,12 @@ async function deployTreasury(daoTokenAddress: string) {
   assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
   const constructorParams = [daoTokenAddress];
 
-  const treasury = (await deployOrUpgrade(
-    undefined,
-    "Treasury",
-    constructorParams,
-    config,
-    true
-  )) as unknown as Treasury;
+  const TreasuryFac = await getContractFactory("Treasury");
+
+  const treasury = await upgrades.deployProxy(TreasuryFac, constructorParams, {
+    initializer: "initialize(address)",
+  });
+  await treasury.waitForDeployment();
 
   return treasury.target;
 }
@@ -119,13 +121,18 @@ async function deployWorkerHub(
     daoTokenPercentage,
   ];
 
-  const workerHub = (await deployOrUpgrade(
-    undefined,
-    "WorkerHub",
+  const WorkerHubFac = await getContractFactory("WorkerHub");
+
+  const workerHub = await upgrades.deployProxy(
+    WorkerHubFac,
     constructorParams,
-    config,
-    true
-  )) as unknown as WorkerHub;
+    {
+      initializer:
+        "initialize(address,address,address,uint16,uint16,uint256,uint8,uint256,uint256,uint256,uint16,uint16,uint256,uint256)",
+    }
+  );
+  await workerHub.waitForDeployment();
+
   const workerHubAddress = workerHub.target;
 
   // DAO TOKEN UPDATE WORKER HUB ADDRESS
@@ -170,13 +177,16 @@ async function deployModelCollection() {
     nextModelId,
   ];
 
-  const modelCollection = (await deployOrUpgrade(
-    undefined,
-    "ModelCollection",
+  const ModelCollectionFac = await getContractFactory("ModelCollection");
+
+  const modelCollection = await upgrades.deployProxy(
+    ModelCollectionFac,
     constructorParams,
-    config,
-    true
-  )) as unknown as ModelCollection;
+    {
+      initializer: "initialize(string,string,uint256,address,uint16,uint256)",
+    }
+  );
+  await modelCollection.waitForDeployment();
 
   return modelCollection.target;
 }
@@ -219,13 +229,17 @@ async function deployHybridModel(
     name,
     metadata,
   ];
-  const hybridModel = (await deployOrUpgrade(
-    null,
-    "HybridModel",
+
+  const HybridModelFac = await getContractFactory("HybridModel");
+
+  const hybridModel = await upgrades.deployProxy(
+    HybridModelFac,
     constructorParams,
-    config,
-    true
-  )) as unknown as HybridModel;
+    {
+      initializer: "initialize(address,address,uint256,string,string)",
+    }
+  );
+  await hybridModel.waitForDeployment();
 
   const hybridModelAddress = hybridModel.target;
 
@@ -323,13 +337,17 @@ async function deployWorkerHubScoring(
     daoTokenPercentage,
   ];
 
-  const workerHubScoring = (await deployOrUpgrade(
-    null,
-    "WorkerHubScoring",
+  const WorkerHubScoringFac = await getContractFactory("WorkerHubScoring");
+
+  const workerHubScoring = await upgrades.deployProxy(
+    WorkerHubScoringFac,
     constructorParams,
-    config,
-    true
-  )) as unknown as WorkerHubScoring;
+    {
+      initializer:
+        "initialize(address,address,address,uint16,uint16,uint256,uint8,uint256,uint256,uint256,uint16,uint16,uint256,uint256)",
+    }
+  );
+  await workerHubScoring.waitForDeployment();
 
   const workerHubScoringAddress = workerHubScoring.target;
   return workerHubScoringAddress;
@@ -378,13 +396,17 @@ async function deployHybridModelScoring(
     name,
     metadata,
   ];
-  const hybridModel = (await deployOrUpgrade(
-    null,
-    "HybridModel",
+
+  const HybridModelFac = await getContractFactory("HybridModel");
+
+  const hybridModel = await upgrades.deployProxy(
+    HybridModelFac,
     constructorParams,
-    config,
-    true
-  )) as unknown as HybridModel;
+    {
+      initializer: "initialize(address,address,uint256,string,string)",
+    }
+  );
+  await hybridModel.waitForDeployment();
 
   const collection = ModelCollection.attach(
     collectionAddress
@@ -464,6 +486,20 @@ async function deploySystemPromptManager(
     workerHubAddress,
   ];
 
+  const SystemPromptManagerFac = await getContractFactory(
+    "SystemPromptManager"
+  );
+
+  const systemPromptManager = await upgrades.deployProxy(
+    SystemPromptManagerFac,
+    constructorParams,
+    {
+      initializer:
+        "initialize(string,string,uint256,address,uint16,uint256,address,address)",
+    }
+  );
+  await systemPromptManager.waitForDeployment();
+
   const sysPromptManager = (await deployOrUpgrade(
     undefined,
     "SystemPromptManager",
@@ -473,6 +509,23 @@ async function deploySystemPromptManager(
   )) as unknown as SystemPromptManager;
 
   // Mint first NFT to owner
+  const nftOwner = (await ethers.getSigners())[0].address;
+  const ins = sysPromptManager.attach(
+    sysPromptManager.target
+  ) as SystemPromptManager;
+
+  const metadataObj = {
+    agent_uri: "ipfs://meta",
+  };
+  const metadata = JSON.stringify(metadataObj, null, "\t");
+  const linkPrompt = "ifps://systemprompt";
+  const uri = metadata;
+  const data = ethers.toUtf8Bytes(linkPrompt);
+  const fee = ethers.parseEther("0");
+  const txMint = await ins.mint(nftOwner, uri, data, fee);
+  const res = await txMint.wait();
+  console.log(`Minted tx hash: ${res?.hash}`);
+  console.log(`Minted status: ${res?.status}`);
 
   return sysPromptManager.target;
 }

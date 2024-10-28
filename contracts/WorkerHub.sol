@@ -1046,25 +1046,25 @@ contract WorkerHub is
         }
 
         // mint DAO token
-        // uint256 length = daoReceiversInfo[_inferenceId].length;
-        // if (notReachedLimit && length > 0) {
-        //     DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
-        //         _inferenceId
-        //     ];
-        //     for (uint256 i = 0; i < length; i++) {
-        //         IDAOToken(daoToken).mint(
-        //             receiversInf[i].receiver,
-        //             receiversInf[i].amount
-        //         );
-        //     }
+        uint256 length = daoReceiversInfo[_inferenceId].length;
+        if (notReachedLimit && length > 0) {
+            DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
+                _inferenceId
+            ];
+            for (uint256 i = 0; i < length; i++) {
+                IDAOToken(daoToken).mint(
+                    receiversInf[i].receiver,
+                    receiversInf[i].amount
+                );
+            }
 
-        //     emit DAOTokenMintedV2(
-        //         _getChainID(),
-        //         _inferenceId,
-        //         inferences[_inferenceId].modelAddress,
-        //         receiversInf
-        //     );
-        // }
+            emit DAOTokenMintedV2(
+                _getChainID(),
+                _inferenceId,
+                inferences[_inferenceId].modelAddress,
+                receiversInf
+            );
+        }
 
         // Transfer the mining fee to treasury
         if (inferences[_inferenceId].feeL2 > 0) {
@@ -1082,7 +1082,10 @@ contract WorkerHub is
 
         // Call scoring model contract
         if (
-            modelScoring != address(0) && notReachedLimit && daoTokenReward > 0
+            false &&
+            modelScoring != address(0) &&
+            notReachedLimit &&
+            daoTokenReward > 0
         ) {
             uint256 scoringFee = IWorkerHub(workerHubScoring).getMinFeeToUse(
                 modelScoring
@@ -1091,8 +1094,7 @@ contract WorkerHub is
             IHybridModel(modelScoring).inferWithCallback{value: scoringFee}(
                 _inferenceId,
                 inferences[_inferenceId].input,
-                inferences[_inferenceId].creator,
-                address(this)
+                inferences[_inferenceId].creator
             );
         }
         inferences[_inferenceId].status = InferenceStatus.Processed;
@@ -1113,7 +1115,7 @@ contract WorkerHub is
     // 0x6029e786
     function resolveInference(
         uint256 _inferenceId
-    ) public virtual whenNotPaused {
+    ) public virtual whenNotPaused nonReentrant {
         _updateEpoch();
 
         Inference storage inference = inferences[_inferenceId];

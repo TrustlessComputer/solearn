@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "base_testnet",
   solidity: {
     compilers: [
       {
@@ -204,6 +204,27 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
         process.env.BASE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
+    base_testnet: {
+      url: "https://rpc.notadegen.com/base/sepolia",
+      chainId: 84532,
+      accounts: [process.env.BASE_TESTNET_PRIVATE_KEY],
+      l2OwnerAddress: process.env.BASE_TESTNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.BASE_TESTNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.BASE_TESTNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.BASE_TESTNET_WORKER_HUB_ADDRESS,
+      daoTokenAddress: process.env.BASE_TESTNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.BASE_TESTNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.BASE_TESTNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.BASE_TESTNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.BASE_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,

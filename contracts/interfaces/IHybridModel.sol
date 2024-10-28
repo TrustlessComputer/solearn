@@ -25,8 +25,7 @@ interface IHybridModel is IModel {
     function inferWithCallback(
         uint originInferId,
         bytes calldata _input,
-        address _creator,
-        address callback
+        address _creator
     ) external payable returns (uint256 inferid);
 
     function infer(
