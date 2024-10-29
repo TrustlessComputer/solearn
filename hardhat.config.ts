@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "base_testnet",
+  defaultNetwork: "shard_ai_testnet",
   solidity: {
     compilers: [
       {
@@ -237,6 +237,52 @@ const config: HardhatUserConfig = {
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,
       gasPrice: "auto",
+    } as any,
+    shard_ai_testnet: {
+      url: "https://rpc.shard-ai.l2aas.com",
+      chainId: 222671,
+      accounts: [process.env.SHARD_AI_TESTNET_PRIVATE_KEY],
+      proxyAdminAddress: process.env.SHARD_AI_TESTNET_PROXY_ADMIN_ADDRESS,
+      l2OwnerAddress: process.env.SHARD_AI_TESTNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.SHARD_AI_TESTNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.SHARD_AI_TESTNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.SHARD_AI_TESTNET_WORKER_HUB_ADDRESS,
+      daoTokenAddress: process.env.SHARD_AI_TESTNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.SHARD_AI_TESTNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.SHARD_AI_TESTNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.SHARD_AI_TESTNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.SHARD_AI_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.SHARD_AI_TESTNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
+    tc_testnet: {
+      url: "https://tc-node-auto.regtest.trustless.computer",
+      chainId: 22215,
+      accounts: [process.env.TC_TESTNET_PRIVATE_KEY],
+      proxyAdminAddress: process.env.TC_TESTNET_PROXY_ADMIN_ADDRESS,
+      l2OwnerAddress: process.env.TC_TESTNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.TC_TESTNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.TC_TESTNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.TC_TESTNET_WORKER_HUB_ADDRESS,
+      daoTokenAddress: process.env.TC_TESTNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.TC_TESTNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.TC_TESTNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.TC_TESTNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.TC_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+      timeout: 2000000,
     } as any,
   },
   namedAccounts: {

@@ -78,7 +78,11 @@ contract WorkerHub is
 
         splitAndAssignDuration(_duration);
         setDAOTokenPercentage(_daoTokenPercentage);
-        wEAI = 0x87C51CD469A0E1E2aF0e0e597fD88D9Ae4BaA967;
+        wEAI = 0x9e59eCbdD42d40fa9D5a45D3F4e6C505cd39A653;
+    }
+
+    function setMinerMinimumStake(uint256 _minerMinimumStake) external onlyOwner {
+        minerMinimumStake = _minerMinimumStake;
     }
 
     function splitAndAssignDuration(uint256 _duration) internal {
