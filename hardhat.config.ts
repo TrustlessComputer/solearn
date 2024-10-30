@@ -50,9 +50,18 @@ const config: HardhatUserConfig = {
         mnemonic: localTestMnemonic,
         count: 10,
       },
+      l2OwnerAddress: process.env.HARDHAT_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.HARDHAT_TREASURY_ADDRESS,
       collectionAddress: process.env.HARDHAT_COLLECTION_ADDRESS,
       workerHubAddress: process.env.HARDHAT_WORKER_HUB_ADDRESS,
+      workerHubScoringAddress:
+        process.env.HARDHAT_WORKER_HUB_SCORING_ADDRESS,
+      daoTokenAddress: process.env.HARDHAT_LLAMA_TOKEN_ADDRESS, // !NOTE: must not change
+      hybridModelAddress: process.env.HARDHAT_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.HARDHAT_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.HARDHAT_SYSTEM_PROMPT_MANAGER_ADDRESS,
       // issue: https://github.com/NomicFoundation/hardhat/issues/3136
       // workaround: https://github.com/NomicFoundation/hardhat/issues/2672#issuecomment-1167409582
       timeout: 500_000_000,
