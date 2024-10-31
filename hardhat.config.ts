@@ -250,7 +250,12 @@ const config: HardhatUserConfig = {
     shard_ai_testnet: {
       url: "https://rpc.shard-ai.l2aas.com",
       chainId: 222671,
-      accounts: [process.env.SHARD_AI_TESTNET_PRIVATE_KEY],
+      accounts: [
+        process.env.SHARD_AI_TESTNET_PRIVATE_KEY,
+        process.env.SHARD_AI_TESTNET_PRIVATE_KEY_WORKER_1,
+        process.env.SHARD_AI_TESTNET_PRIVATE_KEY_WORKER_2,
+        process.env.SHARD_AI_TESTNET_PRIVATE_KEY_WORKER_3,
+      ],
       proxyAdminAddress: process.env.SHARD_AI_TESTNET_PROXY_ADMIN_ADDRESS,
       l2OwnerAddress: process.env.SHARD_AI_TESTNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.SHARD_AI_TESTNET_TREASURY_ADDRESS,
