@@ -416,6 +416,7 @@ async function main() {
   const deployedAddresses = {
     daoTokenAddress,
     treasuryAddress,
+    stakingHubAddress,
     workerHubAddress,
     collectionAddress,
     hybridModelAddress,

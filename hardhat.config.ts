@@ -220,7 +220,7 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
         process.env.BASE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
-      wEAIAddress: process.env.BASE_MAINNET_TESTNET_WEAI,
+      wEAIAddress: process.env.BASE_MAINNET_WEAI,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,
@@ -242,7 +242,7 @@ const config: HardhatUserConfig = {
         process.env.BASE_TESTNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
         process.env.BASE_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
-      wEAIAddress: process.env.BASE_TESTNET_TESTNET_WEAI,
+      wEAIAddress: process.env.BASE_TESTNET_WEAI,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,
