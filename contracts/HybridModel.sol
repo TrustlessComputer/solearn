@@ -89,6 +89,19 @@ contract HybridModel is
             IInferable(workerHub).infer{value: msg.value}(_input, msg.sender);
     }
 
+    function inferWithCallback(
+        uint _originInferId,
+        bytes calldata _input,
+        address _creator
+    ) external payable returns (uint256 inferenceId) {
+        inferenceId = IInferable(workerHub).inferWithCallback{value: msg.value}(
+            _originInferId,
+            _input,
+            _creator,
+            msg.sender
+        );
+    }
+
     function infer(
         bytes calldata _input,
         address creator
