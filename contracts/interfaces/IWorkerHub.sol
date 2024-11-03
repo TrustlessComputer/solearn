@@ -26,37 +26,6 @@ interface IWorkerHub is IInferable {
         Approval
     }
 
-    struct MinerEpochState {
-        uint256 perfReward;
-        uint256 epochReward;
-        uint256 totalTaskCompleted;
-        uint256 totalMiner;
-    }
-
-    struct Model {
-        uint256 minimumFee;
-        uint32 tier;
-    }
-
-    struct Worker {
-        uint256 stake;
-        uint256 commitment;
-        address modelAddress;
-        uint40 lastClaimedEpoch;
-        uint40 activeTime;
-        uint16 tier;
-    }
-
-    struct WorkerInfo {
-        address workerAddress;
-        uint256 stake;
-        uint256 commitment;
-        address modelAddress;
-        uint40 lastClaimedEpoch;
-        uint40 activeTime;
-        uint16 tier;
-    }
-
     struct Assignment {
         uint256 inferenceId;
         bytes32 commitment;
@@ -112,18 +81,6 @@ interface IWorkerHub is IInferable {
         address creator;
     }
 
-    struct UnstakeRequest {
-        uint256 stake;
-        uint40 unlockAt;
-    }
-
-    struct Boost {
-        uint40 minerTimestamp;
-        uint40 validatorTimestamp;
-        uint48 reserved1; // accumulated active time
-        uint128 reserved2;
-    }
-
     struct DAOTokenPercentage {
         uint16 minerPercentage;
         uint16 userPercentage;
@@ -131,25 +88,6 @@ interface IWorkerHub is IInferable {
         uint16 refereePercentage;
         uint16 l2OwnerPercentage;
     }
-
-    event MiningTimeLimitUpdate(uint40 newValue);
-
-    event ModelRegistration(
-        address indexed model,
-        uint16 indexed tier,
-        uint256 minimumFee
-    );
-    event ModelUnregistration(address indexed model);
-    event ModelTierUpdate(address indexed model, uint32 tier);
-    event ModelMinimumFeeUpdate(address indexed model, uint256 minimumFee);
-
-    event MinerExtraStake(address indexed miner, uint256 value);
-    event MinerRegistration(
-        address indexed miner,
-        uint16 indexed tier,
-        uint256 value
-    );
-    event MinerUnregistration(address indexed miner);
 
     event NewInference(
         uint256 indexed inferenceId,
@@ -159,14 +97,6 @@ interface IWorkerHub is IInferable {
         uint256 originInferenceId
     );
 
-    event NewScoringInference(
-        uint256 indexed inferenceId,
-        address indexed model,
-        address indexed creator,
-        uint256 value,
-        uint256 originInferenceId
-    );
-    // event InferenceDisputation(address indexed validator, uint256 indexed assigmentId);
     event InferenceStatusUpdate(
         uint256 indexed inferenceId,
         InferenceStatus newStatus
@@ -192,12 +122,6 @@ interface IWorkerHub is IInferable {
         uint256 indexed assigmentId,
         bytes32 commitment
     );
-    event TransferFee(
-        address indexed treasury,
-        uint256 treasuryFee,
-        address L2OwnerAddress,
-        uint256 L2OwnerFee
-    );
 
     event TopUpInfer(
         uint256 indexed inferenceId,
@@ -205,8 +129,6 @@ interface IWorkerHub is IInferable {
         uint256 value
     );
 
-    event MinerUnstake(address indexed miner, uint256 stake);
-    event MinerJoin(address indexed miner);
     event RevealSubmission(
         address indexed miner,
         uint256 indexed assigmentId,
@@ -214,42 +136,11 @@ interface IWorkerHub is IInferable {
         bytes output
     );
 
-    event RewardClaim(address indexed worker, uint256 value);
-
-    event RewardPerEpoch(uint256 oldReward, uint256 newReward);
-    event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
-    event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
-    event SubmitDuration(uint256 oldTime, uint256 newTime);
-    event CommitDuration(uint256 oldTime, uint256 newTime);
-    event RevealDuration(uint256 oldTime, uint256 newTime);
-    event Restake(
-        address indexed miner,
-        uint256 restake,
-        address indexed model
-    );
-
-    event MinerDeactivated(
-        address indexed miner,
-        address indexed modelAddress,
-        uint40 activeTime
-    );
-    event FraudulentMinerPenalized(
-        address indexed miner,
-        address indexed modelAddress,
-        address indexed treasury,
-        uint256 fine
-    );
-    event PenaltyDurationUpdated(uint40 oldDuration, uint40 newDuration);
-    event FinePercentageUpdated(uint16 oldPercent, uint16 newPercent);
     event DAOTokenUpdated(address oldAddress, address newAddress);
-    event L2OwnerUpdated(address oldAddress, address newAddress);
-    event DAOTokenRewardUpdated(uint256 oldValue, uint256 newValue);
     event DAOTokenPercentageUpdated(
         DAOTokenPercentage oldValue,
         DAOTokenPercentage newValue
     );
-    event MinFeeToUseUpdated(uint256 oldValue, uint256 newValue);
-    event TreasuryAddressUpdated(address oldAddress, address newAddress);
     enum DAOTokenReceiverRole {
         Miner,
         Validator,
@@ -271,25 +162,11 @@ interface IWorkerHub is IInferable {
     );
     event StreamedData(uint256 indexed assignmentId, bytes data);
 
-    error AlreadyRegistered();
     error AlreadySubmitted();
-    error NotRegistered();
     error NotEnoughMiners();
     error Unauthorized();
-    error StillBeingLocked();
 
-    error InvalidBlockValue();
-    error InvalidModel();
-    error InvalidTier();
     error InvalidInferenceStatus();
-
-    error FeeTooLow();
-    error StakeTooLow();
-    error NullStake();
-
-    error MiningSessionNotEnded();
-    error ValidatingSessionNotEnded();
-    error MiningSessionEnded();
 
     error InferMustBeSolvingState();
     error ZeroValue();
@@ -297,7 +174,6 @@ interface IWorkerHub is IInferable {
     error InvalidData();
     error InvalidRole();
 
-    error MinerInDeactivationTime();
     error InvalidCommitment();
     error AlreadyCommitted();
     error NotCommitted();
@@ -310,4 +186,6 @@ interface IWorkerHub is IInferable {
     function getMinFeeToUse(
         address _modelAddress
     ) external view returns (uint256);
+
+    function getTreasuryAddress() external view returns (address);
 }

@@ -10,19 +10,17 @@ import {Set} from "./lib/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {WorkerHubStorage} from "./storages/WorkerHubStorage.sol";
 import {IDAOToken} from "./tokens/IDAOToken.sol";
-import {ICallBack} from "./interfaces/ICallBack.sol";
 import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
+import {IStakingHub} from "./interfaces/IStakingHub.sol";
 
 contract WorkerHub is
     WorkerHubStorage,
     OwnableUpgradeable,
     PausableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    ICallBack
+    ReentrancyGuardUpgradeable
 {
     using Random for Random.Randomizer;
-    using Set for Set.AddressSet;
     using Set for Set.Uint256Set;
     using Set for Set.Bytes32Set;
 
@@ -33,19 +31,18 @@ contract WorkerHub is
     receive() external payable {}
 
     function initialize(
+        address _wEAI,
         address _l2Owner,
         address _treasury,
         address _daoToken,
+        address _stakingHub,
         uint16 _feeL2Percentage,
         uint16 _feeTreasuryPercentage,
-        uint256 _minerMinimumStake,
         uint8 _minerRequirement,
-        uint256 _blocksPerEpoch,
-        uint256 _rewardPerEpoch,
-        uint256 _duration,
-        uint16 _finePercentage,
+        uint40 _submitDuration,
+        uint40 _commitDuration,
+        uint40 _revealDuration,
         uint16 _feeRatioMinerValidor,
-        uint256 _minFeeToUse,
         uint256 _daoTokenReward,
         DAOTokenPercentage memory _daoTokenPercentage
     ) external initializer {
@@ -56,43 +53,28 @@ contract WorkerHub is
         require(
             _l2Owner != address(0) &&
                 _treasury != address(0) &&
-                _daoToken != address(0),
+                _daoToken != address(0) &&
+                _stakingHub != address(0) &&
+                _wEAI != address(0),
             "Zero address"
         );
 
         l2Owner = _l2Owner;
         treasury = _treasury;
         daoToken = _daoToken;
+        stakingHub = _stakingHub;
         feeL2Percentage = _feeL2Percentage;
         feeTreasuryPercentage = _feeTreasuryPercentage;
         feeRatioMinerValidator = _feeRatioMinerValidor;
-        minerMinimumStake = _minerMinimumStake;
         minerRequirement = _minerRequirement;
-        blocksPerEpoch = _blocksPerEpoch;
-        rewardPerEpoch = _rewardPerEpoch;
-        maximumTier = 1;
-        lastBlock = block.number;
-        finePercentage = _finePercentage;
-        minFeeToUse = _minFeeToUse;
+
         daoTokenReward = _daoTokenReward;
+        submitDuration = _submitDuration;
+        commitDuration = _commitDuration;
+        revealDuration = _revealDuration;
 
-        splitAndAssignDuration(_duration);
         setDAOTokenPercentage(_daoTokenPercentage);
-        wEAI = 0x9e59eCbdD42d40fa9D5a45D3F4e6C505cd39A653;
-    }
-
-    function setMinerMinimumStake(uint256 _minerMinimumStake) external onlyOwner {
-        minerMinimumStake = _minerMinimumStake;
-    }
-
-    function splitAndAssignDuration(uint256 _duration) internal {
-        require(_duration < 2 ** 200, "Duration too large");
-
-        submitDuration = uint40(_duration >> 160);
-        commitDuration = uint40((_duration << 96) >> 216);
-        revealDuration = uint40((_duration << 136) >> 216);
-        penaltyDuration = uint40((_duration << 176) >> 216);
-        unstakeDelayTime = uint40((_duration << 216) >> 216);
+        wEAI = _wEAI;
     }
 
     function _validateDaoTokenPercentage(
@@ -129,159 +111,6 @@ contract WorkerHub is
         _unpause();
     }
 
-    function getModelAddresses() external view returns (address[] memory) {
-        return modelAddresses.values;
-    }
-
-    function getMintingAssignmentsOfInference(
-        uint256 _inferenceId
-    ) external view returns (AssignmentInfo[] memory) {
-        uint256[] memory assignmentIds = assignmentsByInference[_inferenceId]
-            .values;
-        uint256 assignmentNumber = assignmentIds.length;
-
-        AssignmentInfo[] memory result = new AssignmentInfo[](assignmentNumber);
-        for (uint256 i = 0; i < assignmentNumber; ++i) {
-            Assignment storage assignment = assignments[assignmentIds[i]];
-            Inference storage inference = inferences[assignment.inferenceId];
-            result[i] = AssignmentInfo(
-                assignmentIds[i],
-                assignment.inferenceId,
-                inference.value,
-                inference.input,
-                inference.modelAddress,
-                inference.creator,
-                inference.submitTimeout,
-                inference.commitTimeout,
-                inference.revealTimeout
-            );
-        }
-
-        return result;
-    }
-
-    function getNOMiner() external view returns (uint) {
-        return minerAddresses.values.length;
-    }
-
-    function getMinerAddresses() external view returns (address[] memory) {
-        return minerAddresses.values;
-    }
-
-    function getMinerAddressesOfModel(
-        address _model
-    ) external view returns (address[] memory) {
-        return minerAddressesByModel[_model].values;
-    }
-
-    function getMiners() external view returns (WorkerInfo[] memory) {
-        address[] memory addresses = minerAddresses.values;
-        uint256 minerNumber = addresses.length;
-        WorkerInfo[] memory result = new WorkerInfo[](minerNumber);
-        for (uint256 i = 0; i < minerNumber; ++i) {
-            Worker memory miner = miners[addresses[i]];
-            result[i] = WorkerInfo(
-                addresses[i],
-                miner.stake,
-                miner.commitment,
-                miner.modelAddress,
-                miner.lastClaimedEpoch,
-                miner.activeTime,
-                miner.tier
-            );
-        }
-        return result;
-    }
-
-    function registerModel(
-        address _model,
-        uint16 _tier,
-        uint256 _minimumFee
-    ) external onlyOwner {
-        _updateEpoch();
-
-        if (_model == address(0)) revert InvalidModel();
-        if (_minimumFee < minFeeToUse) revert FeeTooLow(); // NOTE: the minimum fee of using this model is 0.1 EAI
-        if (_tier == 0) revert InvalidTier();
-
-        Model storage model = models[_model];
-        if (model.tier != 0) revert AlreadyRegistered();
-
-        model.minimumFee = _minimumFee;
-        model.tier = _tier;
-        modelAddresses.insert(_model);
-
-        emit ModelRegistration(_model, _tier, _minimumFee);
-    }
-
-    function unregisterModel(address _model) external onlyOwner {
-        _updateEpoch();
-
-        Model storage model = models[_model];
-        if (model.tier == 0) revert NotRegistered();
-
-        model.tier = 0;
-        modelAddresses.erase(_model);
-
-        emit ModelUnregistration(_model);
-    }
-
-    function updateModelTier(address _model, uint32 _tier) external onlyOwner {
-        _updateEpoch();
-
-        if (_tier == 0) revert InvalidTier();
-
-        Model storage model = models[_model];
-        if (model.tier == 0) revert InvalidModel();
-
-        model.tier = _tier;
-
-        emit ModelTierUpdate(_model, _tier);
-    }
-
-    function updateModelMinimumFee(
-        address _model,
-        uint256 _minimumFee
-    ) external onlyOwner {
-        _updateEpoch();
-
-        Model storage model = models[_model];
-        if (model.tier == 0) revert InvalidModel();
-
-        model.minimumFee = _minimumFee;
-
-        emit ModelMinimumFeeUpdate(_model, _minimumFee);
-    }
-
-    function registerMiner(
-        uint16 tier,
-        uint256 wEAIAmt
-    ) external whenNotPaused {
-        _updateEpoch();
-
-        if (tier == 0 || tier > maximumTier) revert InvalidTier();
-        if (wEAIAmt < minerMinimumStake) revert StakeTooLow();
-
-        Worker storage miner = miners[msg.sender];
-        if (miner.tier != 0) revert AlreadyRegistered();
-
-        miner.stake = wEAIAmt;
-        miner.tier = tier;
-
-        address modelAddress = modelAddresses.values[
-            randomizer.randomUint256() % modelAddresses.size()
-        ];
-        miner.modelAddress = modelAddress;
-        TransferHelper.safeTransferFrom(
-            wEAI,
-            msg.sender,
-            address(this),
-            wEAIAmt
-        );
-
-        emit MinerRegistration(msg.sender, tier, wEAIAmt);
-    }
-
     function _registerReferrer(address _referrer, address _referee) internal {
         require(
             _referrer != address(0) && _referee != address(0),
@@ -292,7 +121,7 @@ contract WorkerHub is
     }
 
     function registerReferrer(address _referrer) external {
-        _updateEpoch();
+        IStakingHub(stakingHub).updateEpoch();
         _registerReferrer(_referrer, msg.sender);
     }
 
@@ -300,163 +129,23 @@ contract WorkerHub is
         address[] memory _referrers,
         address[] memory _referees
     ) external onlyOwner {
-        _updateEpoch();
+        IStakingHub(stakingHub).updateEpoch();
         require(_referrers.length == _referees.length, "Invalid input");
         for (uint256 i = 0; i < _referrers.length; i++) {
             _registerReferrer(_referrers[i], _referees[i]);
         }
     }
 
-    function forceChangeModelForMiner(
-        address _miner,
-        address _modelAddress
-    ) external onlyOwner {
-        _updateEpoch();
-
-        if (models[_modelAddress].tier == 0) revert InvalidModel();
-        if (!minerAddresses.hasValue(_miner)) revert NotRegistered();
-
-        address currentModelAddress = miners[_miner].modelAddress;
-        require(currentModelAddress != _modelAddress, "Same model address");
-        minerAddressesByModel[currentModelAddress].erase(_miner);
-        minerAddressesByModel[_modelAddress].insert(_miner);
-
-        miners[_miner].modelAddress = _modelAddress;
-        miners[_miner].tier = uint16(models[_modelAddress].tier);
-    }
-
-    function joinForMinting() external whenNotPaused {
-        _updateEpoch();
-
-        Worker storage miner = miners[msg.sender];
-        if (miner.tier == 0) revert NotRegistered();
-        if (miner.stake < minerMinimumStake) revert StakeTooLow();
-        if (block.timestamp < miner.activeTime)
-            revert MinerInDeactivationTime();
-
-        address modelAddress = miner.modelAddress;
-        minerAddressesByModel[modelAddress].insert(msg.sender);
-        minerAddresses.insert(msg.sender);
-        miner.lastClaimedEpoch = currentEpoch;
-        boost[msg.sender].minerTimestamp = uint40(block.timestamp);
-
-        emit MinerJoin(msg.sender);
-    }
-
-    function unregisterMiner() external nonReentrant whenNotPaused {
-        _updateEpoch();
-
-        Worker storage miner = miners[msg.sender];
-        if (miner.tier == 0) revert NotRegistered();
-
-        miner.tier = 0;
-
-        uint stakeAmount = miner.stake;
-        miner.stake = 0;
-        miner.commitment = 0;
-
-        if (minerAddresses.hasValue(msg.sender)) {
-            _claimReward(msg.sender, false);
-            // reset boost
-            boost[msg.sender].reserved1 = 0;
-            boost[msg.sender].minerTimestamp = uint40(block.timestamp);
-
-            minerAddresses.erase(msg.sender);
-            minerAddressesByModel[miner.modelAddress].erase(msg.sender);
-        }
-        miner.modelAddress = address(0);
-
-        uint currentUnstake = minerUnstakeRequests[msg.sender].stake;
-        minerUnstakeRequests[msg.sender] = UnstakeRequest(
-            stakeAmount + currentUnstake,
-            uint40(block.number + unstakeDelayTime)
-        );
-
-        emit MinerUnregistration(msg.sender);
-    }
-
-    function increaseMinerStake(uint256 wEAIAmt) external whenNotPaused {
-        _updateEpoch();
-
-        Worker storage miner = miners[msg.sender];
-        if (miner.tier == 0) revert NotRegistered();
-
-        miner.stake += wEAIAmt;
-        TransferHelper.safeTransferFrom(
-            wEAI,
-            msg.sender,
-            address(this),
-            wEAIAmt
-        );
-
-        emit MinerExtraStake(msg.sender, wEAIAmt);
-    }
-
-    function unstakeForMiner() external {
-        _updateEpoch();
-
-        UnstakeRequest storage unstakeRequest = minerUnstakeRequests[
-            msg.sender
-        ];
-        if (block.number < unstakeRequest.unlockAt) revert StillBeingLocked();
-
-        uint256 stake = unstakeRequest.stake;
-        if (stake == 0) revert NullStake();
-        unstakeRequest.stake = 0;
-        // TransferHelper.safeTransferNative(msg.sender, stake);
-        TransferHelper.safeTransfer(wEAI, msg.sender, stake);
-
-        emit MinerUnstake(msg.sender, stake);
-    }
-
-    function restakeForMiner(uint16 tier) external whenNotPaused {
-        _updateEpoch();
-
-        UnstakeRequest storage unstakeRequest = minerUnstakeRequests[
-            msg.sender
-        ];
-        if (unstakeRequest.stake == 0) revert ZeroValue();
-        uint unstakeAmount = unstakeRequest.stake;
-        unstakeRequest.stake = 0;
-
-        Worker storage miner = miners[msg.sender];
-        miner.stake += unstakeAmount;
-        if (miner.tier == 0) {
-            if (tier == 0 || tier > maximumTier) revert InvalidTier();
-            miner.tier = tier;
-        }
-
-        if (miner.modelAddress == address(0)) {
-            address modelAddress = modelAddresses.values[
-                randomizer.randomUint256() % modelAddresses.size()
-            ];
-            miner.modelAddress = modelAddress;
-        }
-
-        emit Restake(msg.sender, unstakeAmount, miner.modelAddress);
-    }
-
     function infer(
         bytes calldata _input,
         address _creator
     ) public payable whenNotPaused returns (uint256) {
-        Model storage model = models[msg.sender];
+        IStakingHub.Model memory model = IStakingHub(stakingHub).getModelInfo(
+            msg.sender
+        );
         if (model.tier == 0) revert Unauthorized();
 
-        uint256 scoringFee = _validateEnoughFeeToUse(model.minimumFee);
-
-        return _infer(_input, _creator, scoringFee);
-    }
-
-    function _validateEnoughFeeToUse(
-        uint256 _modelMinimumFee
-    ) internal view virtual returns (uint256) {
-        uint256 scoringFee = IWorkerHub(workerHubScoring).getMinFeeToUse(
-            modelScoring
-        );
-        if (msg.value < _modelMinimumFee + scoringFee) revert("Fee too low");
-
-        return scoringFee;
+        return _infer(_input, _creator, 0);
     }
 
     function _infer(
@@ -487,17 +176,6 @@ contract WorkerHub is
         return inferenceId;
     }
 
-    function topUpInfer(uint256 _inferenceId) external payable whenNotPaused {
-        if (msg.value == 0) revert ZeroValue();
-
-        Inference storage inference = inferences[_inferenceId];
-        if (inference.status != InferenceStatus.Solving)
-            revert InferMustBeSolvingState();
-        inference.value += msg.value;
-
-        emit TopUpInfer(_inferenceId, inference.creator, inference.value);
-    }
-
     function _assignMiners(uint256 _inferenceId) internal {
         uint40 expiredAt = uint40(block.number + submitDuration);
         uint40 commitTimeout = expiredAt + commitDuration;
@@ -507,34 +185,34 @@ contract WorkerHub is
         inferences[_inferenceId].status = InferenceStatus.Solving;
 
         address model = inferences[_inferenceId].modelAddress;
-        if (minerAddressesByModel[model].size() < minerRequirement)
-            revert NotEnoughMiners();
 
-        Set.AddressSet storage miners = minerAddressesByModel[model];
+        address[] memory miners = IStakingHub(stakingHub)
+            .getMinerAddressesOfModel(model);
+        uint256 minerLen = miners.length;
+
+        if (minerLen < minerRequirement) revert NotEnoughMiners();
+
         uint256 n = minerRequirement;
-        address[] memory selectedMiners = new address[](n);
 
         for (uint256 i = 0; i < n; ++i) {
-            address miner = miners.values[
-                randomizer.randomUint256() % miners.size()
-            ];
-            miners.erase(miner);
+            uint8 index = uint8(randomizer.randomUint256() % (minerLen - i));
+            address miner = miners[index];
+
+            miners[index] = miners[minerLen - i - 1];
+
             uint256 assignmentId = ++assignmentNumber;
             assignments[assignmentId].inferenceId = _inferenceId;
             assignments[assignmentId].worker = miner;
             assignments[assignmentId].role = AssignmentRole.Validating;
 
-            selectedMiners[i] = miner;
             assignmentsByMiner[miner].insert(assignmentId);
             assignmentsByInference[_inferenceId].insert(assignmentId);
             emit NewAssignment(assignmentId, _inferenceId, miner, expiredAt);
         }
-
-        for (uint256 i = 0; i < n; ++i) miners.insert(selectedMiners[i]);
     }
 
     function seizeMinerRole(uint256 _assignmentId) external {
-        _updateEpoch();
+        IStakingHub(stakingHub).updateEpoch();
 
         if (assignments[_assignmentId].worker != msg.sender)
             revert("Only assigned worker can seize the role");
@@ -548,39 +226,6 @@ contract WorkerHub is
         emit MinerRoleSeized(_assignmentId, inferId, msg.sender);
     }
 
-    // After listen to the new assignment, miner can call this getter to get the assignment role
-    function getRoleByAssigmentId(
-        uint256 _assignmentId
-    ) external view returns (AssignmentRole) {
-        return assignments[_assignmentId].role;
-    }
-
-    // this internal function update new epoch
-    function _updateEpoch() internal {
-        if (blocksPerEpoch > 0) {
-            uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
-            if (epochPassed > 0) {
-                lastBlock += blocksPerEpoch * epochPassed;
-                // reward for this epoch
-                // rewardPerEpoch (reward one year for 1 miner)
-                // rewardPerEpoch * total miner * blocker per epoch / blocks per year
-                uint256 rewardInCurrentEpoch = (rewardPerEpoch *
-                    minerAddresses.size() *
-                    blocksPerEpoch) / BLOCK_PER_YEAR;
-
-                for (; epochPassed > 0; epochPassed--) {
-                    rewardInEpoch[currentEpoch].totalMiner = minerAddresses
-                        .size();
-                    rewardInEpoch[currentEpoch]
-                        .epochReward = rewardInCurrentEpoch;
-                    currentEpoch++;
-                }
-            }
-        } else {
-            lastBlock = block.number;
-        }
-    }
-
     function _validatateSolution(bytes calldata _data) internal pure virtual {
         if (_data.length == 0) revert InvalidData();
     }
@@ -590,15 +235,14 @@ contract WorkerHub is
         uint256 _assigmentId,
         bytes calldata _data
     ) public virtual whenNotPaused {
-        _updateEpoch();
+        IStakingHub(stakingHub).updateEpoch();
         _validatateSolution(_data);
 
         // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
-        if (!minerAddresses.hasValue(msg.sender)) revert InvalidMiner();
-
-        address modelAddrOfMiner = miners[msg.sender].modelAddress;
-        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(msg.sender))
+        if (!IStakingHub(stakingHub).isMinerAddress(msg.sender))
             revert InvalidMiner();
+
+        IStakingHub(stakingHub).validateModelOfMiner(msg.sender);
 
         Assignment memory clonedAssignments = assignments[_assigmentId];
         uint256 inferId = clonedAssignments.inferenceId;
@@ -634,26 +278,12 @@ contract WorkerHub is
         emit SolutionSubmission(msg.sender, _assigmentId);
     }
 
-    modifier onlyActiveWorker() {
-        _checkWorkerAvailable(msg.sender);
-        _;
-    }
-
-    function _checkWorkerAvailable(address _workerAddr) internal view {
-        // Check whether miner is available (the miner had previously joined and still work to serve or the assigned model).
-        if (!minerAddresses.hasValue(_workerAddr)) revert InvalidMiner();
-
-        address modelAddrOfMiner = miners[_workerAddr].modelAddress;
-        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(_workerAddr))
-            revert InvalidMiner();
-    }
-
     // 0xf2f03877
     function commit(
         uint256 _assignId,
         bytes32 _commitment
     ) public virtual whenNotPaused {
-        _updateEpoch();
+        IStakingHub(stakingHub).updateEpoch();
 
         if (_commitment == 0) revert InvalidCommitment();
 
@@ -692,7 +322,7 @@ contract WorkerHub is
         uint40 _nonce,
         bytes calldata _data
     ) public virtual whenNotPaused {
-        _updateEpoch();
+        IStakingHub(stakingHub).updateEpoch();
 
         _validatateSolution(_data);
         if (_nonce == 0) revert InvalidNonce();
@@ -743,121 +373,6 @@ contract WorkerHub is
         }
     }
 
-    function slashMiner(
-        address _miner,
-        bool _isFined
-    ) public virtual onlyOwner {
-        _updateEpoch();
-
-        if (_miner == address(0)) revert InvalidMiner();
-
-        _slashMiner(_miner, _isFined);
-    }
-
-    function _slashMiner(address _miner, bool _isFined) internal {
-        Worker storage miner = miners[_miner];
-
-        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
-        // update reward
-        _claimReward(_miner, false);
-        boost[_miner].reserved1 +=
-            uint48(block.timestamp) -
-            uint48(
-                boost[_miner].minerTimestamp == 0
-                    ? 1716046859
-                    : boost[_miner].minerTimestamp
-            );
-        boost[_miner].minerTimestamp = uint40(block.timestamp);
-        address modelAddress = miner.modelAddress;
-
-        // Remove miner from available miner
-        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
-            minerAddressesByModel[modelAddress].erase(_miner);
-            minerAddresses.erase(_miner);
-        }
-
-        // Set the time miner can join again
-        miner.activeTime = uint40(block.timestamp + penaltyDuration);
-
-        if (_isFined) {
-            uint256 fine = (minerMinimumStake * finePercentage) /
-                PERCENTAGE_DENOMINATOR; // Fine = stake * 10%
-            if (miner.stake < fine) {
-                miner.stake = 0;
-            } else {
-                miner.stake -= fine;
-            }
-
-            // reset boost
-            boost[_miner].reserved1 = 0;
-            // TransferHelper.safeTransferNative(treasury, fine);
-
-            TransferHelper.safeTransfer(wEAI, treasury, fine);
-
-            emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
-            return;
-        }
-
-        emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
-    }
-
-    function setFinePercentage(
-        uint16 _finePercentage
-    ) public virtual onlyOwner {
-        _updateEpoch();
-
-        emit FinePercentageUpdated(finePercentage, _finePercentage);
-
-        finePercentage = _finePercentage;
-    }
-
-    function setPenaltyDuration(
-        uint40 _penaltyDuration
-    ) public virtual onlyOwner {
-        _updateEpoch();
-
-        emit PenaltyDurationUpdated(penaltyDuration, _penaltyDuration);
-
-        penaltyDuration = _penaltyDuration;
-    }
-
-    function setMinFeeToUse(uint256 _minFeeToUse) public virtual onlyOwner {
-        _updateEpoch();
-
-        emit MinFeeToUseUpdated(minFeeToUse, _minFeeToUse);
-
-        minFeeToUse = _minFeeToUse;
-    }
-
-    function setL2Owner(address _l2OwnerAddress) public virtual onlyOwner {
-        require(_l2OwnerAddress != address(0), "Zero address");
-        _updateEpoch();
-
-        emit L2OwnerUpdated(l2Owner, _l2OwnerAddress);
-
-        l2Owner = _l2OwnerAddress;
-    }
-
-    function setDAOToken(address _daoTokenAddress) public virtual onlyOwner {
-        require(_daoTokenAddress != address(0), "Zero address");
-        _updateEpoch();
-
-        emit DAOTokenUpdated(daoToken, _daoTokenAddress);
-
-        daoToken = _daoTokenAddress;
-    }
-
-    function setTreasuryAddress(
-        address _treasuryAddress
-    ) public virtual onlyOwner {
-        require(_treasuryAddress != address(0), "Zero address");
-        _updateEpoch();
-
-        emit TreasuryAddressUpdated(treasury, _treasuryAddress);
-
-        treasury = _treasuryAddress;
-    }
-
     function _calculateTransferredDAOToken(
         uint256 _inferenceId,
         bool _isReferred
@@ -869,8 +384,8 @@ contract WorkerHub is
 
         uint256 l2OwnerAmt = (daoTokenReward * percentage.l2OwnerPercentage) /
             PERCENTAGE_DENOMINATOR;
-        // uint256 userAmt = (daoTokenReward * percentage.userPercentage) /
-        //     PERCENTAGE_DENOMINATOR;
+        uint256 userAmt = (daoTokenReward * percentage.userPercentage) /
+            PERCENTAGE_DENOMINATOR;
 
         daoReceivers.push(
             DAOTokenReceiverInfor(
@@ -880,13 +395,13 @@ contract WorkerHub is
             )
         );
 
-        // daoReceivers.push(
-        //     DAOTokenReceiverInfor(
-        //         inferences[_inferenceId].creator,
-        //         userAmt,
-        //         DAOTokenReceiverRole.User
-        //     )
-        // );
+        daoReceivers.push(
+            DAOTokenReceiverInfor(
+                inferences[_inferenceId].creator,
+                userAmt,
+                DAOTokenReceiverRole.User
+            )
+        );
         if (_isReferred) {
             uint256 refereeAmt = (daoTokenReward *
                 percentage.refereePercentage) / PERCENTAGE_DENOMINATOR;
@@ -1026,7 +541,7 @@ contract WorkerHub is
             // leading to the decision to slash this worker.
             if (assignment.digest != mostVotedDigest) {
                 assignment.vote = Vote.Disapproval;
-                _slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
+                IStakingHub(stakingHub).slashMiner(assignment.worker, true); // Slash dishonest workers (miner and validators will be slashed in the same way)
             } else {
                 // process for honest workers
                 assignment.vote = Vote.Approval;
@@ -1037,11 +552,6 @@ contract WorkerHub is
                             assignment.worker,
                             shareFeePerValidator
                         );
-                        // TransferHelper.safeTransfer(
-                        //     wEAI,
-                        //     assignment.worker,
-                        //     shareFeePerValidator
-                        // );
                     }
                     if (notReachedLimit && tokenForMiner > 0) {
                         daoReceiversInfo[_inferenceId].push(
@@ -1059,11 +569,6 @@ contract WorkerHub is
                             assignment.worker,
                             feeForMiner
                         );
-                        // TransferHelper.safeTransfer(
-                        //     wEAI,
-                        //     assignment.worker,
-                        //     feeForMiner
-                        // );
                     }
                     if (notReachedLimit && tokenForMiner > 0) {
                         daoReceiversInfo[_inferenceId].push(
@@ -1105,53 +610,20 @@ contract WorkerHub is
                 l2Owner,
                 inferences[_inferenceId].feeL2
             );
-            // TransferHelper.safeTransfer(
-            //     wEAI,
-            //     l2Owner,
-            //     inferences[_inferenceId].feeL2
-            // );
         }
         if (inferences[_inferenceId].feeTreasury > 0) {
             TransferHelper.safeTransferNative(
                 treasury,
                 inferences[_inferenceId].feeTreasury
             );
-            // TransferHelper.safeTransfer(
-            //     wEAI,
-            //     treasury,
-            //     inferences[_inferenceId].feeTreasury
-            // );
         }
 
-        // Call scoring model contract
-        if (
-            false &&
-            modelScoring != address(0) &&
-            notReachedLimit &&
-            daoTokenReward > 0
-        ) {
-            uint256 scoringFee = IWorkerHub(workerHubScoring).getMinFeeToUse(
-                modelScoring
-            );
-
-            IHybridModel(modelScoring).inferWithCallback{value: scoringFee}(
-                _inferenceId,
-                inferences[_inferenceId].input,
-                inferences[_inferenceId].creator
-            );
-        }
-        inferences[_inferenceId].status = InferenceStatus.Processed;
+        inferences[_inferenceId].status = InferenceStatus.Transferred;
 
         return true;
     }
 
-    function setFeeRatioMinerValidator(uint16 _newRatio) external onlyOwner {
-        require(_newRatio <= 10000, "Fee ratio must be <= 10000");
-        feeRatioMinerValidator = _newRatio;
-    }
-
     function setDAOTokenReward(uint256 _newDAOTokenReward) external onlyOwner {
-        // require(_newDAOTokenReward != 0, "DAOTokenReward must be > 0");
         daoTokenReward = _newDAOTokenReward;
     }
 
@@ -1159,7 +631,7 @@ contract WorkerHub is
     function resolveInference(
         uint256 _inferenceId
     ) public virtual whenNotPaused nonReentrant {
-        _updateEpoch();
+        IStakingHub(stakingHub).updateEpoch();
 
         Inference storage inference = inferences[_inferenceId];
 
@@ -1175,14 +647,9 @@ contract WorkerHub is
                 inference.creator,
                 inference.value + inference.feeL2 + inference.feeTreasury
             );
-            // TransferHelper.safeTransfer(
-            //     wEAI,
-            //     inference.creator,
-            //     inference.value + inference.feeL2 + inference.feeTreasury
-            // );
 
             // slash miner
-            _slashMiner(inference.processedMiner, true);
+            IStakingHub(stakingHub).slashMiner(inference.processedMiner, true);
         }
 
         if (
@@ -1203,11 +670,6 @@ contract WorkerHub is
                     inference.creator,
                     inference.value + inference.feeL2 + inference.feeTreasury
                 );
-                // TransferHelper.safeTransfer(
-                //     wEAI,
-                //     inference.creator,
-                //     inference.value + inference.feeL2 + inference.feeTreasury
-                // );
 
                 // slash validator not submitted commit hash
                 uint256[] memory assignmentIds = assignmentsByInference[
@@ -1218,7 +680,7 @@ contract WorkerHub is
                     if (
                         assignments[assignmentIds[i]].commitment == bytes32(0)
                     ) {
-                        _slashMiner(
+                        IStakingHub(stakingHub).slashMiner(
                             assignments[assignmentIds[i]].worker,
                             false
                         );
@@ -1255,128 +717,18 @@ contract WorkerHub is
             inference.value + inference.feeL2 + inference.feeTreasury
         );
 
-        // TransferHelper.safeTransfer(
-        //     wEAI,
-        //     inference.creator,
-        //     inference.value + inference.feeL2 + inference.feeTreasury
-        // );
-
         // disable workers not call reveal
         uint256[] memory assignmentIds = assignmentsByInference[_inferenceId]
             .values;
         for (uint i; i < assignmentIds.length; i++) {
             //
             if (assignments[assignmentIds[i]].digest == bytes32(0)) {
-                _slashMiner(assignments[assignmentIds[i]].worker, false);
-            }
-        }
-    }
-
-    function setScoringInfo(
-        address _workerHubScoring,
-        address _modelScoring
-    ) external onlyOwner {
-        require(
-            _workerHubScoring != address(0) && _modelScoring != address(0),
-            "Zero address"
-        );
-        workerHubScoring = _workerHubScoring;
-        modelScoring = _modelScoring;
-    }
-
-    modifier onlyWorkerHubScoring() {
-        require(
-            msg.sender == workerHubScoring,
-            "Only WorkerHubScoring contract can call this function"
-        );
-        _;
-    }
-
-    function _calculateUserDAOTokenReceived(
-        uint8 _score
-    ) internal view returns (uint256) {
-        uint256 userDAOTokenReceive = 0;
-
-        if (_score >= 1 && _score <= 10) {
-            userDAOTokenReceive =
-                ((daoTokenPercentage.userPercentage *
-                    (_score * daoTokenReward)) / 10) /
-                PERCENTAGE_DENOMINATOR;
-        }
-        return userDAOTokenReceive;
-    }
-
-    function resultReceived(
-        uint _originInferId,
-        bytes calldata _result
-    ) external virtual onlyWorkerHubScoring {
-        Inference storage inference = inferences[_originInferId];
-
-        if (inference.status != InferenceStatus.Processed)
-            revert("Inference is not processed yet");
-
-        // Assuming the result contains a single uint8 value
-        require(_result.length == 1, "Invalid result length");
-
-        uint8 resultValue = uint8(_result[0]);
-        require(
-            resultValue >= 1 && resultValue <= 10,
-            "Result must be between 1 and 10"
-        );
-
-        bool isReferred = inference.referrer != address(0);
-        bool notReachedLimit = _validateDAOSupplyIncrease(isReferred);
-        if (!notReachedLimit) {
-            revert("DAO Token supply limit reached");
-        }
-
-        // Process the resultValue as needed
-        uint256 userDAOTokenReceive = _calculateUserDAOTokenReceived(
-            resultValue
-        );
-        DAOTokenReceiverInfor[] storage receiversInf = daoReceiversInfo[
-            _originInferId
-        ];
-        uint256 len = receiversInf.length;
-        if (len > 0) {
-            receiversInf.push(
-                DAOTokenReceiverInfor(
-                    inference.creator,
-                    userDAOTokenReceive,
-                    DAOTokenReceiverRole.User
-                )
-            );
-
-            for (uint256 i = 0; i <= len; i++) {
-                IDAOToken(daoToken).mint(
-                    receiversInf[i].receiver,
-                    receiversInf[i].amount
+                IStakingHub(stakingHub).slashMiner(
+                    assignments[assignmentIds[i]].worker,
+                    false
                 );
             }
-
-            emit DAOTokenMintedV2(
-                _getChainID(),
-                _originInferId,
-                inference.modelAddress,
-                receiversInf
-            );
         }
-
-        inference.status = InferenceStatus.Transferred;
-    }
-
-    function resultReceived(bytes calldata result) external virtual {
-        result;
-        revert("Not implemented");
-    }
-
-    function inferWithCallback(
-        uint originInferId,
-        bytes calldata _input,
-        address _creator,
-        address callback
-    ) external payable virtual returns (uint256 inferenceId) {
-        revert("Not implemented");
     }
 
     function _getThresholdValue(uint x) internal pure returns (uint) {
@@ -1386,259 +738,16 @@ contract WorkerHub is
     function getMinFeeToUse(
         address _modelAddress
     ) external view returns (uint256) {
-        return models[_modelAddress].minimumFee;
+        return IStakingHub(stakingHub).getMinFeeToUse(_modelAddress);
     }
 
-    function _claimReward(
-        address _miner,
-        bool _isTransfer
-    ) internal whenNotPaused {
-        uint256 rewardAmount = rewardToClaim(_miner);
-        miners[_miner].lastClaimedEpoch = currentEpoch;
-        if (rewardAmount > 0 && _isTransfer) {
-            minerRewards[_miner] = 0;
-            // TransferHelper.safeTransferNative(_miner, rewardAmount);
-            TransferHelper.safeTransfer(wEAI, _miner, rewardAmount);
-
-            emit RewardClaim(_miner, rewardAmount);
-        } else if (rewardAmount > 0) {
-            minerRewards[_miner] = rewardAmount;
-        }
+    function getTreasuryAddress() external view returns (address) {
+        return treasury;
     }
 
-    // miner claim reward
-    function claimReward(address _miner) public virtual nonReentrant {
-        _claimReward(_miner, true);
-    }
-
-    // @dev admin functions
-    function setNewRewardInEpoch(
-        uint256 _newRewardAmount
-    ) public virtual onlyOwner {
-        _updateEpoch();
-        emit RewardPerEpoch(rewardPerEpoch, _newRewardAmount);
-
-        rewardPerEpoch = _newRewardAmount;
-    }
-
-    function setBlocksPerEpoch(uint256 _blocks) public virtual onlyOwner {
-        _updateEpoch();
-        if (_blocks == 0) revert InvalidBlockValue();
-
-        emit BlocksPerEpoch(blocksPerEpoch, _blocks);
-
-        blocksPerEpoch = _blocks;
-    }
-
-    function setUnstakDelayTime(
-        uint40 _newUnstakeDelayTime
-    ) public virtual onlyOwner {
-        _updateEpoch();
-
-        require(_newUnstakeDelayTime != 0, "invalid unstake delay time");
-
-        emit UnstakeDelayTime(unstakeDelayTime, _newUnstakeDelayTime);
-
-        unstakeDelayTime = _newUnstakeDelayTime;
-    }
-
-    function setSubmitDuration(
-        uint40 _newSubmitDuration
-    ) public virtual onlyOwner {
-        _updateEpoch();
-
-        require(_newSubmitDuration != 0, "invalid submit duration time");
-
-        emit SubmitDuration(submitDuration, _newSubmitDuration);
-
-        submitDuration = _newSubmitDuration;
-    }
-
-    function setCommitDuration(
-        uint40 _newCommitDuration
-    ) public virtual onlyOwner {
-        _updateEpoch();
-
-        require(_newCommitDuration != 0, "invalid commit duration time");
-
-        emit CommitDuration(commitDuration, _newCommitDuration);
-
-        commitDuration = _newCommitDuration;
-    }
-
-    function setRevealDuration(
-        uint40 _newRevealDuration
-    ) public virtual onlyOwner {
-        _updateEpoch();
-
-        require(_newRevealDuration != 0, "invalid reveal duration time");
-
-        emit RevealDuration(revealDuration, _newRevealDuration);
-
-        revealDuration = _newRevealDuration;
-    }
-
-    // sum reward of an miner since last claimed epoch
-    function rewardToClaim(address _miner) public virtual returns (uint256) {
-        _updateEpoch();
-
-        uint256 totalReward;
-        uint256 lastEpoch = currentEpoch;
-        if (
-            !minerAddresses.hasValue(_miner) ||
-            lastEpoch <= miners[_miner].lastClaimedEpoch
-        ) {
-            totalReward = 0;
-        } else {
-            uint256 lastClaimed = uint256(miners[_miner].lastClaimedEpoch);
-            uint256 epochReward = (rewardPerEpoch * blocksPerEpoch) /
-                BLOCK_PER_YEAR; // reward per miner in 1 epoch
-            totalReward +=
-                ((lastEpoch - lastClaimed) * epochReward * multiplier(_miner)) /
-                PERCENTAGE_DENOMINATOR;
-        }
-
-        return totalReward + minerRewards[_miner];
-    }
-
-    function multiplier(address _miner) public view returns (uint256) {
-        uint256 minerLastTimestamp;
-
-        if (
-            minerAddresses.hasValue(_miner) && boost[_miner].minerTimestamp == 0
-        ) {
-            minerLastTimestamp = 1716046859;
-        } else if (!minerAddresses.hasValue(_miner)) {
-            minerLastTimestamp = block.timestamp;
-        } else {
-            minerLastTimestamp = boost[_miner].minerTimestamp;
-        }
-        uint256 multiplierRes = (boost[_miner].reserved1 +
-            block.timestamp -
-            minerLastTimestamp) / 30 days;
-
-        return
-            PERCENTAGE_DENOMINATOR +
-            500 *
-            (multiplierRes >= 12 ? 12 : multiplierRes);
-    }
-
-    function getAllMiners() external view returns (Worker[] memory minerData) {
-        address[] memory addresses = minerAddresses.values;
-        minerData = new Worker[](addresses.length);
-        for (uint i = 0; i < addresses.length; ++i) {
-            minerData[i] = miners[addresses[i]];
-        }
-    }
-
-    function getAllMinerUnstakeRequests()
-        external
-        view
-        returns (
-            address[] memory unstakeAddresses,
-            UnstakeRequest[] memory unstakeRequests
-        )
-    {
-        address[] memory addresses = minerAddresses.values;
-
-        uint countUnstakeRequest = 0;
-        for (uint i = 0; i < addresses.length; ++i) {
-            UnstakeRequest memory request = minerUnstakeRequests[addresses[i]];
-            if (request.unlockAt > 0) ++countUnstakeRequest;
-        }
-
-        unstakeAddresses = new address[](countUnstakeRequest);
-        unstakeRequests = new UnstakeRequest[](countUnstakeRequest);
-        uint idx = 0;
-        for (uint i = 0; i < addresses.length; ++i) {
-            UnstakeRequest memory request = minerUnstakeRequests[addresses[i]];
-            if (request.unlockAt > 0) {
-                unstakeAddresses[idx] = addresses[idx];
-                unstakeRequests[idx] = request;
-                ++idx;
-            }
-        }
-    }
-
-    function getAllInferences(
-        uint startId,
-        uint count
-    ) external view returns (Inference[] memory inferenceData) {
-        inferenceData = new Inference[](count);
-        for (uint i = 0; i < count; ++i) {
-            uint id = startId + i;
-            inferenceData[i] = inferences[id];
-        }
-    }
-
-    function getAllAssignments(
-        uint startId,
-        uint count
-    ) external view returns (Assignment[] memory assignmentData) {
-        assignmentData = new Assignment[](count);
-        for (uint i = 0; i < count; ++i) {
-            uint id = startId + i;
-            assignmentData[i] = assignments[id];
-        }
-    }
-
-    function getInferenceInfo(
+    function getAssignmentByInference(
         uint256 _inferenceId
-    ) external view returns (Inference memory) {
-        return inferences[_inferenceId];
-    }
-
-    function getAssignmentByInferenceId(
-        uint256 _inferId
-    ) external view returns (Assignment[] memory) {
-        uint256[] memory assignmentIds = assignmentsByInference[_inferId]
-            .values;
-        uint count = assignmentIds.length;
-        Assignment[] memory result = new Assignment[](count);
-
-        for (uint i = 0; i < count; ++i) {
-            result[i] = assignments[assignmentIds[i]];
-        }
-        return result;
-    }
-
-    function getAssignmentByMiner(
-        address _minerAddr
-    ) external view returns (AssignmentInfo[] memory) {
-        uint256[] memory assignmentIds = assignmentsByMiner[_minerAddr].values;
-        uint count = assignmentIds.length;
-        AssignmentInfo[] memory result = new AssignmentInfo[](count);
-
-        for (uint i = 0; i < count; ++i) {
-            Assignment storage assignment = assignments[assignmentIds[i]];
-            Inference storage inference = inferences[assignment.inferenceId];
-
-            result[i] = AssignmentInfo(
-                assignmentIds[i],
-                assignment.inferenceId,
-                inference.value,
-                inference.input,
-                inference.modelAddress,
-                inference.creator,
-                inference.submitTimeout,
-                inference.commitTimeout,
-                inference.revealTimeout
-            );
-        }
-        return result;
-    }
-
-    function isAssignmentPending(
-        uint256 _assignmentId
-    ) public view returns (bool) {
-        return
-            assignments[_assignmentId].output.length == 0 &&
-            block.number <
-            inferences[assignments[_assignmentId].inferenceId].revealTimeout;
-    }
-
-    function streamData(uint256 _assignmentId, bytes memory _data) external {
-        require(_assignmentId <= assignmentNumber, "Invalid assignment id");
-        emit StreamedData(_assignmentId, _data);
+    ) external view returns (uint256[] memory) {
+        return assignmentsByInference[_inferenceId].values;
     }
 }
