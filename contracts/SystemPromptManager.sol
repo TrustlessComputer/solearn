@@ -122,7 +122,7 @@ contract SystemPromptManager is
         datas[agentId].fee = _fee;
         datas[agentId].sysPrompts.push(_data);
 
-        emit NewToken(agentId, _uri, _data, _fee, msg.sender);
+        emit NewToken(agentId, _uri, _data, _fee, _to);
 
         return agentId;
     }

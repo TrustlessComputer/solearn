@@ -76,6 +76,8 @@
     "autoDeploy:base_testnet": "npx hardhat run scripts/autoDeploy.ts --network base_testnet",
     "autoDeploy:shard_ai_testnet": "npx hardhat run scripts/autoDeploy.ts --network shard_ai_testnet",
     "autoDeploy:tc_testnet": "npx hardhat run scripts/autoDeploy.ts --network tc_testnet",
+    "updateAgentUri:shard_ai_testnet": "npx hardhat run scripts/updateAgentUri.ts --network shard_ai_testnet",
+    "updateAgentPrompt:shard_ai_testnet": "npx hardhat run scripts/updateAgentPrompt.ts --network shard_ai_testnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {
