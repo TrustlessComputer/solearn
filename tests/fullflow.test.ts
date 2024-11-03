@@ -6,7 +6,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 const helpers = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
-import { address18 } from "./address.seed.ts";
+import { address18 } from "./address.seed.js";
 
 import {
   IWorkerHub,
@@ -15,11 +15,11 @@ import {
   ModelCollection,
   WorkerHubScoring,
   DAOToken,
-} from "../typechain-types";
+} from "../typechain-types/index.js";
 import { EventLog, wordlists } from "ethers";
 import { proxy } from "../typechain-types/@openzeppelin/contracts/index.js";
-import { HybridModel } from "../typechain-types/contracts/HybridModel";
-import { combineDurations } from "../scripts/utils";
+import { HybridModel } from "../typechain-types/contracts/HybridModel.js";
+import { combineDurations } from "../scripts/utils.js";
 
 describe("WorkerHub contract", async () => {
   const { provider } = ethers;
