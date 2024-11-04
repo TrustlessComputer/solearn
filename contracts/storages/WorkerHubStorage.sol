@@ -25,22 +25,22 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint16 internal feeL2Percentage;
     uint16 internal feeTreasuryPercentage;
     uint16 internal feeRatioMinerValidator;
-    uint40 public submitDuration;
-    uint40 public commitDuration;
-    uint40 public revealDuration;
+    uint40 internal submitDuration;
+    uint40 internal commitDuration;
+    uint40 internal revealDuration;
 
-    uint8 public minerRequirement;
+    uint8 internal minerRequirement;
 
     address public daoToken;
-    uint256 public daoTokenReward; // per request (in wei)
+    uint256 internal daoTokenReward; // per request (in wei)
     DAOTokenPercentage internal daoTokenPercentage;
 
-    mapping(address => address) referrerOf;
+    mapping(address => address) internal referrerOf;
 
     mapping(uint256 inferId => DAOTokenReceiverInfor[])
         internal daoReceiversInfo;
     address public wEAI;
-    address stakingHub;
+    address public stakingHub;
 
     uint256[100] private __gap;
 }

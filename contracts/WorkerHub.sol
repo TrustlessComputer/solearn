@@ -8,10 +8,8 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/se
 import {Random} from "./lib/Random.sol";
 import {Set} from "./lib/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
-import {WorkerHubStorage} from "./storages/WorkerHubStorage.sol";
+import {WorkerHubStorage, IWorkerHub} from "./storages/WorkerHubStorage.sol";
 import {IDAOToken} from "./tokens/IDAOToken.sol";
-import {IHybridModel} from "./interfaces/IHybridModel.sol";
-import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {IStakingHub} from "./interfaces/IStakingHub.sol";
 
 contract WorkerHub is
@@ -749,5 +747,11 @@ contract WorkerHub is
         uint256 _inferenceId
     ) external view returns (uint256[] memory) {
         return assignmentsByInference[_inferenceId].values;
+    }
+
+    function getAssignmentByMiner(
+        address _miner
+    ) external view returns (uint256[] memory) {
+        return assignmentsByMiner[_miner].values;
     }
 }
