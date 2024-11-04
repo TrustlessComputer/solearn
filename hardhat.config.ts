@@ -206,7 +206,7 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
     } as any,
     base_mainnet: {
-      url: "https://base.llamarpc.com",
+      url: "https://mainnet.base.org",
       chainId: 8453,
       accounts: [process.env.BASE_MAINNET_PRIVATE_KEY],
       l2OwnerAddress: process.env.BASE_MAINNET_L2_OWNER_ADDRESS,

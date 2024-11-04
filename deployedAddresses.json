@@ -19,5 +19,14 @@
     "workerHubAddress": "0x5fD61D186E7181917736fB61685528f13453b336",
     "collectionAddress": "0xC97397eFD32a745a02E5B04D837300569273392E",
     "hybridModelAddress": "0xC697B778B696b61aC90F0fF1388f17c3C36DBcC1"
+  },
+  "BASE_MAINNET": {
+    "daoTokenAddress": "0x2Fb0108F90724f63da4360D39C588124Eaeb3f7d",
+    "treasuryAddress": "0x3eda761C5a06aF51aa67358227Fa7271Ba9111b3",
+    "stakingHubAddress": "0x233198ce0679d3D8B3B346b9fe3DFD3298B991EB",
+    "workerHubAddress": "0xA1d2F74C345Ff1d97B8FC72E061903cD84C66F69",
+    "collectionAddress": "0x1E4C5B7a0568a2cb96BeBE5C70472C140Fc847A0",
+    "hybridModelAddress": "0x9A35863BaF0df7623F34FCF3376CDBAC8581E76b",
+    "systemPromptManagerAddress": "0xAed016e060e2fFE3092916b1650Fc558D62e1CCC"
   }
 }
