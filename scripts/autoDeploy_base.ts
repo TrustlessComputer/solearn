@@ -25,8 +25,8 @@ async function deployDAOToken() {
   console.log("DEPLOY DAO TOKEN...");
 
   const _MAX_SUPPLY_CAP = ethers.parseEther("2100000000"); //2,1B
-  const tokenName = "DAOTOKEN";
-  const tokenSymbol = "DAOTOKEN";
+  const tokenName = "FANS";
+  const tokenSymbol = "FANS";
   const initializedParams = [tokenName, tokenSymbol, _MAX_SUPPLY_CAP];
 
   const daoToken = (await deployOrUpgrade(
@@ -61,7 +61,7 @@ async function deployStakingHub(
   daoTokenAddress: string,
   treasuryAddress: string
 ) {
-  console.log("DEPLOY STAKING HUB...");
+  console.log("DEPLOY WORKER HUB...");
 
   const l2OwnerAddress = config.l2OwnerAddress;
   const wEAIAddress = config.wEAIAddress;
@@ -187,7 +187,7 @@ async function deployWorkerHub(
   console.log("Tx status: ", receipt?.status);
 
   // Staking Hub update WorkerHub Address
-  console.log("STAKING HUB UPDATE WORKER HUB ADDRESS...");
+  console.log("STATKING HUB UPDATE WORKER HUB ADDRESS...");
   const stakingHubContract = (await getContractInstance(
     stakingHubAddress,
     "StakingHub"
@@ -217,7 +217,7 @@ async function deployModelCollection() {
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
-  const nextModelId = 700_001; //
+  const nextModelId = 400_001; //
 
   const constructorParams = [
     name,
