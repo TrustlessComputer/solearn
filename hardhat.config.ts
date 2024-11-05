@@ -207,11 +207,17 @@ const config: HardhatUserConfig = {
     base_mainnet: {
       url: "https://mainnet.base.org",
       chainId: 8453,
-      accounts: [process.env.BASE_MAINNET_PRIVATE_KEY],
+      accounts: [
+        process.env.BASE_MAINNET_PRIVATE_KEY,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
       l2OwnerAddress: process.env.BASE_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.BASE_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.BASE_MAINNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.BASE_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.BASE_MAINNET_STAKING_HUB_ADDRESS,
       daoTokenAddress: process.env.BASE_MAINNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.BASE_MAINNET_WORKER_HUB_SCORING_ADDRESS,
