@@ -122,19 +122,15 @@ contract StakingHub is
         emit ModelMinimumFeeUpdate(_model, _minimumFee);
     }
 
-    function registerMiner(
-        uint16 tier,
-        uint256 wEAIAmt
-    ) external whenNotPaused {
+    function registerMiner(uint16 tier) external whenNotPaused {
         _updateEpoch();
 
         if (tier == 0 || tier > maximumTier) revert("InvalidTier");
-        if (wEAIAmt < minerMinimumStake) revert("StakeTooLow");
 
         Worker storage miner = miners[msg.sender];
         if (miner.tier != 0) revert("AlreadyRegistered");
 
-        miner.stake = wEAIAmt;
+        miner.stake = minerMinimumStake;
         miner.tier = tier;
 
         address modelAddress = modelAddresses.values[
@@ -145,10 +141,10 @@ contract StakingHub is
             wEAI,
             msg.sender,
             address(this),
-            wEAIAmt
+            minerMinimumStake
         );
 
-        emit MinerRegistration(msg.sender, tier, wEAIAmt);
+        emit MinerRegistration(msg.sender, tier, minerMinimumStake);
     }
 
     function forceChangeModelForMiner(
