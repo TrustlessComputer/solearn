@@ -314,6 +314,7 @@ contract WorkerHub is
             emit InferenceStatusUpdate(inferId, InferenceStatus.Reveal);
         }
     }
+
     // 0x121a301d
     function reveal(
         uint256 _assignId,
@@ -333,10 +334,19 @@ contract WorkerHub is
 
         if (uint40(block.number) > inference.revealTimeout)
             revert("RevealTimeout");
+        if (
+            inference.status != InferenceStatus.Commit &&
+            inference.status != InferenceStatus.Reveal
+        ) revert("Inference status is not Commit or Reveal");
+
+        if (
+            uint40(block.number) < inference.commitTimeout &&
+            votingInfo[inferId].totalCommit !=
+            assignmentsByInference[inferId].size() - 1
+        ) revert("Can not fast forward to reveal");
+
         if (inference.status == InferenceStatus.Commit) {
             inference.status = InferenceStatus.Reveal;
-        } else if (inference.status != InferenceStatus.Reveal) {
-            revert("InvalidInferenceStatus");
         }
 
         // Check the msg sender is the assigned miner
