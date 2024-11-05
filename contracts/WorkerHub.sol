@@ -743,15 +743,9 @@ contract WorkerHub is
         return treasury;
     }
 
-    function getAssignmentByInference(
+    function getInferenceInfo(
         uint256 _inferenceId
-    ) external view returns (uint256[] memory) {
-        return assignmentsByInference[_inferenceId].values;
-    }
-
-    function getAssignmentByMiner(
-        address _miner
-    ) external view returns (uint256[] memory) {
-        return assignmentsByMiner[_miner].values;
+    ) external view returns (Inference memory) {
+        return inferences[_inferenceId];
     }
 }

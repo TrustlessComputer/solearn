@@ -10,7 +10,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     Random.Randomizer internal randomizer;
 
     uint256 public inferenceNumber;
-    mapping(uint256 => Inference) public inferences;
+    mapping(uint256 => Inference) internal inferences;
 
     uint256 public assignmentNumber;
     mapping(uint256 => Assignment) public assignments;
@@ -20,8 +20,8 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(address => Set.Uint256Set) internal assignmentsByMiner;
     mapping(uint256 => Set.Uint256Set) internal assignmentsByInference;
 
-    address public l2Owner;
-    address public treasury;
+    address internal l2Owner;
+    address internal treasury;
     uint16 internal feeL2Percentage;
     uint16 internal feeTreasuryPercentage;
     uint16 internal feeRatioMinerValidator;
@@ -31,7 +31,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     uint8 internal minerRequirement;
 
-    address public daoToken;
+    address internal daoToken;
     uint256 internal daoTokenReward; // per request (in wei)
     DAOTokenPercentage internal daoTokenPercentage;
 
