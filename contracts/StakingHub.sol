@@ -62,6 +62,12 @@ contract StakingHub is
         wEAI = _wEAI;
     }
 
+    function setMinerMinimumStake(
+        uint256 _minerMinimumStake
+    ) external onlyOwner {
+        minerMinimumStake = _minerMinimumStake;
+    }
+
     function registerModel(
         address _model,
         uint16 _tier,
