@@ -3248,7 +3248,7 @@
             "label": "randomizer",
             "offset": 0,
             "slot": "0",
-            "type": "t_struct(Randomizer)3492_storage",
+            "type": "t_struct(Randomizer)11853_storage",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:10"
           },
@@ -3264,7 +3264,7 @@
             "label": "models",
             "offset": 0,
             "slot": "2",
-            "type": "t_mapping(t_address,t_struct(Model)3006_storage)",
+            "type": "t_mapping(t_address,t_struct(Model)11178_storage)",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:13"
           },
@@ -3272,7 +3272,7 @@
             "label": "miners",
             "offset": 0,
             "slot": "3",
-            "type": "t_mapping(t_address,t_struct(Worker)3019_storage)",
+            "type": "t_mapping(t_address,t_struct(Worker)11191_storage)",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:14"
           },
@@ -3280,7 +3280,7 @@
             "label": "minerAddressesByModel",
             "offset": 0,
             "slot": "4",
-            "type": "t_mapping(t_address,t_struct(AddressSet)3536_storage)",
+            "type": "t_mapping(t_address,t_struct(AddressSet)11897_storage)",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:15"
           },
@@ -3288,7 +3288,7 @@
             "label": "modelAddresses",
             "offset": 0,
             "slot": "5",
-            "type": "t_struct(AddressSet)3536_storage",
+            "type": "t_struct(AddressSet)11897_storage",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:17"
           },
@@ -3296,7 +3296,7 @@
             "label": "minerAddresses",
             "offset": 0,
             "slot": "7",
-            "type": "t_struct(AddressSet)3536_storage",
+            "type": "t_struct(AddressSet)11897_storage",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:18"
           },
@@ -3304,7 +3304,7 @@
             "label": "minerUnstakeRequests",
             "offset": 0,
             "slot": "9",
-            "type": "t_mapping(t_address,t_struct(UnstakeRequest)3024_storage)",
+            "type": "t_mapping(t_address,t_struct(UnstakeRequest)11196_storage)",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:20"
           },
@@ -3312,7 +3312,7 @@
             "label": "rewardInEpoch",
             "offset": 0,
             "slot": "10",
-            "type": "t_mapping(t_uint256,t_struct(MinerEpochState)3001_storage)",
+            "type": "t_mapping(t_uint256,t_struct(MinerEpochState)11173_storage)",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:21"
           },
@@ -3400,7 +3400,7 @@
             "label": "boost",
             "offset": 0,
             "slot": "17",
-            "type": "t_mapping(t_address,t_struct(Boost)3033_storage)",
+            "type": "t_mapping(t_address,t_struct(Boost)11205_storage)",
             "contract": "StakingHubStorage",
             "src": "contracts/storages/StakingHubStorage.sol:39"
           },
@@ -3535,23 +3535,23 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_mapping(t_address,t_struct(AddressSet)3536_storage)": {
+          "t_mapping(t_address,t_struct(AddressSet)11897_storage)": {
             "label": "mapping(address => struct Set.AddressSet)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Boost)3033_storage)": {
+          "t_mapping(t_address,t_struct(Boost)11205_storage)": {
             "label": "mapping(address => struct IStakingHub.Boost)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Model)3006_storage)": {
+          "t_mapping(t_address,t_struct(Model)11178_storage)": {
             "label": "mapping(address => struct IStakingHub.Model)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(UnstakeRequest)3024_storage)": {
+          "t_mapping(t_address,t_struct(UnstakeRequest)11196_storage)": {
             "label": "mapping(address => struct IStakingHub.UnstakeRequest)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Worker)3019_storage)": {
+          "t_mapping(t_address,t_struct(Worker)11191_storage)": {
             "label": "mapping(address => struct IStakingHub.Worker)",
             "numberOfBytes": "32"
           },
@@ -3559,11 +3559,11 @@
             "label": "mapping(address => uint256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(MinerEpochState)3001_storage)": {
+          "t_mapping(t_uint256,t_struct(MinerEpochState)11173_storage)": {
             "label": "mapping(uint256 => struct IStakingHub.MinerEpochState)",
             "numberOfBytes": "32"
           },
-          "t_struct(AddressSet)3536_storage": {
+          "t_struct(AddressSet)11897_storage": {
             "label": "struct Set.AddressSet",
             "members": [
               {
@@ -3581,7 +3581,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(Boost)3033_storage": {
+          "t_struct(Boost)11205_storage": {
             "label": "struct IStakingHub.Boost",
             "members": [
               {
@@ -3611,7 +3611,7 @@
             ],
             "numberOfBytes": "32"
           },
-          "t_struct(MinerEpochState)3001_storage": {
+          "t_struct(MinerEpochState)11173_storage": {
             "label": "struct IStakingHub.MinerEpochState",
             "members": [
               {
@@ -3641,7 +3641,7 @@
             ],
             "numberOfBytes": "128"
           },
-          "t_struct(Model)3006_storage": {
+          "t_struct(Model)11178_storage": {
             "label": "struct IStakingHub.Model",
             "members": [
               {
@@ -3659,7 +3659,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(Randomizer)3492_storage": {
+          "t_struct(Randomizer)11853_storage": {
             "label": "struct Random.Randomizer",
             "members": [
               {
@@ -3671,7 +3671,7 @@
             ],
             "numberOfBytes": "32"
           },
-          "t_struct(UnstakeRequest)3024_storage": {
+          "t_struct(UnstakeRequest)11196_storage": {
             "label": "struct IStakingHub.UnstakeRequest",
             "members": [
               {
@@ -3689,7 +3689,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(Worker)3019_storage": {
+          "t_struct(Worker)11191_storage": {
             "label": "struct IStakingHub.Worker",
             "members": [
               {
@@ -4191,6 +4191,531 @@
           "t_uint256": {
             "label": "uint256",
             "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
+    },
+    "b6ce30254270c51e22dd025d5a5486dd6b6347d652a6b7c9e302c4dd117ce82d": {
+      "address": "0xc4C4E6eA81A0a7ef4fd423354aCdd8935333142e",
+      "txHash": "0xfd870eeae3e982b124142d995217e3e40309996a853d11c04317c0f9828523c5",
+      "layout": {
+        "solcVersion": "0.8.20",
+        "storage": [
+          {
+            "label": "randomizer",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_struct(Randomizer)3504_storage",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:10"
+          },
+          {
+            "label": "treasury",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_address",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:11"
+          },
+          {
+            "label": "models",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_address,t_struct(Model)3018_storage)",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:13"
+          },
+          {
+            "label": "miners",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_address,t_struct(Worker)3031_storage)",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:14"
+          },
+          {
+            "label": "minerAddressesByModel",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_address,t_struct(AddressSet)3548_storage)",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:15"
+          },
+          {
+            "label": "modelAddresses",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_struct(AddressSet)3548_storage",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:17"
+          },
+          {
+            "label": "minerAddresses",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_struct(AddressSet)3548_storage",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:18"
+          },
+          {
+            "label": "minerUnstakeRequests",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_address,t_struct(UnstakeRequest)3036_storage)",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:20"
+          },
+          {
+            "label": "rewardInEpoch",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_mapping(t_uint256,t_struct(MinerEpochState)3013_storage)",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:21"
+          },
+          {
+            "label": "minerMinimumStake",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_uint256",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:23"
+          },
+          {
+            "label": "unstakeDelayTime",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_uint40",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:24"
+          },
+          {
+            "label": "penaltyDuration",
+            "offset": 5,
+            "slot": "12",
+            "type": "t_uint40",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:25"
+          },
+          {
+            "label": "finePercentage",
+            "offset": 10,
+            "slot": "12",
+            "type": "t_uint16",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:26"
+          },
+          {
+            "label": "maximumTier",
+            "offset": 12,
+            "slot": "12",
+            "type": "t_uint16",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:27"
+          },
+          {
+            "label": "currentEpoch",
+            "offset": 14,
+            "slot": "12",
+            "type": "t_uint40",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:30"
+          },
+          {
+            "label": "blocksPerEpoch",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_uint256",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:31"
+          },
+          {
+            "label": "lastBlock",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_uint256",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:32"
+          },
+          {
+            "label": "rewardPerEpoch",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_uint256",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:33"
+          },
+          {
+            "label": "minerRewards",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:36"
+          },
+          {
+            "label": "boost",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_mapping(t_address,t_struct(Boost)3045_storage)",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:39"
+          },
+          {
+            "label": "wEAI",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_address",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:40"
+          },
+          {
+            "label": "workerHub",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_address",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:41"
+          },
+          {
+            "label": "minFeeToUse",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_uint256",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:42"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "21",
+            "type": "t_array(t_uint256)100_storage",
+            "contract": "StakingHubStorage",
+            "src": "contracts/storages/StakingHubStorage.sol:44"
+          },
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "121",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "121",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "122",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:40"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "172",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "173",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "222",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "223",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "272",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "273",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)100_storage": {
+            "label": "uint256[100]",
+            "numberOfBytes": "3200"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_struct(AddressSet)3548_storage)": {
+            "label": "mapping(address => struct Set.AddressSet)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Boost)3045_storage)": {
+            "label": "mapping(address => struct IStakingHub.Boost)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Model)3018_storage)": {
+            "label": "mapping(address => struct IStakingHub.Model)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(UnstakeRequest)3036_storage)": {
+            "label": "mapping(address => struct IStakingHub.UnstakeRequest)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Worker)3031_storage)": {
+            "label": "mapping(address => struct IStakingHub.Worker)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(MinerEpochState)3013_storage)": {
+            "label": "mapping(uint256 => struct IStakingHub.MinerEpochState)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AddressSet)3548_storage": {
+            "label": "struct Set.AddressSet",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_address)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_address,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Boost)3045_storage": {
+            "label": "struct IStakingHub.Boost",
+            "members": [
+              {
+                "label": "minerTimestamp",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "validatorTimestamp",
+                "type": "t_uint40",
+                "offset": 5,
+                "slot": "0"
+              },
+              {
+                "label": "reserved1",
+                "type": "t_uint48",
+                "offset": 10,
+                "slot": "0"
+              },
+              {
+                "label": "reserved2",
+                "type": "t_uint128",
+                "offset": 16,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(MinerEpochState)3013_storage": {
+            "label": "struct IStakingHub.MinerEpochState",
+            "members": [
+              {
+                "label": "perfReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "epochReward",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "totalTaskCompleted",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "totalMiner",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(Model)3018_storage": {
+            "label": "struct IStakingHub.Model",
+            "members": [
+              {
+                "label": "minimumFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "tier",
+                "type": "t_uint32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Randomizer)3504_storage": {
+            "label": "struct Random.Randomizer",
+            "members": [
+              {
+                "label": "nonce",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(UnstakeRequest)3036_storage": {
+            "label": "struct IStakingHub.UnstakeRequest",
+            "members": [
+              {
+                "label": "stake",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "unlockAt",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Worker)3031_storage": {
+            "label": "struct IStakingHub.Worker",
+            "members": [
+              {
+                "label": "stake",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "commitment",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "modelAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastClaimedEpoch",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "2"
+              },
+              {
+                "label": "activeTime",
+                "type": "t_uint40",
+                "offset": 25,
+                "slot": "2"
+              },
+              {
+                "label": "tier",
+                "type": "t_uint16",
+                "offset": 30,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_uint128": {
+            "label": "uint128",
+            "numberOfBytes": "16"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
+          },
+          "t_uint48": {
+            "label": "uint48",
+            "numberOfBytes": "6"
           },
           "t_uint8": {
             "label": "uint8",
