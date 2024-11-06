@@ -258,6 +258,9 @@ contract WorkerHub is
             revert InvalidInferenceStatus();
         }
 
+        if (uint40(block.number) > clonedInference.submitTimeout)
+            revert("Submit timeout");
+
         Inference storage inference = inferences[inferId];
 
         assignments[_assigmentId].output = _data; //Record the solution
