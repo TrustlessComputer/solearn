@@ -761,4 +761,10 @@ contract WorkerHub is
     ) external view returns (Inference memory) {
         return inferences[_inferenceId];
     }
+
+    function getAssignmentsByInference(
+        uint256 _inferenceId
+    ) external view returns (uint256[] memory) {
+        return assignmentsByInference[_inferenceId].values;
+    }
 }

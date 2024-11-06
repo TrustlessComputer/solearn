@@ -39,8 +39,8 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     mapping(uint256 inferId => DAOTokenReceiverInfor[])
         internal daoReceiversInfo;
-    address public wEAI;
-    address public stakingHub;
+    address internal wEAI;
+    address internal stakingHub;
 
     uint256[100] private __gap;
 }
