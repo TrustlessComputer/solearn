@@ -654,8 +654,8 @@ async function deploySystemPromptManager(
   ];
 
   // deploy implementation
-  // const impAddr = await deployImpl("SystemPromptManager");
-  const impAddr = "0x169c8Ee03422268E2D05F40059B9fA9fa97284a5";
+  const impAddr = await deployImpl("SystemPromptManager");
+  // const impAddr = "0x169c8Ee03422268E2D05F40059B9fA9fa97284a5";
 
   // deploy proxy
   // Encode the function call
@@ -679,24 +679,24 @@ async function deploySystemPromptManager(
   // );
 
   // Mint first NFT to owner
-  const nftOwner = (await ethers.getSigners())[0].address;
-  const ins = (await getContractInstance(
-    proxyAddr,
-    "SystemPromptManager"
-  )) as SystemPromptManager;
+  // const nftOwner = (await ethers.getSigners())[0].address;
+  // const ins = (await getContractInstance(
+  //   proxyAddr,
+  //   "SystemPromptManager"
+  // )) as SystemPromptManager;
 
-  const metadataObj = {
-    agent_uri: "ipfs://meta",
-  };
-  const metadata = JSON.stringify(metadataObj, null, "\t");
-  const linkPrompt = "ifps://systemprompt";
-  const uri = metadata;
-  const _data = ethers.toUtf8Bytes(linkPrompt);
-  const fee = ethers.parseEther("0");
-  const txMint = await ins.mint(nftOwner, uri, _data, fee);
-  const res = await txMint.wait();
-  console.log(`Minted tx hash: ${res?.hash}`);
-  console.log(`Minted status: ${res?.status}`);
+  // const metadataObj = {
+  //   agent_uri: "ipfs://meta",
+  // };
+  // const metadata = JSON.stringify(metadataObj, null, "\t");
+  // const linkPrompt = "ifps://systemprompt";
+  // const uri = metadata;
+  // const _data = ethers.toUtf8Bytes(linkPrompt);
+  // const fee = ethers.parseEther("0");
+  // const txMint = await ins.mint(nftOwner, uri, _data, fee);
+  // const res = await txMint.wait();
+  // console.log(`Minted tx hash: ${res?.hash}`);
+  // console.log(`Minted status: ${res?.status}`);
 
   // return sysPromptManager.target;
 }
@@ -737,11 +737,11 @@ async function main() {
   // Treasury deployment
   // await deployTreasury(config.daoTokenAddress);
 
-  const workerHubAddress = await deployWorkerHub(
-    config.daoTokenAddress,
-    config.treasuryAddress,
-    masterWallet
-  );
+  // const workerHubAddress = await deployWorkerHub(
+  //   config.daoTokenAddress,
+  //   config.treasuryAddress,
+  //   masterWallet
+  // );
   // const collectionAddress = await deployModelCollection();
   // await deployWEAIToken();
   // const hybridModelAddress = await deployHybridModel(
@@ -759,11 +759,11 @@ async function main() {
   //   config.workerHubAddress,
   //   config.l2OwnerAddress
   // );
-  // const systemPromptManagerAddress = await deploySystemPromptManager(
-  //   config.l2OwnerAddress,
-  //   config.hybridModelAddress,
-  //   config.workerHubAddress
-  // );
+  const systemPromptManagerAddress = await deploySystemPromptManager(
+    config.l2OwnerAddress,
+    config.hybridModelAddress,
+    config.workerHubAddress
+  );
 
   // const DAOToken = (await getContractInstance(
   //   config.daoTokenAddress,

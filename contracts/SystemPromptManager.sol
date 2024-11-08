@@ -213,6 +213,78 @@ contract SystemPromptManager is
         datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
     }
 
+    function getHashToSign(
+        uint256 _agentId,
+        bytes calldata _sysPrompt,
+        uint256 _promptIdx
+    ) public view returns (bytes32) {
+        address agentOwner = _ownerOf(_agentId);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _sysPrompt,
+                _agentId,
+                _promptIdx,
+                nonce[agentOwner],
+                address(this),
+                block.chainid
+            )
+        );
+        return ECDSAUpgradeable.toEthSignedMessageHash(structHash);
+    }
+
+    function _hasUpdatePromptPermission(
+        uint256 _agentId,
+        bytes calldata _sysPrompt,
+        uint256 _promptIdx,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal returns (bool) {
+        address agentOwner = _ownerOf(_agentId);
+
+        bytes32 hash = getHashToSign(_agentId, _sysPrompt, _promptIdx);
+        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
+
+        require(signer == agentOwner, "Invalid signature");
+        nonce[signer]++;
+
+        return true;
+    }
+
+    function updateAgentDataWithSignature(
+        uint256 _agentId,
+        bytes calldata _sysPrompt,
+        uint256 _promptIdx,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        require(_sysPrompt.length != 0, "Invalid system prompt input");
+        require(
+            _hasUpdatePromptPermission(
+                _agentId,
+                _sysPrompt,
+                _promptIdx,
+                v,
+                r,
+                s
+            ),
+            "Invalid agent owner signature"
+        );
+        uint256 len = datas[_agentId].sysPrompts.length;
+        require(_promptIdx < len, "Invalid prompt index");
+
+        emit AgentDataUpdate(
+            _agentId,
+            _promptIdx,
+            datas[_agentId].sysPrompts[_promptIdx],
+            _sysPrompt
+        );
+
+        datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
+    }
+
     function addNewAgentData(
         uint256 _agentId,
         bytes calldata _sysPrompt
