@@ -17,7 +17,7 @@ abstract contract SystemPromptManagerStorage is ISystemPromptManager {
     // fee
     mapping(address nftOwner => uint256) public earnedFees;
     mapping(uint256 nftId => uint256) public poolBalance;
-    mapping(address nftOwner => uint256) nonce;
+    mapping(address nftOwner => uint256) public nonce;
 
     uint256[49] private __gap;
 }
