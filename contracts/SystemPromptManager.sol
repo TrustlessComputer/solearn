@@ -227,7 +227,8 @@ contract SystemPromptManager is
                 _agentId,
                 _promptIdx,
                 nonce[agentOwner],
-                address(this)
+                address(this),
+                block.chainid
             )
         );
         return ECDSAUpgradeable.toEthSignedMessageHash(structHash);
@@ -248,6 +249,7 @@ contract SystemPromptManager is
         console.logBytes32(hash);
         address signer = ECDSAUpgradeable.recover(hash, v, r, s);
         console.log("signer: ", signer);
+        console.log("===>: ", ecrecover(hash, v, r, s));
         require(signer == agentOwner, "Invalid signature");
         nonce[signer]++;
 
