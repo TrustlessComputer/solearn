@@ -15,8 +15,9 @@ import {
   ModelCollection,
   DAOToken,
   WrappedEAI,
+  SystemPromptManager,
 } from "../typechain-types/index.js";
-import { EventLog, wordlists } from "ethers";
+import { BytesLike, EventLog, wordlists } from "ethers";
 import { HybridModel } from "../typechain-types/contracts/HybridModel.js";
 import { StakingHub } from "../typechain-types/contracts/StakingHub";
 
@@ -45,6 +46,12 @@ describe("WorkerHub contract", async () => {
       modelCollectionAddress
     );
 
+    const systemPromptManagerAddress = await deploySystemPromptManager(
+      proxyWorkerHubAddress,
+      hybridModelAddress,
+      admin.address
+    );
+
     return {
       admin,
       proxyLLAMAAddress,
@@ -52,6 +59,7 @@ describe("WorkerHub contract", async () => {
       stakingHubAddress,
       hybridModelAddress,
       wEAIAddress,
+      systemPromptManagerAddress,
     };
   }
 
@@ -273,6 +281,52 @@ describe("WorkerHub contract", async () => {
     return proxyAddress;
   }
 
+  async function deploySystemPromptManager(
+    workerHubAddress: string,
+    hybridModelAddress: string,
+    l2OwnerAddress: string
+  ) {
+    const name = "Eternal AI";
+    const symbol = "1.0";
+    const mintPrice = ethers.parseEther("0");
+    const royaltyReceiver = l2OwnerAddress;
+    const royalPortion = 5_00;
+    const nextModelId = 1; //TODO: need to change before deployment
+
+    const constructorParams = [
+      name,
+      symbol,
+      mintPrice,
+      royaltyReceiver,
+      royalPortion,
+      nextModelId,
+      hybridModelAddress,
+      workerHubAddress,
+    ];
+
+    const contractFact = await ethers.getContractFactory("SystemPromptManager");
+
+    const proxy = await upgrades.deployProxy(contractFact, constructorParams);
+    await proxy.waitForDeployment();
+    const proxyAddress = await proxy.getAddress();
+
+    //
+    const ins = (await getContractInstance(
+      "SystemPromptManager",
+      proxyAddress
+    )) as SystemPromptManager;
+    const linkPrompt =
+      "ipfs://bafkreide4kf4se2atgdi3kjie5eigvvr3wnkyolitbrj6cuj3sfzfyowui";
+
+    const nftOwner = (await ethers.getSigners())[0].address;
+    const uri = linkPrompt;
+    const data = ethers.toUtf8Bytes(linkPrompt);
+    const fee = ethers.parseEther("0");
+    const txMint = await ins.mint(nftOwner, uri, data, fee);
+
+    return proxyAddress;
+  }
+
   async function getContractInstance(contractName: string, address: string) {
     const contractFact = await ethers.getContractFactory(contractName);
     return contractFact.attach(address);
@@ -323,9 +377,7 @@ describe("WorkerHub contract", async () => {
         .approve(stakingHubAddress, ethers.parseEther("50"));
 
       //Regis miner and then join for minting
-      await stakingHub
-        .connect(impersonatedSigner)
-        .registerMiner(1, ethers.parseEther("0.1"));
+      await stakingHub.connect(impersonatedSigner).registerMiner(1);
 
       await stakingHub.connect(impersonatedSigner).joinForMinting();
     }
@@ -353,14 +405,14 @@ describe("WorkerHub contract", async () => {
     // expect inference id to be 1
     expect(await workerHub.inferenceNumber()).to.eq(1);
 
-    const inferInfo = await workerHub.inferences(1n);
+    const inferInfo = await workerHub.getInferenceInfo(1n);
     //check inference info
     expect(inferInfo.input).to.eq(modelInput);
     expect(inferInfo.modelAddress).to.eq(hybridModelAddress);
 
     // find the assigned workers
     let assignedMiners: string[] = [];
-    const assignIds = await workerHub.getAssignmentByInference(1n);
+    const assignIds = await workerHub.getAssignmentsByInference(1n);
     for await (let id of assignIds) {
       const assignInfo = await workerHub.assignments(id);
       assignedMiners.push(assignInfo.worker);
@@ -372,7 +424,7 @@ describe("WorkerHub contract", async () => {
   }
 
   describe("WorkerHub contract", async () => {
-    it.only("Should be ok", async () => {
+    it("Should be ok", async () => {
       const {
         admin,
         proxyLLAMAAddress,
@@ -402,6 +454,50 @@ describe("WorkerHub contract", async () => {
 
       expect(assignedMiners.length).to.eq(3);
       console.log(assignedMiners);
+    });
+
+    it.only("Should update agent", async () => {
+      const {
+        admin,
+        proxyLLAMAAddress,
+        proxyWorkerHubAddress,
+        hybridModelAddress,
+        stakingHubAddress,
+        wEAIAddress,
+        systemPromptManagerAddress,
+      } = await loadFixture(deployWorkerHubFixture);
+
+      const ins = (await getContractInstance(
+        "SystemPromptManager",
+        systemPromptManagerAddress
+      )) as SystemPromptManager;
+
+      console.log("owner: ", await ins.ownerOf(1));
+      const [admin1, admin2] = await ethers.getSigners();
+      console.log(admin1.address);
+
+      const linkPrompt =
+        "ipfs://bafkreide4kf4se2atgdi3kjie5eigvvr3wnkyolitbrj6cuj3sfzfyowui";
+      const data = ethers.toUtf8Bytes(linkPrompt);
+
+      const hash: BytesLike = await ins["getHashToSign(uint256,bytes,uint256)"](
+        1n,
+        data,
+        0
+      );
+      console.log("hash ", hash);
+
+      const x = await admin1.signMessage(hash);
+      const signature = ethers.Signature.from(x);
+      const { v, r, s } = signature;
+      console.log("s: ", s);
+
+      const tx = await ins.updateAgentDataWithSignature(1n, data, 0, v, r, s);
+      // const recoveredAddress = ethers.verifyMessage(
+      //   ethers.toUtf8Bytes(hash),
+      //   signature
+      // );
+      // console.log("recoveredAddress: ", recoveredAddress);
     });
   });
 });
