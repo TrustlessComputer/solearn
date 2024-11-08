@@ -654,8 +654,8 @@ async function deploySystemPromptManager(
   ];
 
   // deploy implementation
-  const impAddr = await deployImpl("SystemPromptManager");
-  // const impAddr = "0x169c8Ee03422268E2D05F40059B9fA9fa97284a5";
+  // const impAddr = await deployImpl("SystemPromptManager");
+  const impAddr = "0x86091bBe7496fAEa559775B71d8F12Bc2206Dd3A";
 
   // deploy proxy
   // Encode the function call
@@ -672,11 +672,11 @@ async function deploySystemPromptManager(
   const proxyAddr = "0x7734c3cd8B3239eA03A8A660095d94183FE63fCD";
 
   // Upgrade
-  // await upgrade(
-  //   proxyAddr.toString(),
-  //   impAddr.toString(),
-  //   config.proxyAdminAddress
-  // );
+  await upgrade(
+    proxyAddr.toString(),
+    impAddr.toString(),
+    config.proxyAdminAddress
+  );
 
   // Mint first NFT to owner
   // const nftOwner = (await ethers.getSigners())[0].address;

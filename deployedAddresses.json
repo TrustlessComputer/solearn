@@ -28,5 +28,8 @@
     "collectionAddress": "0x1E4C5B7a0568a2cb96BeBE5C70472C140Fc847A0",
     "hybridModelAddress": "0x9A35863BaF0df7623F34FCF3376CDBAC8581E76b",
     "systemPromptManagerAddress": "0xAed016e060e2fFE3092916b1650Fc558D62e1CCC"
+  },
+  "SHARD_AI_TESTNET": {
+    "proxyAdminAddress": "0x96026023424DE66512675bD046eC6287d7B4eC67"
   }
 }
