@@ -289,6 +289,58 @@ contract SystemPromptManager is
         datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
     }
 
+    function getHashToSign(
+        uint256 _agentId,
+        string calldata _uri
+    ) public view returns (bytes32) {
+        address agentOwner = _ownerOf(_agentId);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _uri,
+                _agentId,
+                nonceForUri[agentOwner],
+                address(this),
+                block.chainid
+            )
+        );
+        return ECDSAUpgradeable.toEthSignedMessageHash(structHash);
+    }
+
+    function _hasUpdateUriPermission(
+        uint256 _agentId,
+        string calldata _uri,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal returns (bool) {
+        address agentOwner = _ownerOf(_agentId);
+
+        bytes32 hash = getHashToSign(_agentId, _uri);
+        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
+
+        require(signer == agentOwner, "Invalid signature");
+        nonceForUri[signer]++;
+
+        return true;
+    }
+
+    function updateAgentUriWithSignature(
+        uint256 _agentId,
+        string calldata _uri,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        require(bytes(_uri).length != 0, "Invalid URI");
+        require(
+            _hasUpdateUriPermission(_agentId, _uri, v, r, s),
+            "Invalid agent owner signature"
+        );
+        _setTokenURI(_agentId, _uri);
+        emit AgentURIUpdate(_agentId, _uri);
+    }
+
     function addNewAgentData(
         uint256 _agentId,
         bytes calldata _sysPrompt
