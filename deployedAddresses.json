@@ -28,5 +28,14 @@
     "collectionAddress": "0x1E4C5B7a0568a2cb96BeBE5C70472C140Fc847A0",
     "hybridModelAddress": "0x9A35863BaF0df7623F34FCF3376CDBAC8581E76b",
     "systemPromptManagerAddress": "0xAed016e060e2fFE3092916b1650Fc558D62e1CCC"
+  },
+  "ETHEREUM_MAINNET": {
+    "daoTokenAddress": "0x3eda761C5a06aF51aa67358227Fa7271Ba9111b3",
+    "treasuryAddress": "0x233198ce0679d3D8B3B346b9fe3DFD3298B991EB",
+    "stakingHubAddress": "0x2258F10De61bEAb1725723495B7774AE2FdAdeB9",
+    "workerHubAddress": "0xb2a51f4a3F3A6a0bF653763Bf50830219dc5e62D",
+    "collectionAddress": "0x90b330eaa057b3011b27D3a1ebD7AE549c028876",
+    "hybridModelAddress": "0x16465e92C68675b4f775efD1ad830D22d14641bb",
+    "systemPromptManagerAddress": "0xDdf1720c9689e4e0bf0B383E57b621f12886516C"
   }
 }
