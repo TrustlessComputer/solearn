@@ -47,30 +47,30 @@ async function main() {
   );
 
   // transfer wEAI to workers
-  console.log("Transfer wEAI to workers");
-  const txTransfer1 = await wEAI.transfer(
-    addrSigner1,
-    ethers.parseEther("25000")
-  );
-  const resTransfer1 = await txTransfer1.wait();
-  console.log("hash: ", resTransfer1?.hash);
-  console.log("status: ", resTransfer1?.status);
+  // console.log("Transfer wEAI to workers");
+  // const txTransfer1 = await wEAI.transfer(
+  //   addrSigner1,
+  //   ethers.parseEther("25000")
+  // );
+  // const resTransfer1 = await txTransfer1.wait();
+  // console.log("hash: ", resTransfer1?.hash);
+  // console.log("status: ", resTransfer1?.status);
 
-  const txTransfer2 = await wEAI.transfer(
-    addrSigner2,
-    ethers.parseEther("25000")
-  );
-  const resTransfer2 = await txTransfer2.wait();
-  console.log("hash: ", resTransfer2?.hash);
-  console.log("status: ", resTransfer2?.status);
+  // const txTransfer2 = await wEAI.transfer(
+  //   addrSigner2,
+  //   ethers.parseEther("25000")
+  // );
+  // const resTransfer2 = await txTransfer2.wait();
+  // console.log("hash: ", resTransfer2?.hash);
+  // console.log("status: ", resTransfer2?.status);
 
-  const txTransfer3 = await wEAI.transfer(
-    addrSigner3,
-    ethers.parseEther("25000")
-  );
-  const resTransfer3 = await txTransfer3.wait();
-  console.log("hash: ", resTransfer3?.hash);
-  console.log("status: ", resTransfer3?.status);
+  // const txTransfer3 = await wEAI.transfer(
+  //   addrSigner3,
+  //   ethers.parseEther("25000")
+  // );
+  // const resTransfer3 = await txTransfer3.wait();
+  // console.log("hash: ", resTransfer3?.hash);
+  // console.log("status: ", resTransfer3?.status);
 
   const balance1 = await wEAI.balanceOf(addrSigner1);
   const balance2 = await wEAI.balanceOf(addrSigner2);
@@ -80,26 +80,26 @@ async function main() {
   console.log("Balance worker 3: ", balance3.toString());
 
   // Approve
-  const txApprove1 = await wEAI
-    .connect(signers[1])
-    .approve(config.stakingHubAddress, ethers.parseEther("25000"));
-  const resApprove1 = await txApprove1.wait();
-  console.log("hash: ", resApprove1?.hash);
-  console.log("status: ", resApprove1?.status);
+  // const txApprove1 = await wEAI
+  //   .connect(signers[1])
+  //   .approve(config.stakingHubAddress, ethers.parseEther("25000"));
+  // const resApprove1 = await txApprove1.wait();
+  // console.log("hash: ", resApprove1?.hash);
+  // console.log("status: ", resApprove1?.status);
 
-  const txApprove2 = await wEAI
-    .connect(signers[2])
-    .approve(config.stakingHubAddress, ethers.parseEther("25000"));
-  const resApprove2 = await txApprove2.wait();
-  console.log("hash: ", resApprove2?.hash);
-  console.log("status: ", resApprove2?.status);
+  // const txApprove2 = await wEAI
+  //   .connect(signers[2])
+  //   .approve(config.stakingHubAddress, ethers.parseEther("25000"));
+  // const resApprove2 = await txApprove2.wait();
+  // console.log("hash: ", resApprove2?.hash);
+  // console.log("status: ", resApprove2?.status);
 
-  const txApprove3 = await wEAI
-    .connect(signers[3])
-    .approve(config.stakingHubAddress, ethers.parseEther("25000"));
-  const resApprove3 = await txApprove3.wait();
-  console.log("hash: ", resApprove3?.hash);
-  console.log("status: ", resApprove3?.status);
+  // const txApprove3 = await wEAI
+  //   .connect(signers[3])
+  //   .approve(config.stakingHubAddress, ethers.parseEther("25000"));
+  // const resApprove3 = await txApprove3.wait();
+  // console.log("hash: ", resApprove3?.hash);
+  // console.log("status: ", resApprove3?.status);
 
   // Register miner
   const stakingHub = (await getContractInstance(
@@ -107,44 +107,38 @@ async function main() {
     "StakingHub"
   )) as StakingHub;
 
-  const txRegisMiner1 = await stakingHub
-    .connect(signers[1])
-    .registerMiner(1, ethers.parseEther("25000"));
-  const resRegisMiner1 = await txRegisMiner1.wait();
-  console.log("hash: ", resRegisMiner1?.hash);
-  console.log("status: ", resRegisMiner1?.status);
+  // const txRegisMiner1 = await stakingHub.connect(signers[1]).registerMiner(1);
+  // const resRegisMiner1 = await txRegisMiner1.wait();
+  // console.log("hash: ", resRegisMiner1?.hash);
+  // console.log("status: ", resRegisMiner1?.status);
 
-  const txRegisMiner2 = await stakingHub
-    .connect(signers[2])
-    .registerMiner(1, ethers.parseEther("25000"));
-  const resRegisMiner2 = await txRegisMiner2.wait();
-  console.log("hash: ", resRegisMiner2?.hash);
-  console.log("status: ", resRegisMiner2?.status);
+  // const txRegisMiner2 = await stakingHub.connect(signers[2]).registerMiner(1);
+  // const resRegisMiner2 = await txRegisMiner2.wait();
+  // console.log("hash: ", resRegisMiner2?.hash);
+  // console.log("status: ", resRegisMiner2?.status);
 
-  const txRegisMiner3 = await stakingHub
-    .connect(signers[3])
-    .registerMiner(1, ethers.parseEther("25000"));
-  const resRegisMiner3 = await txRegisMiner3.wait();
-  console.log("hash: ", resRegisMiner3?.hash);
-  console.log("status: ", resRegisMiner3?.status);
+  // const txRegisMiner3 = await stakingHub.connect(signers[3]).registerMiner(1);
+  // const resRegisMiner3 = await txRegisMiner3.wait();
+  // console.log("hash: ", resRegisMiner3?.hash);
+  // console.log("status: ", resRegisMiner3?.status);
 
-  // join mining
-  const txJoinMining1 = await stakingHub.connect(signers[1]).joinForMinting();
-  const resJoinMining1 = await txJoinMining1.wait();
-  console.log("hash: ", resJoinMining1?.hash);
-  console.log("status: ", resJoinMining1?.status);
+  // // join mining
+  // const txJoinMining1 = await stakingHub.connect(signers[1]).joinForMinting();
+  // const resJoinMining1 = await txJoinMining1.wait();
+  // console.log("hash: ", resJoinMining1?.hash);
+  // console.log("status: ", resJoinMining1?.status);
 
-  const txJoinMining2 = await stakingHub.connect(signers[2]).joinForMinting();
-  const resJoinMining2 = await txJoinMining2.wait();
-  console.log("hash: ", resJoinMining2?.hash);
-  console.log("status: ", resJoinMining2?.status);
+  // const txJoinMining2 = await stakingHub.connect(signers[2]).joinForMinting();
+  // const resJoinMining2 = await txJoinMining2.wait();
+  // console.log("hash: ", resJoinMining2?.hash);
+  // console.log("status: ", resJoinMining2?.status);
 
-  const txJoinMining3 = await stakingHub.connect(signers[3]).joinForMinting();
-  const resJoinMining3 = await txJoinMining3.wait();
-  console.log("hash: ", resJoinMining3?.hash);
-  console.log("status: ", resJoinMining3?.status);
+  // const txJoinMining3 = await stakingHub.connect(signers[3]).joinForMinting();
+  // const resJoinMining3 = await txJoinMining3.wait();
+  // console.log("hash: ", resJoinMining3?.hash);
+  // console.log("status: ", resJoinMining3?.status);
 
-  console.log("miners: ", await stakingHub.getMinerAddresses());
+  // console.log("miners: ", await stakingHub.getMinerAddresses());
 }
 
 main()

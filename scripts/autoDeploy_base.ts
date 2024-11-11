@@ -76,11 +76,11 @@ async function deployStakingHub(
   assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
   assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
 
-  const minerMinimumStake = ethers.parseEther("0.1");
+  const minerMinimumStake = ethers.parseEther("25000");
   const blockPerEpoch = 600 * 2;
   const rewardPerEpoch = ethers.parseEther("0.38");
 
-  const unstakeDelayTime = 1814400; // NOTE:  1,814,400 blocks = 21 days
+  const unstakeDelayTime = 151200; // NOTE:  151200 blocks = 21 days (blocktime = 12)
   const penaltyDuration = 0; // NOTE: 3.3 hours
   const finePercentage = 0;
   const minFeeToUse = ethers.parseEther("0");
@@ -217,7 +217,7 @@ async function deployModelCollection() {
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
-  const nextModelId = 700_001; //
+  const nextModelId = 800_001; //
 
   const constructorParams = [
     name,
@@ -258,12 +258,12 @@ async function deployHybridModel(
   );
 
   const identifier = 0;
-  const name = "FANS V2";
+  const name = "ETERNAL V2";
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "FANS V2",
-    model_type: "image",
+    model_name: "ETERNAL V2",
+    model_type: "text",
     model_url: "",
     model_file_hash: "",
     min_hardware: 1,

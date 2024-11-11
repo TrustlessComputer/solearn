@@ -78,6 +78,8 @@
     "autoDeploy_base:base_testnet": "npx hardhat run scripts/autoDeploy_base.ts --network base_testnet",
     "autoDeploy:shard_ai_testnet": "npx hardhat run scripts/autoDeploy.ts --network shard_ai_testnet",
     "autoDeploy:tc_testnet": "npx hardhat run scripts/autoDeploy.ts --network tc_testnet",
+    "autoDeploy_base:ethereum_mainnet": "npx hardhat run scripts/autoDeploy_base.ts --network ethereum_mainnet",
+    "registerMiners:ethereum_mainnet": "npx hardhat run scripts/registerMiners.ts --network ethereum_mainnet",
     "remixd": "remixd -s ./ --remix-ide https://remix.ethereum.org"
   },
   "devDependencies": {
