@@ -17,7 +17,7 @@ import {
   WrappedEAI,
   SystemPromptManager,
 } from "../typechain-types/index.js";
-import { BytesLike, EventLog, wordlists } from "ethers";
+import { AbiCoder, BytesLike, EventLog, wordlists } from "ethers";
 import { HybridModel } from "../typechain-types/contracts/HybridModel.js";
 import { StakingHub } from "../typechain-types/contracts/StakingHub";
 
@@ -323,6 +323,7 @@ describe("WorkerHub contract", async () => {
     const data = ethers.toUtf8Bytes(linkPrompt);
     const fee = ethers.parseEther("0");
     const txMint = await ins.mint(nftOwner, uri, data, fee);
+    await ins.mint(nftOwner, uri, data, fee);
 
     return proxyAddress;
   }
@@ -456,7 +457,7 @@ describe("WorkerHub contract", async () => {
       console.log(assignedMiners);
     });
 
-    it.only("Should update agent", async () => {
+    it("Should update agent", async () => {
       const {
         admin,
         proxyLLAMAAddress,
@@ -480,24 +481,113 @@ describe("WorkerHub contract", async () => {
         "ipfs://bafkreide4kf4se2atgdi3kjie5eigvvr3wnkyolitbrj6cuj3sfzfyowui";
       const data = ethers.toUtf8Bytes(linkPrompt);
 
-      const hash: BytesLike = await ins["getHashToSign(uint256,bytes,uint256)"](
-        1n,
-        data,
-        0
+      const agentId = 1n;
+      const promptIdx = 0n;
+      const randomBytes = ethers.randomBytes(8);
+      const randomNonce = BigInt(
+        "0x" + Buffer.from(randomBytes).toString("hex")
+      ); // Convert bytes to BigInt
+
+      const address = systemPromptManagerAddress;
+      const chainId = 31337n;
+      // const chainId = 8453n;
+
+      const coder = AbiCoder.defaultAbiCoder();
+      const encodedData = coder.encode(
+        ["bytes", "uint256", "uint256", "uint256", "address", "uint256"],
+        [data, agentId, promptIdx, randomNonce, address, chainId]
       );
-      console.log("hash ", hash);
+      console.log("encodedData ", [
+        data,
+        agentId,
+        promptIdx,
+        randomNonce,
+        address,
+        chainId,
+      ]);
 
-      const x = await admin1.signMessage(hash);
-      const signature = ethers.Signature.from(x);
-      const { v, r, s } = signature;
-      console.log("s: ", s);
+      const hashData = ethers.keccak256(encodedData);
+      console.log("hashData ", hashData);
+      const signature = await admin.signMessage(ethers.getBytes(hashData));
+      const tx = await ins.updateAgentDataWithSignature(
+        agentId,
+        data,
+        promptIdx,
+        randomNonce,
+        signature
+      );
 
-      const tx = await ins.updateAgentDataWithSignature(1n, data, 0, v, r, s);
-      // const recoveredAddress = ethers.verifyMessage(
-      //   ethers.toUtf8Bytes(hash),
-      //   signature
-      // );
-      // console.log("recoveredAddress: ", recoveredAddress);
+      const tx2 = await ins.updateAgentDataWithSignature(
+        agentId,
+        data,
+        promptIdx,
+        randomNonce,
+        signature
+      );
+    });
+
+    it.only("Should update agent uri", async () => {
+      const {
+        admin,
+        proxyLLAMAAddress,
+        proxyWorkerHubAddress,
+        hybridModelAddress,
+        stakingHubAddress,
+        wEAIAddress,
+        systemPromptManagerAddress,
+      } = await loadFixture(deployWorkerHubFixture);
+
+      const ins = (await getContractInstance(
+        "SystemPromptManager",
+        systemPromptManagerAddress
+      )) as SystemPromptManager;
+
+      console.log("owner: ", await ins.ownerOf(1));
+      const [admin1, admin2] = await ethers.getSigners();
+      console.log(admin1.address);
+
+      const linkUri =
+        "ipfs://bafkreide4kf4se2atgdi3kjie5eigvvr3wnkyolitbrj6cuj3sfzfyowui";
+
+      const agentId = 1n;
+      const randomBytes = ethers.randomBytes(8);
+      const randomNonce = BigInt(
+        "0x" + Buffer.from(randomBytes).toString("hex")
+      ); // Convert bytes to BigInt
+
+      const address = systemPromptManagerAddress;
+      const chainId = 31337n;
+      // const chainId = 8453n;
+
+      const coder = AbiCoder.defaultAbiCoder();
+      const encodedData = coder.encode(
+        ["string", "uint256", "uint256", "address", "uint256"],
+        [linkUri, agentId, randomNonce, address, chainId]
+      );
+
+      const hashData = ethers.keccak256(encodedData);
+      console.log("hashData ", hashData);
+      const signature = await admin.signMessage(ethers.getBytes(hashData));
+      const tx = await ins.updateAgentUriWithSignature(
+        agentId,
+        linkUri,
+        randomNonce,
+        signature
+      );
+      ///
+      const encodedData2 = coder.encode(
+        ["string", "uint256", "uint256", "address", "uint256"],
+        [linkUri, 2n, randomNonce, address, chainId]
+      );
+      const hashData2 = ethers.keccak256(encodedData2);
+      const signature2 = await admin.signMessage(ethers.getBytes(hashData2));
+
+      const tx2 = await ins.updateAgentUriWithSignature(
+        2n,
+        linkUri,
+        randomNonce,
+        signature2
+      );
     });
   });
 });

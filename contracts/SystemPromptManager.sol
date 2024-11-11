@@ -217,20 +217,20 @@ contract SystemPromptManager is
     function getHashToSign(
         uint256 _agentId,
         bytes calldata _sysPrompt,
-        uint256 _promptIdx
+        uint256 _promptIdx,
+        uint256 _randomNonce
     ) public view returns (bytes32) {
-        address agentOwner = _ownerOf(_agentId);
-
         bytes32 structHash = keccak256(
             abi.encode(
                 _sysPrompt,
                 _agentId,
                 _promptIdx,
-                nonce[agentOwner],
+                _randomNonce,
                 address(this),
                 block.chainid
             )
         );
+
         return ECDSAUpgradeable.toEthSignedMessageHash(structHash);
     }
 
@@ -238,20 +238,21 @@ contract SystemPromptManager is
         uint256 _agentId,
         bytes calldata _sysPrompt,
         uint256 _promptIdx,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        uint256 _randomNonce,
+        bytes calldata _signature
     ) internal returns (bool) {
         address agentOwner = _ownerOf(_agentId);
+        require(!signaturesUsed[agentOwner][_signature], "Signature used");
 
-        bytes32 hash = getHashToSign(_agentId, _sysPrompt, _promptIdx);
-        console.log("hash: ");
-        console.logBytes32(hash);
-        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-        console.log("signer: ", signer);
-        console.log("===>: ", ecrecover(hash, v, r, s));
+        bytes32 hash = getHashToSign(
+            _agentId,
+            _sysPrompt,
+            _promptIdx,
+            _randomNonce
+        );
+        address signer = ECDSAUpgradeable.recover(hash, _signature);
         require(signer == agentOwner, "Invalid signature");
-        nonce[signer]++;
+        signaturesUsed[agentOwner][_signature] = true;
 
         return true;
     }
@@ -260,9 +261,8 @@ contract SystemPromptManager is
         uint256 _agentId,
         bytes calldata _sysPrompt,
         uint256 _promptIdx,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        uint256 _randomNonce,
+        bytes calldata _signature
     ) external {
         require(_sysPrompt.length != 0, "Invalid system prompt input");
         require(
@@ -270,9 +270,8 @@ contract SystemPromptManager is
                 _agentId,
                 _sysPrompt,
                 _promptIdx,
-                v,
-                r,
-                s
+                _randomNonce,
+                _signature
             ),
             "Invalid agent owner signature"
         );
@@ -291,15 +290,14 @@ contract SystemPromptManager is
 
     function getHashToSign(
         uint256 _agentId,
-        string calldata _uri
+        string calldata _uri,
+        uint256 _randomNonce
     ) public view returns (bytes32) {
-        address agentOwner = _ownerOf(_agentId);
-
         bytes32 structHash = keccak256(
             abi.encode(
                 _uri,
                 _agentId,
-                nonceForUri[agentOwner],
+                _randomNonce,
                 address(this),
                 block.chainid
             )
@@ -310,17 +308,17 @@ contract SystemPromptManager is
     function _hasUpdateUriPermission(
         uint256 _agentId,
         string calldata _uri,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        uint256 _randomNonce,
+        bytes calldata _signature
     ) internal returns (bool) {
         address agentOwner = _ownerOf(_agentId);
+        require(!signaturesUsed[agentOwner][_signature], "Signature used");
 
-        bytes32 hash = getHashToSign(_agentId, _uri);
-        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
+        bytes32 hash = getHashToSign(_agentId, _uri, _randomNonce);
+        address signer = ECDSAUpgradeable.recover(hash, _signature);
 
         require(signer == agentOwner, "Invalid signature");
-        nonceForUri[signer]++;
+        signaturesUsed[agentOwner][_signature] = true;
 
         return true;
     }
@@ -328,15 +326,15 @@ contract SystemPromptManager is
     function updateAgentUriWithSignature(
         uint256 _agentId,
         string calldata _uri,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        uint256 _randomNonce,
+        bytes calldata _signature
     ) external {
         require(bytes(_uri).length != 0, "Invalid URI");
         require(
-            _hasUpdateUriPermission(_agentId, _uri, v, r, s),
+            _hasUpdateUriPermission(_agentId, _uri, _randomNonce, _signature),
             "Invalid agent owner signature"
         );
+
         _setTokenURI(_agentId, _uri);
         emit AgentURIUpdate(_agentId, _uri);
     }
