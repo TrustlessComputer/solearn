@@ -537,15 +537,15 @@ contract WorkerHub is
                             shareFeePerValidator
                         );
                     }
-                    if (notReachedLimit && tokenForMiner > 0) {
-                        daoReceiversInfo[_inferenceId].push(
-                            DAOTokenReceiverInfor(
-                                assignment.worker,
-                                shareTokenPerValidator,
-                                DAOTokenReceiverRole.Validator
-                            )
-                        );
-                    }
+                    // if (notReachedLimit && tokenForMiner > 0) {
+                    //     daoReceiversInfo[_inferenceId].push(
+                    //         DAOTokenReceiverInfor(
+                    //             assignment.worker,
+                    //             shareTokenPerValidator,
+                    //             DAOTokenReceiverRole.Validator
+                    //         )
+                    //     );
+                    // }
                 } else {
                     if (feeForMiner > 0) {
                         // it is miner, if miner is honest, the feeForMiner is greater than 0
@@ -554,40 +554,40 @@ contract WorkerHub is
                             feeForMiner
                         );
                     }
-                    if (notReachedLimit && tokenForMiner > 0) {
-                        daoReceiversInfo[_inferenceId].push(
-                            DAOTokenReceiverInfor(
-                                assignment.worker,
-                                tokenForMiner,
-                                DAOTokenReceiverRole.Miner
-                            )
-                        );
-                    }
+                    // if (notReachedLimit && tokenForMiner > 0) {
+                    //     daoReceiversInfo[_inferenceId].push(
+                    //         DAOTokenReceiverInfor(
+                    //             assignment.worker,
+                    //             tokenForMiner,
+                    //             DAOTokenReceiverRole.Miner
+                    //         )
+                    //     );
+                    // }
                 }
             }
         }
 
         // mint DAO token
         // TODO: move thss logic to extternal library
-        uint256 length = daoReceiversInfo[_inferenceId].length;
-        if (notReachedLimit && length > 0) {
-            DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
-                _inferenceId
-            ];
-            for (uint256 i = 0; i < length; i++) {
-                IDAOToken(daoToken).mint(
-                    receiversInf[i].receiver,
-                    receiversInf[i].amount
-                );
-            }
+        // uint256 length = daoReceiversInfo[_inferenceId].length;
+        // if (notReachedLimit && length > 0) {
+        //     DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[
+        //         _inferenceId
+        //     ];
+        //     for (uint256 i = 0; i < length; i++) {
+        //         IDAOToken(daoToken).mint(
+        //             receiversInf[i].receiver,
+        //             receiversInf[i].amount
+        //         );
+        //     }
 
-            emit DAOTokenMintedV2(
-                block.chainid,
-                _inferenceId,
-                inferences[_inferenceId].modelAddress,
-                receiversInf
-            );
-        }
+        //     emit DAOTokenMintedV2(
+        //         block.chainid,
+        //         _inferenceId,
+        //         inferences[_inferenceId].modelAddress,
+        //         receiversInf
+        //     );
+        // }
 
         // Transfer the mining fee to treasury
         if (inferences[_inferenceId].feeL2 > 0) {

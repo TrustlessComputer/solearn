@@ -13,7 +13,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
     mapping(uint256 => Inference) internal inferences;
 
     uint256 public assignmentNumber;
-    mapping(uint256 => Assignment) internal assignments;
+    mapping(uint256 => Assignment) public assignments;
     mapping(uint256 inferId => VotingInfo) internal votingInfo;
     mapping(uint256 inferId => Set.Bytes32Set) internal digests;
     mapping(bytes32 commitment => uint8) internal countDigest;
