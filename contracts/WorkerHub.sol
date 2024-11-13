@@ -149,7 +149,15 @@ contract WorkerHub is
         _assignMiners(inferenceId);
 
         emit NewInference(inferenceId, msg.sender, _creator, value, 0);
-        emit RawSubmitted(inferenceId, _input, _flag);
+        emit RawSubmitted(
+            inferenceId,
+            msg.sender,
+            _creator,
+            value,
+            0,
+            _input,
+            _flag
+        );
 
         return inferenceId;
     }
@@ -474,8 +482,8 @@ contract WorkerHub is
             return false;
         }
 
-        bool isReferred = inferences[_inferenceId].referrer != address(0);
-        bool notReachedLimit = _validateDAOSupplyIncrease(isReferred);
+        // bool isReferred = inferences[_inferenceId].referrer != address(0);
+        // bool notReachedLimit = _validateDAOSupplyIncrease(isReferred);
 
         uint256[] memory assignmentIds = inferences[_inferenceId].assignments;
         uint256 len = assignmentIds.length;
