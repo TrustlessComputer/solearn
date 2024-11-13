@@ -148,7 +148,8 @@ contract WorkerHub is
 
         _assignMiners(inferenceId);
 
-        emit NewInference(inferenceId, msg.sender, _creator, value, 0, _flag);
+        emit NewInference(inferenceId, msg.sender, _creator, value, 0);
+        emit RawSubmitted(inferenceId, _input, _flag);
 
         return inferenceId;
     }

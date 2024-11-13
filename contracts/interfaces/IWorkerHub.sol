@@ -71,9 +71,10 @@ interface IWorkerHub is IInferable {
         address indexed model,
         address indexed creator,
         uint256 value,
-        uint256 originInferenceId,
-        bool rawFlag
+        uint256 originInferenceId
     );
+
+    event RawSubmitted(uint256 indexed inferenceId, bytes input, bool flag);
 
     event InferenceStatusUpdate(
         uint256 indexed inferenceId,
