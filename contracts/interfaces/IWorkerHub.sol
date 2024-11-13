@@ -71,7 +71,8 @@ interface IWorkerHub is IInferable {
         address indexed model,
         address indexed creator,
         uint256 value,
-        uint256 originInferenceId
+        uint256 originInferenceId,
+        bool rawFlag
     );
 
     event InferenceStatusUpdate(
@@ -100,12 +101,6 @@ interface IWorkerHub is IInferable {
         bytes32 commitment
     );
 
-    event TopUpInfer(
-        uint256 indexed inferenceId,
-        address indexed creator,
-        uint256 value
-    );
-
     event RevealSubmission(
         address indexed miner,
         uint256 indexed assigmentId,
@@ -113,7 +108,6 @@ interface IWorkerHub is IInferable {
         bytes output
     );
 
-    event DAOTokenUpdated(address oldAddress, address newAddress);
     event DAOTokenPercentageUpdated(
         DAOTokenPercentage oldValue,
         DAOTokenPercentage newValue

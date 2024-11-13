@@ -24,6 +24,17 @@ interface IHybridModel is IModel {
 
     function infer(
         bytes calldata _data,
+        bool flag
+    ) external payable returns (uint256 referenceId);
+
+    function infer(
+        bytes calldata _data,
         address creator
+    ) external payable returns (uint256 referenceId);
+
+    function infer(
+        bytes calldata _data,
+        address creator,
+        bool flag
     ) external payable returns (uint256 referenceId);
 }

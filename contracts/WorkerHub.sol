@@ -73,13 +73,6 @@ contract WorkerHub is
         wEAI = _wEAI;
     }
 
-    function setDAOTokenPercentage(
-        DAOTokenPercentage memory _daoTokenPercentage
-    ) public onlyOwner {
-        emit DAOTokenPercentageUpdated(daoTokenPercentage, _daoTokenPercentage);
-        daoTokenPercentage = _daoTokenPercentage;
-    }
-
     function version() external pure returns (string memory) {
         return VERSION;
     }
@@ -113,21 +106,30 @@ contract WorkerHub is
 
     function infer(
         bytes calldata _input,
-        address _creator
-    ) public payable whenNotPaused returns (uint256) {
-        IStakingHub.Model memory model = IStakingHub(stakingHub).getModelInfo(
-            msg.sender
-        );
-        if (model.tier == 0) revert Unauthorized();
+        address _creator,
+        bool _flag
+    ) external payable whenNotPaused returns (uint256) {
+        return _infer(_input, _creator, 0, _flag);
+    }
 
-        return _infer(_input, _creator, 0);
+    function infer(
+        bytes calldata _input,
+        address _creator
+    ) external payable whenNotPaused returns (uint256) {
+        return _infer(_input, _creator, 0, false);
     }
 
     function _infer(
         bytes calldata _input,
         address _creator,
-        uint256 _scoringFee
+        uint256 _scoringFee,
+        bool _flag
     ) internal virtual returns (uint256) {
+        IStakingHub.Model memory model = IStakingHub(stakingHub).getModelInfo(
+            msg.sender
+        );
+        if (model.tier == 0) revert Unauthorized();
+
         uint256 inferenceId = ++inferenceNumber;
         Inference storage inference = inferences[inferenceId];
 
@@ -144,9 +146,9 @@ contract WorkerHub is
         inference.referrer = referrerOf[_creator];
         inference.modelAddress = msg.sender;
 
-        emit NewInference(inferenceId, msg.sender, _creator, value, 0);
-
         _assignMiners(inferenceId);
+
+        emit NewInference(inferenceId, msg.sender, _creator, value, 0, _flag);
 
         return inferenceId;
     }
@@ -209,7 +211,7 @@ contract WorkerHub is
     function submitSolution(
         uint256 _assigmentId,
         bytes calldata _data
-    ) public virtual whenNotPaused {
+    ) external virtual whenNotPaused {
         IStakingHub(stakingHub).updateEpoch();
         _validatateSolution(_data);
 
@@ -260,7 +262,7 @@ contract WorkerHub is
     function commit(
         uint256 _assignId,
         bytes32 _commitment
-    ) public virtual whenNotPaused {
+    ) external virtual whenNotPaused {
         IStakingHub(stakingHub).updateEpoch();
 
         if (_commitment == 0) revert InvalidCommitment();
@@ -300,7 +302,7 @@ contract WorkerHub is
         uint256 _assignId,
         uint40 _nonce,
         bytes calldata _data
-    ) public virtual whenNotPaused {
+    ) external virtual whenNotPaused {
         IStakingHub(stakingHub).updateEpoch();
 
         _validatateSolution(_data);
@@ -361,57 +363,57 @@ contract WorkerHub is
         }
     }
 
-    function _calculateTransferredDAOToken(
-        uint256 _inferenceId,
-        bool _isReferred
-    ) internal {
-        DAOTokenPercentage memory percentage = daoTokenPercentage;
-        DAOTokenReceiverInfor[] storage daoReceivers = daoReceiversInfo[
-            _inferenceId
-        ];
+    // function _calculateTransferredDAOToken(
+    //     uint256 _inferenceId,
+    //     bool _isReferred
+    // ) internal {
+    //     DAOTokenPercentage memory percentage = daoTokenPercentage;
+    //     DAOTokenReceiverInfor[] storage daoReceivers = daoReceiversInfo[
+    //         _inferenceId
+    //     ];
 
-        uint256 l2OwnerAmt = (daoTokenReward * percentage.l2OwnerPercentage) /
-            PERCENTAGE_DENOMINATOR;
-        uint256 userAmt = (daoTokenReward * percentage.userPercentage) /
-            PERCENTAGE_DENOMINATOR;
+    //     uint256 l2OwnerAmt = (daoTokenReward * percentage.l2OwnerPercentage) /
+    //         PERCENTAGE_DENOMINATOR;
+    //     uint256 userAmt = (daoTokenReward * percentage.userPercentage) /
+    //         PERCENTAGE_DENOMINATOR;
 
-        daoReceivers.push(
-            DAOTokenReceiverInfor(
-                l2Owner,
-                l2OwnerAmt,
-                DAOTokenReceiverRole.L2Owner
-            )
-        );
+    //     daoReceivers.push(
+    //         DAOTokenReceiverInfor(
+    //             l2Owner,
+    //             l2OwnerAmt,
+    //             DAOTokenReceiverRole.L2Owner
+    //         )
+    //     );
 
-        daoReceivers.push(
-            DAOTokenReceiverInfor(
-                inferences[_inferenceId].creator,
-                userAmt,
-                DAOTokenReceiverRole.User
-            )
-        );
-        if (_isReferred) {
-            uint256 refereeAmt = (daoTokenReward *
-                percentage.refereePercentage) / PERCENTAGE_DENOMINATOR;
-            uint256 refererAmt = (daoTokenReward *
-                percentage.referrerPercentage) / PERCENTAGE_DENOMINATOR;
+    //     daoReceivers.push(
+    //         DAOTokenReceiverInfor(
+    //             inferences[_inferenceId].creator,
+    //             userAmt,
+    //             DAOTokenReceiverRole.User
+    //         )
+    //     );
+    //     if (_isReferred) {
+    //         uint256 refereeAmt = (daoTokenReward *
+    //             percentage.refereePercentage) / PERCENTAGE_DENOMINATOR;
+    //         uint256 refererAmt = (daoTokenReward *
+    //             percentage.referrerPercentage) / PERCENTAGE_DENOMINATOR;
 
-            daoReceivers.push(
-                DAOTokenReceiverInfor(
-                    inferences[_inferenceId].creator,
-                    refereeAmt,
-                    DAOTokenReceiverRole.Referee
-                )
-            );
-            daoReceivers.push(
-                DAOTokenReceiverInfor(
-                    inferences[_inferenceId].referrer,
-                    refererAmt,
-                    DAOTokenReceiverRole.Referrer
-                )
-            );
-        }
-    }
+    //         daoReceivers.push(
+    //             DAOTokenReceiverInfor(
+    //                 inferences[_inferenceId].creator,
+    //                 refereeAmt,
+    //                 DAOTokenReceiverRole.Referee
+    //             )
+    //         );
+    //         daoReceivers.push(
+    //             DAOTokenReceiverInfor(
+    //                 inferences[_inferenceId].referrer,
+    //                 refererAmt,
+    //                 DAOTokenReceiverRole.Referrer
+    //             )
+    //         );
+    //     }
+    // }
 
     function _findMostVotedDigest(
         uint256 _inferenceId
@@ -490,9 +492,10 @@ contract WorkerHub is
             daoTokenReward) / PERCENTAGE_DENOMINATOR;
 
         // Calculate transsferred DAO token amount to l2 owner, user and referrer
-        if (notReachedLimit && remainToken > 0) {
-            _calculateTransferredDAOToken(_inferenceId, isReferred);
-        }
+        // TODO: move thss logic to extternal library
+        // if (notReachedLimit && remainToken > 0) {
+        //     _calculateTransferredDAOToken(_inferenceId, isReferred);
+        // }
 
         // Calculate fee for miner and share fee for validators
         if (isMatchMinerResult) {
@@ -564,6 +567,7 @@ contract WorkerHub is
         }
 
         // mint DAO token
+        // TODO: move thss logic to extternal library
         uint256 length = daoReceiversInfo[_inferenceId].length;
         if (notReachedLimit && length > 0) {
             DAOTokenReceiverInfor[] memory receiversInf = daoReceiversInfo[

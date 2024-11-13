@@ -91,8 +91,33 @@ contract HybridModel is
 
     function infer(
         bytes calldata _input,
-        address creator
+        bool _flag
     ) external payable whenNotPaused nonReentrant returns (uint256) {
-        return IInferable(workerHub).infer{value: msg.value}(_input, creator);
+        return
+            IInferable(workerHub).infer{value: msg.value}(
+                _input,
+                msg.sender,
+                _flag
+            );
+    }
+
+    function infer(
+        bytes calldata _input,
+        address _creator
+    ) external payable whenNotPaused nonReentrant returns (uint256) {
+        return IInferable(workerHub).infer{value: msg.value}(_input, _creator);
+    }
+
+    function infer(
+        bytes calldata _input,
+        address _creator,
+        bool _flag
+    ) external payable whenNotPaused nonReentrant returns (uint256) {
+        return
+            IInferable(workerHub).infer{value: msg.value}(
+                _input,
+                _creator,
+                _flag
+            );
     }
 }

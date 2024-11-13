@@ -411,8 +411,53 @@ contract SystemPromptManager is
     function infer(
         uint256 _agentId,
         bytes calldata _calldata,
+        string calldata _externalData,
+        bool _flag
+    ) external payable {
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(_agentId, _calldata);
+
+        uint256 inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+            fwdData,
+            msg.sender,
+            _flag
+        );
+
+        emit InferencePerformed(
+            _agentId,
+            msg.sender,
+            fwdData,
+            datas[_agentId].fee,
+            _externalData,
+            inferId
+        );
+    }
+
+    function infer(
+        uint256 _agentId,
+        bytes calldata _calldata,
         string calldata _externalData
     ) external payable {
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(_agentId, _calldata);
+
+        uint256 inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+            fwdData,
+            msg.sender
+        );
+
+        emit InferencePerformed(
+            _agentId,
+            msg.sender,
+            fwdData,
+            datas[_agentId].fee,
+            _externalData,
+            inferId
+        );
+    }
+
+    function _infer(
+        uint256 _agentId,
+        bytes calldata _calldata
+    ) internal returns (uint256, bytes memory) {
         require(
             datas[_agentId].sysPrompts.length != 0,
             "Invalid system prompt"
@@ -424,17 +469,16 @@ contract SystemPromptManager is
             _calldata
         );
         uint256 estFeeWH = IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
-        uint256 inferId = 0;
 
         if (msg.value < estFeeWH && poolBalance[_agentId] >= estFeeWH) {
             unchecked {
                 poolBalance[_agentId] -= estFeeWH;
             }
 
-            inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
-                fwdData,
-                msg.sender
-            );
+            // inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+            //     fwdData,
+            //     msg.sender
+            // );
 
             if (msg.value > 0) {
                 TransferHelper.safeTransferNative(
@@ -443,10 +487,10 @@ contract SystemPromptManager is
                 );
             }
         } else if (msg.value >= estFeeWH) {
-            inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
-                fwdData,
-                msg.sender
-            );
+            // inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+            //     fwdData,
+            //     msg.sender
+            // );
 
             uint256 remain = msg.value - estFeeWH;
             if (remain > 0) {
@@ -456,14 +500,7 @@ contract SystemPromptManager is
             revert("Insufficient funds");
         }
 
-        emit InferencePerformed(
-            _agentId,
-            msg.sender,
-            fwdData,
-            datas[_agentId].fee,
-            _externalData,
-            inferId
-        );
+        return (estFeeWH, fwdData);
     }
 
     function dataOf(

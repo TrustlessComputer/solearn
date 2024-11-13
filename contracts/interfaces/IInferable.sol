@@ -6,4 +6,10 @@ interface IInferable {
         bytes calldata data,
         address creator
     ) external payable returns (uint256 inferenceId);
+
+    function infer(
+        bytes calldata data,
+        address creator,
+        bool flag
+    ) external payable returns (uint256 inferenceId);
 }
