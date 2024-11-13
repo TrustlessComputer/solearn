@@ -6,9 +6,8 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import {Random} from "./lib/Random.sol";
-import {Set} from "./lib/Set.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
-import {WorkerHubStorage, IWorkerHub} from "./storages/WorkerHubStorage.sol";
+import {WorkerHubStorage, IWorkerHub, Set} from "./storages/WorkerHubStorage.sol";
 import {IDAOToken} from "./tokens/IDAOToken.sol";
 import {IStakingHub} from "./interfaces/IStakingHub.sol";
 
@@ -70,29 +69,13 @@ contract WorkerHub is
         submitDuration = _submitDuration;
         commitDuration = _commitDuration;
         revealDuration = _revealDuration;
-
-        setDAOTokenPercentage(_daoTokenPercentage);
+        daoTokenPercentage = _daoTokenPercentage;
         wEAI = _wEAI;
-    }
-
-    function _validateDaoTokenPercentage(
-        DAOTokenPercentage memory _daoTokenPercentage
-    ) internal pure returns (bool) {
-        return (_daoTokenPercentage.minerPercentage +
-            _daoTokenPercentage.userPercentage +
-            _daoTokenPercentage.referrerPercentage +
-            _daoTokenPercentage.refereePercentage +
-            _daoTokenPercentage.l2OwnerPercentage ==
-            PERCENTAGE_DENOMINATOR);
     }
 
     function setDAOTokenPercentage(
         DAOTokenPercentage memory _daoTokenPercentage
     ) public onlyOwner {
-        require(
-            _validateDaoTokenPercentage(_daoTokenPercentage),
-            "Invalid DAO Token Percentage"
-        );
         emit DAOTokenPercentageUpdated(daoTokenPercentage, _daoTokenPercentage);
         daoTokenPercentage = _daoTokenPercentage;
     }
@@ -110,25 +93,19 @@ contract WorkerHub is
     }
 
     function _registerReferrer(address _referrer, address _referee) internal {
-        require(
-            _referrer != address(0) && _referee != address(0),
-            "Zero address"
-        );
-        require(referrerOf[_referee] == address(0), "Already registered");
-        referrerOf[_referee] = _referrer;
-    }
+        if (_referrer == address(0) || _referee == address(0))
+            revert InvalidData();
+        if (referrerOf[_referee] != address(0)) revert AlreadySubmitted();
 
-    function registerReferrer(address _referrer) external {
-        IStakingHub(stakingHub).updateEpoch();
-        _registerReferrer(_referrer, msg.sender);
+        referrerOf[_referee] = _referrer;
     }
 
     function registerReferrer(
         address[] memory _referrers,
         address[] memory _referees
     ) external onlyOwner {
-        IStakingHub(stakingHub).updateEpoch();
-        require(_referrers.length == _referees.length, "Invalid input");
+        if (_referrers.length != _referees.length) revert InvalidData();
+
         for (uint256 i = 0; i < _referrers.length; i++) {
             _registerReferrer(_referrers[i], _referees[i]);
         }
@@ -213,10 +190,10 @@ contract WorkerHub is
         IStakingHub(stakingHub).updateEpoch();
 
         if (assignments[_assignmentId].worker != msg.sender)
-            revert("Only assigned worker can seize the role");
+            revert OnlyAssignedWorker();
         uint256 inferId = assignments[_assignmentId].inferenceId;
         if (inferences[inferId].processedMiner != address(0))
-            revert("This inference has been seized");
+            revert AlreadySeized();
 
         assignments[_assignmentId].role = AssignmentRole.Mining;
         inferences[inferId].processedMiner = msg.sender;
@@ -259,7 +236,7 @@ contract WorkerHub is
         }
 
         if (uint40(block.number) > clonedInference.submitTimeout)
-            revert("Submit timeout");
+            revert SubmitTimeout();
 
         Inference storage inference = inferences[inferId];
 
@@ -336,17 +313,17 @@ contract WorkerHub is
         Inference storage inference = inferences[inferId];
 
         if (uint40(block.number) > inference.revealTimeout)
-            revert("RevealTimeout");
+            revert RevealTimeout();
         if (
             inference.status != InferenceStatus.Commit &&
             inference.status != InferenceStatus.Reveal
-        ) revert("Inference status is not Commit or Reveal");
+        ) revert InvalidInferenceStatus();
 
         if (
             uint40(block.number) < inference.commitTimeout &&
             votingInfo[inferId].totalCommit !=
             assignmentsByInference[inferId].size() - 1
-        ) revert("Can not fast forward to reveal");
+        ) revert CannotFastForward();
 
         if (inference.status == InferenceStatus.Commit) {
             inference.status = InferenceStatus.Reveal;
@@ -362,7 +339,7 @@ contract WorkerHub is
             abi.encodePacked(_nonce, msg.sender, _data)
         );
 
-        if (commitment != revealHash) revert("InvalidReveal");
+        if (commitment != revealHash) revert InvalidReveal();
         bytes32 digest = keccak256(abi.encodePacked(inferId, _data));
 
         assignment.revealNonce = _nonce;
@@ -434,14 +411,6 @@ contract WorkerHub is
                 )
             );
         }
-    }
-
-    function _getChainID() internal view returns (uint256) {
-        uint256 id;
-        assembly {
-            id := chainid()
-        }
-        return id;
     }
 
     function _findMostVotedDigest(
@@ -608,7 +577,7 @@ contract WorkerHub is
             }
 
             emit DAOTokenMintedV2(
-                _getChainID(),
+                block.chainid,
                 _inferenceId,
                 inferences[_inferenceId].modelAddress,
                 receiversInf
@@ -766,5 +735,11 @@ contract WorkerHub is
         uint256 _inferenceId
     ) external view returns (uint256[] memory) {
         return assignmentsByInference[_inferenceId].values;
+    }
+
+    function getAssignmentInfo(
+        uint256 _assignmentId
+    ) external view returns (Assignment memory) {
+        return assignments[_assignmentId];
     }
 }

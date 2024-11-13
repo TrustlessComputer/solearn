@@ -37,18 +37,6 @@ interface IWorkerHub is IInferable {
         bytes output;
     }
 
-    struct AssignmentInfo {
-        uint256 assignmentId;
-        uint256 inferenceId;
-        uint256 value;
-        bytes input;
-        address modelAddress;
-        address creator;
-        uint40 submitTimeout;
-        uint40 commitTimeout;
-        uint40 revealTimeout;
-    }
-
     struct Inference {
         uint256[] assignments;
         bytes input;
@@ -68,17 +56,6 @@ interface IWorkerHub is IInferable {
     struct VotingInfo {
         uint8 totalCommit;
         uint8 totalReveal;
-    }
-
-    struct InferenceInfo {
-        uint256 inferenceId;
-        bytes input;
-        bytes output;
-        uint256 value;
-        address modelAddress;
-        uint40 expiredAt;
-        InferenceStatus status;
-        address creator;
     }
 
     struct DAOTokenPercentage {
@@ -163,13 +140,16 @@ interface IWorkerHub is IInferable {
     event StreamedData(uint256 indexed assignmentId, bytes data);
 
     error AlreadySubmitted();
+    error SubmitTimeout();
     error NotEnoughMiners();
     error Unauthorized();
+    error OnlyAssignedWorker();
+    error AlreadySeized();
+    error InvalidContext();
 
     error InvalidInferenceStatus();
+    error CannotFastForward();
 
-    error InferMustBeSolvingState();
-    error ZeroValue();
     error InvalidMiner();
     error InvalidData();
     error InvalidRole();
@@ -188,4 +168,12 @@ interface IWorkerHub is IInferable {
     ) external view returns (uint256);
 
     function getTreasuryAddress() external view returns (address);
+
+    function getInferenceInfo(
+        uint256 _inferenceId
+    ) external view returns (Inference memory);
+
+    function getAssignmentInfo(
+        uint256 _assignmentId
+    ) external view returns (Assignment memory);
 }
