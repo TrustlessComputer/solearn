@@ -70,21 +70,21 @@ interface PromptScheduler {
 }
 
 contract AIPoweredWallet {
-    address public hybridModel;
-    address public workerHub;
+    address public kernel;
+    address public promptScheduler;
     uint256 public currentInferenceId;
     string public context;
 
     event SuspiciousTransaction(uint256 inferenceId, bytes);
 
-    constructor(address _hybridModelAddress, address _workerHubAddress) {
+    constructor(address _kernelAddress, address _promptSchedulerAddress) {
         require(
-            _hybridModelAddress != address(0) &&
-                _workerHubAddress != address(0),
+            _kernelAddress != address(0) &&
+                _promptSchedulerAddress != address(0),
             "AIPoweredWallet: Invalid address"
         );
-        hybridModel = _hybridModelAddress;
-        workerHub = _workerHubAddress;
+        kernel = _kernelAddress;
+        promptScheduler = _promptSchedulerAddress;
         context = "";
     }
 
@@ -94,7 +94,7 @@ contract AIPoweredWallet {
             context
         );
 
-        currentInferenceId = AIKernel(hybridModel).infer(bytes(prompt), true);
+        currentInferenceId = AIKernel(kernel).infer(bytes(prompt), true);
 
         emit SuspiciousTransaction(currentInferenceId, bytes(prompt));
     }
@@ -132,13 +132,14 @@ contract AIPoweredWallet {
     function fetchInferenceResult(
         uint256 _inferenceId
     ) public view returns (bytes memory) {
-        PromptScheduler.Inference memory inferInfo = PromptScheduler(workerHub)
-            .getInferenceInfo(_inferenceId);
+        PromptScheduler.Inference memory inferInfo = PromptScheduler(
+            promptScheduler
+        ).getInferenceInfo(_inferenceId);
 
         if (inferInfo.assignments.length == 0) revert("Wait for inference");
 
         return
-            PromptScheduler(workerHub)
+            PromptScheduler(promptScheduler)
                 .getAssignmentInfo(inferInfo.assignments[0])
                 .output;
     }
