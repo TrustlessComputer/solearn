@@ -1,15 +1,79 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.12;
 
-import {IHybridModel} from "./interfaces/IHybridModel.sol";
-import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+
+interface AIKernel {
+    function infer(
+        bytes calldata _data,
+        bool _flag
+    ) external payable returns (uint256 referenceId);
+}
+
+interface PromptScheduler {
+    enum InferenceStatus {
+        Nil,
+        Solving,
+        Commit,
+        Reveal,
+        Processed,
+        Killed,
+        Transferred
+    }
+
+    enum AssignmentRole {
+        Nil,
+        Validating,
+        Mining
+    }
+
+    enum Vote {
+        Nil,
+        Disapproval,
+        Approval
+    }
+
+    struct Assignment {
+        uint256 inferenceId;
+        bytes32 commitment;
+        bytes32 digest;
+        uint40 revealNonce;
+        address worker;
+        AssignmentRole role;
+        Vote vote;
+        bytes output;
+    }
+
+    struct Inference {
+        uint256[] assignments;
+        bytes input;
+        uint256 value;
+        uint256 feeL2;
+        uint256 feeTreasury;
+        address modelAddress;
+        uint40 submitTimeout;
+        uint40 commitTimeout;
+        uint40 revealTimeout;
+        InferenceStatus status;
+        address creator;
+        address processedMiner;
+        address referrer;
+    }
+
+    function getInferenceInfo(
+        uint256 _inferenceId
+    ) external view returns (Inference memory);
+
+    function getAssignmentInfo(
+        uint256 _assignmentId
+    ) external view returns (Assignment memory);
+}
 
 contract AIPoweredWallet {
     address public hybridModel;
     address public workerHub;
     uint256 public currentInferenceId;
-    string public topic;
+    string public context;
 
     event SuspiciousTransaction(uint256 inferenceId, bytes);
 
@@ -21,23 +85,16 @@ contract AIPoweredWallet {
         );
         hybridModel = _hybridModelAddress;
         workerHub = _workerHubAddress;
-        topic = "";
-    }
-
-    function getPrompt() external view returns (string memory) {
-        return string.concat("Is this ", topic, " suspicious?");
+        context = "";
     }
 
     function suspiciousTransaction() external {
         string memory prompt = string.concat(
             "Based on the following Ethereum transaction history, is there any indication of suspicious activity? Respond with only 'yes' or 'no'. ",
-            topic
+            context
         );
 
-        currentInferenceId = IHybridModel(hybridModel).infer(
-            bytes(prompt),
-            true
-        );
+        currentInferenceId = AIKernel(hybridModel).infer(bytes(prompt), true);
 
         emit SuspiciousTransaction(currentInferenceId, bytes(prompt));
     }
@@ -61,8 +118,8 @@ contract AIPoweredWallet {
 
         payable(_receivedWallet).transfer(msg.value);
 
-        topic = string.concat(
-            topic,
+        context = string.concat(
+            context,
             Strings.toHexString(msg.sender),
             " transfer ",
             Strings.toString(msg.value),
@@ -75,13 +132,13 @@ contract AIPoweredWallet {
     function fetchInferenceResult(
         uint256 _inferenceId
     ) public view returns (bytes memory) {
-        IWorkerHub.Inference memory inferInfo = IWorkerHub(workerHub)
+        PromptScheduler.Inference memory inferInfo = PromptScheduler(workerHub)
             .getInferenceInfo(_inferenceId);
 
         if (inferInfo.assignments.length == 0) revert("Wait for inference");
 
         return
-            IWorkerHub(workerHub)
+            PromptScheduler(workerHub)
                 .getAssignmentInfo(inferInfo.assignments[0])
                 .output;
     }
