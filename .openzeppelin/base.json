@@ -8829,6 +8829,714 @@
         },
         "namespaces": {}
       }
+    },
+    "23f0f5d6ae5b52c4183105b7ae445f0d9777a34eeb9e1a2dd0023fbe787dc1ae": {
+      "address": "0x53110fDd1b57730CDA0F07DC219F3DC9f5d2B21A",
+      "txHash": "0xa4025396dcc9da00627fdda77ad7e9dc9a6e3d7b964506d5d8417c4c64be4f32",
+      "layout": {
+        "solcVersion": "0.8.20",
+        "storage": [
+          {
+            "label": "randomizer",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_struct(Randomizer)3667_storage",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:10"
+          },
+          {
+            "label": "inferenceNumber",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:12"
+          },
+          {
+            "label": "inferences",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_uint256,t_struct(Inference)3459_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:13"
+          },
+          {
+            "label": "assignmentNumber",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:15"
+          },
+          {
+            "label": "assignments",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_uint256,t_struct(Assignment)3430_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:16"
+          },
+          {
+            "label": "votingInfo",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_uint256,t_struct(VotingInfo)3464_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:17"
+          },
+          {
+            "label": "digests",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint256,t_struct(Bytes32Set)4051_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:18"
+          },
+          {
+            "label": "countDigest",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_mapping(t_bytes32,t_uint8)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:19"
+          },
+          {
+            "label": "assignmentsByMiner",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_mapping(t_address,t_struct(Uint256Set)3881_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:20"
+          },
+          {
+            "label": "assignmentsByInference",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_uint256,t_struct(Uint256Set)3881_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:21"
+          },
+          {
+            "label": "l2Owner",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_address",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:23"
+          },
+          {
+            "label": "treasury",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_address",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:24"
+          },
+          {
+            "label": "feeL2Percentage",
+            "offset": 20,
+            "slot": "11",
+            "type": "t_uint16",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:25"
+          },
+          {
+            "label": "feeTreasuryPercentage",
+            "offset": 22,
+            "slot": "11",
+            "type": "t_uint16",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:26"
+          },
+          {
+            "label": "feeRatioMinerValidator",
+            "offset": 24,
+            "slot": "11",
+            "type": "t_uint16",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:27"
+          },
+          {
+            "label": "submitDuration",
+            "offset": 26,
+            "slot": "11",
+            "type": "t_uint40",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:28"
+          },
+          {
+            "label": "commitDuration",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_uint40",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:29"
+          },
+          {
+            "label": "revealDuration",
+            "offset": 5,
+            "slot": "12",
+            "type": "t_uint40",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:30"
+          },
+          {
+            "label": "minerRequirement",
+            "offset": 10,
+            "slot": "12",
+            "type": "t_uint8",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:32"
+          },
+          {
+            "label": "daoToken",
+            "offset": 11,
+            "slot": "12",
+            "type": "t_address",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:34"
+          },
+          {
+            "label": "daoTokenReward",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_uint256",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:35"
+          },
+          {
+            "label": "daoTokenPercentage",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_struct(DAOTokenPercentage)3475_storage",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:36"
+          },
+          {
+            "label": "referrerOf",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_mapping(t_address,t_address)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:38"
+          },
+          {
+            "label": "daoReceiversInfo",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_mapping(t_uint256,t_array(t_struct(DAOTokenReceiverInfor)3575_storage)dyn_storage)",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:40"
+          },
+          {
+            "label": "wEAI",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_address",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:42"
+          },
+          {
+            "label": "stakingHub",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_address",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:43"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_array(t_uint256)100_storage",
+            "contract": "WorkerHubStorage",
+            "src": "contracts/storages/WorkerHubStorage.sol:45"
+          },
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "119",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "119",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "120",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:40"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "170",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "171",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "220",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "221",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "270",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "271",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_bytes32)dyn_storage": {
+            "label": "bytes32[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_struct(DAOTokenReceiverInfor)3575_storage)dyn_storage": {
+            "label": "struct IWorkerHub.DAOTokenReceiverInfor[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)100_storage": {
+            "label": "uint256[100]",
+            "numberOfBytes": "3200"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_bytes_storage": {
+            "label": "bytes",
+            "numberOfBytes": "32"
+          },
+          "t_enum(AssignmentRole)3407": {
+            "label": "enum IWorkerHub.AssignmentRole",
+            "members": [
+              "Nil",
+              "Validating",
+              "Mining"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_enum(DAOTokenReceiverRole)3567": {
+            "label": "enum IWorkerHub.DAOTokenReceiverRole",
+            "members": [
+              "Miner",
+              "Validator",
+              "User",
+              "Referrer",
+              "Referee",
+              "L2Owner"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_enum(InferenceStatus)3403": {
+            "label": "enum IWorkerHub.InferenceStatus",
+            "members": [
+              "Nil",
+              "Solving",
+              "Commit",
+              "Reveal",
+              "Processed",
+              "Killed",
+              "Transferred"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_enum(Vote)3411": {
+            "label": "enum IWorkerHub.Vote",
+            "members": [
+              "Nil",
+              "Disapproval",
+              "Approval"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Uint256Set)3881_storage)": {
+            "label": "mapping(address => struct Set.Uint256Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_uint256)": {
+            "label": "mapping(bytes32 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_uint8)": {
+            "label": "mapping(bytes32 => uint8)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_array(t_struct(DAOTokenReceiverInfor)3575_storage)dyn_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHub.DAOTokenReceiverInfor[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Assignment)3430_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHub.Assignment)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Bytes32Set)4051_storage)": {
+            "label": "mapping(uint256 => struct Set.Bytes32Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Inference)3459_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHub.Inference)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Uint256Set)3881_storage)": {
+            "label": "mapping(uint256 => struct Set.Uint256Set)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(VotingInfo)3464_storage)": {
+            "label": "mapping(uint256 => struct IWorkerHub.VotingInfo)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Assignment)3430_storage": {
+            "label": "struct IWorkerHub.Assignment",
+            "members": [
+              {
+                "label": "inferenceId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "commitment",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "digest",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "revealNonce",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "worker",
+                "type": "t_address",
+                "offset": 5,
+                "slot": "3"
+              },
+              {
+                "label": "role",
+                "type": "t_enum(AssignmentRole)3407",
+                "offset": 25,
+                "slot": "3"
+              },
+              {
+                "label": "vote",
+                "type": "t_enum(Vote)3411",
+                "offset": 26,
+                "slot": "3"
+              },
+              {
+                "label": "output",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_struct(Bytes32Set)4051_storage": {
+            "label": "struct Set.Bytes32Set",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_bytes32)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_bytes32,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(DAOTokenPercentage)3475_storage": {
+            "label": "struct IWorkerHub.DAOTokenPercentage",
+            "members": [
+              {
+                "label": "minerPercentage",
+                "type": "t_uint16",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "userPercentage",
+                "type": "t_uint16",
+                "offset": 2,
+                "slot": "0"
+              },
+              {
+                "label": "referrerPercentage",
+                "type": "t_uint16",
+                "offset": 4,
+                "slot": "0"
+              },
+              {
+                "label": "refereePercentage",
+                "type": "t_uint16",
+                "offset": 6,
+                "slot": "0"
+              },
+              {
+                "label": "l2OwnerPercentage",
+                "type": "t_uint16",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(DAOTokenReceiverInfor)3575_storage": {
+            "label": "struct IWorkerHub.DAOTokenReceiverInfor",
+            "members": [
+              {
+                "label": "receiver",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "role",
+                "type": "t_enum(DAOTokenReceiverRole)3567",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(Inference)3459_storage": {
+            "label": "struct IWorkerHub.Inference",
+            "members": [
+              {
+                "label": "assignments",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "input",
+                "type": "t_bytes_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "feeL2",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "feeTreasury",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "modelAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "submitTimeout",
+                "type": "t_uint40",
+                "offset": 20,
+                "slot": "5"
+              },
+              {
+                "label": "commitTimeout",
+                "type": "t_uint40",
+                "offset": 25,
+                "slot": "5"
+              },
+              {
+                "label": "revealTimeout",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "6"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(InferenceStatus)3403",
+                "offset": 5,
+                "slot": "6"
+              },
+              {
+                "label": "creator",
+                "type": "t_address",
+                "offset": 6,
+                "slot": "6"
+              },
+              {
+                "label": "processedMiner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "7"
+              },
+              {
+                "label": "referrer",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "8"
+              }
+            ],
+            "numberOfBytes": "288"
+          },
+          "t_struct(Randomizer)3667_storage": {
+            "label": "struct Random.Randomizer",
+            "members": [
+              {
+                "label": "nonce",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Uint256Set)3881_storage": {
+            "label": "struct Set.Uint256Set",
+            "members": [
+              {
+                "label": "values",
+                "type": "t_array(t_uint256)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "positions",
+                "type": "t_mapping(t_uint256,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(VotingInfo)3464_storage": {
+            "label": "struct IWorkerHub.VotingInfo",
+            "members": [
+              {
+                "label": "totalCommit",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "totalReveal",
+                "type": "t_uint8",
+                "offset": 1,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
     }
   }
 }
