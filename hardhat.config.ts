@@ -205,7 +205,9 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
     } as any,
     base_mainnet: {
-      url: "https://mainnet.base.org",
+      url:
+        "https://base-mainnet.infura.io/v3/" +
+        process.env.BASE_MAINNET_INFURA_API_KEY,
       chainId: 8453,
       accounts: [
         process.env.BASE_MAINNET_PRIVATE_KEY,
