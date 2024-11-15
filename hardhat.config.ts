@@ -229,6 +229,7 @@ const config: HardhatUserConfig = {
       systemPromptManagerAddress:
         process.env.BASE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       wEAIAddress: process.env.BASE_MAINNET_WEAI,
+      aiPoweredWallet: process.env.BASE_MAINNET_AI_POWERED_WALLET_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,

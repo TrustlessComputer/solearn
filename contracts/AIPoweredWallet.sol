@@ -4,6 +4,14 @@ pragma solidity ^0.8.12;
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 interface AIKernel {
+    event NewInference(
+        uint256 indexed inferenceId,
+        address indexed model,
+        address indexed creator,
+        uint256 value,
+        uint256 originInferenceId
+    );
+
     function infer(
         bytes calldata _data,
         bool _flag
@@ -70,12 +78,19 @@ interface PromptScheduler {
 }
 
 contract AIPoweredWallet {
+    struct TxInfo {
+        address sender;
+        address receiver;
+        uint256 amount;
+    }
+
     address public kernel;
     address public promptScheduler;
-    uint256 public currentInferenceId;
-    string public context;
+    mapping(address user => string) public context;
+    mapping(uint256 inferId => TxInfo) public txInfo;
 
-    event SuspiciousTransaction(uint256 inferenceId, bytes);
+    event SuspiciousTransaction(uint256 indexed inferenceId, bytes prompt);
+    event Sent(uint256 indexed inferenceId, TxInfo txInfo);
 
     constructor(address _kernelAddress, address _promptSchedulerAddress) {
         require(
@@ -85,46 +100,60 @@ contract AIPoweredWallet {
         );
         kernel = _kernelAddress;
         promptScheduler = _promptSchedulerAddress;
-        context = "";
     }
 
-    function suspiciousTransaction() external {
+    function suspiciousTransaction(
+        address _receiver,
+        uint256 _amount
+    ) external {
         string memory prompt = string.concat(
             "Based on the following Ethereum transaction history, is there any indication of suspicious activity? Respond with only 'yes' or 'no'. ",
-            context
+            Strings.toHexString(msg.sender),
+            " transfer ",
+            Strings.toString(_amount),
+            " wei to ",
+            Strings.toHexString(_receiver),
+            ". ",
+            context[msg.sender]
         );
 
-        currentInferenceId = AIKernel(kernel).infer(bytes(prompt), true);
+        uint256 inferenceId = AIKernel(kernel).infer(bytes(prompt), true);
+        txInfo[inferenceId] = TxInfo(msg.sender, _receiver, _amount);
 
-        emit SuspiciousTransaction(currentInferenceId, bytes(prompt));
+        emit SuspiciousTransaction(inferenceId, bytes(prompt));
     }
 
-    function send(address _receivedWallet) external payable {
-        require(msg.value > 0, "AIPoweredWallet: No value sent");
+    function send(uint256 _inferenceId) external payable {
+        TxInfo memory info = txInfo[_inferenceId];
 
+        require(info.sender == msg.sender, "AIPoweredWallet: Unauthorized");
+
+        address receivedWallet = info.sender;
         require(
-            _receivedWallet != address(0),
+            receivedWallet != address(0),
             "AIPoweredWallet: Invalid wallet address"
         );
+        require(
+            info.amount == msg.value,
+            "AIPoweredWallet: Invalid transaction amount"
+        );
 
-        if (currentInferenceId != 0) {
-            bytes memory result = fetchInferenceResult(currentInferenceId);
+        bytes memory result = fetchInferenceResult(_inferenceId);
 
-            require(
-                keccak256(result) == keccak256(abi.encodePacked("No")),
-                "AIPoweredWallet: Suspicious transaction"
-            );
-        }
+        require(
+            keccak256(result) == keccak256(abi.encodePacked("No")),
+            "AIPoweredWallet: Suspicious transaction"
+        );
 
-        payable(_receivedWallet).transfer(msg.value);
+        payable(receivedWallet).transfer(msg.value);
 
-        context = string.concat(
-            context,
+        context[msg.sender] = string.concat(
+            context[msg.sender],
             Strings.toHexString(msg.sender),
             " transfer ",
             Strings.toString(msg.value),
             " wei to ",
-            Strings.toHexString(_receivedWallet),
+            Strings.toHexString(receivedWallet),
             ". "
         );
     }
