@@ -119,13 +119,45 @@ contract SystemPromptManager is
 
         _safeMint(_to, agentId);
         _setTokenURI(agentId, _uri);
-        // datas[agentId] = TokenMetaData({fee: _fee, sysPrompts: [_data]});
+
         datas[agentId].fee = _fee;
         datas[agentId].sysPrompts.push(_data);
 
         emit NewToken(agentId, _uri, _data, _fee, _to);
 
         return agentId;
+    }
+
+    function _wrapMint(
+        address _to,
+        string calldata _uri,
+        bytes calldata _data,
+        uint _fee,
+        uint256 _squadId
+    ) internal returns (uint256) {
+        require(msg.value >= mintPrice, "Invalid minting fee");
+
+        while (datas[nextTokenId].sysPrompts.length != 0) {
+            nextTokenId++;
+        }
+        uint256 agentId = nextTokenId++;
+
+        mint_(_to, _uri, _data, _fee, agentId);
+
+        if (_squadId != 0) {
+            require(_squadId <= currenSquadId, "Invalid squad id");
+            _moveAgentToSquad(_convertUintToArray(agentId), _squadId);
+        }
+
+        return agentId;
+    }
+
+    function _convertUintToArray(
+        uint256 num
+    ) internal pure returns (uint256[] memory) {
+        uint256[] memory newArray = new uint256[](1); // Create a new array with a size of 1
+        newArray[0] = num; // Assign the uint256 value to the first element of the array
+        return newArray;
     }
 
     /// @notice This function open minting role to public users
@@ -135,50 +167,17 @@ contract SystemPromptManager is
         bytes calldata _data,
         uint _fee
     ) external payable returns (uint256) {
-        require(msg.value >= mintPrice, "Invalid minting fee");
-
-        while (datas[nextTokenId].sysPrompts.length != 0) {
-            nextTokenId++;
-        }
-        uint256 tokenId = nextTokenId++;
-
-        return mint_(_to, _uri, _data, _fee, tokenId);
+        return _wrapMint(_to, _uri, _data, _fee, 0);
     }
 
-    function mintBySignature(
+    function mint(
         address _to,
         string calldata _uri,
         bytes calldata _data,
         uint _fee,
-        address _manager,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public virtual returns (uint256) {
-        bytes32 hash = getHashToSign(_to, _uri, _data, _fee, _manager);
-
-        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-        if (signer != _manager || !isManager[_manager])
-            revert InvalidSignature();
-        while (datas[nextTokenId].sysPrompts.length != 0) {
-            nextTokenId++;
-        }
-        uint256 tokenId = nextTokenId++;
-        return mint_(_to, _uri, _data, _fee, tokenId);
-    }
-
-    function getHashToSign(
-        address _to,
-        string calldata _uri,
-        bytes calldata _data,
-        uint _fee,
-        address _manager
-    ) public view virtual returns (bytes32) {
-        bytes32 structHash = keccak256(
-            abi.encode(_to, _uri, _data, _fee, _manager)
-        );
-
-        return _hashTypedDataV4(structHash);
+        uint256 _squadId
+    ) external payable returns (uint256) {
+        return _wrapMint(_to, _uri, _data, _fee, _squadId);
     }
 
     function withdraw(address _to, uint _value) external onlyOwner {
@@ -475,11 +474,6 @@ contract SystemPromptManager is
                 poolBalance[_agentId] -= estFeeWH;
             }
 
-            // inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
-            //     fwdData,
-            //     msg.sender
-            // );
-
             if (msg.value > 0) {
                 TransferHelper.safeTransferNative(
                     _ownerOf(_agentId),
@@ -487,11 +481,6 @@ contract SystemPromptManager is
                 );
             }
         } else if (msg.value >= estFeeWH) {
-            // inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
-            //     fwdData,
-            //     msg.sender
-            // );
-
             uint256 remain = msg.value - estFeeWH;
             if (remain > 0) {
                 TransferHelper.safeTransferNative(_ownerOf(_agentId), remain);
@@ -573,5 +562,112 @@ contract SystemPromptManager is
         uint256 _agentId
     ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
         super._burn(_agentId);
+    }
+
+    function totalSquad() external view returns (uint256) {
+        return _allSquads.length;
+    }
+
+    function inscreaseIterator(uint256 i) private pure returns (uint256) {
+        unchecked {
+            return i + 1;
+        }
+    }
+
+    function _moveAgentToSquad(
+        uint256[] memory _agentIds,
+        uint256 _toSquadId
+    ) private {
+        uint256 len = _agentIds.length;
+
+        require(
+            msg.sender == squadInfo[_toSquadId].owner,
+            "Invalid squad owner"
+        );
+        require(
+            _toSquadId <= currenSquadId && _toSquadId > 0,
+            "Invalid squad id"
+        );
+
+        for (uint256 i = 0; i < len; inscreaseIterator(i)) {
+            require(
+                _ownerOf(_agentIds[i]) == msg.sender,
+                "Invalid agent owner"
+            );
+            require(_agentIds[i] < nextTokenId, "Invalid agent id");
+
+            uint256 fromSquad = agentToSquadId[_agentIds[i]];
+            agentToSquadId[_agentIds[i]] = _toSquadId;
+
+            if (fromSquad != _toSquadId) {
+                if (fromSquad != 0) {
+                    squadInfo[fromSquad].numAgents--;
+                }
+                squadInfo[_toSquadId].numAgents++;
+            }
+        }
+    }
+
+    function moveAgentToSquad(
+        uint256[] calldata _agentIds,
+        uint256 _toSquadId
+    ) external {
+        _moveAgentToSquad(_agentIds, _toSquadId);
+
+        emit SquadUpdated(_toSquadId, msg.sender, _agentIds);
+    }
+
+    function createSquad(uint256[] calldata _agentIds) external {
+        uint256 squadId = ++currenSquadId;
+        squadInfo[squadId].owner = msg.sender;
+        squadBalance[msg.sender]++;
+
+        _moveAgentToSquad(_agentIds, squadId);
+
+        _addSquadToAllSquadsEnumeration(squadId);
+        _addSquadToOwnerEnumeration(msg.sender, squadId);
+
+        emit SquadCreated(squadId, msg.sender, _agentIds);
+    }
+
+    function _addSquadToOwnerEnumeration(address to, uint256 squadId) private {
+        uint256 length = squadBalance[to];
+        ownedSquads[to][length] = squadId;
+        ownedSquadsIndex[squadId] = length;
+    }
+
+    function _addSquadToAllSquadsEnumeration(uint256 squadId) private {
+        _allSquadsIndex[squadId] = _allSquads.length;
+        _allSquads.push(squadId);
+    }
+
+    function _removeSquadFromOwnerEnumeration(
+        address from,
+        uint256 squadId
+    ) private {
+        uint256 lastSquadIndex = squadBalance[from] - 1;
+        uint256 squadIndex = ownedSquadsIndex[squadId];
+
+        if (squadIndex != lastSquadIndex) {
+            uint256 lastSquadId = ownedSquads[from][lastSquadIndex];
+            ownedSquads[from][squadIndex] = lastSquadId;
+            ownedSquadsIndex[lastSquadId] = squadIndex;
+        }
+
+        delete ownedSquadsIndex[squadId];
+        delete ownedSquads[from][lastSquadIndex];
+    }
+
+    function _removeSquadFromAllSquadsEnumeration(uint256 squadId) private {
+        uint256 lastSquadIndex = _allSquads.length - 1;
+        uint256 squadIndex = _allSquadsIndex[squadId];
+
+        uint256 lastSquadId = _allSquads[lastSquadIndex];
+
+        _allSquads[squadIndex] = lastSquadId;
+        _allSquadsIndex[lastSquadId] = squadIndex;
+
+        delete _allSquadsIndex[squadId];
+        _allSquads.pop();
     }
 }

@@ -12,6 +12,11 @@ interface ISystemPromptManager is
     IERC721EnumerableUpgradeable,
     IERC2981Upgradeable
 {
+    struct SquadInfo {
+        address owner;
+        uint16 numAgents;
+    }
+
     event MintPriceUpdate(uint256 newValue);
     event RoyaltyPortionUpdate(uint16 newValue);
     event RoyaltyReceiverUpdate(address newAddress);
@@ -45,6 +50,16 @@ interface ISystemPromptManager is
     );
     event FeesClaimed(address indexed claimer, uint amount);
     event TopUpPoolBalance(uint256 agentId, address caller, uint256 amount);
+    event SquadCreated(
+        uint256 indexed fromSquadId,
+        address indexed owner,
+        uint256[] agentIds
+    );
+    event SquadUpdated(
+        uint256 indexed fromSquadId,
+        address indexed owner,
+        uint256[] agentIds
+    );
 
     error AlreadyMinted();
     error Authorized();
@@ -67,16 +82,6 @@ interface ISystemPromptManager is
         bytes calldata sysPrompt,
         uint fee
     ) external payable returns (uint256 tokenId);
-    function mintBySignature(
-        address to,
-        string calldata uri,
-        bytes calldata sysPrompt,
-        uint fee,
-        address manager,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external returns (uint256 tokenId);
 
     struct TokenMetaData {
         uint256 fee;

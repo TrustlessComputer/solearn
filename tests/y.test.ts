@@ -611,7 +611,130 @@ describe("WorkerHub contract", async () => {
       );
     });
 
-    it.only("Should create infer from AI wallet", async () => {
+    // it.only("Should create infer from AI wallet", async () => {
+    //   const {
+    //     admin,
+    //     proxyLLAMAAddress,
+    //     proxyWorkerHubAddress,
+    //     hybridModelAddress,
+    //     stakingHubAddress,
+    //     wEAIAddress,
+    //     systemPromptManagerAddress,
+    //     aiWalletAddress,
+    //   } = await loadFixture(deployWorkerHubFixture);
+
+    //   const aiWallet = (await getContractInstance(
+    //     "AIPoweredWallet",
+    //     aiWalletAddress
+    //   )) as AIPoweredWallet;
+    //   const workerHub = (await getContractInstance(
+    //     "WorkerHub",
+    //     proxyWorkerHubAddress
+    //   )) as WorkerHub;
+
+    //   await simulate(
+    //     proxyWorkerHubAddress,
+    //     stakingHubAddress,
+    //     hybridModelAddress,
+    //     wEAIAddress
+    //   );
+
+    //   await aiWallet.suspiciousTransaction();
+
+    //   // get assigned miners
+    //   let assignedMiners: string[] = [];
+    //   let assignIds = await workerHub.getAssignmentsByInference(2n);
+    //   for await (let id of assignIds) {
+    //     const assignInfo = await workerHub.assignments(id);
+    //     assignedMiners.push(assignInfo.worker);
+    //   }
+    //   console.log("assignedMiners ", assignedMiners);
+    //   console.log("assignIds ", assignIds);
+
+    //   let inferId = await aiWallet.currentInferenceId();
+
+    //   let miner0 = await ethers.getImpersonatedSigner(assignedMiners[0]);
+    //   let miner1 = await ethers.getImpersonatedSigner(assignedMiners[1]);
+    //   let miner2 = await ethers.getImpersonatedSigner(assignedMiners[2]);
+
+    //   let solution = ethers.solidityPacked(["string"], ["No"]);
+    //   console.log("solution ", solution);
+
+    //   await workerHub.connect(miner0).seizeMinerRole(assignIds[0]);
+    //   await workerHub.connect(miner0).submitSolution(assignIds[0], solution);
+
+    //   let commitment1 = ethers.solidityPackedKeccak256(
+    //     ["uint40", "address", "bytes"],
+    //     [1, assignedMiners[1], solution]
+    //   );
+    //   await workerHub.connect(miner1).commit(assignIds[1], commitment1);
+
+    //   let commitment2 = ethers.solidityPackedKeccak256(
+    //     ["uint40", "address", "bytes"],
+    //     [2, assignedMiners[2], solution]
+    //   );
+    //   await workerHub.connect(miner2).commit(assignIds[2], commitment2);
+
+    //   await workerHub.connect(miner1).reveal(assignIds[1], 1, solution);
+    //   await workerHub.connect(miner2).reveal(assignIds[2], 2, solution);
+
+    //   let res = await aiWallet.fetchInferenceResult(2n);
+    //   console.log("res ", ethers.toUtf8String(res));
+
+    //   await aiWallet
+    //     .connect(miner0)
+    //     .send(assignedMiners[2], { value: ethers.parseEther("0.1") });
+
+    //   console.log("topic: ", await aiWallet.topic());
+
+    //   await aiWallet.suspiciousTransaction();
+
+    //   assignedMiners = [];
+    //   assignIds = await workerHub.getAssignmentsByInference(3n);
+    //   for await (let id of assignIds) {
+    //     const assignInfo = await workerHub.assignments(id);
+    //     assignedMiners.push(assignInfo.worker);
+    //   }
+    //   console.log("assignedMiners ", assignedMiners);
+    //   console.log("assignIds ", assignIds);
+
+    //   inferId = await aiWallet.currentInferenceId();
+
+    //   miner0 = await ethers.getImpersonatedSigner(assignedMiners[0]);
+    //   miner1 = await ethers.getImpersonatedSigner(assignedMiners[1]);
+    //   miner2 = await ethers.getImpersonatedSigner(assignedMiners[2]);
+
+    //   solution = ethers.solidityPacked(["string"], ["No"]);
+    //   console.log("solution ", solution);
+
+    //   await workerHub.connect(miner0).seizeMinerRole(assignIds[0]);
+    //   await workerHub.connect(miner0).submitSolution(assignIds[0], solution);
+
+    //   commitment1 = ethers.solidityPackedKeccak256(
+    //     ["uint40", "address", "bytes"],
+    //     [1, assignedMiners[1], solution]
+    //   );
+    //   await workerHub.connect(miner1).commit(assignIds[1], commitment1);
+
+    //   commitment2 = ethers.solidityPackedKeccak256(
+    //     ["uint40", "address", "bytes"],
+    //     [2, assignedMiners[2], solution]
+    //   );
+    //   await workerHub.connect(miner2).commit(assignIds[2], commitment2);
+
+    //   await workerHub.connect(miner1).reveal(assignIds[1], 1, solution);
+    //   await workerHub.connect(miner2).reveal(assignIds[2], 2, solution);
+
+    //   res = await aiWallet.fetchInferenceResult(3n);
+    //   console.log("res ", ethers.toUtf8String(res));
+
+    //   await aiWallet
+    //     .connect(miner0)
+    //     .send(assignedMiners[2], { value: ethers.parseEther("0.2") });
+
+    //   console.log("topic: ", await aiWallet.topic());
+    // });
+    it.only("Should create squad", async () => {
       const {
         admin,
         proxyLLAMAAddress,
@@ -620,129 +743,17 @@ describe("WorkerHub contract", async () => {
         stakingHubAddress,
         wEAIAddress,
         systemPromptManagerAddress,
-        aiWalletAddress,
       } = await loadFixture(deployWorkerHubFixture);
 
-      const aiWallet = (await getContractInstance(
-        "AIPoweredWallet",
-        aiWalletAddress
-      )) as AIPoweredWallet;
-      const workerHub = (await getContractInstance(
-        "WorkerHub",
-        proxyWorkerHubAddress
-      )) as WorkerHub;
-
-      await simulate(
-        proxyWorkerHubAddress,
-        stakingHubAddress,
-        hybridModelAddress,
-        wEAIAddress
-      );
-
-      await aiWallet.suspiciousTransaction();
-
-      // get assigned miners
-      let assignedMiners: string[] = [];
-      let assignIds = await workerHub.getAssignmentsByInference(2n);
-      for await (let id of assignIds) {
-        const assignInfo = await workerHub.assignments(id);
-        assignedMiners.push(assignInfo.worker);
-      }
-      console.log("assignedMiners ", assignedMiners);
-      console.log("assignIds ", assignIds);
-
-      let inferId = await aiWallet.currentInferenceId();
-
-      let miner0 = await ethers.getImpersonatedSigner(assignedMiners[0]);
-      let miner1 = await ethers.getImpersonatedSigner(assignedMiners[1]);
-      let miner2 = await ethers.getImpersonatedSigner(assignedMiners[2]);
-
-      let solution = ethers.solidityPacked(["string"], ["No"]);
-      console.log("solution ", solution);
-
-      await workerHub.connect(miner0).seizeMinerRole(assignIds[0]);
-      await workerHub.connect(miner0).submitSolution(assignIds[0], solution);
-
-      let commitment1 = ethers.solidityPackedKeccak256(
-        ["uint40", "address", "bytes"],
-        [1, assignedMiners[1], solution]
-      );
-      await workerHub.connect(miner1).commit(assignIds[1], commitment1);
-
-      let commitment2 = ethers.solidityPackedKeccak256(
-        ["uint40", "address", "bytes"],
-        [2, assignedMiners[2], solution]
-      );
-      await workerHub.connect(miner2).commit(assignIds[2], commitment2);
-
-      await workerHub.connect(miner1).reveal(assignIds[1], 1, solution);
-      await workerHub.connect(miner2).reveal(assignIds[2], 2, solution);
-
-      let res = await aiWallet.fetchInferenceResult(2n);
-      console.log("res ", ethers.toUtf8String(res));
-
-      // await aiWallet
-      //   .connect(miner1)
-      //   .send(assignedMiners[2], { value: ethers.parseEther("0.1") });
-
-      // const topic = await aiWallet.topic();
-      // console.log("topic ", topic);
-      // console.log("topic ", ethers.toUtf8String(topic));
-      // const prompt = await aiWallet.getPrompt();
-      // console.log("prompt ", prompt);
-
-      await aiWallet
-        .connect(miner0)
-        .send(assignedMiners[2], { value: ethers.parseEther("0.1") });
-
-      console.log("topic: ", await aiWallet.topic());
-
-      await aiWallet.suspiciousTransaction();
-
-      assignedMiners = [];
-      assignIds = await workerHub.getAssignmentsByInference(3n);
-      for await (let id of assignIds) {
-        const assignInfo = await workerHub.assignments(id);
-        assignedMiners.push(assignInfo.worker);
-      }
-      console.log("assignedMiners ", assignedMiners);
-      console.log("assignIds ", assignIds);
-
-      inferId = await aiWallet.currentInferenceId();
-
-      miner0 = await ethers.getImpersonatedSigner(assignedMiners[0]);
-      miner1 = await ethers.getImpersonatedSigner(assignedMiners[1]);
-      miner2 = await ethers.getImpersonatedSigner(assignedMiners[2]);
-
-      solution = ethers.solidityPacked(["string"], ["No"]);
-      console.log("solution ", solution);
-
-      await workerHub.connect(miner0).seizeMinerRole(assignIds[0]);
-      await workerHub.connect(miner0).submitSolution(assignIds[0], solution);
-
-      commitment1 = ethers.solidityPackedKeccak256(
-        ["uint40", "address", "bytes"],
-        [1, assignedMiners[1], solution]
-      );
-      await workerHub.connect(miner1).commit(assignIds[1], commitment1);
-
-      commitment2 = ethers.solidityPackedKeccak256(
-        ["uint40", "address", "bytes"],
-        [2, assignedMiners[2], solution]
-      );
-      await workerHub.connect(miner2).commit(assignIds[2], commitment2);
-
-      await workerHub.connect(miner1).reveal(assignIds[1], 1, solution);
-      await workerHub.connect(miner2).reveal(assignIds[2], 2, solution);
-
-      res = await aiWallet.fetchInferenceResult(3n);
-      console.log("res ", ethers.toUtf8String(res));
-
-      await aiWallet
-        .connect(miner0)
-        .send(assignedMiners[2], { value: ethers.parseEther("0.2") });
-
-      console.log("topic: ", await aiWallet.topic());
+      const ins = (await getContractInstance(
+        "SystemPromptManager",
+        systemPromptManagerAddress
+      )) as SystemPromptManager;
+      const [admin1, admin2] = await ethers.getSigners();
+      await ins.connect(admin1).createSquad([]);
+      expect(await ins.currenSquadId()).to.eq(1n);
+      expect((await ins.squadInfo(1n)).owner).to.eq(admin1.address);
+      expect((await ins.squadInfo(1n)).numAgents).to.eq(1);
     });
   });
 });
