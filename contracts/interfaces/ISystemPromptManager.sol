@@ -65,9 +65,15 @@ interface ISystemPromptManager is
     error Authorized();
     error FailedTransfer();
     error InsufficientFunds();
-    error InvalidNFTData();
-    error InvalidSignature();
+    error InvalidMintingFee();
+    error InvalidAgentId();
+    error InvalidAgentFee();
+    error InvalidAgentData();
+    error InvalidAgentURI();
+    error InvalidAgentPromptIndex();
+    error SignatureUsed();
     error Unauthorized();
+    error InvalidSquadId();
 
     function version() external pure returns (string memory version);
     function nextTokenId() external view returns (uint256 nextTokenId);

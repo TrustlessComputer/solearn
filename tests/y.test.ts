@@ -47,10 +47,13 @@ describe("WorkerHub contract", async () => {
       modelCollectionAddress
     );
 
+    const systemPromptHelperAddress = await deploySystemPromptHelper();
+
     const systemPromptManagerAddress = await deploySystemPromptManager(
       proxyWorkerHubAddress,
       hybridModelAddress,
-      admin.address
+      admin.address,
+      systemPromptHelperAddress
     );
 
     const aiWalletAddress = await deployAIWallet(
@@ -67,6 +70,7 @@ describe("WorkerHub contract", async () => {
       wEAIAddress,
       systemPromptManagerAddress,
       aiWalletAddress,
+      systemPromptHelperAddress,
     };
   }
 
@@ -302,10 +306,19 @@ describe("WorkerHub contract", async () => {
     return proxyAddress;
   }
 
+  async function deploySystemPromptHelper() {
+    const contractFact = await ethers.getContractFactory("SystemPromptHelper");
+    const helper = await contractFact.deploy();
+    await helper.waitForDeployment();
+
+    return await helper.getAddress();
+  }
+
   async function deploySystemPromptManager(
     workerHubAddress: string,
     hybridModelAddress: string,
-    l2OwnerAddress: string
+    l2OwnerAddress: string,
+    systemPromptHelperAddress: string
   ) {
     const name = "Eternal AI";
     const symbol = "1.0";
@@ -325,17 +338,24 @@ describe("WorkerHub contract", async () => {
       workerHubAddress,
     ];
 
-    const contractFact = await ethers.getContractFactory("SystemPromptManager");
+    const contractFact = await ethers.getContractFactory(
+      "SystemPromptManager",
+      {
+        libraries: {
+          SystemPromptHelper: systemPromptHelperAddress,
+        },
+      }
+    );
 
     const proxy = await upgrades.deployProxy(contractFact, constructorParams);
     await proxy.waitForDeployment();
     const proxyAddress = await proxy.getAddress();
 
     //
-    const ins = (await getContractInstance(
-      "SystemPromptManager",
-      proxyAddress
-    )) as SystemPromptManager;
+    const ins = await getSystemPromptManagerInstance(
+      proxyAddress,
+      systemPromptHelperAddress
+    );
     const linkPrompt =
       "ipfs://bafkreide4kf4se2atgdi3kjie5eigvvr3wnkyolitbrj6cuj3sfzfyowui";
 
@@ -352,6 +372,21 @@ describe("WorkerHub contract", async () => {
   async function getContractInstance(contractName: string, address: string) {
     const contractFact = await ethers.getContractFactory(contractName);
     return contractFact.attach(address);
+  }
+
+  async function getSystemPromptManagerInstance(
+    addressContract: string,
+    addressLib: string
+  ) {
+    const contractFact = await ethers.getContractFactory(
+      "SystemPromptManager",
+      {
+        libraries: {
+          SystemPromptHelper: addressLib,
+        },
+      }
+    );
+    return contractFact.attach(addressContract) as SystemPromptManager;
   }
 
   async function simulate(
@@ -479,23 +514,16 @@ describe("WorkerHub contract", async () => {
     });
 
     it("Should update agent", async () => {
-      const {
-        admin,
-        proxyLLAMAAddress,
-        proxyWorkerHubAddress,
-        hybridModelAddress,
-        stakingHubAddress,
-        wEAIAddress,
-        systemPromptManagerAddress,
-      } = await loadFixture(deployWorkerHubFixture);
+      const { admin, systemPromptManagerAddress, systemPromptHelperAddress } =
+        await loadFixture(deployWorkerHubFixture);
 
-      const ins = (await getContractInstance(
-        "SystemPromptManager",
-        systemPromptManagerAddress
-      )) as SystemPromptManager;
+      const ins = await getSystemPromptManagerInstance(
+        systemPromptManagerAddress,
+        systemPromptHelperAddress
+      );
 
       console.log("owner: ", await ins.ownerOf(1));
-      const [admin1, admin2] = await ethers.getSigners();
+      const [admin1] = await ethers.getSigners();
       console.log(admin1.address);
 
       const linkPrompt =
@@ -518,27 +546,10 @@ describe("WorkerHub contract", async () => {
         ["bytes", "uint256", "uint256", "uint256", "address", "uint256"],
         [data, agentId, promptIdx, randomNonce, address, chainId]
       );
-      console.log("encodedData ", [
-        data,
-        agentId,
-        promptIdx,
-        randomNonce,
-        address,
-        chainId,
-      ]);
 
       const hashData = ethers.keccak256(encodedData);
-      console.log("hashData ", hashData);
       const signature = await admin.signMessage(ethers.getBytes(hashData));
       const tx = await ins.updateAgentDataWithSignature(
-        agentId,
-        data,
-        promptIdx,
-        randomNonce,
-        signature
-      );
-
-      const tx2 = await ins.updateAgentDataWithSignature(
         agentId,
         data,
         promptIdx,
@@ -548,20 +559,13 @@ describe("WorkerHub contract", async () => {
     });
 
     it("Should update agent uri", async () => {
-      const {
-        admin,
-        proxyLLAMAAddress,
-        proxyWorkerHubAddress,
-        hybridModelAddress,
-        stakingHubAddress,
-        wEAIAddress,
-        systemPromptManagerAddress,
-      } = await loadFixture(deployWorkerHubFixture);
+      const { admin, systemPromptManagerAddress, systemPromptHelperAddress } =
+        await loadFixture(deployWorkerHubFixture);
 
-      const ins = (await getContractInstance(
-        "SystemPromptManager",
-        systemPromptManagerAddress
-      )) as SystemPromptManager;
+      const ins = await getSystemPromptManagerInstance(
+        systemPromptManagerAddress,
+        systemPromptHelperAddress
+      );
 
       console.log("owner: ", await ins.ownerOf(1));
       const [admin1, admin2] = await ethers.getSigners();
@@ -587,7 +591,6 @@ describe("WorkerHub contract", async () => {
       );
 
       const hashData = ethers.keccak256(encodedData);
-      console.log("hashData ", hashData);
       const signature = await admin.signMessage(ethers.getBytes(hashData));
       const tx = await ins.updateAgentUriWithSignature(
         agentId,
@@ -743,17 +746,52 @@ describe("WorkerHub contract", async () => {
         stakingHubAddress,
         wEAIAddress,
         systemPromptManagerAddress,
+        systemPromptHelperAddress,
       } = await loadFixture(deployWorkerHubFixture);
 
-      const ins = (await getContractInstance(
-        "SystemPromptManager",
-        systemPromptManagerAddress
-      )) as SystemPromptManager;
+      await simulate(
+        proxyWorkerHubAddress,
+        stakingHubAddress,
+        hybridModelAddress,
+        wEAIAddress
+      );
+
+      const ins = await getSystemPromptManagerInstance(
+        systemPromptManagerAddress,
+        systemPromptHelperAddress
+      );
       const [admin1, admin2] = await ethers.getSigners();
       await ins.connect(admin1).createSquad([]);
-      expect(await ins.currenSquadId()).to.eq(1n);
+      expect(await ins.currentSquadId()).to.eq(1n);
       expect((await ins.squadInfo(1n)).owner).to.eq(admin1.address);
-      expect((await ins.squadInfo(1n)).numAgents).to.eq(1);
+      expect((await ins.squadInfo(1n)).numAgents).to.eq(0);
+
+      await ins.connect(admin1).createSquad([1n]);
+      expect(await ins.currentSquadId()).to.eq(2n);
+      expect((await ins.squadInfo(2n)).owner).to.eq(admin1.address);
+      expect((await ins.squadInfo(2n)).numAgents).to.eq(1);
+      // expect(await ins.agentToSquadId(1n)).to.eq(2n);
+
+      await ins.connect(admin1).moveAgentToSquad([1n], 1n);
+      // expect(await ins.agentToSquadId(1n)).to.eq(1n);
+      expect((await ins.getSquadOfOwner(admin.address)).length).to.eq(2);
+
+      expect((await ins.getAgentIdOfOwner(admin.address)).length).to.eq(2);
+
+      await ins
+        .connect(admin1)
+        .connect(admin1)
+        ["mint(address,string,bytes,uint256,uint256)"](
+          admin1.address,
+          "x",
+          ethers.toUtf8Bytes("x"),
+          0,
+          1
+        );
+      expect(await ins.currentSquadId()).to.eq(2n);
+      expect((await ins.getAgentIdOfOwner(admin.address)).length).to.eq(3);
+      expect((await ins.squadInfo(1n)).owner).to.eq(admin1.address);
+      expect((await ins.squadInfo(1n)).numAgents).to.eq(2);
     });
   });
 });

@@ -17,6 +17,7 @@ import {IModel} from "./interfaces/IModel.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
+import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
 import "hardhat/console.sol";
 
 contract SystemPromptManager is
@@ -27,6 +28,8 @@ contract SystemPromptManager is
     ERC721URIStorageUpgradeable,
     OwnableUpgradeable
 {
+    using SystemPromptHelper for TokenMetaData;
+
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
@@ -36,6 +39,15 @@ contract SystemPromptManager is
         if (msg.sender != owner() && !isManager[msg.sender])
             revert Unauthorized();
         _;
+    }
+
+    modifier onlyAgentOwner(uint256 _agentId) {
+        _checkAgentOwner(msg.sender, _agentId);
+        _;
+    }
+
+    function _checkAgentOwner(address _user, uint256 _agentId) internal view {
+        if (_user != _ownerOf(_agentId)) revert Unauthorized();
     }
 
     function initialize(
@@ -115,7 +127,7 @@ contract SystemPromptManager is
         uint _fee,
         uint256 agentId
     ) internal returns (uint256) {
-        if (_data.length == 0) revert InvalidNFTData();
+        if (_data.length == 0) revert InvalidAgentData();
 
         _safeMint(_to, agentId);
         _setTokenURI(agentId, _uri);
@@ -135,7 +147,7 @@ contract SystemPromptManager is
         uint _fee,
         uint256 _squadId
     ) internal returns (uint256) {
-        require(msg.value >= mintPrice, "Invalid minting fee");
+        if (msg.value < mintPrice) revert InvalidMintingFee();
 
         while (datas[nextTokenId].sysPrompts.length != 0) {
             nextTokenId++;
@@ -145,7 +157,7 @@ contract SystemPromptManager is
         mint_(_to, _uri, _data, _fee, agentId);
 
         if (_squadId != 0) {
-            require(_squadId <= currenSquadId, "Invalid squad id");
+            if (_squadId > currentSquadId) revert InvalidSquadId();
             _moveAgentToSquad(_convertUintToArray(agentId), _squadId);
         }
 
@@ -185,9 +197,11 @@ contract SystemPromptManager is
         if (!success) revert FailedTransfer();
     }
 
-    function updateAgentURI(uint256 _agentId, string calldata _uri) external {
-        require(msg.sender == _ownerOf(_agentId), "Invalid token owner");
-        require(bytes(_uri).length != 0, "Invalid URI");
+    function updateAgentURI(
+        uint256 _agentId,
+        string calldata _uri
+    ) external onlyAgentOwner(_agentId) {
+        if (bytes(_uri).length == 0) revert InvalidAgentData();
 
         _setTokenURI(_agentId, _uri);
         emit AgentURIUpdate(_agentId, _uri);
@@ -197,11 +211,10 @@ contract SystemPromptManager is
         uint256 _agentId,
         bytes calldata _sysPrompt,
         uint256 _promptIdx
-    ) external {
-        require(_sysPrompt.length != 0, "Invalid system prompt input");
-        require(msg.sender == _ownerOf(_agentId), "Invalid agent owner");
+    ) external onlyAgentOwner(_agentId) {
+        if (_sysPrompt.length == 0) revert InvalidAgentData();
         uint256 len = datas[_agentId].sysPrompts.length;
-        require(_promptIdx < len, "Invalid prompt index");
+        if (_promptIdx >= len) revert InvalidAgentPromptIndex();
 
         emit AgentDataUpdate(
             _agentId,
@@ -213,47 +226,26 @@ contract SystemPromptManager is
         datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
     }
 
-    function getHashToSign(
-        uint256 _agentId,
-        bytes calldata _sysPrompt,
-        uint256 _promptIdx,
-        uint256 _randomNonce
-    ) public view returns (bytes32) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                _sysPrompt,
-                _agentId,
-                _promptIdx,
-                _randomNonce,
-                address(this),
-                block.chainid
-            )
-        );
-
-        return ECDSAUpgradeable.toEthSignedMessageHash(structHash);
-    }
-
-    function _hasUpdatePromptPermission(
+    function _checkUpdatePromptPermission(
         uint256 _agentId,
         bytes calldata _sysPrompt,
         uint256 _promptIdx,
         uint256 _randomNonce,
         bytes calldata _signature
-    ) internal returns (bool) {
+    ) internal {
         address agentOwner = _ownerOf(_agentId);
-        require(!signaturesUsed[agentOwner][_signature], "Signature used");
+        if (signaturesUsed[agentOwner][_signature]) revert SignatureUsed();
 
-        bytes32 hash = getHashToSign(
+        address signer = SystemPromptHelper.recover(
             _agentId,
             _sysPrompt,
             _promptIdx,
-            _randomNonce
+            _randomNonce,
+            _signature
         );
-        address signer = ECDSAUpgradeable.recover(hash, _signature);
-        require(signer == agentOwner, "Invalid signature");
-        signaturesUsed[agentOwner][_signature] = true;
 
-        return true;
+        _checkAgentOwner(signer, _agentId);
+        signaturesUsed[agentOwner][_signature] = true;
     }
 
     function updateAgentDataWithSignature(
@@ -263,19 +255,16 @@ contract SystemPromptManager is
         uint256 _randomNonce,
         bytes calldata _signature
     ) external {
-        require(_sysPrompt.length != 0, "Invalid system prompt input");
-        require(
-            _hasUpdatePromptPermission(
-                _agentId,
-                _sysPrompt,
-                _promptIdx,
-                _randomNonce,
-                _signature
-            ),
-            "Invalid agent owner signature"
+        if (_sysPrompt.length == 0) revert InvalidAgentData();
+        _checkUpdatePromptPermission(
+            _agentId,
+            _sysPrompt,
+            _promptIdx,
+            _randomNonce,
+            _signature
         );
         uint256 len = datas[_agentId].sysPrompts.length;
-        require(_promptIdx < len, "Invalid prompt index");
+        if (_promptIdx >= len) revert InvalidAgentPromptIndex();
 
         emit AgentDataUpdate(
             _agentId,
@@ -287,39 +276,24 @@ contract SystemPromptManager is
         datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
     }
 
-    function getHashToSign(
-        uint256 _agentId,
-        string calldata _uri,
-        uint256 _randomNonce
-    ) public view returns (bytes32) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                _uri,
-                _agentId,
-                _randomNonce,
-                address(this),
-                block.chainid
-            )
-        );
-        return ECDSAUpgradeable.toEthSignedMessageHash(structHash);
-    }
-
-    function _hasUpdateUriPermission(
+    function _checkUpdateUriPermission(
         uint256 _agentId,
         string calldata _uri,
         uint256 _randomNonce,
         bytes calldata _signature
-    ) internal returns (bool) {
+    ) internal {
         address agentOwner = _ownerOf(_agentId);
-        require(!signaturesUsed[agentOwner][_signature], "Signature used");
+        if (signaturesUsed[agentOwner][_signature]) revert SignatureUsed();
 
-        bytes32 hash = getHashToSign(_agentId, _uri, _randomNonce);
-        address signer = ECDSAUpgradeable.recover(hash, _signature);
+        address signer = SystemPromptHelper.recover(
+            _agentId,
+            _uri,
+            _randomNonce,
+            _signature
+        );
 
-        require(signer == agentOwner, "Invalid signature");
+        _checkAgentOwner(signer, _agentId);
         signaturesUsed[agentOwner][_signature] = true;
-
-        return true;
     }
 
     function updateAgentUriWithSignature(
@@ -328,12 +302,9 @@ contract SystemPromptManager is
         uint256 _randomNonce,
         bytes calldata _signature
     ) external {
-        require(bytes(_uri).length != 0, "Invalid URI");
-        require(
-            _hasUpdateUriPermission(_agentId, _uri, _randomNonce, _signature),
-            "Invalid agent owner signature"
-        );
+        if (bytes(_uri).length == 0) revert InvalidAgentURI();
 
+        _checkUpdateUriPermission(_agentId, _uri, _randomNonce, _signature);
         _setTokenURI(_agentId, _uri);
         emit AgentURIUpdate(_agentId, _uri);
     }
@@ -341,18 +312,18 @@ contract SystemPromptManager is
     function addNewAgentData(
         uint256 _agentId,
         bytes calldata _sysPrompt
-    ) external {
-        require(_sysPrompt.length != 0, "Invalid data input");
-        require(msg.sender == _ownerOf(_agentId), "Invalid token owner");
+    ) external onlyAgentOwner(_agentId) {
+        if (_sysPrompt.length == 0) revert InvalidAgentData();
 
         datas[_agentId].sysPrompts.push(_sysPrompt);
 
         emit AgentDataAddNew(_agentId, datas[_agentId].sysPrompts);
     }
 
-    function updateAgentFee(uint256 _agentId, uint _fee) external {
-        require(msg.sender == _ownerOf(_agentId), "Invalid token owner");
-
+    function updateAgentFee(
+        uint256 _agentId,
+        uint _fee
+    ) external onlyAgentOwner(_agentId) {
         if (datas[_agentId].fee != _fee) {
             datas[_agentId].fee = _fee;
         }
@@ -371,24 +342,6 @@ contract SystemPromptManager is
         if (!success) revert FailedTransfer();
 
         emit FeesClaimed(msg.sender, totalFee);
-    }
-
-    function _concatSystemPrompts(
-        uint256 _agentId
-    ) internal virtual returns (bytes memory) {
-        bytes[] memory sysPrompts = datas[_agentId].sysPrompts;
-        uint256 len = sysPrompts.length;
-        bytes memory concatedPrompt;
-
-        for (uint256 i = 0; i < len; i++) {
-            concatedPrompt = abi.encodePacked(
-                concatedPrompt,
-                sysPrompts[i],
-                ";"
-            );
-        }
-
-        return concatedPrompt;
     }
 
     function topUpPoolBalance(uint256 _agentId) external payable {
@@ -457,14 +410,11 @@ contract SystemPromptManager is
         uint256 _agentId,
         bytes calldata _calldata
     ) internal returns (uint256, bytes memory) {
-        require(
-            datas[_agentId].sysPrompts.length != 0,
-            "Invalid system prompt"
-        );
-        require(msg.value >= datas[_agentId].fee, "Invalid fee");
+        if (datas[_agentId].sysPrompts.length == 0) revert InvalidAgentData();
+        if (msg.value < datas[_agentId].fee) revert InvalidAgentFee();
 
         bytes memory fwdData = abi.encodePacked(
-            _concatSystemPrompts(_agentId),
+            SystemPromptHelper.concatSystemPrompts(datas[_agentId]),
             _calldata
         );
         uint256 estFeeWH = IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
@@ -486,7 +436,7 @@ contract SystemPromptManager is
                 TransferHelper.safeTransferNative(_ownerOf(_agentId), remain);
             }
         } else {
-            revert("Insufficient funds");
+            revert InsufficientFunds();
         }
 
         return (estFeeWH, fwdData);
@@ -568,35 +518,22 @@ contract SystemPromptManager is
         return _allSquads.length;
     }
 
-    function inscreaseIterator(uint256 i) private pure returns (uint256) {
-        unchecked {
-            return i + 1;
-        }
-    }
-
     function _moveAgentToSquad(
         uint256[] memory _agentIds,
         uint256 _toSquadId
     ) private {
         uint256 len = _agentIds.length;
 
-        require(
-            msg.sender == squadInfo[_toSquadId].owner,
-            "Invalid squad owner"
-        );
-        require(
-            _toSquadId <= currenSquadId && _toSquadId > 0,
-            "Invalid squad id"
-        );
+        if (msg.sender != squadInfo[_toSquadId].owner) revert Unauthorized();
+        if (_toSquadId > currentSquadId || _toSquadId == 0)
+            revert InvalidSquadId();
 
-        for (uint256 i = 0; i < len; inscreaseIterator(i)) {
-            require(
-                _ownerOf(_agentIds[i]) == msg.sender,
-                "Invalid agent owner"
-            );
-            require(_agentIds[i] < nextTokenId, "Invalid agent id");
+        for (uint256 i = 0; i < len; i++) {
+            _checkAgentOwner(msg.sender, _agentIds[i]);
+            if (_agentIds[i] >= nextTokenId) revert InvalidAgentId();
 
             uint256 fromSquad = agentToSquadId[_agentIds[i]];
+
             agentToSquadId[_agentIds[i]] = _toSquadId;
 
             if (fromSquad != _toSquadId) {
@@ -618,7 +555,7 @@ contract SystemPromptManager is
     }
 
     function createSquad(uint256[] calldata _agentIds) external {
-        uint256 squadId = ++currenSquadId;
+        uint256 squadId = ++currentSquadId;
         squadInfo[squadId].owner = msg.sender;
         squadBalance[msg.sender]++;
 
@@ -641,33 +578,59 @@ contract SystemPromptManager is
         _allSquads.push(squadId);
     }
 
-    function _removeSquadFromOwnerEnumeration(
-        address from,
-        uint256 squadId
-    ) private {
-        uint256 lastSquadIndex = squadBalance[from] - 1;
-        uint256 squadIndex = ownedSquadsIndex[squadId];
+    function getSquadOfOwner(
+        address _owner
+    ) external view returns (uint256[] memory) {
+        uint256 len = squadBalance[_owner];
+        uint256[] memory squads = new uint256[](len);
 
-        if (squadIndex != lastSquadIndex) {
-            uint256 lastSquadId = ownedSquads[from][lastSquadIndex];
-            ownedSquads[from][squadIndex] = lastSquadId;
-            ownedSquadsIndex[lastSquadId] = squadIndex;
+        for (uint256 i = 0; i < len; i++) {
+            squads[i] = ownedSquads[_owner][i];
         }
 
-        delete ownedSquadsIndex[squadId];
-        delete ownedSquads[from][lastSquadIndex];
+        return squads;
     }
 
-    function _removeSquadFromAllSquadsEnumeration(uint256 squadId) private {
-        uint256 lastSquadIndex = _allSquads.length - 1;
-        uint256 squadIndex = _allSquadsIndex[squadId];
+    function getAgentIdOfOwner(
+        address _owner
+    ) external view returns (uint256[] memory) {
+        uint256 len = balanceOf(_owner);
+        uint256[] memory agentIds = new uint256[](len);
 
-        uint256 lastSquadId = _allSquads[lastSquadIndex];
+        for (uint256 i = 0; i < len; i++) {
+            agentIds[i] = tokenOfOwnerByIndex(_owner, i);
+        }
 
-        _allSquads[squadIndex] = lastSquadId;
-        _allSquadsIndex[lastSquadId] = squadIndex;
-
-        delete _allSquadsIndex[squadId];
-        _allSquads.pop();
+        return agentIds;
     }
+
+    // function _removeSquadFromOwnerEnumeration(
+    //     address from,
+    //     uint256 squadId
+    // ) private {
+    //     uint256 lastSquadIndex = squadBalance[from] - 1;
+    //     uint256 squadIndex = ownedSquadsIndex[squadId];
+
+    //     if (squadIndex != lastSquadIndex) {
+    //         uint256 lastSquadId = ownedSquads[from][lastSquadIndex];
+    //         ownedSquads[from][squadIndex] = lastSquadId;
+    //         ownedSquadsIndex[lastSquadId] = squadIndex;
+    //     }
+
+    //     delete ownedSquadsIndex[squadId];
+    //     delete ownedSquads[from][lastSquadIndex];
+    // }
+
+    // function _removeSquadFromAllSquadsEnumeration(uint256 squadId) private {
+    //     uint256 lastSquadIndex = _allSquads.length - 1;
+    //     uint256 squadIndex = _allSquadsIndex[squadId];
+
+    //     uint256 lastSquadId = _allSquads[lastSquadIndex];
+
+    //     _allSquads[squadIndex] = lastSquadId;
+    //     _allSquadsIndex[lastSquadId] = squadIndex;
+
+    //     delete _allSquadsIndex[squadId];
+    //     _allSquads.pop();
+    // }
 }
