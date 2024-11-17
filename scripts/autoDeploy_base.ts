@@ -9,14 +9,12 @@ import {
   SystemPromptManager,
   Treasury,
   WorkerHub,
-  WorkerHubScoring,
 } from "../typechain-types";
 import { deployOrUpgrade } from "./lib/utils";
 import { EventLog, Signer } from "ethers";
 import path from "path";
 import fs from "fs";
-import { combineDurations } from "./utils";
-import { StakingHub } from "../typechain-types/contracts/StakingHub";
+import { SystemPromptHelper } from "../typechain-types/contracts/lib/SystemPromptHelper";
 
 const config = network.config as any;
 const networkName = network.name.toUpperCase();
@@ -323,14 +321,31 @@ async function deployHybridModel(
   return hybridModelAddress;
 }
 
+async function deploySystemPromptHelper() {
+  console.log("DEPLOY SYSTEM PROMPT HELPER...");
+  const fact = await ethers.getContractFactory("SystemPromptHelper");
+
+  const helper = await fact.deploy();
+  await helper.waitForDeployment();
+
+  return helper.target;
+}
+
 async function deploySystemPromptManager(
   l2OwnerAddress: string,
   hybridModelAddress: string,
-  workerHubAddress: string
+  workerHubAddress: string,
+  systemPromptHelperAddress: string
 ) {
   console.log("DEPLOY SYSTEM PROMPT MANAGER...");
 
   assert.ok(l2OwnerAddress, `Missing ${networkName}_L2_OWNER_ADDRESS!`);
+  assert.ok(hybridModelAddress, `Missing ${networkName}_HYBRID_MODEL_ADDRESS!`);
+  assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
+  assert.ok(
+    systemPromptHelperAddress,
+    `Missing ${networkName}_SYSTEM_PROMPT_HELPER_ADDRESS!`
+  );
 
   const name = "Eternal AI";
   const symbol = "";
@@ -350,17 +365,15 @@ async function deploySystemPromptManager(
     workerHubAddress,
   ];
 
-  const sysPromptManager = (await deployOrUpgrade(
-    undefined,
-    "SystemPromptManager",
-    constructorParams,
-    config,
-    true
-  )) as unknown as SystemPromptManager;
+  const fact = await ethers.getContractFactory("SystemPromptManager", {
+    libraries: {
+      SystemPromptHelper: systemPromptHelperAddress,
+    },
+  });
+  const ins = await upgrades.deployProxy(fact, constructorParams);
+  await ins.waitForDeployment();
 
-  // Mint first NFT to owner
-
-  return sysPromptManager.target;
+  return ins.target;
 }
 
 export async function getContractInstance(
@@ -407,10 +420,12 @@ async function main() {
     stakingHubAddress.toString(),
     collectionAddress.toString()
   );
+  const systemPromptHelperAddress = await deploySystemPromptHelper();
   const systemPromptManagerAddress = await deploySystemPromptManager(
     config.l2OwnerAddress,
     hybridModelAddress.toString(),
-    workerHubAddress.toString()
+    workerHubAddress.toString(),
+    systemPromptHelperAddress.toString()
   );
 
   const deployedAddresses = {

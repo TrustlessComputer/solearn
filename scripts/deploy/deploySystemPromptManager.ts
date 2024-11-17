@@ -14,9 +14,30 @@ async function deploySystemPromptManager() {
   const networkName = network.name.toUpperCase();
 
   const l2OwnerAddress = config.l2OwnerAddress;
+  const hybridModelAddress = config.hybridModelAddress;
+  const workerHubAddress = config.workerHubAddress;
+  const systemPromptHelperAddress = config.systemPromptHelperAddress;
+  const systemPromptManagerAddress = config.systemPromptManagerAddress;
+
   assert.ok(
     l2OwnerAddress,
     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+  assert.ok(
+    l2OwnerAddress,
+    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+  assert.ok(
+    hybridModelAddress,
+    `Missing ${networkName}_HYBRID_MODEL_ADDRESS from environment variables!`
+  );
+  assert.ok(
+    workerHubAddress,
+    `Missing ${networkName}_WORKER_HUB_ADDRESS from environment variables!`
+  );
+  assert.ok(
+    systemPromptHelperAddress,
+    `Missing ${networkName}_SYSTEM_PROMPT_HELPER_ADDRESS from environment variables!`
   );
 
   const name = "Eternal AI";
@@ -25,8 +46,6 @@ async function deploySystemPromptManager() {
   const royaltyReceiver = l2OwnerAddress;
   const royalPortion = 5_00;
   const nextModelId = 1; //TODO: need to change before deployment
-  const hybridModelAddress = config.hybridModelAddress;
-  const workerHubAddress = config.workerHubAddress;
 
   const constructorParams = [
     name,
@@ -39,13 +58,31 @@ async function deploySystemPromptManager() {
     workerHubAddress,
   ];
 
-  const sysPromptManager = (await deployOrUpgrade(
-    config.systemPromptManagerAddress,
-    "SystemPromptManager",
-    constructorParams,
-    config,
-    true
-  )) as unknown as SystemPromptManager;
+  // const sysPromptManager = (await deployOrUpgrade(
+  //   config.systemPromptManagerAddress,
+  //   "SystemPromptManager",
+  //   constructorParams,
+  //   config,
+  //   true
+  // )) as unknown as SystemPromptManager;
+
+  const fact = await ethers.getContractFactory("SystemPromptManager", {
+    libraries: {
+      SystemPromptHelper: systemPromptHelperAddress,
+    },
+  });
+  let sysPromptManager;
+
+  if (!systemPromptManagerAddress) {
+    sysPromptManager = await upgrades.deployProxy(fact, constructorParams);
+    await sysPromptManager.waitForDeployment();
+  } else {
+    sysPromptManager = await upgrades.upgradeProxy(
+      systemPromptManagerAddress,
+      fact
+    );
+    await sysPromptManager.waitForDeployment();
+  }
 
   console.log(
     `${networkName}_SYSTEM_PROMPT_MANAGER_ADDRESS=${sysPromptManager.target}`

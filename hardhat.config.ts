@@ -228,6 +228,8 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
         process.env.BASE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      systemPromptHelperAddress:
+        process.env.BASE_MAINNET_SYSTEM_PROMPT_HELPER_ADDRESS,
       wEAIAddress: process.env.BASE_MAINNET_WEAI,
       aiPoweredWallet: process.env.BASE_MAINNET_AI_POWERED_WALLET_ADDRESS,
       allowUnlimitedContractSize: true,
