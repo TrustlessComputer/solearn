@@ -12,11 +12,6 @@ interface ISystemPromptManager is
     IERC721EnumerableUpgradeable,
     IERC2981Upgradeable
 {
-    struct SquadInfo {
-        address owner;
-        uint16 numAgents;
-    }
-
     event MintPriceUpdate(uint256 newValue);
     event RoyaltyPortionUpdate(uint16 newValue);
     event RoyaltyReceiverUpdate(address newAddress);

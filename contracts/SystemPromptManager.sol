@@ -4,21 +4,17 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC165Upgradeable.sol";
 import {IERC2981Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import {ERC721EnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
 import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IHybridModel} from "./interfaces/IHybridModel.sol";
-import {IModel} from "./interfaces/IModel.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
-import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
+import {SystemPromptManagerStorage, Set} from "./storages/SystemPromptManagerStorage.sol";
 import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
-import "hardhat/console.sol";
 
 contract SystemPromptManager is
     SystemPromptManagerStorage,
@@ -29,6 +25,7 @@ contract SystemPromptManager is
     OwnableUpgradeable
 {
     using SystemPromptHelper for TokenMetaData;
+    using Set for Set.Uint256Set;
 
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
@@ -520,13 +517,12 @@ contract SystemPromptManager is
 
     function _moveAgentToSquad(
         uint256[] memory _agentIds,
-        uint256 _toSquadId
+        uint256 _toSquad
     ) private {
         uint256 len = _agentIds.length;
 
-        if (msg.sender != squadInfo[_toSquadId].owner) revert Unauthorized();
-        if (_toSquadId > currentSquadId || _toSquadId == 0)
-            revert InvalidSquadId();
+        if (msg.sender != squadOwner[_toSquad]) revert Unauthorized();
+        if (_toSquad > currentSquadId || _toSquad == 0) revert InvalidSquadId();
 
         for (uint256 i = 0; i < len; i++) {
             _checkAgentOwner(msg.sender, _agentIds[i]);
@@ -534,13 +530,13 @@ contract SystemPromptManager is
 
             uint256 fromSquad = agentToSquadId[_agentIds[i]];
 
-            agentToSquadId[_agentIds[i]] = _toSquadId;
+            agentToSquadId[_agentIds[i]] = _toSquad;
 
-            if (fromSquad != _toSquadId) {
+            if (fromSquad != _toSquad) {
                 if (fromSquad != 0) {
-                    squadInfo[fromSquad].numAgents--;
+                    squadToAgentIds[fromSquad].erase(_agentIds[i]);
                 }
-                squadInfo[_toSquadId].numAgents++;
+                squadToAgentIds[_toSquad].insert(_agentIds[i]);
             }
         }
     }
@@ -556,7 +552,7 @@ contract SystemPromptManager is
 
     function createSquad(uint256[] calldata _agentIds) external {
         uint256 squadId = ++currentSquadId;
-        squadInfo[squadId].owner = msg.sender;
+        squadOwner[squadId] = msg.sender;
         squadBalance[msg.sender]++;
 
         _moveAgentToSquad(_agentIds, squadId);
@@ -578,20 +574,7 @@ contract SystemPromptManager is
         _allSquads.push(squadId);
     }
 
-    function getSquadOfOwner(
-        address _owner
-    ) external view returns (uint256[] memory) {
-        uint256 len = squadBalance[_owner];
-        uint256[] memory squads = new uint256[](len);
-
-        for (uint256 i = 0; i < len; i++) {
-            squads[i] = ownedSquads[_owner][i];
-        }
-
-        return squads;
-    }
-
-    function getAgentIdOfOwner(
+    function getAgentIdByOwner(
         address _owner
     ) external view returns (uint256[] memory) {
         uint256 len = balanceOf(_owner);
@@ -602,6 +585,12 @@ contract SystemPromptManager is
         }
 
         return agentIds;
+    }
+
+    function getAgentIdsBySquadId(
+        uint256 _squadId
+    ) external view returns (uint256[] memory) {
+        return squadToAgentIds[_squadId].values;
     }
 
     // function _removeSquadFromOwnerEnumeration(

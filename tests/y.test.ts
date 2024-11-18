@@ -10,7 +10,6 @@ import { address18 } from "./address.seed.ts";
 
 import {
   IWorkerHub,
-  LLAMA,
   WorkerHub,
   ModelCollection,
   DAOToken,
@@ -740,7 +739,7 @@ describe("WorkerHub contract", async () => {
     it.only("Should create squad", async () => {
       const {
         admin,
-        proxyLLAMAAddress,
+
         proxyWorkerHubAddress,
         hybridModelAddress,
         stakingHubAddress,
@@ -763,20 +762,20 @@ describe("WorkerHub contract", async () => {
       const [admin1, admin2] = await ethers.getSigners();
       await ins.connect(admin1).createSquad([]);
       expect(await ins.currentSquadId()).to.eq(1n);
-      expect((await ins.squadInfo(1n)).owner).to.eq(admin1.address);
-      expect((await ins.squadInfo(1n)).numAgents).to.eq(0);
+      expect(await ins.squadOwner(1n)).to.eq(admin1.address);
+      expect((await ins.getAgentIdsBySquadId(1n)).length).to.eq(0);
 
       await ins.connect(admin1).createSquad([1n]);
       expect(await ins.currentSquadId()).to.eq(2n);
-      expect((await ins.squadInfo(2n)).owner).to.eq(admin1.address);
-      expect((await ins.squadInfo(2n)).numAgents).to.eq(1);
+      expect(await ins.squadOwner(2n)).to.eq(admin1.address);
+      expect((await ins.getAgentIdsBySquadId(2n)).length).to.eq(1);
       // expect(await ins.agentToSquadId(1n)).to.eq(2n);
 
       await ins.connect(admin1).moveAgentToSquad([1n], 1n);
       // expect(await ins.agentToSquadId(1n)).to.eq(1n);
-      expect((await ins.getSquadOfOwner(admin.address)).length).to.eq(2);
+      expect(await ins.squadBalance(admin.address)).to.eq(2);
 
-      expect((await ins.getAgentIdOfOwner(admin.address)).length).to.eq(2);
+      expect(await ins.squadBalance(admin.address)).to.eq(2);
 
       await ins
         .connect(admin1)
@@ -789,9 +788,9 @@ describe("WorkerHub contract", async () => {
           1
         );
       expect(await ins.currentSquadId()).to.eq(2n);
-      expect((await ins.getAgentIdOfOwner(admin.address)).length).to.eq(3);
-      expect((await ins.squadInfo(1n)).owner).to.eq(admin1.address);
-      expect((await ins.squadInfo(1n)).numAgents).to.eq(2);
+      expect((await ins.getAgentIdByOwner(admin.address)).length).to.eq(3);
+      expect(await ins.squadOwner(1n)).to.eq(admin1.address);
+      expect((await ins.getAgentIdsBySquadId(1n)).length).to.eq(2);
     });
   });
 });
