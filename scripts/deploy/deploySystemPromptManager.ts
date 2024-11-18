@@ -24,10 +24,6 @@ async function deploySystemPromptManager() {
     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
   );
   assert.ok(
-    l2OwnerAddress,
-    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
-  );
-  assert.ok(
     hybridModelAddress,
     `Missing ${networkName}_HYBRID_MODEL_ADDRESS from environment variables!`
   );
