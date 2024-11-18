@@ -613,6 +613,13 @@ contract SystemPromptManager is
             _agentId >= nextTokenId
         ) revert InvalidAgentData();
 
+        emit AgentMissionUpdate(
+            _agentId,
+            _missionIdx,
+            missionsOf[_agentId][_missionIdx],
+            _missionData
+        );
+
         missionsOf[_agentId][_missionIdx] = _missionData;
     }
 
@@ -623,6 +630,8 @@ contract SystemPromptManager is
         if (_missionData.length == 0 || _agentId >= nextTokenId)
             revert InvalidAgentData();
         missionsOf[_agentId].push(_missionData);
+
+        emit AgentMissionAddNew(_agentId, missionsOf[_agentId]);
     }
 
     function getMissionIdsByAgentId(

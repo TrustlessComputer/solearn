@@ -51,6 +51,13 @@ interface ISystemPromptManager is
         address indexed to,
         uint256 indexed squadId
     );
+    event AgentMissionAddNew(uint256 indexed agentId, bytes[] missions);
+    event AgentMissionUpdate(
+        uint256 indexed agentId,
+        uint256 missionIndex,
+        bytes oldSysMission,
+        bytes newSysMission
+    );
 
     error AlreadyMinted();
     error Authorized();
