@@ -530,15 +530,16 @@ contract SystemPromptManager is
 
             uint256 fromSquad = agentToSquadId[_agentIds[i]];
 
-            agentToSquadId[_agentIds[i]] = _toSquad;
-
             if (fromSquad != _toSquad) {
+                agentToSquadId[_agentIds[i]] = _toSquad;
                 if (fromSquad != 0) {
                     squadToAgentIds[fromSquad].erase(_agentIds[i]);
                 }
                 squadToAgentIds[_toSquad].insert(_agentIds[i]);
             }
         }
+
+        emit MoveAgentToSquad(_toSquad, _agentIds);
     }
 
     function moveAgentToSquad(
@@ -546,8 +547,6 @@ contract SystemPromptManager is
         uint256 _toSquadId
     ) external {
         _moveAgentToSquad(_agentIds, _toSquadId);
-
-        emit SquadUpdated(_toSquadId, msg.sender, _agentIds);
     }
 
     function createSquad(uint256[] calldata _agentIds) external {
@@ -560,7 +559,7 @@ contract SystemPromptManager is
         _addSquadToAllSquadsEnumeration(squadId);
         _addSquadToOwnerEnumeration(msg.sender, squadId);
 
-        emit SquadCreated(squadId, msg.sender, _agentIds);
+        emit SquadTransferred(address(0), msg.sender, squadId);
     }
 
     function _addSquadToOwnerEnumeration(address to, uint256 squadId) private {

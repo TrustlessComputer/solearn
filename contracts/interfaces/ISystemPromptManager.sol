@@ -45,15 +45,11 @@ interface ISystemPromptManager is
     );
     event FeesClaimed(address indexed claimer, uint amount);
     event TopUpPoolBalance(uint256 agentId, address caller, uint256 amount);
-    event SquadCreated(
-        uint256 indexed fromSquadId,
-        address indexed owner,
-        uint256[] agentIds
-    );
-    event SquadUpdated(
-        uint256 indexed fromSquadId,
-        address indexed owner,
-        uint256[] agentIds
+    event MoveAgentToSquad(uint256 indexed toSquadId, uint256[] agentIds);
+    event SquadTransferred(
+        address indexed from,
+        address indexed to,
+        uint256 indexed squadId
     );
 
     error AlreadyMinted();
