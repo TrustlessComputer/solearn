@@ -100,17 +100,17 @@ contract SystemPromptManager is
         emit ManagerDeauthorization(_account);
     }
 
-    function updateMintPrice(uint256 _mintPrice) external onlyOwner {
-        mintPrice = _mintPrice;
-        emit MintPriceUpdate(_mintPrice);
-    }
+    // function updateMintPrice(uint256 _mintPrice) external onlyOwner {
+    //     mintPrice = _mintPrice;
+    //     emit MintPriceUpdate(_mintPrice);
+    // }
 
-    function updateRoyaltyReceiver(
-        address _royaltyReceiver
-    ) external onlyOwner {
-        royaltyReceiver = _royaltyReceiver;
-        emit RoyaltyReceiverUpdate(_royaltyReceiver);
-    }
+    // function updateRoyaltyReceiver(
+    //     address _royaltyReceiver
+    // ) external onlyOwner {
+    //     royaltyReceiver = _royaltyReceiver;
+    //     emit RoyaltyReceiverUpdate(_royaltyReceiver);
+    // }
 
     function updateRoyaltyPortion(uint16 _royaltyPortion) external onlyOwner {
         royaltyPortion = _royaltyPortion;
@@ -194,11 +194,15 @@ contract SystemPromptManager is
         if (!success) revert FailedTransfer();
     }
 
+    function _validateURI(string calldata _uri) internal pure {
+        if (bytes(_uri).length == 0) revert InvalidAgentData();
+    }
+
     function updateAgentURI(
         uint256 _agentId,
         string calldata _uri
     ) external onlyAgentOwner(_agentId) {
-        if (bytes(_uri).length == 0) revert InvalidAgentData();
+        _validateURI(_uri);
 
         _setTokenURI(_agentId, _uri);
         emit AgentURIUpdate(_agentId, _uri);
@@ -209,9 +213,7 @@ contract SystemPromptManager is
         bytes calldata _sysPrompt,
         uint256 _promptIdx
     ) external onlyAgentOwner(_agentId) {
-        if (_sysPrompt.length == 0) revert InvalidAgentData();
-        uint256 len = datas[_agentId].sysPrompts.length;
-        if (_promptIdx >= len) revert InvalidAgentPromptIndex();
+        _validateAgentData(_agentId, _sysPrompt, _promptIdx);
 
         emit AgentDataUpdate(
             _agentId,
@@ -245,6 +247,16 @@ contract SystemPromptManager is
         signaturesUsed[agentOwner][_signature] = true;
     }
 
+    function _validateAgentData(
+        uint256 _agentId,
+        bytes calldata _sysPrompt,
+        uint256 _promptIdx
+    ) internal view {
+        if (_sysPrompt.length == 0) revert InvalidAgentData();
+        uint256 len = datas[_agentId].sysPrompts.length;
+        if (_promptIdx >= len) revert InvalidAgentPromptIndex();
+    }
+
     function updateAgentDataWithSignature(
         uint256 _agentId,
         bytes calldata _sysPrompt,
@@ -252,7 +264,7 @@ contract SystemPromptManager is
         uint256 _randomNonce,
         bytes calldata _signature
     ) external {
-        if (_sysPrompt.length == 0) revert InvalidAgentData();
+        _validateAgentData(_agentId, _sysPrompt, _promptIdx);
         _checkUpdatePromptPermission(
             _agentId,
             _sysPrompt,
@@ -260,8 +272,6 @@ contract SystemPromptManager is
             _randomNonce,
             _signature
         );
-        uint256 len = datas[_agentId].sysPrompts.length;
-        if (_promptIdx >= len) revert InvalidAgentPromptIndex();
 
         emit AgentDataUpdate(
             _agentId,
@@ -299,7 +309,7 @@ contract SystemPromptManager is
         uint256 _randomNonce,
         bytes calldata _signature
     ) external {
-        if (bytes(_uri).length == 0) revert InvalidAgentURI();
+        _validateURI(_uri);
 
         _checkUpdateUriPermission(_agentId, _uri, _randomNonce, _signature);
         _setTokenURI(_agentId, _uri);
@@ -590,6 +600,35 @@ contract SystemPromptManager is
         uint256 _squadId
     ) external view returns (uint256[] memory) {
         return squadToAgentIds[_squadId].values;
+    }
+
+    function updateMission(
+        uint256 _agentId,
+        uint256 _missionIdx,
+        bytes calldata _missionData
+    ) external onlyAgentOwner(_agentId) {
+        if (
+            _missionData.length == 0 ||
+            _missionIdx >= missionsOf[_agentId].length ||
+            _agentId >= nextTokenId
+        ) revert InvalidAgentData();
+
+        missionsOf[_agentId][_missionIdx] = _missionData;
+    }
+
+    function createMission(
+        uint256 _agentId,
+        bytes calldata _missionData
+    ) external onlyAgentOwner(_agentId) {
+        if (_missionData.length == 0 || _agentId >= nextTokenId)
+            revert InvalidAgentData();
+        missionsOf[_agentId].push(_missionData);
+    }
+
+    function getMissionIdsByAgentId(
+        uint256 _agentId
+    ) external view returns (bytes[] memory) {
+        return missionsOf[_agentId];
     }
 
     // function _removeSquadFromOwnerEnumeration(

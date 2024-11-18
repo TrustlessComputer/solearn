@@ -33,6 +33,7 @@ abstract contract SystemPromptManagerStorage is ISystemPromptManager {
     mapping(uint256 => uint256) internal _allSquadsIndex;
 
     mapping(uint256 agentId => uint256) internal agentToSquadId;
+    mapping(uint256 agentId => bytes[]) internal missionsOf;
 
-    uint256[39] private __gap;
+    uint256[38] private __gap;
 }
