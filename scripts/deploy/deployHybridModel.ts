@@ -1,7 +1,12 @@
 import assert from "assert";
 import { version } from "chai";
 import { ethers, network, upgrades } from "hardhat";
-import { HybridModel, ModelCollection, WorkerHub } from "../../typechain-types";
+import {
+  HybridModel,
+  ModelCollection,
+  WorkerHub,
+  StakingHub,
+} from "../../typechain-types";
 import { EventLog, Log } from "ethers";
 import { deployOrUpgrade } from "../lib/utils";
 
@@ -9,6 +14,7 @@ async function deployHybridModel() {
   const config = network.config as any;
   const networkName = network.name.toUpperCase();
   const WorkerHub = await ethers.getContractFactory("WorkerHub");
+  const StakingHub = await ethers.getContractFactory("StakingHub");
   const ModelCollection = await ethers.getContractFactory("ModelCollection");
 
   const collectionAddress = config.collectionAddress;
@@ -22,6 +28,13 @@ async function deployHybridModel() {
     workerHubAddress,
     `Missing ${networkName}_WORKER_HUB_ADDRESS from environment variables!`
   );
+
+  const stakingHubAddress = config.stakingHubAddress;
+  assert.ok(
+    stakingHubAddress,
+    `Missing ${networkName}_STAKING_HUB_ADDRESS from environment variables!`
+  );
+
   const modelOwnerAddress = config.l2OwnerAddress;
   assert.ok(
     modelOwnerAddress,
@@ -29,12 +42,12 @@ async function deployHybridModel() {
   );
 
   const identifier = 0;
-  const name = "Flux V2";
+  const name = "Hermes";
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "Flux V2",
-    model_type: "image",
+    model_name: "Hermes",
+    model_type: "text",
     model_url: "",
     model_file_hash: "",
     min_hardware: 1,
@@ -52,7 +65,7 @@ async function deployHybridModel() {
     metadata,
   ];
   const hybridModel = (await deployOrUpgrade(
-    config.hybridModelAddress,
+    config.hybridModelAddress_2,
     "HybridModel",
     constructorParams,
     config,
@@ -63,7 +76,7 @@ async function deployHybridModel() {
     `Contract HybridModel has been deployed to address ${hybridModel.target}`
   );
 
-  if (!config.hybridModelAddress) {
+  if (!config.hybridModelAddress_2) {
     const collection = ModelCollection.attach(
       config.collectionAddress
     ) as ModelCollection;
@@ -78,8 +91,8 @@ async function deployHybridModel() {
       console.log("tokenId:", newTokenEvent.args?.tokenId);
     }
 
-    const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
-    await workerHub.registerModel(
+    const stakingHub = StakingHub.attach(stakingHubAddress) as StakingHub;
+    await stakingHub.registerModel(
       hybridModel.target,
       minHardware,
       ethers.parseEther("0.1")
