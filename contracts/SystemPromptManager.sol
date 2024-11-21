@@ -13,8 +13,9 @@ import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgra
 import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
-import {SystemPromptManagerStorage, Set} from "./storages/SystemPromptManagerStorage.sol";
+import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
 import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
+import {ISquad} from "./interfaces/ISquad.sol";
 
 contract SystemPromptManager is
     SystemPromptManagerStorage,
@@ -25,7 +26,7 @@ contract SystemPromptManager is
     OwnableUpgradeable
 {
     using SystemPromptHelper for TokenMetaData;
-    using Set for Set.Uint256Set;
+    // using Set for Set.Uint256Set;
 
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
@@ -100,17 +101,17 @@ contract SystemPromptManager is
         emit ManagerDeauthorization(_account);
     }
 
-    // function updateMintPrice(uint256 _mintPrice) external onlyOwner {
-    //     mintPrice = _mintPrice;
-    //     emit MintPriceUpdate(_mintPrice);
-    // }
+    function updateMintPrice(uint256 _mintPrice) external onlyOwner {
+        mintPrice = _mintPrice;
+        emit MintPriceUpdate(_mintPrice);
+    }
 
-    // function updateRoyaltyReceiver(
-    //     address _royaltyReceiver
-    // ) external onlyOwner {
-    //     royaltyReceiver = _royaltyReceiver;
-    //     emit RoyaltyReceiverUpdate(_royaltyReceiver);
-    // }
+    function updateRoyaltyReceiver(
+        address _royaltyReceiver
+    ) external onlyOwner {
+        royaltyReceiver = _royaltyReceiver;
+        emit RoyaltyReceiverUpdate(_royaltyReceiver);
+    }
 
     function updateRoyaltyPortion(uint16 _royaltyPortion) external onlyOwner {
         royaltyPortion = _royaltyPortion;
@@ -154,19 +155,16 @@ contract SystemPromptManager is
         mint_(_to, _uri, _data, _fee, agentId);
 
         if (_squadId != 0) {
-            if (_squadId > currentSquadId) revert InvalidSquadId();
-            _moveAgentToSquad(_convertUintToArray(agentId), _squadId);
+            validateAgentBeforeMoveToSquad(_to, agentId);
+
+            ISquad(squadManager).moveAgentToSquad(
+                msg.sender,
+                agentId,
+                _squadId
+            );
         }
 
         return agentId;
-    }
-
-    function _convertUintToArray(
-        uint256 num
-    ) internal pure returns (uint256[] memory) {
-        uint256[] memory newArray = new uint256[](1); // Create a new array with a size of 1
-        newArray[0] = num; // Assign the uint256 value to the first element of the array
-        return newArray;
     }
 
     /// @notice This function open minting role to public users
@@ -521,66 +519,24 @@ contract SystemPromptManager is
         super._burn(_agentId);
     }
 
-    function totalSquad() external view returns (uint256) {
-        return _allSquads.length;
+    function validateAgentBeforeMoveToSquad(
+        address _user,
+        uint256 _agentId
+    ) public view {
+        _checkAgentOwner(_user, _agentId);
+        if (_agentId >= nextTokenId) revert InvalidAgentId();
     }
 
-    function _moveAgentToSquad(
-        uint256[] memory _agentIds,
-        uint256 _toSquad
-    ) private {
+    function validateAgentsBeforeMoveToSquad(
+        address _user,
+        uint256[] calldata _agentIds
+    ) external view {
         uint256 len = _agentIds.length;
 
-        if (msg.sender != squadOwner[_toSquad]) revert Unauthorized();
-        if (_toSquad > currentSquadId || _toSquad == 0) revert InvalidSquadId();
-
         for (uint256 i = 0; i < len; i++) {
-            _checkAgentOwner(msg.sender, _agentIds[i]);
+            _checkAgentOwner(_user, _agentIds[i]);
             if (_agentIds[i] >= nextTokenId) revert InvalidAgentId();
-
-            uint256 fromSquad = agentToSquadId[_agentIds[i]];
-
-            if (fromSquad != _toSquad) {
-                agentToSquadId[_agentIds[i]] = _toSquad;
-                if (fromSquad != 0) {
-                    squadToAgentIds[fromSquad].erase(_agentIds[i]);
-                }
-                squadToAgentIds[_toSquad].insert(_agentIds[i]);
-            }
         }
-
-        emit MoveAgentToSquad(_toSquad, _agentIds);
-    }
-
-    function moveAgentToSquad(
-        uint256[] calldata _agentIds,
-        uint256 _toSquadId
-    ) external {
-        _moveAgentToSquad(_agentIds, _toSquadId);
-    }
-
-    function createSquad(uint256[] calldata _agentIds) external {
-        uint256 squadId = ++currentSquadId;
-        squadOwner[squadId] = msg.sender;
-        squadBalance[msg.sender]++;
-
-        _moveAgentToSquad(_agentIds, squadId);
-
-        _addSquadToAllSquadsEnumeration(squadId);
-        _addSquadToOwnerEnumeration(msg.sender, squadId);
-
-        emit SquadTransferred(address(0), msg.sender, squadId);
-    }
-
-    function _addSquadToOwnerEnumeration(address to, uint256 squadId) private {
-        uint256 length = squadBalance[to];
-        ownedSquads[to][length] = squadId;
-        ownedSquadsIndex[squadId] = length;
-    }
-
-    function _addSquadToAllSquadsEnumeration(uint256 squadId) private {
-        _allSquadsIndex[squadId] = _allSquads.length;
-        _allSquads.push(squadId);
     }
 
     function getAgentIdByOwner(
@@ -594,12 +550,6 @@ contract SystemPromptManager is
         }
 
         return agentIds;
-    }
-
-    function getAgentIdsBySquadId(
-        uint256 _squadId
-    ) external view returns (uint256[] memory) {
-        return squadToAgentIds[_squadId].values;
     }
 
     function updateMission(
@@ -638,6 +588,20 @@ contract SystemPromptManager is
         uint256 _agentId
     ) external view returns (bytes[] memory) {
         return missionsOf[_agentId];
+    }
+
+    function setSquadManager(address _squadManager) external onlyOwner {
+        if (_squadManager == address(0)) revert InvalidData();
+        squadManager = _squadManager;
+    }
+
+    function _checkSquadManager() internal view {
+        if (msg.sender != squadManager) revert Unauthorized();
+    }
+
+    modifier onlySquadManager() {
+        _checkSquadManager();
+        _;
     }
 
     // function _removeSquadFromOwnerEnumeration(

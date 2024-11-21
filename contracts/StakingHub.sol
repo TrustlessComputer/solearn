@@ -567,7 +567,7 @@ contract StakingHub is
         return minerAddresses.hasValue(_miner);
     }
 
-    function validateModelOfMiner(address _miner) external view returns (bool) {
+    function validateModelOfMiner(address _miner) external view {
         address modelAddrOfMiner = miners[_miner].modelAddress;
         if (!minerAddressesByModel[modelAddrOfMiner].hasValue(_miner))
             revert("InvalidMiner");

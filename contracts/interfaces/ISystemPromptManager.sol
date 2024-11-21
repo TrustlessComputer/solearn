@@ -12,13 +12,16 @@ interface ISystemPromptManager is
     IERC721EnumerableUpgradeable,
     IERC2981Upgradeable
 {
+    struct TokenMetaData {
+        uint256 fee;
+        bytes[] sysPrompts;
+    }
+
     event MintPriceUpdate(uint256 newValue);
     event RoyaltyPortionUpdate(uint16 newValue);
     event RoyaltyReceiverUpdate(address newAddress);
-
     event ManagerAuthorization(address indexed account);
     event ManagerDeauthorization(address indexed account);
-
     event NewToken(
         uint256 indexed tokenId,
         string uri,
@@ -45,12 +48,7 @@ interface ISystemPromptManager is
     );
     event FeesClaimed(address indexed claimer, uint amount);
     event TopUpPoolBalance(uint256 agentId, address caller, uint256 amount);
-    event MoveAgentToSquad(uint256 indexed toSquadId, uint256[] agentIds);
-    event SquadTransferred(
-        address indexed from,
-        address indexed to,
-        uint256 indexed squadId
-    );
+
     event AgentMissionAddNew(uint256 indexed agentId, bytes[] missions);
     event AgentMissionUpdate(
         uint256 indexed agentId,
@@ -59,7 +57,6 @@ interface ISystemPromptManager is
         bytes newSysMission
     );
 
-    error AlreadyMinted();
     error Authorized();
     error FailedTransfer();
     error InsufficientFunds();
@@ -71,7 +68,7 @@ interface ISystemPromptManager is
     error InvalidAgentPromptIndex();
     error SignatureUsed();
     error Unauthorized();
-    error InvalidSquadId();
+    error InvalidData();
 
     function version() external pure returns (string memory version);
     function nextTokenId() external view returns (uint256 nextTokenId);
@@ -87,8 +84,13 @@ interface ISystemPromptManager is
         uint fee
     ) external payable returns (uint256 tokenId);
 
-    struct TokenMetaData {
-        uint256 fee;
-        bytes[] sysPrompts;
-    }
+    function validateAgentBeforeMoveToSquad(
+        address _user,
+        uint256 _agentId
+    ) external view;
+
+    function validateAgentsBeforeMoveToSquad(
+        address _user,
+        uint256[] calldata _agentIds
+    ) external view;
 }

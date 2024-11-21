@@ -17,9 +17,10 @@ import {
   SystemPromptManager,
   AIPoweredWallet,
 } from "../typechain-types/index.js";
-import { AbiCoder, BytesLike, EventLog, wordlists } from "ethers";
+import { AbiCoder, assert, BytesLike, EventLog, wordlists } from "ethers";
 import { HybridModel } from "../typechain-types/contracts/HybridModel.js";
 import { StakingHub } from "../typechain-types/contracts/StakingHub";
+import { SquadManager } from "../typechain-types/contracts/SquadManager";
 
 describe("WorkerHub contract", async () => {
   const { provider } = ethers;
@@ -55,6 +56,11 @@ describe("WorkerHub contract", async () => {
       systemPromptHelperAddress
     );
 
+    const squadManagerAddress = await deploySquadManager(
+      systemPromptManagerAddress,
+      systemPromptHelperAddress
+    );
+
     const aiWalletAddress = await deployAIWallet(
       hybridModelAddress,
       proxyWorkerHubAddress
@@ -70,6 +76,7 @@ describe("WorkerHub contract", async () => {
       systemPromptManagerAddress,
       aiWalletAddress,
       systemPromptHelperAddress,
+      squadManagerAddress,
     };
   }
 
@@ -364,6 +371,35 @@ describe("WorkerHub contract", async () => {
     const fee = ethers.parseEther("0");
     const txMint = await ins.mint(nftOwner, uri, data, fee);
     await ins.mint(nftOwner, uri, data, fee);
+
+    return proxyAddress;
+  }
+
+  async function deploySquadManager(
+    systemPromptManagerAddress: string,
+    systemPromptHelperAddress: string
+  ) {
+    assert(
+      systemPromptManagerAddress,
+      "systemPromptManagerAddress is required"
+    );
+
+    assert(systemPromptHelperAddress, "systemPromptHelperAddress is required");
+
+    const constructorParams = [systemPromptManagerAddress];
+
+    const contractFact = await ethers.getContractFactory("SquadManager");
+
+    const proxy = await upgrades.deployProxy(contractFact, constructorParams);
+    await proxy.waitForDeployment();
+    const proxyAddress = await proxy.getAddress();
+
+    //
+    const ins = await getSystemPromptManagerInstance(
+      systemPromptManagerAddress,
+      systemPromptHelperAddress
+    );
+    const tx = await ins.setSquadManager(proxyAddress);
 
     return proxyAddress;
   }
@@ -736,16 +772,17 @@ describe("WorkerHub contract", async () => {
 
     //   console.log("topic: ", await aiWallet.topic());
     // });
+
     it.only("Should create squad", async () => {
       const {
         admin,
-
         proxyWorkerHubAddress,
         hybridModelAddress,
         stakingHubAddress,
         wEAIAddress,
         systemPromptManagerAddress,
         systemPromptHelperAddress,
+        squadManagerAddress,
       } = await loadFixture(deployWorkerHubFixture);
 
       await simulate(
@@ -754,31 +791,36 @@ describe("WorkerHub contract", async () => {
         hybridModelAddress,
         wEAIAddress
       );
+      console.log("systemPromptHelperAddress: ", systemPromptHelperAddress);
+      console.log("systemPromptManagerAddress: ", systemPromptManagerAddress);
 
-      const ins = await getSystemPromptManagerInstance(
+      const agentIns = await getSystemPromptManagerInstance(
         systemPromptManagerAddress,
         systemPromptHelperAddress
       );
+      const squadIns = (await getContractInstance(
+        "SquadManager",
+        squadManagerAddress
+      )) as SquadManager;
+
       const [admin1, admin2] = await ethers.getSigners();
-      await ins.connect(admin1).createSquad([]);
-      expect(await ins.currentSquadId()).to.eq(1n);
-      expect(await ins.squadOwner(1n)).to.eq(admin1.address);
-      expect((await ins.getAgentIdsBySquadId(1n)).length).to.eq(0);
+      await squadIns.connect(admin1).createSquad([]);
+      expect(await squadIns.currentSquadId()).to.eq(1n);
+      expect(await squadIns.squadOwner(1n)).to.eq(admin1.address);
+      expect((await squadIns.getAgentIdsBySquadId(1n)).length).to.eq(0);
 
-      await ins.connect(admin1).createSquad([1n]);
-      expect(await ins.currentSquadId()).to.eq(2n);
-      expect(await ins.squadOwner(2n)).to.eq(admin1.address);
-      expect((await ins.getAgentIdsBySquadId(2n)).length).to.eq(1);
-      // expect(await ins.agentToSquadId(1n)).to.eq(2n);
+      await squadIns.connect(admin1).createSquad([1n]);
+      expect(await squadIns.currentSquadId()).to.eq(2n);
+      expect(await squadIns.squadOwner(2n)).to.eq(admin1.address);
+      expect((await squadIns.getAgentIdsBySquadId(2n)).length).to.eq(1);
+      expect((await squadIns.getAgentIdsBySquadId(2n))[0]).to.eq(1);
+      expect(await squadIns.agentToSquadId(1n)).to.eq(2n);
 
-      await ins.connect(admin1).moveAgentToSquad([1n], 1n);
-      // expect(await ins.agentToSquadId(1n)).to.eq(1n);
-      expect(await ins.squadBalance(admin.address)).to.eq(2);
+      await squadIns.connect(admin1).moveAgentsToSquad([1n], 1n);
+      expect(await squadIns.agentToSquadId(1n)).to.eq(1n);
+      expect(await squadIns.squadBalance(admin.address)).to.eq(2);
 
-      expect(await ins.squadBalance(admin.address)).to.eq(2);
-
-      await ins
-        .connect(admin1)
+      await agentIns
         .connect(admin1)
         ["mint(address,string,bytes,uint256,uint256)"](
           admin1.address,
@@ -787,10 +829,21 @@ describe("WorkerHub contract", async () => {
           0,
           1
         );
-      expect(await ins.currentSquadId()).to.eq(2n);
-      expect((await ins.getAgentIdByOwner(admin.address)).length).to.eq(3);
-      expect(await ins.squadOwner(1n)).to.eq(admin1.address);
-      expect((await ins.getAgentIdsBySquadId(1n)).length).to.eq(2);
+      expect(await squadIns.currentSquadId()).to.eq(2n);
+      expect((await agentIns.getAgentIdByOwner(admin.address)).length).to.eq(3);
+      expect(await squadIns.squadOwner(1n)).to.eq(admin1.address);
+      expect((await squadIns.getAgentIdsBySquadId(1n)).length).to.eq(2);
+
+      //
+      console.log("admin1: ", admin1.address);
+      console.log("admin2: ", admin2.address);
+
+      await squadIns.connect(admin1).moveAgentToSquad(1n, 1n);
+      await expect(
+        squadIns.connect(admin2).moveAgentToSquad(1n, 1n)
+      ).to.be.revertedWithCustomError(agentIns, "Unauthorized()");
+      console.log("squad 1 owner: ", await squadIns.squadOwner(1n));
+      console.log("agent 1 owner: ", await agentIns.ownerOf(1n));
     });
   });
 });
