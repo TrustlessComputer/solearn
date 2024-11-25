@@ -49,5 +49,15 @@
     "workerHubScoringAddress": "0x1B0515490f25517d7148a299F6532580792D331a",
     "hybridModelScoringAddress": "0x79A41787eBbee99D05a6e22c24A095F91164383f",
     "systemPromptManagerAddress": "0x7734c3cd8B3239eA03A8A660095d94183FE63fCD"
+  },
+  "ARBITRUM_MAINNET": {
+    "daoTokenAddress": "0x6D1Bf25373F368CdD3f3D9c2031e87223E3253C7",
+    "treasuryAddress": "0xf2b94bb53E572D00fFEE147F7F911C043b72bDED",
+    "stakingHubAddress": "0xb903a6E86Ce7bA3501158AAB4AFd816652060725",
+    "workerHubAddress": "0xCeF83b01d942C190201422f76D1B51B59578D7ab",
+    "collectionAddress": "0x6e26a6851fe64051388222f97c8e72f74AF71b51",
+    "hybridModelAddress": "0xFa4D78237a79e3cEbaef8E4A6A1367aD69F9F91C",
+    "systemPromptManagerAddress": "0x0244f98CFeb64DF810a894726FAaE3e6Fb959c3a",
+    "squadManager": "0xAA5aAcb3e0cc466E8316c78FefD3209Bd3822714"
   }
 }
