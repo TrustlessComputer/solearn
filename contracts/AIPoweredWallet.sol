@@ -145,7 +145,7 @@ contract AIPoweredWallet {
             "AIPoweredWallet: Suspicious transaction"
         );
 
-        payable(receivedWallet).transfer(msg.value);
+        (bool success, ) = payable(receivedWallet).call{value: msg.value}("");
 
         context[msg.sender] = string.concat(
             context[msg.sender],

@@ -4,6 +4,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract WrappedEAI is ERC20, Ownable {
+    error FailedTransfer();
     // Event emitted when EAI is wrapped
     event EAIWrapped(address indexed user, uint256 amount);
 
@@ -21,7 +22,10 @@ contract WrappedEAI is ERC20, Ownable {
     // Allows users to burn WEAI and withdraw an equivalent amount of EAI
     function unwrap(uint256 amount) public {
         _burn(msg.sender, amount);
-        payable(msg.sender).transfer(amount);
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) revert FailedTransfer();
+
         emit EAIUnwrapped(msg.sender, amount);
     }
 

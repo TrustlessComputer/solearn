@@ -315,7 +315,9 @@ const config: HardhatUserConfig = {
       timeout: 2000000,
     } as any,
     ethereum_mainnet: {
-      url: "https://mainnet.infura.io/v3/dfc35b256cf2420bbe4e153643b0560b",
+      url:
+        "https://mainnet.infura.io/v3/" +
+        process.env.ETHEREUM_MAINNET_INFURA_API_KEY,
       chainId: 1,
       accounts: [
         process.env.ETHEREUM_MAINNET_PRIVATE_KEY,
@@ -337,6 +339,67 @@ const config: HardhatUserConfig = {
       systemPromptManagerAddress:
         process.env.ETHEREUM_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       wEAIAddress: process.env.ETHEREUM_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
+    zksync_mainnet: {
+      url:
+        "https://zksync-mainnet.infura.io/v3/" +
+        process.env.ZKSYNC_MAINNET_INFURA_API_KEY,
+      chainId: 324,
+      accounts: [
+        process.env.ZKSYNC_MAINNET_PRIVATE_KEY,
+        process.env.ZKSYNC_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.ZKSYNC_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.ZKSYNC_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.ZKSYNC_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.ZKSYNC_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.ZKSYNC_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.ZKSYNC_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.ZKSYNC_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.ZKSYNC_MAINNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.ZKSYNC_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.ZKSYNC_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.ZKSYNC_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.ZKSYNC_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.ZKSYNC_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: true,
+      gasPrice: "auto",
+    } as any,
+    arbitrum_mainnet: {
+      url:
+        "https://arbitrum-mainnet.infura.io/v3/" +
+        process.env.ARBITRUM_MAINNET_INFURA_API_KEY,
+      chainId: 42161,
+      accounts: [
+        process.env.ARBITRUM_MAINNET_PRIVATE_KEY,
+        process.env.ARBITRUM_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.ARBITRUM_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.ARBITRUM_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.ARBITRUM_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.ARBITRUM_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.ARBITRUM_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.ARBITRUM_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.ARBITRUM_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.ARBITRUM_MAINNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.ARBITRUM_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.ARBITRUM_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.ARBITRUM_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.ARBITRUM_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      squadManagerAddress: process.env.ARBITRUM_MAINNET_SQUAD_MANAGER_ADDRESS,
+      wEAIAddress: process.env.ARBITRUM_MAINNET_WEAI,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,

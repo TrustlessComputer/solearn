@@ -1,8 +1,23 @@
 import assert from "assert";
 import { ethers, network, upgrades } from "hardhat";
-import { DAOToken, IWorkerHub, WorkerHub } from "../../typechain-types";
+import {
+  DAOToken,
+  IWorkerHub,
+  StakingHub,
+  WorkerHub,
+} from "../../typechain-types";
 import { deployOrUpgrade } from "../lib/utils";
 import { combineDurations } from "../utils";
+
+export async function getContractInstance(
+  proxyAddress: string,
+  contractName: string
+) {
+  const contractFact = await ethers.getContractFactory(contractName);
+  const contractIns = contractFact.attach(proxyAddress);
+
+  return contractIns;
+}
 
 async function deployWorkerHub() {
   const config = network.config as any;
