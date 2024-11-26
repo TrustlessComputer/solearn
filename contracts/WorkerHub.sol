@@ -85,6 +85,11 @@ contract WorkerHub is
         _unpause();
     }
 
+    function setWEAIAddress(address _wEAI) external onlyOwner {
+        if (_wEAI == address(0)) revert InvalidAddress();
+        wEAI = _wEAI;
+    }
+
     function _registerReferrer(address _referrer, address _referee) internal {
         if (_referrer == address(0) || _referee == address(0))
             revert InvalidData();
