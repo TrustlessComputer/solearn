@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "zksync_mainnet",
   solidity: {
     compilers: [
       {
@@ -345,9 +345,11 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
     } as any,
     zksync_mainnet: {
-      url:
-        "https://zksync-mainnet.infura.io/v3/" +
-        process.env.ZKSYNC_MAINNET_INFURA_API_KEY,
+      url: "https://mainnet.era.zksync.io",
+
+      // "https://zksync-mainnet.infura.io/v3/" +
+      // process.env.ZKSYNC_MAINNET_INFURA_API_KEY,
+
       chainId: 324,
       accounts: [
         process.env.ZKSYNC_MAINNET_PRIVATE_KEY,
@@ -418,6 +420,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       regtest3: "abc123",
+      arbitrumOne: "def456",
     },
     customChains: [
       {

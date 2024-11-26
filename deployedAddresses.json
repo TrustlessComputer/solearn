@@ -47,5 +47,15 @@
     "hybridModelAddress": "0xFa4D78237a79e3cEbaef8E4A6A1367aD69F9F91C",
     "systemPromptManagerAddress": "0x0244f98CFeb64DF810a894726FAaE3e6Fb959c3a",
     "squadManager": "0xAA5aAcb3e0cc466E8316c78FefD3209Bd3822714"
+  },
+  "ZKSYNC_MAINNET": {
+    "daoTokenAddress": "0xaD4990894c8F40575Eaa3cf0edD46952cdbe27F7",
+    "treasuryAddress": "0x2CB9D6e33Ef89F1a5A38eDcE312a52a0BA39e6f8",
+    "stakingHubAddress": "0x1BA9c96e042E1c7D71C7F4425814D3148EA2B84B",
+    "workerHubAddress": "0xfc26ed4F3B06264715D857771Df3447b4aFEf7C3",
+    "collectionAddress": "0x06DeF5A22Dd25a4D6b8e7b7B34792D81e566cDfa",
+    "hybridModelAddress": "0xb7f04D351aC677E9057E49b41d60177e8A6cee0C",
+    "systemPromptManagerAddress": "0xF721bEd9afFc1E584FdD9d8e6d3A5D6540E5D11f",
+    "squadManager": "0x1a911a6a53f2CF97822d9d3891b55278Ef6548DA"
   }
 }
