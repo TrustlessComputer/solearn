@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "polygon_mainnet",
+  defaultNetwork: "zksync_mainnet",
   solidity: {
     compilers: [
       {
@@ -450,6 +450,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       regtest3: "abc123",
+      arbitrumOne: "def456",
     },
     customChains: [
       {
