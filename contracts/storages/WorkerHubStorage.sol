@@ -11,7 +11,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     uint256 public inferenceNumber;
     mapping(uint256 => Inference) internal inferences;
-    mapping(address => Set.Uint256Set) internal assignmentsByMiner;
+    mapping(address => Set.Uint256Set) internal inferencesByMiner;
 
     address internal l2Owner;
     address internal treasury;

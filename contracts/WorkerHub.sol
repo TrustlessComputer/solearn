@@ -142,7 +142,7 @@ contract WorkerHub is
         inference.referrer = referrerOf[_creator];
         inference.modelAddress = msg.sender;
 
-        _assignMiners(inferenceId);
+        _assignMiners(inferenceId, msg.sender);
 
         emit NewInference(inferenceId, msg.sender, _creator, value, 0);
         emit RawSubmitted(
@@ -158,17 +158,17 @@ contract WorkerHub is
         return inferenceId;
     }
 
-    function _assignMiners(uint256 _inferenceId) internal {
+    function _assignMiners(uint256 _inferenceId, address _model) internal {
         uint40 expiredAt = uint40(block.number + submitDuration);
         inferences[_inferenceId].submitTimeout = expiredAt;
         inferences[_inferenceId].status = InferenceStatus.Solving;
 
-        address model = inferences[_inferenceId].modelAddress;
         address[] memory miners = IStakingHub(stakingHub)
-            .getMinerAddressesOfModel(model); // TODO: kelvin change, move random to stakingHub
+            .getMinerAddressesOfModel(_model); // TODO: kelvin change, move random to stakingHub
         uint8 index = uint8(randomizer.randomUint256() % miners.length);
         address miner = miners[index];
         inferences[_inferenceId].processedMiner = miner;
+        inferencesByMiner[miner].insert(_inferenceId);
 
         emit NewAssignment(_inferenceId, _inferenceId, miner, expiredAt);
     }
