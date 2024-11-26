@@ -11,14 +11,7 @@ abstract contract WorkerHubStorage is IWorkerHub {
 
     uint256 public inferenceNumber;
     mapping(uint256 => Inference) internal inferences;
-
-    uint256 public assignmentNumber;
-    mapping(uint256 => Assignment) public assignments;
-    mapping(uint256 inferId => VotingInfo) internal votingInfo;
-    mapping(uint256 inferId => Set.Bytes32Set) internal digests;
-    mapping(bytes32 commitment => uint8) internal countDigest;
     mapping(address => Set.Uint256Set) internal assignmentsByMiner;
-    mapping(uint256 => Set.Uint256Set) internal assignmentsByInference;
 
     address internal l2Owner;
     address internal treasury;
@@ -28,19 +21,19 @@ abstract contract WorkerHubStorage is IWorkerHub {
     uint40 internal submitDuration;
     uint40 internal commitDuration;
     uint40 internal revealDuration;
-
     uint8 internal minerRequirement;
-
-    address internal daoToken;
-    uint256 internal daoTokenReward; // per request (in wei)
     DAOTokenPercentage internal daoTokenPercentage;
+
+    uint256 internal daoTokenReward; // per request (in wei)
 
     mapping(address => address) internal referrerOf;
 
     mapping(uint256 inferId => DAOTokenReceiverInfor[])
         internal daoReceiversInfo;
+
     address internal wEAI;
     address internal stakingHub;
+    address internal daoToken;
 
     uint256[100] private __gap;
 }

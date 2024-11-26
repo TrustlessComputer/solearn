@@ -26,31 +26,18 @@ interface IWorkerHub is IInferable {
         Approval
     }
 
-    struct Assignment {
-        uint256 inferenceId;
-        bytes32 commitment;
-        bytes32 digest; // keccak256(output)
-        uint40 revealNonce;
-        address worker;
-        AssignmentRole role;
-        Vote vote;
-        bytes output;
-    }
-
     struct Inference {
-        uint256[] assignments;
-        bytes input;
         uint256 value; // this value is calculated by msg.value - feeL2 - feeTreasury
         uint256 feeL2;
         uint256 feeTreasury;
         address modelAddress;
         uint40 submitTimeout; // limit time to capture the miner role and submit the solution
-        uint40 commitTimeout;
-        uint40 revealTimeout;
         InferenceStatus status;
         address creator;
         address processedMiner;
         address referrer;
+        bytes input;
+        bytes output;
     }
 
     struct VotingInfo {
@@ -100,10 +87,7 @@ interface IWorkerHub is IInferable {
         uint256 indexed inferenceId,
         address indexed miner
     );
-    event SolutionSubmission(
-        address indexed miner,
-        uint256 indexed assigmentId
-    );
+    event SolutionSubmission(address indexed miner, uint256 indexed inferId);
     event CommitmentSubmission(
         address indexed miner,
         uint256 indexed assigmentId,
@@ -175,8 +159,4 @@ interface IWorkerHub is IInferable {
     function getInferenceInfo(
         uint256 _inferenceId
     ) external view returns (Inference memory);
-
-    function getAssignmentInfo(
-        uint256 _assignmentId
-    ) external view returns (Assignment memory);
 }
