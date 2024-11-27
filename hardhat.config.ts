@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "shard_ai_testnet",
+  defaultNetwork: "polygon_mainnet",
   solidity: {
     compilers: [
       {
@@ -338,6 +338,100 @@ const config: HardhatUserConfig = {
       systemPromptManagerAddress:
         process.env.ETHEREUM_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       wEAIAddress: process.env.ETHEREUM_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
+    zksync_mainnet: {
+      url: "https://mainnet.era.zksync.io",
+
+      // "https://zksync-mainnet.infura.io/v3/" +
+      // process.env.ZKSYNC_MAINNET_INFURA_API_KEY,
+
+      chainId: 324,
+      accounts: [
+        process.env.ZKSYNC_MAINNET_PRIVATE_KEY,
+        process.env.ZKSYNC_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.ZKSYNC_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.ZKSYNC_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.ZKSYNC_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.ZKSYNC_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.ZKSYNC_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.ZKSYNC_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.ZKSYNC_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.ZKSYNC_MAINNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.ZKSYNC_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.ZKSYNC_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.ZKSYNC_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.ZKSYNC_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.ZKSYNC_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: true,
+      gasPrice: "auto",
+    } as any,
+    arbitrum_mainnet: {
+      url:
+        "https://arbitrum-mainnet.infura.io/v3/" +
+        process.env.ARBITRUM_MAINNET_INFURA_API_KEY,
+      chainId: 42161,
+      accounts: [
+        process.env.ARBITRUM_MAINNET_PRIVATE_KEY,
+        process.env.ARBITRUM_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.ARBITRUM_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.ARBITRUM_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.ARBITRUM_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.ARBITRUM_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.ARBITRUM_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.ARBITRUM_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.ARBITRUM_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.ARBITRUM_MAINNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.ARBITRUM_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.ARBITRUM_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.ARBITRUM_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.ARBITRUM_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      squadManagerAddress: process.env.ARBITRUM_MAINNET_SQUAD_MANAGER_ADDRESS,
+      wEAIAddress: process.env.ARBITRUM_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
+    polygon_mainnet: {
+      url:
+        "https://polygon-mainnet.infura.io/v3" +
+        process.env.POLYGON_MAINNET_INFURA_API_KEY,
+      chainId: 137,
+      accounts: [
+        process.env.POLYGON_MAINNET_PRIVATE_KEY,
+        process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.POLYGON_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.POLYGON_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.POLYGON_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.POLYGON_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.POLYGON_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.POLYGON_MAINNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.POLYGON_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.POLYGON_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.POLYGON_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.POLYGON_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      squadManagerAddress: process.env.POLYGON_MAINNET_SQUAD_MANAGER_ADDRESS,
+      wEAIAddress: process.env.POLYGON_MAINNET_WEAI,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,
