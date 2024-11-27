@@ -37,5 +37,17 @@
     "collectionAddress": "0x90b330eaa057b3011b27D3a1ebD7AE549c028876",
     "hybridModelAddress": "0x16465e92C68675b4f775efD1ad830D22d14641bb",
     "systemPromptManagerAddress": "0xDdf1720c9689e4e0bf0B383E57b621f12886516C"
+  },
+  "SHARD_AI_TESTNET": {
+    "proxyAdminAddress": "0x96026023424DE66512675bD046eC6287d7B4eC67",
+    "daoTokenAddress": "0x8E8019829aAAE4eC9260D8c46ab24B71D105bEAe",
+    "treasuryAddress": "0x47fb0318d560461E9473699d3830A9Bf2e5FdE8D",
+    "stakingHubAddress": "0x724b482964Fdf27D6a6d6Fbe3EFeE00141A08Ea0",
+    "workerHubAddress": "0x1dBCe689414f3b2993fE9FfaB6E197aeE23bDAF2",
+    "collectionAddress": "0x83bEA4E15b0633D980131A96C19a34a25D98262f",
+    "hybridModelAddress": "0xA339801ec19B384246574C9863B5af224D9F85cf",
+    "workerHubScoringAddress": "0x1B0515490f25517d7148a299F6532580792D331a",
+    "hybridModelScoringAddress": "0x79A41787eBbee99D05a6e22c24A095F91164383f",
+    "systemPromptManagerAddress": "0x7734c3cd8B3239eA03A8A660095d94183FE63fCD"
   }
 }
