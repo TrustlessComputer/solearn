@@ -76,6 +76,23 @@ interface IStakingHub {
     event BlocksPerEpoch(uint256 oldBlocks, uint256 newBlocks);
     event UnstakeDelayTime(uint256 oldDelayTime, uint256 newDelayTime);
 
+    error InvalidMiner();
+    error InvalidModel();
+    error FeeTooLow();
+    error InvalidTier();
+    error AlreadyRegistered();
+    error NotRegistered();
+    error SameModelAddress();
+    error StakeTooLow();
+    error MinerInDeactivationTime();
+    error StillBeingLocked();
+    error NullStake();
+    error ZeroValue();
+    error InvalidBlockValue();
+    error InvalidValue();
+    error InvalidAddress();
+    error InvalidWorkerHub();
+
     function updateEpoch() external;
     function getModelInfo(address _modelAddr) external returns (Model memory);
     function getMinerAddressesOfModel(

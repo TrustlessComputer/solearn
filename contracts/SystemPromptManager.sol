@@ -14,7 +14,7 @@ import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
-import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
+// import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
 import {ISquad} from "./interfaces/ISquad.sol";
 
 contract SystemPromptManager is
@@ -25,7 +25,7 @@ contract SystemPromptManager is
     ERC721URIStorageUpgradeable,
     OwnableUpgradeable
 {
-    using SystemPromptHelper for TokenMetaData;
+    // using SystemPromptHelper for TokenMetaData;
     // using Set for Set.Uint256Set;
 
     string private constant VERSION = "v0.0.1";
@@ -233,7 +233,7 @@ contract SystemPromptManager is
         address agentOwner = _ownerOf(_agentId);
         if (signaturesUsed[agentOwner][_signature]) revert SignatureUsed();
 
-        address signer = SystemPromptHelper.recover(
+        address signer = recover(
             _agentId,
             _sysPrompt,
             _promptIdx,
@@ -290,12 +290,7 @@ contract SystemPromptManager is
         address agentOwner = _ownerOf(_agentId);
         if (signaturesUsed[agentOwner][_signature]) revert SignatureUsed();
 
-        address signer = SystemPromptHelper.recover(
-            _agentId,
-            _uri,
-            _randomNonce,
-            _signature
-        );
+        address signer = recover(_agentId, _uri, _randomNonce, _signature);
 
         _checkAgentOwner(signer, _agentId);
         signaturesUsed[agentOwner][_signature] = true;
@@ -338,6 +333,10 @@ contract SystemPromptManager is
 
     function setHybridModel(address _hybridModel) external onlyOwner {
         hybridModel = _hybridModel;
+    }
+
+    function setWorkerHub(address _workerHub) external onlyOwner {
+        workerHub = _workerHub;
     }
 
     function claimFee() external {
@@ -419,7 +418,7 @@ contract SystemPromptManager is
         if (msg.value < datas[_agentId].fee) revert InvalidAgentFee();
 
         bytes memory fwdData = abi.encodePacked(
-            SystemPromptHelper.concatSystemPrompts(datas[_agentId]),
+            concatSystemPrompts(datas[_agentId]),
             _calldata
         );
         uint256 estFeeWH = IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
@@ -602,6 +601,66 @@ contract SystemPromptManager is
     modifier onlySquadManager() {
         _checkSquadManager();
         _;
+    }
+
+    function concatSystemPrompts(
+        TokenMetaData memory data
+    ) internal pure returns (bytes memory) {
+        bytes[] memory sysPrompts = data.sysPrompts;
+
+        uint256 len = sysPrompts.length;
+        bytes memory concatedPrompt;
+
+        for (uint256 i = 0; i < len; i++) {
+            concatedPrompt = abi.encodePacked(
+                concatedPrompt,
+                sysPrompts[i],
+                ";"
+            );
+        }
+
+        return concatedPrompt;
+    }
+
+    function recover(
+        uint256 _agentId,
+        string calldata _uri,
+        uint256 _randomNonce,
+        bytes calldata _signature
+    ) internal view returns (address) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _uri,
+                _agentId,
+                _randomNonce,
+                address(this),
+                block.chainid
+            )
+        );
+        bytes32 hash = ECDSAUpgradeable.toEthSignedMessageHash(structHash);
+        return ECDSAUpgradeable.recover(hash, _signature);
+    }
+
+    function recover(
+        uint256 _agentId,
+        bytes calldata _sysPrompt,
+        uint256 _promptIdx,
+        uint256 _randomNonce,
+        bytes calldata _signature
+    ) internal view returns (address) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _sysPrompt,
+                _agentId,
+                _promptIdx,
+                _randomNonce,
+                address(this),
+                block.chainid
+            )
+        );
+
+        bytes32 hash = ECDSAUpgradeable.toEthSignedMessageHash(structHash);
+        return ECDSAUpgradeable.recover(hash, _signature);
     }
 
     // function _removeSquadFromOwnerEnumeration(

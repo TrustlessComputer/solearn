@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "shard_ai_testnet",
   solidity: {
     compilers: [
       {
@@ -277,6 +277,7 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.SHARD_AI_TESTNET_TREASURY_ADDRESS,
       collectionAddress: process.env.SHARD_AI_TESTNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.SHARD_AI_TESTNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.SHARD_AI_TESTNET_STAKING_HUB_ADDRESS,
       daoTokenAddress: process.env.SHARD_AI_TESTNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.SHARD_AI_TESTNET_WORKER_HUB_SCORING_ADDRESS,

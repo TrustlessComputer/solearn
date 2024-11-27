@@ -149,6 +149,7 @@ interface IWorkerHub is IInferable {
     error InvalidReveal();
     error InvalidNonce();
     error AlreadyRevealed();
+    error InvalidAddress();
 
     function getMinFeeToUse(
         address _modelAddress

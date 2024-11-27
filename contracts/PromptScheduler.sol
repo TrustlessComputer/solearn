@@ -7,12 +7,12 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/se
 
 import {Random} from "./lib/Random.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
-import {WorkerHubStorage, IWorkerHub, Set} from "./storages/WorkerHubStorage.sol";
+import {PromptSchedulerStorage, IWorkerHub, Set} from "./storages/PromptSchedulerStorage.sol";
 import {IDAOToken} from "./tokens/IDAOToken.sol";
 import {IStakingHub} from "./interfaces/IStakingHub.sol";
 
-contract WorkerHub is
-    WorkerHubStorage,
+contract PromptScheduler is
+    PromptSchedulerStorage,
     OwnableUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
@@ -79,6 +79,11 @@ contract WorkerHub is
 
     function unpause() external onlyOwner whenPaused {
         _unpause();
+    }
+
+    function setWEAIAddress(address _wEAI) external onlyOwner {
+        if (_wEAI == address(0)) revert InvalidAddress();
+        wEAI = _wEAI;
     }
 
     function _registerReferrer(address _referrer, address _referee) internal {
@@ -177,7 +182,6 @@ contract WorkerHub is
         if (_data.length == 0) revert InvalidData();
     }
 
-    // 0xe84dee6b
     function submitSolution(
         uint256 _inferId,
         bytes calldata _data

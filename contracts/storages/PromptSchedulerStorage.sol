@@ -6,7 +6,7 @@ import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 import {Random} from "../lib/Random.sol";
 import {Set} from "../lib/Set.sol";
 
-abstract contract WorkerHubStorage is IWorkerHub {
+abstract contract PromptSchedulerStorage is IWorkerHub {
     Random.Randomizer internal randomizer;
 
     uint256 public inferenceNumber;
