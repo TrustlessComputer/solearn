@@ -5,6 +5,8 @@ import {
   HybridModel,
   IWorkerHub,
   ModelCollection,
+  PromptScheduler,
+  SquadManager,
   StakingHub,
   SystemPromptManager,
   Treasury,
@@ -78,7 +80,8 @@ async function deployStakingHub(
   const blockPerEpoch = 600 * 2;
   const rewardPerEpoch = ethers.parseEther("0.38");
 
-  const unstakeDelayTime = 151200; // NOTE:  151200 blocks = 21 days (blocktime = 12)
+  // const unstakeDelayTime = 151200; // NOTE:  151200 blocks = 21 days (blocktime = 12)
+  const unstakeDelayTime = 907200; // NOTE:  907200 blocks = 21 days (blocktime = 2)
   const penaltyDuration = 0; // NOTE: 3.3 hours
   const finePercentage = 0;
   const minFeeToUse = ethers.parseEther("0");
@@ -154,8 +157,6 @@ async function deployWorkerHub(
     feeTreasuryPercentage,
     minerRequirement,
     submitDuration,
-    commitDuration,
-    revealDuration,
     feeRatioMinerValidator,
     daoTokenReward,
     daoTokenPercentage,
@@ -163,11 +164,11 @@ async function deployWorkerHub(
 
   const workerHub = (await deployOrUpgrade(
     undefined,
-    "WorkerHub",
+    "PromptScheduler",
     constructorParams,
     config,
     true
-  )) as unknown as WorkerHub;
+  )) as unknown as PromptScheduler;
   const workerHubAddress = workerHub.target;
 
   // DAO TOKEN UPDATE WORKER HUB ADDRESS
@@ -215,7 +216,7 @@ async function deployModelCollection() {
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
-  const nextModelId = 800_001; //
+  const nextModelId = 130_001; //
 
   const constructorParams = [
     name,
@@ -243,7 +244,7 @@ async function deployHybridModel(
   collectionAddress: string
 ) {
   console.log("DEPLOY HYBRID MODEL...");
-  const WorkerHub = await ethers.getContractFactory("WorkerHub");
+  // const WorkerHub = await ethers.getContractFactory("WorkerHub");
   const StakingHub = await ethers.getContractFactory("StakingHub");
   const ModelCollection = await ethers.getContractFactory("ModelCollection");
 
@@ -334,18 +335,13 @@ async function deploySystemPromptHelper() {
 async function deploySystemPromptManager(
   l2OwnerAddress: string,
   hybridModelAddress: string,
-  workerHubAddress: string,
-  systemPromptHelperAddress: string
+  workerHubAddress: string
 ) {
   console.log("DEPLOY SYSTEM PROMPT MANAGER...");
 
   assert.ok(l2OwnerAddress, `Missing ${networkName}_L2_OWNER_ADDRESS!`);
   assert.ok(hybridModelAddress, `Missing ${networkName}_HYBRID_MODEL_ADDRESS!`);
   assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
-  assert.ok(
-    systemPromptHelperAddress,
-    `Missing ${networkName}_SYSTEM_PROMPT_HELPER_ADDRESS!`
-  );
 
   const name = "Eternal AI";
   const symbol = "";
@@ -365,15 +361,47 @@ async function deploySystemPromptManager(
     workerHubAddress,
   ];
 
-  const fact = await ethers.getContractFactory("SystemPromptManager", {
-    libraries: {
-      SystemPromptHelper: systemPromptHelperAddress,
-    },
-  });
-  const ins = await upgrades.deployProxy(fact, constructorParams);
-  await ins.waitForDeployment();
+  const systemPromptManager = (await deployOrUpgrade(
+    config.systemPromptManagerAddress,
+    "SystemPromptManager",
+    constructorParams,
+    config,
+    true
+  )) as unknown as SystemPromptManager;
 
-  return ins.target;
+  //
+  // console.log("SYSTEM PROMPT MANAGER SET WORKER HUB ADDRESS...");
+  // const ins = (await getContractInstance(
+  //   config.systemPromptManagerAddress,
+  //   "SystemPromptManager"
+  // )) as SystemPromptManager;
+  // const tx = await ins.setWorkerHub(workerHubAddress);
+  // const receipt = await tx.wait();
+  // console.log("Tx hash: ", receipt?.hash);
+  // console.log("Tx status: ", receipt?.status);
+
+  return systemPromptManager.target;
+}
+
+async function deploySquadManager(systemPromptManagerAddress: string) {
+  console.log("DEPLOY SQUAD MANAGER...");
+
+  assert.ok(
+    systemPromptManagerAddress,
+    `Missing ${networkName}_SQUAD_MANAGER_ADDRESS!`
+  );
+
+  const constructorParams = [systemPromptManagerAddress];
+
+  const squadManager = (await deployOrUpgrade(
+    undefined,
+    "SquadManager",
+    constructorParams,
+    config,
+    true
+  )) as unknown as SquadManager;
+
+  return squadManager.target;
 }
 
 export async function getContractInstance(
@@ -402,30 +430,40 @@ async function saveDeployedAddresses(networkName: string, addresses: any) {
 async function main() {
   const masterWallet = (await ethers.getSigners())[0];
 
-  const daoTokenAddress = await deployDAOToken();
-  const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
-  const stakingHubAddress = await deployStakingHub(
-    daoTokenAddress.toString(),
-    treasuryAddress.toString()
-  );
-  const workerHubAddress = await deployWorkerHub(
-    daoTokenAddress.toString(),
-    treasuryAddress.toString(),
-    stakingHubAddress.toString(),
-    masterWallet
-  );
-  const collectionAddress = await deployModelCollection();
+  // const daoTokenAddress = await deployDAOToken();
+  // const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
+  // const stakingHubAddress = await deployStakingHub(
+  //   daoTokenAddress.toString(),
+  //   treasuryAddress.toString()
+  // );
+  // const workerHubAddress = await deployWorkerHub(
+  //   daoTokenAddress.toString(),
+  //   treasuryAddress.toString(),
+  //   stakingHubAddress.toString(),
+  //   masterWallet
+  // );
+  // const collectionAddress = await deployModelCollection();
+  const daoTokenAddress = "0x451729Ae1F747f803d1Dd26119D02BE61ac35F5a";
+  const treasuryAddress = "0x1f6D573e80166B55a7bEf04B50A5Aa6FB9BdA140";
+  const stakingHubAddress = "0x0917A5aAcD63feE36Aaf98Ba287a156885A80c67";
+  const workerHubAddress = "0x36C1ebc3a354947694525FdEE1Be273e70a45689";
+  const collectionAddress = "0xd3f291E453B650AD2C4A60dF8dcbbE699A93a616";
+
   const hybridModelAddress = await deployHybridModel(
     workerHubAddress.toString(),
     stakingHubAddress.toString(),
     collectionAddress.toString()
   );
-  const systemPromptHelperAddress = await deploySystemPromptHelper();
+  // const systemPromptHelperAddress = await deploySystemPromptHelper();
   const systemPromptManagerAddress = await deploySystemPromptManager(
     config.l2OwnerAddress,
     hybridModelAddress.toString(),
-    workerHubAddress.toString(),
-    systemPromptHelperAddress.toString()
+    workerHubAddress.toString()
+    // systemPromptHelperAddress.toString()
+  );
+
+  const squadManager = await deploySquadManager(
+    systemPromptManagerAddress.toString()
   );
 
   const deployedAddresses = {
@@ -436,6 +474,7 @@ async function main() {
     collectionAddress,
     hybridModelAddress,
     systemPromptManagerAddress,
+    squadManager,
   };
 
   const networkName = network.name.toUpperCase();
