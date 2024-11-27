@@ -29,14 +29,13 @@ contract PromptSchedulerNonUpgradable is
         uint[] inferIds;
         Set.AddressSet validators;
     }
-    mapping(uint => BatchInfo) internal batchInfos;
-    uint public lastBatch;
-    uint public lastInferIdInBatch;
+    // model => batch id => batch info
+    mapping(address => mapping(uint => BatchInfo)) internal batchInfos;
     uint public lastBatchTimestamp;
-    // uint public maxRequestPerBatch;
-    uint public batchTime;
+    uint public batchPeriod;
 
-
+    event ValidatorsAssigned(uint batchId, address model, address[] validators);
+    event AppendToBatch(uint batchId, address model, uint inferId);
     // END 
 
     string private constant VERSION = "v0.0.2";
@@ -57,7 +56,8 @@ contract PromptSchedulerNonUpgradable is
         uint40 _submitDuration,
         uint16 _feeRatioMinerValidor,
         uint256 _daoTokenReward,
-        DAOTokenPercentage memory _daoTokenPercentage
+        DAOTokenPercentage memory _daoTokenPercentage,
+        uint40 _batchPeriod
     ) {
         require(
             _l2Owner != address(0) &&
@@ -81,6 +81,11 @@ contract PromptSchedulerNonUpgradable is
         submitDuration = _submitDuration;
         daoTokenPercentage = _daoTokenPercentage;
         wEAI = _wEAI;
+
+        lastBatchTimestamp = block.timestamp;
+
+        require(_batchPeriod != 0, "ibp");
+        batchPeriod = _batchPeriod;
     }
 
     function version() external pure returns (string memory) {
@@ -190,6 +195,12 @@ contract PromptSchedulerNonUpgradable is
         inferencesByMiner[miner].insert(_inferenceId);
 
         emit NewAssignment(_inferenceId, _inferenceId, miner, expiredAt);
+
+        // append to batch
+        uint batchId = (block.timestamp - lastBatchTimestamp) / batchPeriod;
+        batchInfos[msg.sender][batchId].inferIds.push(_inferenceId);
+
+        emit AppendToBatch(batchId, _model, _inferenceId);
     }
 
     function _validatateSolution(bytes calldata _data) internal pure virtual {
@@ -233,12 +244,26 @@ contract PromptSchedulerNonUpgradable is
     }
 
     // assgin validators to batch
-    function assignValidators() external {
-        //
-        address[] memory miners = IStakingHub(stakingHub).getMinerAddresses();
+    function assignValidators(uint _batchId, address _model) external {
+        address[] memory miners = IStakingHub(stakingHub)
+            .getMinerAddressesOfModel(_model); // TODO: kelvin change, move random to stakingHub
 
-        // loop thru infers and assign validator
+        BatchInfo storage batchInfo = batchInfos[_model][_batchId];
+        require(batchInfo.validators.size() == 0, "assigned");
+        require(miners.length >= minerRequirement, "not enough miner");
         
+        uint8 index;
+        for (uint i = 0; i < minerRequirement; ) {
+            index = uint8(randomizer.randomUint256() % miners.length);
+            if (batchInfo.validators.hasValue(miners[index])) {
+                continue;
+            } else {
+                batchInfo.validators.insert(miners[index]);
+                i++;
+            }
+        }
+
+        emit ValidatorsAssigned(_batchId, _model, miners);
     }
 
     // validators commmit  

@@ -214,14 +214,6 @@ contract ModelCollection is
         return super.tokenURI(_tokenId);
     }
 
-    // function ownerOf(uint256 _tokenId)
-    // public view override (
-    // ERC721Upgradeable,
-    // IERC721Upgradeable
-    // )  returns (address) {
-    //     return super.ownerOf(_tokenId);
-    // }
-
     function supportsInterface(
         bytes4 _interfaceId
     )
