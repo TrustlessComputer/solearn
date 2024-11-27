@@ -7,12 +7,12 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 
 import {Random} from "../lib/Random.sol";
 import {TransferHelper} from "../lib/TransferHelper.sol";
-import {WorkerHubStorage, IWorkerHub, Set} from "../storages/WorkerHubStorage.sol";
+import {PromptSchedulerStorage, IWorkerHub, Set} from "../storages/PromptSchedulerStorage.sol";
 import {IDAOToken} from "../tokens/IDAOToken.sol";
 import {IStakingHub} from "../interfaces/IStakingHub.sol";
 
-contract WorkerHub is
-    WorkerHubStorage,
+contract PromptSchedulerNonUpgradable is
+    PromptSchedulerStorage,
     Ownable,
     Pausable,
     ReentrancyGuard
@@ -20,6 +20,24 @@ contract WorkerHub is
     using Random for Random.Randomizer;
     using Set for Set.Uint256Set;
     using Set for Set.Bytes32Set;
+    using Set for Set.AddressSet;
+
+    // Define more storage here
+    // START DEFINE
+
+    struct BatchInfo {
+        uint[] inferIds;
+        Set.AddressSet validators;
+    }
+    mapping(uint => BatchInfo) internal batchInfos;
+    uint public lastBatch;
+    uint public lastInferIdInBatch;
+    uint public lastBatchTimestamp;
+    // uint public maxRequestPerBatch;
+    uint public batchTime;
+
+
+    // END 
 
     string private constant VERSION = "v0.0.2";
     uint256 internal constant PERCENTAGE_DENOMINATOR = 100_00;
@@ -37,8 +55,6 @@ contract WorkerHub is
         uint16 _feeTreasuryPercentage,
         uint8 _minerRequirement,
         uint40 _submitDuration,
-        uint40 _commitDuration,
-        uint40 _revealDuration,
         uint16 _feeRatioMinerValidor,
         uint256 _daoTokenReward,
         DAOTokenPercentage memory _daoTokenPercentage
@@ -63,8 +79,6 @@ contract WorkerHub is
 
         daoTokenReward = _daoTokenReward;
         submitDuration = _submitDuration;
-        commitDuration = _commitDuration;
-        revealDuration = _revealDuration;
         daoTokenPercentage = _daoTokenPercentage;
         wEAI = _wEAI;
     }
@@ -79,6 +93,11 @@ contract WorkerHub is
 
     function unpause() external onlyOwner whenPaused {
         _unpause();
+    }
+
+    function setWEAIAddress(address _wEAI) external onlyOwner {
+        if (_wEAI == address(0)) revert InvalidAddress();
+        wEAI = _wEAI;
     }
 
     function _registerReferrer(address _referrer, address _referee) internal {
@@ -142,7 +161,7 @@ contract WorkerHub is
         inference.referrer = referrerOf[_creator];
         inference.modelAddress = msg.sender;
 
-        _assignMiners(inferenceId);
+        _assignMiners(inferenceId, msg.sender);
 
         emit NewInference(inferenceId, msg.sender, _creator, value, 0);
         emit RawSubmitted(
@@ -158,34 +177,27 @@ contract WorkerHub is
         return inferenceId;
     }
 
-    function _assignMiners(uint256 _inferenceId) internal {
+    function _assignMiners(uint256 _inferenceId, address _model) internal {
         uint40 expiredAt = uint40(block.number + submitDuration);
-        uint40 commitTimeout = expiredAt + commitDuration;
         inferences[_inferenceId].submitTimeout = expiredAt;
-        inferences[_inferenceId].commitTimeout = commitTimeout;
-        inferences[_inferenceId].revealTimeout = commitTimeout + revealDuration;
         inferences[_inferenceId].status = InferenceStatus.Solving;
 
-        address model = inferences[_inferenceId].modelAddress;
         address[] memory miners = IStakingHub(stakingHub)
-            .getMinerAddressesOfModel(model);
+            .getMinerAddressesOfModel(_model); // TODO: kelvin change, move random to stakingHub
         uint8 index = uint8(randomizer.randomUint256() % miners.length);
         address miner = miners[index];
-        uint256 assignmentId = ++assignmentNumber;
-        assignments[assignmentId].inferenceId = _inferenceId;
-        assignments[assignmentId].worker = miner;
-        assignments[assignmentId].role = AssignmentRole.Mining;
+        inferences[_inferenceId].processedMiner = miner;
+        inferencesByMiner[miner].insert(_inferenceId);
 
-        emit NewAssignment(assignmentId, _inferenceId, miner, expiredAt);
+        emit NewAssignment(_inferenceId, _inferenceId, miner, expiredAt);
     }
 
     function _validatateSolution(bytes calldata _data) internal pure virtual {
         if (_data.length == 0) revert InvalidData();
     }
 
-    // 0xe84dee6b
     function submitSolution(
-        uint256 _assigmentId,
+        uint256 _inferId,
         bytes calldata _data
     ) external virtual whenNotPaused {
         IStakingHub(stakingHub).updateEpoch();
@@ -197,17 +209,12 @@ contract WorkerHub is
 
         IStakingHub(stakingHub).validateModelOfMiner(msg.sender);
 
-        Assignment memory clonedAssignments = assignments[_assigmentId];
-        uint256 inferId = clonedAssignments.inferenceId;
-
         // Check the msg sender is the assigned miner
-        if (msg.sender != clonedAssignments.worker) revert Unauthorized();
-        if (clonedAssignments.role != AssignmentRole.Mining)
-            revert InvalidRole();
+        if (msg.sender != inferences[_inferId].processedMiner)
+            revert Unauthorized();
+        if (inferences[_inferId].output.length != 0) revert AlreadySubmitted();
 
-        if (clonedAssignments.output.length != 0) revert AlreadySubmitted();
-
-        Inference memory clonedInference = inferences[inferId];
+        Inference memory clonedInference = inferences[_inferId];
 
         if (clonedInference.status != InferenceStatus.Solving) {
             revert InvalidInferenceStatus();
@@ -216,23 +223,31 @@ contract WorkerHub is
         if (uint40(block.number) > clonedInference.submitTimeout)
             revert SubmitTimeout();
 
-        Inference storage inference = inferences[inferId];
+        Inference storage inference = inferences[_inferId];
 
-        assignments[_assigmentId].output = _data; //Record the solution
-        bytes32 digest = keccak256(abi.encodePacked(inferId, _data)); //Record the solution
-        assignments[_assigmentId].digest = digest;
-        assignments[_assigmentId].commitment = digest;
+        inference.output = _data; //Record the solution
         inference.status = InferenceStatus.Commit;
-        inference.assignments.push(_assigmentId);
 
-        if (!digests[inferId].hasValue(digest)) {
-            digests[inferId].insert(digest);
-        }
-        countDigest[digest]++;
-
-        emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
-        emit SolutionSubmission(msg.sender, _assigmentId);
+        emit InferenceStatusUpdate(_inferId, InferenceStatus.Commit);
+        emit SolutionSubmission(msg.sender, _inferId);
     }
+
+    // assgin validators to batch
+    function assignValidators() external {
+        //
+        address[] memory miners = IStakingHub(stakingHub).getMinerAddresses();
+
+        // loop thru infers and assign validator
+        
+    }
+
+    // validators commmit  
+
+
+    // validators reveal
+    // if enough vote then slash validators
+
+    // submit proof to slash miner
 
     function getInferenceInfo(
         uint256 _inferenceId
@@ -240,19 +255,7 @@ contract WorkerHub is
         return inferences[_inferenceId];
     }
 
-    function getAssignmentsByInference(
-        uint256 _inferenceId
-    ) external view returns (uint256[] memory) {
-        return assignmentsByInference[_inferenceId].values;
-    }
-
-    function getAssignmentInfo(
-        uint256 _assignmentId
-    ) external view returns (Assignment memory) {
-        return assignments[_assignmentId];
-    }
-
-      function getMinFeeToUse(
+    function getMinFeeToUse(
         address _modelAddress
     ) external view returns (uint256) {
         return IStakingHub(stakingHub).getMinFeeToUse(_modelAddress);
@@ -261,5 +264,4 @@ contract WorkerHub is
     function getTreasuryAddress() external view returns (address) {
         return treasury;
     }
-    
 }
