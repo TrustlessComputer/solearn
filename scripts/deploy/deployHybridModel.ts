@@ -29,13 +29,14 @@ async function deployHybridModel() {
   );
 
   const identifier = 0;
-  const name = "Flux V2";
+  const name = "Eternal AI V2";
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "Flux V2",
-    model_type: "image",
-    model_url: "",
+    model_name: "Hermes-3-Llama-3.1-8B",
+    model_type: "text",
+    model_url:
+      "https://gateway.lighthouse.storage/ipfs/bafkreigdnqoe3hvlozmxnwc32qwskz3fvtuznpqzvp6o5crbnka2deczdu",
     model_file_hash: "",
     min_hardware: 1,
     verifier_url: "",
@@ -52,7 +53,7 @@ async function deployHybridModel() {
     metadata,
   ];
   const hybridModel = (await deployOrUpgrade(
-    config.hybridModelAddress,
+    config.hybridModelAddress_2,
     "HybridModel",
     constructorParams,
     config,
@@ -63,7 +64,7 @@ async function deployHybridModel() {
     `Contract HybridModel has been deployed to address ${hybridModel.target}`
   );
 
-  if (!config.hybridModelAddress) {
+  if (!config.hybridModelAddress_2) {
     const collection = ModelCollection.attach(
       config.collectionAddress
     ) as ModelCollection;
@@ -82,13 +83,23 @@ async function deployHybridModel() {
     await workerHub.registerModel(
       hybridModel.target,
       minHardware,
-      ethers.parseEther("0.1")
+      ethers.parseEther("0")
     );
 
     console.log(`Contract HybridModel is registered to WorkerHub`);
   }
 
   console.log(`${networkName}_HYBRID_MODEL_ADDRESS=${hybridModel.target}`);
+}
+
+export async function getContractInstance(
+  proxyAddress: string,
+  contractName: string
+) {
+  const contractFact = await ethers.getContractFactory(contractName);
+  const contractIns = contractFact.attach(proxyAddress);
+
+  return contractIns;
 }
 
 deployHybridModel()

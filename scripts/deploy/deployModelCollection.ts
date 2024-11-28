@@ -40,6 +40,16 @@ async function deployModelCollection() {
   console.log(`${networkName}_COLLECTION_ADDRESS=${modelCollection.target}`);
 }
 
+export async function getContractInstance(
+  proxyAddress: string,
+  contractName: string
+) {
+  const contractFact = await ethers.getContractFactory(contractName);
+  const contractIns = contractFact.attach(proxyAddress);
+
+  return contractIns;
+}
+
 deployModelCollection()
   .then(() => process.exit(0))
   .catch((error) => {

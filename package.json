@@ -62,6 +62,7 @@
     "autoDeploy:fans_mainnet": "npx hardhat run scripts/autoDeploy.ts --network fans_mainnet",
     "autoDeploy:hermes_mainnet": "npx hardhat run scripts/autoDeploy.ts --network hermes_mainnet",
     "deployWorkerHub:hermes_mainnet": "npx hardhat run scripts/deploy/deployWorkerHub.ts --network hermes_mainnet",
+    "deployCollection:hermes_mainnet": "npx hardhat run scripts/deploy/deployModelCollection.ts --network hermes_mainnet",
     "deployWorkerHubScoring:hermes_mainnet": "npx hardhat run scripts/deploy/deployWorkerHubScoring.ts --network hermes_mainnet",
     "deployHybridModel:hermes_mainnet": "npx hardhat run scripts/deploy/deployHybridModel.ts --network hermes_mainnet",
     "deployHybridModelScoring:hermes_mainnet": "npx hardhat run scripts/deploy/deployHybridModelScoring.ts --network hermes_mainnet",

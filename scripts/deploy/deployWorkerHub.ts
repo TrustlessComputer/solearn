@@ -97,6 +97,16 @@ async function deployWorkerHub() {
   }
 }
 
+export async function getContractInstance(
+  proxyAddress: string,
+  contractName: string
+) {
+  const contractFact = await ethers.getContractFactory(contractName);
+  const contractIns = contractFact.attach(proxyAddress);
+
+  return contractIns;
+}
+
 deployWorkerHub()
   .then(() => process.exit(0))
   .catch((error) => {

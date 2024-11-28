@@ -170,7 +170,12 @@ const config: HardhatUserConfig = {
     hermes_mainnet: {
       url: "https://rpc.hermeschain.eternalai.org",
       chainId: 45762,
-      accounts: [process.env.HERMES_MAINNET_PRIVATE_KEY],
+      accounts: [
+        process.env.HERMES_MAINNET_PRIVATE_KEY,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
       l2OwnerAddress: process.env.HERMES_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.HERMES_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.HERMES_MAINNET_COLLECTION_ADDRESS,
@@ -178,7 +183,8 @@ const config: HardhatUserConfig = {
       daoTokenAddress: process.env.HERMES_MAINNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.HERMES_MAINNET_WORKER_HUB_SCORING_ADDRESS,
-      hybridModelAddress: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelAddress_1: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_1,
+      hybridModelAddress_2: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_2,
       hybridModelScoringAddress:
         process.env.HERMES_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:

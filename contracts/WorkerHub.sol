@@ -268,6 +268,58 @@ contract WorkerHub is
         emit MinerRegistration(msg.sender, tier, msg.value);
     }
 
+    function registerMiner(
+        uint16 _tier,
+        address _modelAddress
+    ) external payable whenNotPaused {
+        _updateEpoch();
+
+        if (_tier == 0 || _tier > maximumTier) revert InvalidTier();
+        if (msg.value < minerMinimumStake) revert StakeTooLow();
+        if (!modelAddresses.hasValue(_modelAddress)) revert NotRegistered();
+
+        Worker storage miner = miners[msg.sender];
+        if (miner.tier != 0) revert AlreadyRegistered();
+
+        miner.stake = msg.value;
+        miner.tier = _tier;
+
+        miner.modelAddress = _modelAddress;
+
+        emit MinerRegistration(msg.sender, _tier, msg.value);
+    }
+
+    function registerMiners(
+        uint16 _tier,
+        address[] calldata _workerAddresses,
+        address _modelAddress
+    ) external payable whenNotPaused onlyOwner {
+        _updateEpoch();
+
+        if (_tier == 0 || _tier > maximumTier) revert InvalidTier();
+        if (!modelAddresses.hasValue(_modelAddress)) revert NotRegistered();
+
+        uint256 len = _workerAddresses.length;
+        if (len == 0) revert InvalidMiner();
+        if (msg.value < minerMinimumStake * len) revert StakeTooLow();
+
+        for (uint256 i = 0; i < len; i++) {
+            Worker storage miner = miners[_workerAddresses[i]];
+            if (miner.tier != 0) revert AlreadyRegistered();
+
+            miner.stake = minerMinimumStake;
+            miner.tier = _tier;
+
+            miner.modelAddress = _modelAddress;
+
+            emit MinerRegistration(
+                _workerAddresses[i],
+                _tier,
+                minerMinimumStake
+            );
+        }
+    }
+
     function _registerReferrer(address _referrer, address _referee) internal {
         require(
             _referrer != address(0) && _referee != address(0),
