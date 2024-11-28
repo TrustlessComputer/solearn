@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import {Random} from "../lib/Random.sol";
@@ -25,17 +26,54 @@ contract PromptSchedulerNonUpgradable is
     // Define more storage here
     // START DEFINE
 
+    enum BatchStatus {
+        Empty,
+        Commit,
+        Reveal,
+        Completing,
+        Completed,
+        Expired
+    }
+
+    // error
+    error Assigned();
+    error NotEnoughMiner();
+    error EmptyInferRequest();
+    error InvalidBatchId();
+
+    struct ValidateInfo {
+        bytes32 commit;
+        bytes32 reveal;
+    }
+
     struct BatchInfo {
         uint[] inferIds;
         Set.AddressSet validators;
+        mapping(address => ValidateInfo) commits;
+        mapping(bytes32 => uint) rootHashCount;
+        bytes32 mostVotedRootHash;
+        uint40 timeout;
+        uint16 countCommit;
+        uint16 countReveal;
+        BatchStatus status;
     }
+
     // model => batch id => batch info
     mapping(address => mapping(uint => BatchInfo)) internal batchInfos;
+    // infer id => proccessed miner slashed
+    mapping(uint => bool) isSlashed;
     uint public lastBatchTimestamp;
     uint public batchPeriod;
 
+    // todo: add to the constructor
+    uint40 public commitTimeout;
+    uint40 public revealTimeout;
+
     event ValidatorsAssigned(uint batchId, address model, address[] validators);
     event AppendToBatch(uint batchId, address model, uint inferId);
+    event SubmitCommitment(uint batchId, address model, address validator, bytes32 commitment);
+    event SubmitReveal(uint batchId, address model, address validator, bytes32 reveal);
+    event StatusUpdate(uint batchId, address model, BatchStatus status);
     // END 
 
     string private constant VERSION = "v0.0.2";
@@ -241,6 +279,8 @@ contract PromptSchedulerNonUpgradable is
 
         emit InferenceStatusUpdate(_inferId, InferenceStatus.Commit);
         emit SolutionSubmission(msg.sender, _inferId);
+
+        // todo: transfer fee to miner
     }
 
     // assgin validators to batch
@@ -249,9 +289,24 @@ contract PromptSchedulerNonUpgradable is
             .getMinerAddressesOfModel(_model); // TODO: kelvin change, move random to stakingHub
 
         BatchInfo storage batchInfo = batchInfos[_model][_batchId];
-        require(batchInfo.validators.size() == 0, "assigned");
-        require(miners.length >= minerRequirement, "not enough miner");
         
+        if (batchInfo.validators.size() != 0) {
+            revert Assigned();
+        }
+
+        if (miners.length < minerRequirement) {
+            revert NotEnoughMiner();
+        }
+
+        if (batchInfo.inferIds.length == 0) {
+            revert EmptyInferRequest();
+        }
+
+        // check timestamp
+        if (lastBatchTimestamp + _batchId * batchPeriod  > block.timestamp) {
+            revert InvalidBatchId();
+        }
+
         uint8 index;
         for (uint i = 0; i < minerRequirement; ) {
             index = uint8(randomizer.randomUint256() % miners.length);
@@ -262,17 +317,219 @@ contract PromptSchedulerNonUpgradable is
                 i++;
             }
         }
+        batchInfo.status = BatchStatus.Commit;
+        batchInfo.timeout = uint40(block.timestamp) + commitTimeout;
 
         emit ValidatorsAssigned(_batchId, _model, miners);
     }
 
     // validators commmit  
+    function submitBatchCommitment(address _model, uint _batchId, bytes32 _commiment) external {
+        if (_commiment == 0) {
+            revert("invalid value");
+        }
 
+        BatchInfo storage batchInfo = batchInfos[_model][_batchId];
+
+        if (!batchInfo.validators.hasValue(msg.sender)) {
+            revert("not validator");
+        }
+
+        if (batchInfo.status != BatchStatus.Commit) {
+            revert("invalid state");
+        }
+
+        if (batchInfo.commits[msg.sender].commit != bytes32(0)) {
+            revert("committed");
+        }
+
+        if (block.timestamp > batchInfo.timeout) {
+            revert("expired");
+        }
+
+        // handle submission
+        batchInfo.commits[msg.sender].commit = _commiment;
+        batchInfo.countCommit++;
+
+        emit SubmitCommitment(_batchId, _model, msg.sender, _commiment);
+
+        if (batchInfo.countCommit == batchInfo.validators.size()) {
+            batchInfo.status = BatchStatus.Reveal;
+            batchInfo.timeout = uint40(block.timestamp) + revealTimeout;
+
+            emit StatusUpdate(_batchId, _model, batchInfo.status);
+        }
+    }
 
     // validators reveal
     // if enough vote then slash validators
+    function reveal(address _model, uint _batchId, address _valdiator, bytes32 _rootHash) external {
+         if (_rootHash == 0) {
+            revert("invalid value");
+        }
+
+        //
+        BatchInfo storage batchInfo = batchInfos[_model][_batchId];
+
+        if (batchInfo.commits[_valdiator].commit == bytes32(0)) {
+            revert("nothing to reveal");
+        }
+
+        if (batchInfo.status != BatchStatus.Reveal) {
+            revert("invalid state");
+        }
+
+        if (batchInfo.commits[_valdiator].reveal != bytes32(0)) {
+            revert("committed");
+        }
+
+        if (block.timestamp > batchInfo.timeout) {
+            revert("expired");
+        }
+
+        bytes memory tempData = abi.encodePacked(_valdiator, _rootHash);
+        if (keccak256(tempData) != batchInfo.commits[_valdiator].commit) {
+            revert("not match commitment");
+        }
+
+        // handle submission
+        batchInfo.commits[_valdiator].reveal = _rootHash;
+        batchInfo.countReveal++;
+        batchInfo.rootHashCount[_rootHash]++;
+
+        // final the most voted root hash
+        if (batchInfo.rootHashCount[_rootHash] >= _getThresholdValue(batchInfo.validators.size()) && batchInfo.mostVotedRootHash == 0) {
+            batchInfo.mostVotedRootHash = _rootHash;
+        } 
+
+        emit SubmitReveal(_batchId, _model, _valdiator, _rootHash);
+
+        if (batchInfo.countReveal == batchInfo.validators.size()) {
+            batchInfo.status = BatchStatus.Completing;
+
+            resolveBatch(_model, _batchId);
+        }
+    }
+
+    function _getThresholdValue(uint x) internal pure returns (uint) {
+        return (x * 2) / 3 + (x % 3 == 0 ? 0 : 1);
+    }
+
+    // resovle batch 
+    function resolveBatch(address _model, uint _batchId) public {
+        BatchInfo storage batchInfo = batchInfos[_model][_batchId];
+        uint validatorSize = batchInfo.validators.size();
+
+        // handle commit timeout
+        if (batchInfo.status == BatchStatus.Commit && batchInfo.timeout < block.timestamp) {          
+            // move on if has majority commited
+            if (batchInfo.countCommit >= _getThresholdValue(validatorSize)) {
+                batchInfo.status = BatchStatus.Reveal;
+                batchInfo.timeout = uint40(block.timestamp) + revealTimeout;
+
+                emit StatusUpdate(_batchId, _model, batchInfo.status);
+            } else {
+                // slash validator did not commit in time
+                for (uint i = 0; i < validatorSize; i++) {
+                    address validator = batchInfo.validators.values[i];
+                    if (batchInfo.commits[validator].commit == bytes32(0)) IStakingHub(stakingHub).slashMiner(validator, false);
+                }
+
+                batchInfo.status = BatchStatus.Expired;
+
+                emit StatusUpdate(_batchId, _model, batchInfo.status);
+            }
+
+            return;
+        }
+
+        // handle reveal timeout
+        if (batchInfo.status == BatchStatus.Reveal && batchInfo.timeout < block.timestamp) {
+            if (batchInfo.countReveal >= _getThresholdValue(validatorSize)) {
+                batchInfo.status = BatchStatus.Completing;
+
+                emit StatusUpdate(_batchId, _model, batchInfo.status);
+
+                // call back to resolve batch infer
+                this.resolveBatch(_model, _batchId);
+            } else {
+                // slash validator did not reveal in time
+                for (uint i = 0; i < validatorSize; i++) {
+                    address validator = batchInfo.validators.values[i];
+                    if (batchInfo.commits[validator].commit == bytes32(0) || batchInfo.commits[validator].reveal == bytes32(0)) 
+                        IStakingHub(stakingHub).slashMiner(validator, false);
+                }
+
+                batchInfo.status = BatchStatus.Expired;
+
+                emit StatusUpdate(_batchId, _model, batchInfo.status);
+            }
+
+        }
+
+        // handle completed batch
+        if (batchInfo.status == BatchStatus.Completing) {
+            // 
+            if (batchInfo.mostVotedRootHash != 0) {
+                // 
+                for (uint i = 0; i < validatorSize; i++) {
+                    address validator = batchInfo.validators.values[i];
+                    if (batchInfo.commits[validator].reveal != batchInfo.mostVotedRootHash) {
+                        IStakingHub(stakingHub).slashMiner(validator, true);
+                    } else {
+                        // todo: distribute fee           
+                    }
+                }    
+            }
+
+            batchInfo.status = BatchStatus.Completed;
+            
+            emit StatusUpdate(_batchId, _model, batchInfo.status);
+        }
+    }
+
+    function checkInferIdExistsInBatch(uint256[] memory inferIds, uint256 _inferId) internal pure returns (bool) {
+        uint256 left = 0;
+        uint256 right = inferIds.length - 1;
+        while (left <= right) {
+            uint256 mid = (left + right) / 2;
+            if (inferIds[mid] == _inferId) {
+                return true;
+            } else if (inferIds[mid] < _inferId) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+        return false;
+    }
 
     // submit proof to slash miner
+    // node leaf = hash(inferId | hash(output))
+    function slashMiner(address _model, uint _batchId, uint _inferId, bytes32[] memory proof, bytes32 _leafData) external {
+        BatchInfo storage batchInfo = batchInfos[_model][_batchId];
+
+        if (isSlashed[_inferId]) {
+            revert("slashed");
+        }
+
+        if (batchInfo.mostVotedRootHash == 0) {
+            revert("voting not finalized");
+        }
+
+        if (!checkInferIdExistsInBatch(batchInfo.inferIds, _inferId)) {
+            revert("wrong batch");
+        }
+
+        bytes32 nodeLeaf = keccak256(abi.encodePacked(_inferId, _leafData));
+
+        if (MerkleProof.verify(proof, batchInfo.mostVotedRootHash, nodeLeaf) && keccak256(inferences[_inferId].output) != _leafData) {
+            IStakingHub(stakingHub).slashMiner(inferences[_inferId].processedMiner, true);
+            isSlashed[_inferId] = true;
+        } else {
+            revert("false accusation");
+        }
+    }
 
     function getInferenceInfo(
         uint256 _inferenceId
