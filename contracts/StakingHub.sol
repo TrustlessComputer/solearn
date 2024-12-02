@@ -210,15 +210,7 @@ contract StakingHub is
         miner.stake = 0;
         miner.commitment = 0;
 
-        if (minerAddresses.hasValue(msg.sender)) {
-            _claimReward(msg.sender, false);
-            // reset boost
-            boost[msg.sender].reserved1 = 0;
-            boost[msg.sender].minerTimestamp = uint40(block.timestamp);
-
-            minerAddresses.erase(msg.sender);
-            minerAddressesByModel[miner.modelAddress].erase(msg.sender);
-        }
+        _updateMinerState(msg.sender, miner.modelAddress, true);
         miner.modelAddress = address(0);
 
         uint currentUnstake = minerUnstakeRequests[msg.sender].stake;
@@ -344,27 +336,32 @@ contract StakingHub is
         _slashMiner(_miner, _isFined);
     }
 
+    function _updateMinerState(
+        address _miner,
+        address _modelAddress,
+        bool _isUnregister
+    ) internal {
+        _claimReward(_miner, false);
+        boost[_miner].minerTimestamp = uint40(block.timestamp);
+
+        if (_isUnregister) {
+            boost[_miner].reserved1 = 0;
+        } else {
+            boost[_miner].reserved1 += (uint48(block.timestamp) -
+                boost[_miner].minerTimestamp);
+        }
+
+        if (minerAddressesByModel[_modelAddress].hasValue(_miner)) {
+            minerAddressesByModel[_modelAddress].erase(_miner);
+            minerAddresses.erase(_miner);
+        }
+    }
+
     function _slashMiner(address _miner, bool _isFined) internal {
         Worker storage miner = miners[_miner];
 
-        if (!minerAddresses.hasValue(_miner)) revert InvalidMiner();
-        // update reward
-        _claimReward(_miner, false);
-        boost[_miner].reserved1 +=
-            uint48(block.timestamp) -
-            uint48(
-                boost[_miner].minerTimestamp == 0
-                    ? 1716046859
-                    : boost[_miner].minerTimestamp
-            );
-        boost[_miner].minerTimestamp = uint40(block.timestamp);
         address modelAddress = miner.modelAddress;
-
-        // Remove miner from available miner
-        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
-            minerAddressesByModel[modelAddress].erase(_miner);
-            minerAddresses.erase(_miner);
-        }
+        _updateMinerState(_miner, modelAddress, false);
 
         // Set the time miner can join again
         miner.activeTime = uint40(block.timestamp + penaltyDuration);
@@ -372,20 +369,38 @@ contract StakingHub is
         if (_isFined) {
             uint256 fine = (minerMinimumStake * finePercentage) /
                 PERCENTAGE_DENOMINATOR; // Fine = stake * 10%
-            if (miner.stake < fine) {
+            uint256 collectedFine = 0;
+            uint256 pendingUnstakeAmt = minerUnstakeRequests[_miner].stake;
+            uint256 totalStake = miner.stake + pendingUnstakeAmt;
+
+            if (totalStake <= fine) {
+                collectedFine = totalStake;
                 miner.stake = 0;
+                minerUnstakeRequests[_miner].stake = 0;
             } else {
-                miner.stake -= fine;
+                if (miner.stake >= fine) {
+                    miner.stake -= fine;
+                    collectedFine = fine;
+                } else {
+                    uint256 remainingFine = fine - miner.stake;
+                    collectedFine = fine;
+                    miner.stake = 0;
+                    minerUnstakeRequests[_miner].stake -= remainingFine;
+                }
             }
 
             // reset boost
             boost[_miner].reserved1 = 0;
-            // TransferHelper.safeTransferNative(treasury, fine);
             address treasury = IWorkerHub(workerHub).getTreasuryAddress();
 
-            TransferHelper.safeTransfer(wEAI, treasury, fine);
+            TransferHelper.safeTransfer(wEAI, treasury, collectedFine);
 
-            emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
+            emit FraudulentMinerPenalized(
+                _miner,
+                modelAddress,
+                treasury,
+                collectedFine
+            );
             return;
         }
 
