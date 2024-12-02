@@ -47,34 +47,50 @@ contract PromptSchedulerNonUpgradable is
     }
 
     struct BatchInfo {
-        uint[] inferIds;
-        Set.AddressSet validators;
-        mapping(address => ValidateInfo) commits;
-        mapping(bytes32 => uint) rootHashCount;
-        bytes32 mostVotedRootHash;
         uint40 timeout;
         uint16 countCommit;
         uint16 countReveal;
         BatchStatus status;
+        bytes32 mostVotedRootHash;
+        AccumulatedFee accFee;
+        uint256[] inferIds;
+        Set.AddressSet validators;
+        mapping(address => ValidateInfo) commits;
+        mapping(bytes32 => uint) rootHashCount;
+    }
+
+    struct AccumulatedFee {
+        uint256 validatorFee;
+        uint256 l2OwnerFee;
+        uint256 treasuryFee;
     }
 
     // model => batch id => batch info
     mapping(address => mapping(uint => BatchInfo)) internal batchInfos;
-    // infer id => proccessed miner slashed
-    mapping(uint => bool) isSlashed;
-    uint public lastBatchTimestamp;
-    uint public batchPeriod;
+    // infer id => processed miner slashed
+    mapping(uint256 => bool) isSlashed;
+    uint256 public lastBatchTimestamp;
+    uint256 public batchPeriod;
 
-    // todo: add to the constructor
     uint40 public commitTimeout;
     uint40 public revealTimeout;
 
     event ValidatorsAssigned(uint batchId, address model, address[] validators);
     event AppendToBatch(uint batchId, address model, uint inferId);
-    event SubmitCommitment(uint batchId, address model, address validator, bytes32 commitment);
-    event SubmitReveal(uint batchId, address model, address validator, bytes32 reveal);
+    event SubmitCommitment(
+        uint batchId,
+        address model,
+        address validator,
+        bytes32 commitment
+    );
+    event SubmitReveal(
+        uint batchId,
+        address model,
+        address validator,
+        bytes32 reveal
+    );
     event StatusUpdate(uint batchId, address model, BatchStatus status);
-    // END 
+    // END
 
     string private constant VERSION = "v0.0.2";
     uint256 internal constant PERCENTAGE_DENOMINATOR = 100_00;
@@ -280,16 +296,33 @@ contract PromptSchedulerNonUpgradable is
         emit InferenceStatusUpdate(_inferId, InferenceStatus.Commit);
         emit SolutionSubmission(msg.sender, _inferId);
 
-        // todo: transfer fee to miner
+        // transfer fee to miner
+        uint256 minerFee = (inference.value * feeRatioMinerValidator) /
+            PERCENTAGE_DENOMINATOR;
+        TransferHelper.safeTransferNative(msg.sender, minerFee);
+
+        // calculate accumulated fee
+        uint256 currentBatchId = (block.timestamp - lastBatchTimestamp) /
+            batchPeriod;
+        address model = inference.modelAddress;
+        if (_inferId < batchInfos[model][currentBatchId].inferIds[0]) {
+            currentBatchId--;
+        }
+
+        AccumulatedFee storage accFee = batchInfos[model][currentBatchId]
+            .accFee;
+        accFee.validatorFee += inference.value - minerFee;
+        accFee.l2OwnerFee += inference.feeL2;
+        accFee.treasuryFee += inference.feeTreasury;
     }
 
-    // assgin validators to batch
+    // assign validators to batch
     function assignValidators(uint _batchId, address _model) external {
         address[] memory miners = IStakingHub(stakingHub)
             .getMinerAddressesOfModel(_model); // TODO: kelvin change, move random to stakingHub
 
         BatchInfo storage batchInfo = batchInfos[_model][_batchId];
-        
+
         if (batchInfo.validators.size() != 0) {
             revert Assigned();
         }
@@ -303,7 +336,7 @@ contract PromptSchedulerNonUpgradable is
         }
 
         // check timestamp
-        if (lastBatchTimestamp + _batchId * batchPeriod  > block.timestamp) {
+        if (lastBatchTimestamp + _batchId * batchPeriod > block.timestamp) {
             revert InvalidBatchId();
         }
 
@@ -323,9 +356,13 @@ contract PromptSchedulerNonUpgradable is
         emit ValidatorsAssigned(_batchId, _model, miners);
     }
 
-    // validators commmit  
-    function submitBatchCommitment(address _model, uint _batchId, bytes32 _commiment) external {
-        if (_commiment == 0) {
+    // validators commit
+    function submitBatchCommitment(
+        address _model,
+        uint _batchId,
+        bytes32 _commitment
+    ) external {
+        if (_commitment == 0) {
             revert("invalid value");
         }
 
@@ -348,10 +385,10 @@ contract PromptSchedulerNonUpgradable is
         }
 
         // handle submission
-        batchInfo.commits[msg.sender].commit = _commiment;
+        batchInfo.commits[msg.sender].commit = _commitment;
         batchInfo.countCommit++;
 
-        emit SubmitCommitment(_batchId, _model, msg.sender, _commiment);
+        emit SubmitCommitment(_batchId, _model, msg.sender, _commitment);
 
         if (batchInfo.countCommit == batchInfo.validators.size()) {
             batchInfo.status = BatchStatus.Reveal;
@@ -363,15 +400,20 @@ contract PromptSchedulerNonUpgradable is
 
     // validators reveal
     // if enough vote then slash validators
-    function reveal(address _model, uint _batchId, address _valdiator, bytes32 _rootHash) external {
-         if (_rootHash == 0) {
+    function reveal(
+        address _model,
+        uint _batchId,
+        address _validator,
+        bytes32 _rootHash
+    ) external {
+        if (_rootHash == 0) {
             revert("invalid value");
         }
 
         //
         BatchInfo storage batchInfo = batchInfos[_model][_batchId];
 
-        if (batchInfo.commits[_valdiator].commit == bytes32(0)) {
+        if (batchInfo.commits[_validator].commit == bytes32(0)) {
             revert("nothing to reveal");
         }
 
@@ -379,7 +421,7 @@ contract PromptSchedulerNonUpgradable is
             revert("invalid state");
         }
 
-        if (batchInfo.commits[_valdiator].reveal != bytes32(0)) {
+        if (batchInfo.commits[_validator].reveal != bytes32(0)) {
             revert("committed");
         }
 
@@ -387,22 +429,26 @@ contract PromptSchedulerNonUpgradable is
             revert("expired");
         }
 
-        bytes memory tempData = abi.encodePacked(_valdiator, _rootHash);
-        if (keccak256(tempData) != batchInfo.commits[_valdiator].commit) {
+        bytes memory tempData = abi.encodePacked(_validator, _rootHash);
+        if (keccak256(tempData) != batchInfo.commits[_validator].commit) {
             revert("not match commitment");
         }
 
         // handle submission
-        batchInfo.commits[_valdiator].reveal = _rootHash;
+        batchInfo.commits[_validator].reveal = _rootHash;
         batchInfo.countReveal++;
         batchInfo.rootHashCount[_rootHash]++;
 
         // final the most voted root hash
-        if (batchInfo.rootHashCount[_rootHash] >= _getThresholdValue(batchInfo.validators.size()) && batchInfo.mostVotedRootHash == 0) {
+        if (
+            batchInfo.rootHashCount[_rootHash] >=
+            _getThresholdValue(batchInfo.validators.size()) &&
+            batchInfo.mostVotedRootHash == 0
+        ) {
             batchInfo.mostVotedRootHash = _rootHash;
-        } 
+        }
 
-        emit SubmitReveal(_batchId, _model, _valdiator, _rootHash);
+        emit SubmitReveal(_batchId, _model, _validator, _rootHash);
 
         if (batchInfo.countReveal == batchInfo.validators.size()) {
             batchInfo.status = BatchStatus.Completing;
@@ -415,13 +461,16 @@ contract PromptSchedulerNonUpgradable is
         return (x * 2) / 3 + (x % 3 == 0 ? 0 : 1);
     }
 
-    // resovle batch 
-    function resolveBatch(address _model, uint _batchId) public {
+    // resovle batch
+    function resolveBatch(address _model, uint _batchId) public nonReentrant {
         BatchInfo storage batchInfo = batchInfos[_model][_batchId];
         uint validatorSize = batchInfo.validators.size();
 
         // handle commit timeout
-        if (batchInfo.status == BatchStatus.Commit && batchInfo.timeout < block.timestamp) {          
+        if (
+            batchInfo.status == BatchStatus.Commit &&
+            batchInfo.timeout < block.timestamp
+        ) {
             // move on if has majority commited
             if (batchInfo.countCommit >= _getThresholdValue(validatorSize)) {
                 batchInfo.status = BatchStatus.Reveal;
@@ -429,66 +478,100 @@ contract PromptSchedulerNonUpgradable is
 
                 emit StatusUpdate(_batchId, _model, batchInfo.status);
             } else {
+                // ! We need to slash validators who did not commit in time with the param isFined set to true
                 // slash validator did not commit in time
                 for (uint i = 0; i < validatorSize; i++) {
                     address validator = batchInfo.validators.values[i];
-                    if (batchInfo.commits[validator].commit == bytes32(0)) IStakingHub(stakingHub).slashMiner(validator, false);
-                }
-
-                batchInfo.status = BatchStatus.Expired;
-
-                emit StatusUpdate(_batchId, _model, batchInfo.status);
-            }
-
-            return;
-        }
-
-        // handle reveal timeout
-        if (batchInfo.status == BatchStatus.Reveal && batchInfo.timeout < block.timestamp) {
-            if (batchInfo.countReveal >= _getThresholdValue(validatorSize)) {
-                batchInfo.status = BatchStatus.Completing;
-
-                emit StatusUpdate(_batchId, _model, batchInfo.status);
-
-                // call back to resolve batch infer
-                this.resolveBatch(_model, _batchId);
-            } else {
-                // slash validator did not reveal in time
-                for (uint i = 0; i < validatorSize; i++) {
-                    address validator = batchInfo.validators.values[i];
-                    if (batchInfo.commits[validator].commit == bytes32(0) || batchInfo.commits[validator].reveal == bytes32(0)) 
+                    if (batchInfo.commits[validator].commit == bytes32(0))
                         IStakingHub(stakingHub).slashMiner(validator, false);
                 }
 
                 batchInfo.status = BatchStatus.Expired;
 
                 emit StatusUpdate(_batchId, _model, batchInfo.status);
+                return;
             }
+        }
 
+        // handle reveal timeout
+        if (
+            batchInfo.status == BatchStatus.Reveal &&
+            batchInfo.timeout < block.timestamp
+        ) {
+            if (batchInfo.countReveal >= _getThresholdValue(validatorSize)) {
+                batchInfo.status = BatchStatus.Completing;
+
+                emit StatusUpdate(_batchId, _model, batchInfo.status);
+
+                // call back to resolve batch infer
+                this.resolveBatch(_model, _batchId); // ! Can we remove this line?
+            } else {
+                // slash validator did not reveal in time
+                for (uint i = 0; i < validatorSize; i++) {
+                    address validator = batchInfo.validators.values[i];
+                    // ! If a validator did not commit, then he can not reveal. So we only need to slash un-reveal validators.
+                    // ! The validators who did not commit will be slashed with the isFined flag set to true because they make a batch to expired.
+                    if (
+                        batchInfo.commits[validator].commit == bytes32(0) ||
+                        batchInfo.commits[validator].reveal == bytes32(0)
+                    ) IStakingHub(stakingHub).slashMiner(validator, false);
+                }
+
+                batchInfo.status = BatchStatus.Expired;
+
+                emit StatusUpdate(_batchId, _model, batchInfo.status);
+            }
         }
 
         // handle completed batch
         if (batchInfo.status == BatchStatus.Completing) {
-            // 
-            if (batchInfo.mostVotedRootHash != 0) {
-                // 
+            //
+            bytes32 mostVotedRootHash = batchInfo.mostVotedRootHash;
+            if (mostVotedRootHash != 0) {
+                uint256 counter = batchInfos[_model][_batchId].rootHashCount[
+                    mostVotedRootHash
+                ];
+                uint256 validatorFee = batchInfo.accFee.validatorFee / counter;
+                //
                 for (uint i = 0; i < validatorSize; i++) {
                     address validator = batchInfo.validators.values[i];
-                    if (batchInfo.commits[validator].reveal != batchInfo.mostVotedRootHash) {
+                    if (
+                        batchInfo.commits[validator].reveal != mostVotedRootHash
+                    ) {
                         IStakingHub(stakingHub).slashMiner(validator, true);
                     } else {
-                        // todo: distribute fee           
+                        // distribute fee
+                        TransferHelper.safeTransferNative(
+                            validator,
+                            validatorFee
+                        );
                     }
-                }    
+                }
             }
 
+            // If the batch is completed but validators cannot reach consensus, we transfer the validator fee to the treasury
+            uint256 treasuryFee = batchInfo.accFee.treasuryFee;
+
+            if (mostVotedRootHash == 0) {
+                treasuryFee += batchInfo.accFee.validatorFee;
+            }
+
+            TransferHelper.safeTransferNative(treasury, treasuryFee);
+            TransferHelper.safeTransferNative(
+                l2Owner,
+                batchInfo.accFee.l2OwnerFee
+            );
+
             batchInfo.status = BatchStatus.Completed;
-            
+
             emit StatusUpdate(_batchId, _model, batchInfo.status);
         }
     }
 
-    function checkInferIdExistsInBatch(uint256[] memory inferIds, uint256 _inferId) internal pure returns (bool) {
+    function checkInferIdExistsInBatch(
+        uint256[] memory inferIds,
+        uint256 _inferId
+    ) internal pure returns (bool) {
         uint256 left = 0;
         uint256 right = inferIds.length - 1;
         while (left <= right) {
@@ -506,7 +589,13 @@ contract PromptSchedulerNonUpgradable is
 
     // submit proof to slash miner
     // node leaf = hash(inferId | hash(output))
-    function slashMiner(address _model, uint _batchId, uint _inferId, bytes32[] memory proof, bytes32 _leafData) external {
+    function slashMiner(
+        address _model,
+        uint _batchId,
+        uint _inferId,
+        bytes32[] memory proof,
+        bytes32 _leafData
+    ) external {
         BatchInfo storage batchInfo = batchInfos[_model][_batchId];
 
         if (isSlashed[_inferId]) {
@@ -523,8 +612,14 @@ contract PromptSchedulerNonUpgradable is
 
         bytes32 nodeLeaf = keccak256(abi.encodePacked(_inferId, _leafData));
 
-        if (MerkleProof.verify(proof, batchInfo.mostVotedRootHash, nodeLeaf) && keccak256(inferences[_inferId].output) != _leafData) {
-            IStakingHub(stakingHub).slashMiner(inferences[_inferId].processedMiner, true);
+        if (
+            MerkleProof.verify(proof, batchInfo.mostVotedRootHash, nodeLeaf) &&
+            keccak256(inferences[_inferId].output) != _leafData
+        ) {
+            IStakingHub(stakingHub).slashMiner(
+                inferences[_inferId].processedMiner,
+                true
+            );
             isSlashed[_inferId] = true;
         } else {
             revert("false accusation");
