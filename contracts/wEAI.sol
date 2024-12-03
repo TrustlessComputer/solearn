@@ -1,9 +1,13 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract WrappedEAI is ERC20, Ownable {
+    error FailedTransfer();
+
     // Event emitted when EAI is wrapped
     event EAIWrapped(address indexed user, uint256 amount);
 
@@ -22,6 +26,10 @@ contract WrappedEAI is ERC20, Ownable {
     function unwrap(uint256 amount) public {
         _burn(msg.sender, amount);
         payable(msg.sender).transfer(amount);
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) revert FailedTransfer();
+
         emit EAIUnwrapped(msg.sender, amount);
     }
 
