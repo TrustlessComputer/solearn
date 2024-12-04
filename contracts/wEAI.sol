@@ -25,7 +25,6 @@ contract WrappedEAI is ERC20, Ownable {
     // Allows users to burn WEAI and withdraw an equivalent amount of EAI
     function unwrap(uint256 amount) public {
         _burn(msg.sender, amount);
-        payable(msg.sender).transfer(amount);
 
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         if (!success) revert FailedTransfer();

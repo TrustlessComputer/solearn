@@ -170,6 +170,7 @@ contract PromptScheduler is
 
         address[] memory miners = IStakingHub(stakingHub)
             .getMinerAddressesOfModel(_model); // TODO: kelvin change, move random to stakingHub
+        if (miners.length < minerRequirement) revert NotEnoughMiners();
         uint8 index = uint8(randomizer.randomUint256() % miners.length);
         address miner = miners[index];
         inferences[_inferenceId].processedMiner = miner;
@@ -232,5 +233,19 @@ contract PromptScheduler is
 
     function getTreasuryAddress() external view returns (address) {
         return treasury;
+    }
+
+    function setSubmitDuration(uint40 _submitDuration) external onlyOwner {
+        submitDuration = _submitDuration;
+    }
+
+    function setStakingHubAddress(address _stakingHub) external onlyOwner {
+        if (_stakingHub == address(0)) revert InvalidAddress();
+        stakingHub = _stakingHub;
+    }
+
+    function setDAOTokenAddress(address _daoToken) external onlyOwner {
+        if (_daoToken == address(0)) revert InvalidAddress();
+        daoToken = _daoToken;
     }
 }

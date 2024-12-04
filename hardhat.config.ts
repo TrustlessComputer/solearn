@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "zksync_mainnet",
+  defaultNetwork: "avax_mainnet",
   solidity: {
     compilers: [
       {
@@ -408,7 +408,7 @@ const config: HardhatUserConfig = {
     } as any,
     polygon_mainnet: {
       url:
-        "https://polygon-mainnet.infura.io/v3" +
+        "https://polygon-mainnet.infura.io/v3/" +
         process.env.POLYGON_MAINNET_INFURA_API_KEY,
       chainId: 137,
       accounts: [
@@ -432,6 +432,68 @@ const config: HardhatUserConfig = {
         process.env.POLYGON_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       squadManagerAddress: process.env.POLYGON_MAINNET_SQUAD_MANAGER_ADDRESS,
       wEAIAddress: process.env.POLYGON_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
+    avax_mainnet: {
+      url:
+        "https://avalanche-mainnet.infura.io/v3/" +
+        process.env.AVAX_MAINNET_INFURA_API_KEY,
+      chainId: 43114,
+      accounts: [
+        process.env.AVAX_MAINNET_PRIVATE_KEY,
+        process.env.AVAX_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.AVAX_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.AVAX_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.AVAX_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.AVAX_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.AVAX_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.AVAX_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.AVAX_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.AVAX_MAINNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.AVAX_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.AVAX_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.AVAX_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.AVAX_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      squadManagerAddress: process.env.AVAX_MAINNET_SQUAD_MANAGER_ADDRESS,
+      wEAIAddress: process.env.AVAX_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
+    bsc_mainnet: {
+      url:
+        "https://bsc-mainnet.infura.io/v3/" +
+        process.env.BSC_MAINNET_INFURA_API_KEY,
+      chainId: 56,
+      accounts: [
+        process.env.BSC_MAINNET_PRIVATE_KEY,
+        process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.BSC_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.BSC_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.BSC_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.BSC_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.BSC_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.BSC_MAINNET_DAO_TOKEN_ADDRESS,
+      workerHubScoringAddress:
+        process.env.BSC_MAINNET_WORKER_HUB_SCORING_ADDRESS,
+      hybridModelAddress: process.env.BSC_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelScoringAddress:
+        process.env.BSC_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.BSC_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      squadManagerAddress: process.env.BSC_MAINNET_SQUAD_MANAGER_ADDRESS,
+      wEAIAddress: process.env.BSC_MAINNET_WEAI,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,
