@@ -33,10 +33,9 @@ async function deployHybridModel() {
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "Hermes-3-Llama-3.1-8B",
+    model_name: "Llama-3.3-70B",
     model_type: "text",
-    model_url:
-      "https://gateway.lighthouse.storage/ipfs/bafkreigdnqoe3hvlozmxnwc32qwskz3fvtuznpqzvp6o5crbnka2deczdu",
+    model_url: "https://gateway.lighthouse.storage/ipfs/",
     model_file_hash: "",
     min_hardware: 1,
     verifier_url: "",
@@ -53,7 +52,7 @@ async function deployHybridModel() {
     metadata,
   ];
   const hybridModel = (await deployOrUpgrade(
-    config.hybridModelAddress_2,
+    config.hybridModelAddress_3,
     "HybridModel",
     constructorParams,
     config,
@@ -64,7 +63,7 @@ async function deployHybridModel() {
     `Contract HybridModel has been deployed to address ${hybridModel.target}`
   );
 
-  if (!config.hybridModelAddress_2) {
+  if (!config.hybridModelAddress_3) {
     const collection = ModelCollection.attach(
       config.collectionAddress
     ) as ModelCollection;
