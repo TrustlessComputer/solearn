@@ -17,6 +17,12 @@ interface ISystemPromptManager is
         bytes[] sysPrompts;
     }
 
+    struct AgentRating {
+        uint64 creationTime;
+        uint64 unlockTime;
+        uint64 totalPoints;
+    }
+
     event MintPriceUpdate(uint256 newValue);
     event RoyaltyPortionUpdate(uint16 newValue);
     event RoyaltyReceiverUpdate(address newAddress);
@@ -69,6 +75,7 @@ interface ISystemPromptManager is
     error SignatureUsed();
     error Unauthorized();
     error InvalidData();
+    error ThresholdNotReached();
 
     function version() external pure returns (string memory version);
     function nextTokenId() external view returns (uint256 nextTokenId);
@@ -79,7 +86,7 @@ interface ISystemPromptManager is
 
     function mint(
         address to,
-        string calldata uri,
+        // string calldata uri,
         bytes calldata sysPrompt,
         uint fee
     ) external payable returns (uint256 tokenId);

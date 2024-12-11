@@ -16,6 +16,8 @@ import {TransferHelper} from "./lib/TransferHelper.sol";
 import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
 // import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
 import {ISquad} from "./interfaces/ISquad.sol";
+import {Base64Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/Base64Upgradeable.sol";
+import {ICryptoAIData} from "./interfaces/ICryptoAIData.sol";
 
 contract SystemPromptManager is
     SystemPromptManagerStorage,
@@ -30,6 +32,7 @@ contract SystemPromptManager is
 
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
+    uint64 private constant NFT_UNLOCK_THRESHOLD = 200;
 
     receive() external payable {}
 
@@ -120,7 +123,7 @@ contract SystemPromptManager is
 
     function mint_(
         address _to,
-        string calldata _uri,
+        // string calldata _uri,
         bytes calldata _data,
         uint _fee,
         uint256 agentId
@@ -128,19 +131,21 @@ contract SystemPromptManager is
         if (_data.length == 0) revert InvalidAgentData();
 
         _safeMint(_to, agentId);
-        _setTokenURI(agentId, _uri);
+        // _setTokenURI(agentId, _uri);
 
         datas[agentId].fee = _fee;
         datas[agentId].sysPrompts.push(_data);
 
-        emit NewToken(agentId, _uri, _data, _fee, _to);
+        agentRating[agentId].creationTime = uint64(block.timestamp);
+
+        emit NewToken(agentId, "", _data, _fee, _to);
 
         return agentId;
     }
 
     function _wrapMint(
         address _to,
-        string calldata _uri,
+        // string calldata _uri,
         bytes calldata _data,
         uint _fee,
         uint256 _squadId
@@ -152,7 +157,7 @@ contract SystemPromptManager is
         }
         uint256 agentId = nextTokenId++;
 
-        mint_(_to, _uri, _data, _fee, agentId);
+        mint_(_to, _data, _fee, agentId);
 
         if (_squadId != 0) {
             validateAgentBeforeMoveToSquad(_to, agentId);
@@ -170,21 +175,21 @@ contract SystemPromptManager is
     /// @notice This function open minting role to public users
     function mint(
         address _to,
-        string calldata _uri,
+        // string calldata _uri,
         bytes calldata _data,
         uint _fee
     ) external payable returns (uint256) {
-        return _wrapMint(_to, _uri, _data, _fee, 0);
+        return _wrapMint(_to, _data, _fee, 0);
     }
 
     function mint(
         address _to,
-        string calldata _uri,
+        // string calldata _uri,
         bytes calldata _data,
         uint _fee,
         uint256 _squadId
     ) external payable returns (uint256) {
-        return _wrapMint(_to, _uri, _data, _fee, _squadId);
+        return _wrapMint(_to, _data, _fee, _squadId);
     }
 
     function withdraw(address _to, uint _value) external onlyOwner {
@@ -196,15 +201,15 @@ contract SystemPromptManager is
         if (bytes(_uri).length == 0) revert InvalidAgentData();
     }
 
-    function updateAgentURI(
-        uint256 _agentId,
-        string calldata _uri
-    ) external onlyAgentOwner(_agentId) {
-        _validateURI(_uri);
+    // function updateAgentURI(
+    //     uint256 _agentId,
+    //     string calldata _uri
+    // ) external onlyAgentOwner(_agentId) {
+    //     _validateURI(_uri);
 
-        _setTokenURI(_agentId, _uri);
-        emit AgentURIUpdate(_agentId, _uri);
-    }
+    //     _setTokenURI(_agentId, _uri);
+    //     emit AgentURIUpdate(_agentId, _uri);
+    // }
 
     function updateAgentData(
         uint256 _agentId,
@@ -296,18 +301,18 @@ contract SystemPromptManager is
         signaturesUsed[agentOwner][_signature] = true;
     }
 
-    function updateAgentUriWithSignature(
-        uint256 _agentId,
-        string calldata _uri,
-        uint256 _randomNonce,
-        bytes calldata _signature
-    ) external {
-        _validateURI(_uri);
+    // function updateAgentUriWithSignature(
+    //     uint256 _agentId,
+    //     string calldata _uri,
+    //     uint256 _randomNonce,
+    //     bytes calldata _signature
+    // ) external {
+    //     _validateURI(_uri);
 
-        _checkUpdateUriPermission(_agentId, _uri, _randomNonce, _signature);
-        _setTokenURI(_agentId, _uri);
-        emit AgentURIUpdate(_agentId, _uri);
-    }
+    //     _checkUpdateUriPermission(_agentId, _uri, _randomNonce, _signature);
+    //     _setTokenURI(_agentId, _uri);
+    //     emit AgentURIUpdate(_agentId, _uri);
+    // }
 
     function addNewAgentData(
         uint256 _agentId,
@@ -443,6 +448,8 @@ contract SystemPromptManager is
             revert InsufficientFunds();
         }
 
+        agentRating[_agentId].totalPoints += 1;
+
         return (estFeeWH, fwdData);
     }
 
@@ -475,7 +482,21 @@ contract SystemPromptManager is
         )
         returns (string memory)
     {
-        return super.tokenURI(_agentId);
+        if (datas[_agentId].sysPrompts.length == 0) revert InvalidAgentData();
+        ICryptoAIData cryptoAIDataContract = ICryptoAIData(cryptoAiDataAddr);
+        return string(
+            abi.encodePacked(
+                'data:application/json;base64,',
+                Base64Upgradeable.encode(
+                    abi.encodePacked(
+                        '{',
+                        '"image": "',
+                        cryptoAIDataContract.svgToImageURI(cryptoAIDataContract.renderFullSVGWithGrid(_agentId)),
+                        '}'
+                    )
+                )
+            )
+        );
     }
 
     function supportsInterface(
@@ -692,4 +713,26 @@ contract SystemPromptManager is
     //     delete _allSquadsIndex[squadId];
     //     _allSquads.pop();
     // }
+
+    function unlockNFT(uint256 _agentId) external onlyAgentOwner(_agentId) {
+        AgentRating storage a = agentRating[_agentId];
+        if (!isUnlockedNFT(_agentId)) revert InvalidData();
+        if (a.unlockTime - a.creationTime < NFT_UNLOCK_THRESHOLD) revert ThresholdNotReached();
+        // TODO: compute rarity
+
+        agentRating[_agentId].unlockTime = uint64(block.timestamp);
+    }
+
+    function isUnlockedNFT(uint256 _agentId) public view returns (bool) {
+        return agentRating[_agentId].unlockTime > 0;
+    }
+
+    function getNFTPoints(uint256 _agentId) external view returns (uint256, uint256) {
+        AgentRating storage a = agentRating[_agentId];
+        uint64 unlockTime = a.unlockTime;
+        if (unlockTime == 0) {
+            unlockTime = uint64(block.timestamp);
+        }
+        return (a.totalPoints, unlockTime - a.creationTime);
+    }
 }
