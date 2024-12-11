@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "avax_mainnet",
+  defaultNetwork: "bsc_mainnet",
   solidity: {
     compilers: [
       {
@@ -469,9 +469,7 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
     } as any,
     bsc_mainnet: {
-      url:
-        "https://bsc-mainnet.infura.io/v3/" +
-        process.env.BSC_MAINNET_INFURA_API_KEY,
+      url: "https://bsc-dataseed1.defibit.io",
       chainId: 56,
       accounts: [
         process.env.BSC_MAINNET_PRIVATE_KEY,

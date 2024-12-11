@@ -79,8 +79,8 @@ async function deployStakingHub(
   const rewardPerEpoch = ethers.parseEther("0.38");
 
   // const unstakeDelayTime = 151200; // NOTE:  151200 blocks = 21 days (blocktime = 12)
-  const unstakeDelayTime = 907200; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
-  // const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // BSC
+  // const unstakeDelayTime = 907200; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
+  const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // BSC
   // const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // TRON
   const penaltyDuration = 0; // NOTE: 3.3 hours
   const finePercentage = 0;
@@ -134,9 +134,9 @@ async function deployWorkerHub(
   const feeL2Percentage = 0;
   const feeTreasuryPercentage = 100_00;
   const minerRequirement = 3;
-  const submitDuration = 10 * 6 * 5;
-  const commitDuration = 10 * 6 * 5;
-  const revealDuration = 10 * 6 * 5;
+  const submitDuration = 10 * 6 * 90;
+  const commitDuration = 10 * 6 * 90;
+  const revealDuration = 10 * 6 * 90;
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
   const daoTokenReward = ethers.parseEther("0");
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
@@ -216,8 +216,8 @@ async function deployModelCollection() {
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
-  const nextModelId = 140_001; // AVAX
-  // const nextModelId = 150_001; // BSC
+  // const nextModelId = 140_001; // AVAX
+  const nextModelId = 150_001; // BSC
   // const nextModelId = 160_001; // TRON
 
   const constructorParams = [
@@ -340,7 +340,7 @@ async function deploySystemPromptManager(
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = l2OwnerAddress;
   const royalPortion = 5_00;
-  const nextModelId = 1; //TODO: need to change before deployment
+  const nextModelId = 1;
 
   const constructorParams = [
     name,
