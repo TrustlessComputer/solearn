@@ -15,17 +15,19 @@ interface IWorkerHub {
     ) external view returns (uint256);
 }
 
-interface IHybridModel {
+interface IInferable {
     function infer(
-        bytes calldata _data,
-        address creator,
-        bool flag
-    ) external payable returns (uint256 referenceId);
+        uint256 modelId,
+        bytes calldata data,
+        address creator
+    ) external payable returns (uint256 inferenceId);
 
     function infer(
-        bytes calldata _data,
-        address creator
-    ) external payable returns (uint256 referenceId);
+        uint256 modelId,
+        bytes calldata data,
+        address creator,
+        bool flag
+    ) external payable returns (uint256 inferenceId);
 }
 
 interface ISquad {
@@ -49,14 +51,14 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     address public _hybridModel;
 
     mapping(uint256 nftId => uint256) public _poolBalance;
-    mapping(address nftOwner => mapping(bytes32 signature => bool))
+    mapping(address nftId => mapping(bytes32 signature => bool))
         public _signaturesUsed;
 
-    mapping(uint256 agentId => bytes[]) private _missionsOf;
+    mapping(uint256 nftId => bytes[]) private _missionsOf;
     address private _squadManager;
 
-    modifier onlyAgentOwner(uint256 _agentId) {
-        _checkAgentOwner(msg.sender, _agentId);
+    modifier onlyAgentOwner(uint256 nftId) {
+        _checkAgentOwner(msg.sender, nftId);
         _;
     }
 
@@ -70,7 +72,12 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         address hybridModel_,
         address workerHub_
     ) ERC721(name_, symbol_) {
-       // todo: fill here
+        _mintPrice = mintPrice_;
+        _royaltyReceiver = royaltyReceiver_;
+        _royaltyPortion = royaltyPortion_;
+        _nextTokenId = nextTokenId_;
+        _hybridModel = hybridModel_;
+        _workerHub = workerHub_;
     }
 
     function _mint(
@@ -78,15 +85,17 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         string calldata uri,
         bytes calldata data,
         uint fee,
-        uint256 agentId
+        uint256 agentId,
+        string calldata promptKey
     ) internal virtual returns (uint256) {
         if (data.length == 0) revert InvalidAgentData();
 
         _safeMint(to, agentId);
         _setTokenURI(agentId, uri);
 
-        _datas[agentId].fee = fee;
-        _datas[agentId].sysPrompts.push(data);
+        _datas[agentId].fee = uint128(fee);
+        _datas[agentId].sysPrompts[promptKey].push(data);
+        _datas[agentId].isUsed = true;
 
         emit NewToken(agentId, uri, data, fee, to);
 
@@ -98,16 +107,17 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         string calldata uri,
         bytes calldata data,
         uint fee,
-        uint256 squadId
+        uint256 squadId,
+        string calldata promptKey
     ) internal virtual returns (uint256) {
         if (msg.value < _mintPrice) revert InvalidMintingFee();
 
-        while (_datas[_nextTokenId].sysPrompts.length != 0) {
+        while (_datas[_nextTokenId].isUsed) {
             _nextTokenId++;
         }
         uint256 agentId = _nextTokenId++;
 
-        _mint(to, uri, data, fee, agentId);
+        _mint(to, uri, data, fee, agentId, promptKey);
 
         if (squadId != 0) {
             _validateAgentBeforeMoveToSquad(to, agentId);
@@ -139,18 +149,19 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     function updateAgentData(
         uint256 agentId,
         bytes calldata sysPrompt,
+        string calldata promptKey,
         uint256 promptIdx
     ) public virtual override onlyAgentOwner(agentId) {
-        _validateAgentData(agentId, sysPrompt, promptIdx);
+        _validateAgentData(agentId, sysPrompt, promptIdx, promptKey);
 
         emit AgentDataUpdate(
             agentId,
             promptIdx,
-            _datas[agentId].sysPrompts[promptIdx],
+            _datas[agentId].sysPrompts[promptKey][promptIdx],
             sysPrompt
         );
 
-        _datas[agentId].sysPrompts[promptIdx] = sysPrompt;
+        _datas[agentId].sysPrompts[promptKey][promptIdx] = sysPrompt;
     }
 
     function _checkUpdatePromptPermission(
@@ -183,10 +194,11 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     function _validateAgentData(
         uint256 agentId,
         bytes calldata sysPrompt,
-        uint256 promptIdx
+        uint256 promptIdx,
+        string calldata promptKey
     ) internal virtual view {
         if (sysPrompt.length == 0) revert InvalidAgentData();
-        uint256 len = _datas[agentId].sysPrompts.length;
+        uint256 len = _datas[agentId].sysPrompts[promptKey].length;
         if (promptIdx >= len) revert InvalidAgentPromptIndex();
     }
 
@@ -194,10 +206,11 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         uint256 agentId,
         bytes calldata sysPrompt,
         uint256 promptIdx,
+        string calldata promptKey,
         uint256 randomNonce,
         bytes calldata signature
     ) public virtual override {
-        _validateAgentData(agentId, sysPrompt, promptIdx);
+        _validateAgentData(agentId, sysPrompt, promptIdx, promptKey);
         _checkUpdatePromptPermission(
             agentId,
             sysPrompt,
@@ -209,11 +222,11 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         emit AgentDataUpdate(
             agentId,
             promptIdx,
-            _datas[agentId].sysPrompts[promptIdx],
+            _datas[agentId].sysPrompts[promptKey][promptIdx],
             sysPrompt
         );
 
-        _datas[agentId].sysPrompts[promptIdx] = sysPrompt;
+        _datas[agentId].sysPrompts[promptKey][promptIdx] = sysPrompt;
     }
 
     function _checkUpdateUriPermission(
@@ -254,13 +267,14 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
 
     function addNewAgentData(
         uint256 agentId,
+        string calldata promptKey,
         bytes calldata sysPrompt
     ) public virtual override onlyAgentOwner(agentId) {
         if (sysPrompt.length == 0) revert InvalidAgentData();
 
-        _datas[agentId].sysPrompts.push(sysPrompt);
+        _datas[agentId].sysPrompts[promptKey].push(sysPrompt);
 
-        emit AgentDataAddNew(agentId, _datas[agentId].sysPrompts);
+        emit AgentDataAddNew(agentId, _datas[agentId].sysPrompts[promptKey]);
     }
 
     function updateAgentFee(
@@ -268,7 +282,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         uint fee
     ) public virtual override onlyAgentOwner(agentId) {
         if (_datas[agentId].fee != fee) {
-            _datas[agentId].fee = fee;
+            _datas[agentId].fee = uint128(fee);
         }
 
         emit AgentFeeUpdate(agentId, fee);
@@ -282,96 +296,104 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         _workerHub = workerHub;
     }
 
-    function topUpPoolBalance(uint256 _agentId) public virtual override payable {
-        _poolBalance[_agentId] += msg.value;
+    function topUpPoolBalance(uint256 agentId) public virtual override payable {
+        _poolBalance[agentId] += msg.value;
 
-        emit TopUpPoolBalance(_agentId, msg.sender, msg.value);
+        emit TopUpPoolBalance(agentId, msg.sender, msg.value);
     }
 
-    function getAgentFee(uint256 _agentId) public virtual view returns (uint256) {
-        return _datas[_agentId].fee;
+    function getAgentFee(uint256 agentId) public virtual view returns (uint256) {
+        return _datas[agentId].fee;
     }
 
     function getAgentSystemPrompt(
-        uint256 _agentId
+        uint256 agentId,
+        string calldata promptKey
     ) public virtual view returns (bytes[] memory) {
-        return _datas[_agentId].sysPrompts;
+        return _datas[agentId].sysPrompts[promptKey];
     }
 
     function infer(
-        uint256 _agentId,
-        bytes calldata _calldata,
-        string calldata _externalData,
-        bool _flag
+        uint256 agentId,
+        bytes calldata fwdCalldata,
+        string calldata externalData,
+        string calldata promptKey,
+        uint256 modelId,
+        bool flag
     ) public virtual override payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(_agentId, _calldata);
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(agentId, fwdCalldata, promptKey);
 
-        uint256 inferId = IHybridModel(_hybridModel).infer{value: estFeeWH}(
+        uint256 inferId = IInferable(_hybridModel).infer{value: estFeeWH}(
+            modelId,
             fwdData,
             msg.sender,
-            _flag
+            flag
         );
 
         emit InferencePerformed(
-            _agentId,
+            agentId,
             msg.sender,
             fwdData,
-            _datas[_agentId].fee,
-            _externalData,
+            _datas[agentId].fee,
+            externalData,
             inferId
         );
     }
 
     function infer(
-        uint256 _agentId,
-        bytes calldata _calldata,
-        string calldata _externalData
+        uint256 agentId,
+        bytes calldata fwdCalldata,
+        string calldata externalData,
+        string calldata promptKey,
+        uint256 modelId
     ) public virtual override payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(_agentId, _calldata);
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(agentId, fwdCalldata, promptKey);
 
-        uint256 inferId = IHybridModel(_hybridModel).infer{value: estFeeWH}(
+        uint256 inferId = IInferable(_hybridModel).infer{value: estFeeWH}(
+            modelId,
             fwdData,
             msg.sender
         );
 
         emit InferencePerformed(
-            _agentId,
+            agentId,
             msg.sender,
             fwdData,
-            _datas[_agentId].fee,
-            _externalData,
+            _datas[agentId].fee,
+            externalData,
             inferId
         );
     }
 
     function _infer(
-        uint256 _agentId,
-        bytes calldata _calldata
+        uint256 agentId,
+        bytes calldata fwdCalldata,
+        string calldata promptKey
     ) internal virtual returns (uint256, bytes memory) {
-        if (_datas[_agentId].sysPrompts.length == 0) revert InvalidAgentData();
-        if (msg.value < _datas[_agentId].fee) revert InvalidAgentFee();
+        if (_datas[agentId].sysPrompts[promptKey].length == 0) revert InvalidAgentData();
+        if (msg.value < _datas[agentId].fee) revert InvalidAgentFee();
 
         bytes memory fwdData = abi.encodePacked(
-            _concatSystemPrompts(_datas[_agentId]),
-            _calldata
+            _concatSystemPrompts(_datas[agentId].sysPrompts[promptKey]),
+            fwdCalldata
         );
         uint256 estFeeWH = IWorkerHub(_workerHub).getMinFeeToUse(_hybridModel);
 
-        if (msg.value < estFeeWH && _poolBalance[_agentId] >= estFeeWH) {
+        if (msg.value < estFeeWH && _poolBalance[agentId] >= estFeeWH) {
             unchecked {
-                _poolBalance[_agentId] -= estFeeWH;
+                _poolBalance[agentId] -= estFeeWH;
             }
 
             if (msg.value > 0) {
                 TransferHelper.safeTransferNative(
-                    _ownerOf(_agentId),
+                    _ownerOf(agentId),
                     msg.value
                 );
             }
         } else if (msg.value >= estFeeWH) {
             uint256 remain = msg.value - estFeeWH;
             if (remain > 0) {
-                TransferHelper.safeTransferNative(_ownerOf(_agentId), remain);
+                TransferHelper.safeTransferNative(_ownerOf(agentId), remain);
             }
         } else {
             revert InsufficientFunds();
@@ -381,74 +403,74 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     }
 
     function dataOf(
-        uint256 _agentId
-    ) public virtual view returns (TokenMetaData memory) {
-        return _datas[_agentId];
+        uint256 agentId
+    ) public virtual view returns (uint128, bool) {
+        return (_datas[agentId].fee, _datas[agentId].isUsed);
     }
 
     function royaltyInfo(
-        uint256 _agentId,
-        uint256 _salePrice
+        uint256 agentId,
+        uint256 salePrice
     ) public virtual view returns (address, uint256) {
-        _agentId;
+        agentId;
         return (
             _royaltyReceiver,
-            (_salePrice * _royaltyPortion) / PORTION_DENOMINATOR
+            (salePrice * _royaltyPortion) / PORTION_DENOMINATOR
         );
     }
 
     function tokenURI(
-        uint256 _agentId
+        uint256 agentId
     )
         public
         view
         override(ERC721, ERC721URIStorage)
         returns (string memory)
     {
-        return super.tokenURI(_agentId);
+        return super.tokenURI(agentId);
     }
 
 
-    function _checkAgentOwner(address _user, uint256 _agentId) internal virtual view {
-        if (_user != _ownerOf(_agentId)) revert Unauthorized();
+    function _checkAgentOwner(address user, uint256 agentId) internal virtual view {
+        if (user != _ownerOf(agentId)) revert Unauthorized();
     }
 
     function _validateAgentBeforeMoveToSquad(
-        address _user,
-        uint256 _agentId
+        address user,
+        uint256 agentId
     ) internal virtual view {
-        _checkAgentOwner(_user, _agentId);
-        if (_agentId >= _nextTokenId) revert InvalidAgentId();
+        _checkAgentOwner(user, agentId);
+        if (agentId >= _nextTokenId) revert InvalidAgentId();
     }
 
     function getAgentIdByOwner(
-        address _owner
+        address owner
     ) external view returns (uint256[] memory) {
-        uint256 len = balanceOf(_owner);
+        uint256 len = balanceOf(owner);
         uint256[] memory agentIds = new uint256[](len);
 
         for (uint256 i = 0; i < len; i++) {
-            agentIds[i] = tokenOfOwnerByIndex(_owner, i);
+            agentIds[i] = tokenOfOwnerByIndex(owner, i);
         }
 
         return agentIds;
     }
 
     function createMission(
-        uint256 _agentId,
-        bytes calldata _missionData
-    ) public virtual override onlyAgentOwner(_agentId) {
-        if (_missionData.length == 0 || _agentId >= _nextTokenId)
+        uint256 agentId,
+        bytes calldata missionData
+    ) public virtual override onlyAgentOwner(agentId) {
+        if (missionData.length == 0 || agentId >= _nextTokenId)
             revert InvalidAgentData();
-        _missionsOf[_agentId].push(_missionData);
+        _missionsOf[agentId].push(missionData);
 
-        emit AgentMissionAddNew(_agentId, _missionsOf[_agentId]);
+        emit AgentMissionAddNew(agentId, _missionsOf[agentId]);
     }
 
     function getMissionIdsByAgentId(
-        uint256 _agentId
+        uint256 agentId
     ) public virtual override view returns (bytes[] memory) {
-        return _missionsOf[_agentId];
+        return _missionsOf[agentId];
     }
 
     function nextTokenId() external view returns (uint256) {
@@ -464,10 +486,8 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     }
 
     function _concatSystemPrompts(
-        TokenMetaData memory data
+        bytes[] memory sysPrompts
     ) internal virtual pure returns (bytes memory) {
-        bytes[] memory sysPrompts = data.sysPrompts;
-
         uint256 len = sysPrompts.length;
         bytes memory concatedPrompt;
 
@@ -495,14 +515,14 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     }
 
     function _burn(
-        uint256 _agentId
+        uint256 agentId
     ) internal override(ERC721, ERC721URIStorage) {
-        super._burn(_agentId);
+        super._burn(agentId);
     }
 
     //todo: add suport interface
     function supportsInterface(
-        bytes4 _interfaceId
+        bytes4 interfaceId
     )
         public
         view
@@ -513,7 +533,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         returns (bool)
     {
         return
-            _interfaceId == type(IERC2981).interfaceId ||
-            super.supportsInterface(_interfaceId);
+            interfaceId == type(IERC2981).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 }

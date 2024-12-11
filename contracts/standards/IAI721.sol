@@ -7,8 +7,9 @@ pragma solidity ^0.8.20;
  */
 interface IAI721 {
     struct TokenMetaData {
-        uint256 fee;
-        bytes[] sysPrompts;
+        uint128 fee;
+        bool isUsed;
+        mapping(string => bytes[]) sysPrompts;
     }
 
     event MintPriceUpdate(uint256 newValue);
@@ -71,11 +72,12 @@ interface IAI721 {
     function createMission(uint256 _agentId, bytes calldata _missionData) external;
     function getMissionIdsByAgentId(uint256 _agentId) external view returns (bytes[] memory);
     function updateAgentURI(uint256 agentId, string calldata uri) external;
-    function updateAgentData(uint256 agentId, bytes calldata sysPrompt, uint256 promptIdx) external;
+    function updateAgentData(uint256 agentId, bytes calldata sysPrompt, string calldata promptKey, uint256 promptIdx) external;
     function updateAgentDataWithSignature(
         uint256 agentId,
         bytes calldata sysPrompt,
         uint256 promptIdx,
+        string calldata promptKey,
         uint256 randomNonce,
         bytes calldata signature
     ) external;
@@ -89,6 +91,7 @@ interface IAI721 {
 
     function addNewAgentData(
         uint256 agentId,
+        string calldata promptKey,
         bytes calldata sysPrompt
     ) external;
 
@@ -105,13 +108,17 @@ interface IAI721 {
     function infer(
         uint256 _agentId,
         bytes calldata _calldata,
-        string calldata _externalData
+        string calldata _externalData,
+        string calldata _promptKey,
+        uint256 _modelId
     ) external payable;
 
     function infer(
         uint256 _agentId,
         bytes calldata _calldata,
         string calldata _externalData,
+        string calldata _promptKey,
+        uint256 _modelId,
         bool _flag
     ) external payable;
 }
