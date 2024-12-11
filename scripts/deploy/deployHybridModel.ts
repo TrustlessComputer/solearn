@@ -33,7 +33,7 @@ async function deployHybridModel() {
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "Llama-3.3-70B",
+    model_name: "Intellect",
     model_type: "text",
     model_url: "https://gateway.lighthouse.storage/ipfs/",
     model_file_hash: "",
@@ -52,7 +52,7 @@ async function deployHybridModel() {
     metadata,
   ];
   const hybridModel = (await deployOrUpgrade(
-    config.hybridModelAddress_3,
+    config.hybridModelAddress_4,
     "HybridModel",
     constructorParams,
     config,
@@ -63,7 +63,7 @@ async function deployHybridModel() {
     `Contract HybridModel has been deployed to address ${hybridModel.target}`
   );
 
-  if (!config.hybridModelAddress_3) {
+  if (!config.hybridModelAddress_4) {
     const collection = ModelCollection.attach(
       config.collectionAddress
     ) as ModelCollection;
