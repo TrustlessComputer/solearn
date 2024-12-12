@@ -118,7 +118,7 @@ async function deployOrUpgradeLocal(
       })());
 }
 
-type DeployContractOptions = {
+export type DeployContractOptions = {
   /**
    * If true, the deployment process will not print any logs
    */

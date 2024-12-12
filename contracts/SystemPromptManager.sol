@@ -14,7 +14,6 @@ import {IHybridModel} from "./interfaces/IHybridModel.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
-// import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
 import {ISquad} from "./interfaces/ISquad.sol";
 
 contract SystemPromptManager is
@@ -25,9 +24,6 @@ contract SystemPromptManager is
     ERC721URIStorageUpgradeable,
     OwnableUpgradeable
 {
-    // using SystemPromptHelper for TokenMetaData;
-    // using Set for Set.Uint256Set;
-
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
@@ -116,6 +112,12 @@ contract SystemPromptManager is
     function updateRoyaltyPortion(uint16 _royaltyPortion) external onlyOwner {
         royaltyPortion = _royaltyPortion;
         emit RoyaltyPortionUpdate(_royaltyPortion);
+    }
+
+    function updateWorkerHubAddress(address _workerHub) external onlyOwner {
+        if (_workerHub == address(0)) revert InvalidData();
+
+        workerHub = _workerHub;
     }
 
     function mint_(
@@ -658,34 +660,4 @@ contract SystemPromptManager is
         bytes32 hash = ECDSAUpgradeable.toEthSignedMessageHash(structHash);
         return ECDSAUpgradeable.recover(hash, _signature);
     }
-
-    // function _removeSquadFromOwnerEnumeration(
-    //     address from,
-    //     uint256 squadId
-    // ) private {
-    //     uint256 lastSquadIndex = squadBalance[from] - 1;
-    //     uint256 squadIndex = ownedSquadsIndex[squadId];
-
-    //     if (squadIndex != lastSquadIndex) {
-    //         uint256 lastSquadId = ownedSquads[from][lastSquadIndex];
-    //         ownedSquads[from][squadIndex] = lastSquadId;
-    //         ownedSquadsIndex[lastSquadId] = squadIndex;
-    //     }
-
-    //     delete ownedSquadsIndex[squadId];
-    //     delete ownedSquads[from][lastSquadIndex];
-    // }
-
-    // function _removeSquadFromAllSquadsEnumeration(uint256 squadId) private {
-    //     uint256 lastSquadIndex = _allSquads.length - 1;
-    //     uint256 squadIndex = _allSquadsIndex[squadId];
-
-    //     uint256 lastSquadId = _allSquads[lastSquadIndex];
-
-    //     _allSquads[squadIndex] = lastSquadId;
-    //     _allSquadsIndex[lastSquadId] = squadIndex;
-
-    //     delete _allSquadsIndex[squadId];
-    //     _allSquads.pop();
-    // }
 }

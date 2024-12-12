@@ -162,6 +162,29 @@ contract StakingHub is
         emit MinerRegistration(msg.sender, tier, minerMinimumStake);
     }
 
+    function registerMiner(address model, uint16 tier) external whenNotPaused {
+        _updateEpoch();
+
+        if (tier == 0 || tier > maximumTier) revert InvalidTier();
+        if (model == address(0)) revert InvalidModel();
+
+        Worker storage miner = miners[msg.sender];
+        if (miner.tier != 0) revert AlreadyRegistered();
+
+        TransferHelper.safeTransferFrom(
+            wEAI,
+            msg.sender,
+            address(this),
+            minerMinimumStake
+        );
+
+        miner.stake = minerMinimumStake;
+        miner.tier = tier;
+        miner.modelAddress = model;
+
+        emit MinerRegistration(msg.sender, tier, minerMinimumStake);
+    }
+
     function forceChangeModelForMiner(
         address _miner,
         address _modelAddress

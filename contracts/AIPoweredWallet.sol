@@ -146,6 +146,7 @@ contract AIPoweredWallet {
         );
 
         (bool success, ) = payable(receivedWallet).call{value: msg.value}("");
+        require(success, "AIPoweredWallet: Transfer failed");
 
         context[msg.sender] = string.concat(
             context[msg.sender],

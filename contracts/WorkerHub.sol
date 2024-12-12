@@ -41,7 +41,9 @@ contract WorkerHub is
         uint40 _revealDuration,
         uint16 _feeRatioMinerValidor,
         uint256 _daoTokenReward,
-        DAOTokenPercentage memory _daoTokenPercentage
+        DAOTokenPercentage memory _daoTokenPercentage,
+        uint256 _inferenceNumber,
+        uint256 _assignmentNumber
     ) external initializer {
         __Ownable_init();
         __Pausable_init();
@@ -71,6 +73,9 @@ contract WorkerHub is
         revealDuration = _revealDuration;
         daoTokenPercentage = _daoTokenPercentage;
         wEAI = _wEAI;
+
+        inferenceNumber = _inferenceNumber;
+        assignmentNumber = _assignmentNumber;
     }
 
     function version() external pure returns (string memory) {

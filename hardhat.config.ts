@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "polygon_mainnet",
+  defaultNetwork: "hermes_mainnet",
   solidity: {
     compilers: [
       {
@@ -186,7 +186,21 @@ const config: HardhatUserConfig = {
     hermes_mainnet: {
       url: "https://rpc.hermeschain.eternalai.org",
       chainId: 45762,
-      accounts: [process.env.HERMES_MAINNET_PRIVATE_KEY],
+      accounts: [
+        process.env.HERMES_MAINNET_PRIVATE_KEY,
+
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_3,
+
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_1_LLAMA_3_3_70B,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_2_LLAMA_3_3_70B,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_3_LLAMA_3_3_70B,
+
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_1_INTELLECT,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_2_INTELLECT,
+        process.env.HERMES_MAINNET_PRIVATE_KEY_WORKER_3_INTELLECT,
+      ],
       l2OwnerAddress: process.env.HERMES_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.HERMES_MAINNET_TREASURY_ADDRESS,
       collectionAddress: process.env.HERMES_MAINNET_COLLECTION_ADDRESS,
@@ -194,7 +208,12 @@ const config: HardhatUserConfig = {
       daoTokenAddress: process.env.HERMES_MAINNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.HERMES_MAINNET_WORKER_HUB_SCORING_ADDRESS,
-      hybridModelAddress: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelAddresses: [
+        process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_1,
+        process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_2,
+        process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_3,
+        process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_4,
+      ],
       hybridModelScoringAddress:
         process.env.HERMES_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
