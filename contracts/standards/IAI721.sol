@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 /**
- * @dev Interface of the ERC20 standard as defined in the EIP.
+ * @dev Interface of the ERC721 standard as defined in the EIP.
  */
 interface IAI721 {
     struct TokenMetaData {
@@ -15,8 +15,6 @@ interface IAI721 {
     event MintPriceUpdate(uint256 newValue);
     event RoyaltyPortionUpdate(uint16 newValue);
     event RoyaltyReceiverUpdate(address newAddress);
-    event ManagerAuthorization(address indexed account);
-    event ManagerDeauthorization(address indexed account);
     event NewToken(
         uint256 indexed tokenId,
         string uri,
@@ -41,7 +39,6 @@ interface IAI721 {
         string externalData,
         uint256 inferenceId
     );
-    event FeesClaimed(address indexed claimer, uint amount);
     event TopUpPoolBalance(uint256 agentId, address caller, uint256 amount);
 
     event AgentMissionAddNew(uint256 indexed agentId, bytes[] missions);
@@ -52,10 +49,7 @@ interface IAI721 {
         bytes newSysMission
     );
 
-    error Authorized();
-    error FailedTransfer();
     error InsufficientFunds();
-    error InvalidMintingFee();
     error InvalidAgentId();
     error InvalidAgentFee();
     error InvalidAgentData();
@@ -100,7 +94,7 @@ interface IAI721 {
         uint fee
     ) external;
 
-    function topUpPoolBalance(uint256 _agentId) external payable;
+    function topUpPoolBalance(uint256 agentId, uint256 amount) external;
 
     /**
      * @dev Execute infer request.
@@ -110,7 +104,8 @@ interface IAI721 {
         bytes calldata _calldata,
         string calldata _externalData,
         string calldata _promptKey,
-        uint256 _modelId
+        uint256 _modelId,
+        uint256 _feeAmount
     ) external payable;
 
     function infer(
@@ -119,6 +114,7 @@ interface IAI721 {
         string calldata _externalData,
         string calldata _promptKey,
         uint256 _modelId,
-        bool _flag
+        bool _flag,
+        uint256 _feeAmount
     ) external payable;
 }

@@ -6,38 +6,62 @@ pragma solidity ^0.8.20;
  * @dev Interface of the ERC20 standard as defined in the EIP.
  */
 interface IAI20 {
-    /**
-     * @dev Emitted when the prompt is set.
-     */
-    event PromptSet(string oldPrompt, string newPrompt);
+    struct TokenMetaData {
+        uint256 fee;
+        mapping(string => bytes[]) sysPrompts;
+    }
 
-    /**
-     * @dev Emitted when the fee is set.
-     */
-    event FeeSet(uint oldFee, uint newFee);
+    event AgentURIUpdate(string uri);
+    event AgentDataUpdate(
+        uint256 promptIndex,
+        bytes oldSysPrompt,
+        bytes newSysPrompt
+    );
+    event AgentDataAddNew(bytes[] sysPrompt);
+    event AgentFeeUpdate(uint fee);
+    event InferencePerformed(
+        address indexed caller,
+        bytes data,
+        uint fee,
+        string externalData,
+        uint256 inferenceId
+    );
+    event TopUpPoolBalance(address caller, uint256 amount);
 
-    /**
-     * @dev Emitted when the modelId is set.
-     */
-    event ModelIdSet(uint oldModelId, uint newModelId);
+    event AgentMissionAddNew(bytes[] missions);
+    event AgentMissionUpdate(
+        uint256 missionIndex,
+        bytes oldSysMission,
+        bytes newSysMission
+    );
 
-    /**
-     * @dev Returns the promt of this AI contract.
-     */
-    function prompt() external view returns (string memory);
+    error InsufficientFunds();
+    error InvalidAgentFee();
+    error InvalidAgentData();
+    error Unauthorized();
+    error InvalidData();
+        error InvalidAgentPromptIndex();
 
-    /**
-     * @dev Returns the fee of this AI contract.
-     */
-    function fee() external view returns (uint256);
-
-    /**
-     * @dev Returns the modelId of this AI contract.
-     */
-    function modelId() external view returns (uint256);
+    function getMission() external view returns (bytes[] memory);
+    function topUpPoolBalance(uint256 amount) external;
 
     /**
      * @dev Execute infer request.
      */
-    function infer() external  returns (uint256);
+    function infer(
+        bytes calldata fwdCalldata,
+        string calldata externalData,
+        string calldata promptKey,
+        uint256 modelId,
+        uint256 feeAmount
+    ) external payable;
+
+    function infer(
+        bytes calldata _calldata,
+        string calldata _externalData,
+        string calldata _promptKey,
+        uint256 _modelId,
+        bool _flag,
+        uint256 _feeAmount
+    ) external payable;
 }
