@@ -16,8 +16,7 @@ interface IStakingHub {
 
     struct Worker {
         uint256 stake;
-        uint256 commitment;
-        address modelAddress;
+        uint32 modelId;
         uint40 lastClaimedEpoch;
         uint40 activeTime;
         uint16 tier;
@@ -31,8 +30,7 @@ interface IStakingHub {
     struct Boost {
         uint40 minerTimestamp;
         uint40 validatorTimestamp;
-        uint48 reserved1; // accumulated active time
-        uint128 reserved2;
+        uint48 reserved1; // accumulated active time // mr @issac review and change name
     }
 
     event MinerRegistration(
@@ -46,26 +44,26 @@ interface IStakingHub {
     event MinerUnstake(address indexed miner, uint256 stake);
     event Restake(
         address indexed miner,
-        uint256 restake,
-        address indexed model
+        uint32 indexed modelId,
+        uint256 restake
     );
-    event ModelMinimumFeeUpdate(address indexed model, uint256 minimumFee);
-    event ModelTierUpdate(address indexed model, uint32 tier);
-    event ModelUnregistration(address indexed model);
+    event ModelMinimumFeeUpdate(uint32 indexed modelId, uint256 minimumFee);
+    event ModelTierUpdate(uint32 indexed modelId, uint32 tier);
+    event ModelUnregistration(uint32 indexed modelId);
     event ModelRegistration(
-        address indexed model,
+        uint32 indexed modelId,
         uint16 indexed tier,
         uint256 minimumFee
     );
     event FraudulentMinerPenalized(
         address indexed miner,
-        address indexed modelAddress,
+        uint32 indexed modelId,
         address indexed treasury,
         uint256 fine
     );
     event MinerDeactivated(
         address indexed miner,
-        address indexed modelAddress,
+        uint32 indexed modelId,
         uint40 activeTime
     );
     event RewardClaim(address indexed worker, uint256 value);
@@ -86,22 +84,23 @@ interface IStakingHub {
     error StakeTooLow();
     error MinerInDeactivationTime();
     error StillBeingLocked();
-    error NullStake();
     error ZeroValue();
     error InvalidBlockValue();
     error InvalidValue();
     error InvalidAddress();
-    error InvalidWorkerHub();
+    error NotEnoughMiners();
 
     function updateEpoch() external;
-    function getModelInfo(address _modelAddr) external returns (Model memory);
+    function getModelInfo(uint32 modelId) external returns (Model memory);
     function getMinerAddressesOfModel(
-        address _model
+        uint32 modelId
     ) external view returns (address[] memory);
-    function isMinerAddress(address _miner) external view returns (bool);
-    function validateModelOfMiner(address _miner) external view;
-    function slashMiner(address _miner, bool _isFined) external;
-    function getMinFeeToUse(
-        address _modelAddress
-    ) external view returns (uint256);
+    function getMinFeeToUse(uint32 modelId) external view returns (uint256);
+
+    function validateModelAndChooseRandomMiner(
+        uint32 modelId,
+        uint256 minersRequired
+    ) external returns (address assignMiner, uint256 modelFee);
+    function validateMiner(address miner) external;
+    function slashMiner(address miner, bool isFined) external;
 }

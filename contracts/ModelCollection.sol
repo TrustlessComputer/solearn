@@ -4,16 +4,12 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC165Upgradeable.sol";
 import {IERC2981Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import {ERC721EnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
 import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
-import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-
-import {IModel} from "./interfaces/IModel.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 
 import {ModelCollectionStorage} from "./storages/ModelCollectionStorage.sol";
 
@@ -28,33 +24,35 @@ contract ModelCollection is
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
-    receive() external payable {}
-
     modifier onlyManager() {
-        if (msg.sender != owner() && !isManager[msg.sender])
+        if (msg.sender != owner() && !_isManager[msg.sender])
             revert Unauthorized();
         _;
     }
 
     function initialize(
-        string calldata _name,
-        string calldata _symbol,
-        uint256 _mintPrice,
-        address _royaltyReceiver,
-        uint16 _royaltyPortion,
-        uint256 _nextModelId
+        string calldata name_,
+        string calldata symbol_,
+        uint256 mintPrice_,
+        address royaltyReceiver_,
+        uint16 royaltyPortion_,
+        uint256 nextModelId_
     ) external initializer {
-        __ERC721_init(_name, _symbol);
+        __ERC721_init(name_, symbol_);
         __ERC721Pausable_init();
         __Ownable_init();
 
-        mintPrice = _mintPrice;
-        royaltyReceiver = _royaltyReceiver;
-        royaltyPortion = _royaltyPortion;
-        nextModelId = _nextModelId;
+        if (nextModelId_ >= type(uint32).max) revert InvalidValue();
 
-        isManager[owner()] = true;
+        _mintPrice = mintPrice_;
+        _royaltyReceiver = royaltyReceiver_;
+        _royaltyPortion = royaltyPortion_;
+        _nextModelId = nextModelId_;
+
+        _isManager[owner()] = true;
     }
+
+    receive() external payable {}
 
     function version() external pure returns (string memory) {
         return VERSION;
@@ -68,139 +66,114 @@ contract ModelCollection is
         _unpause();
     }
 
-    function authorizeManager(address _account) external onlyOwner {
-        if (isManager[_account]) revert Authorized();
-        isManager[_account] = true;
-        emit ManagerAuthorization(_account);
+    function authorizeManager(address account) external onlyOwner {
+        if (_isManager[account]) revert Authorized();
+        _isManager[account] = true;
+        emit ManagerAuthorization(account);
     }
 
-    function deauthorizeManager(address _account) external onlyOwner {
-        if (!isManager[_account]) revert Unauthorized();
-        isManager[_account] = false;
-        emit ManagerDeauthorization(_account);
+    function deauthorizeManager(address account) external onlyOwner {
+        if (!_isManager[account]) revert Unauthorized();
+        _isManager[account] = false;
+        emit ManagerDeauthorization(account);
     }
 
-    function updateMintPrice(uint256 _mintPrice) external onlyOwner {
-        mintPrice = _mintPrice;
-        emit MintPriceUpdate(_mintPrice);
+    function isManager(address account) external view returns (bool) {
+        return _isManager[account];
     }
 
-    function updateRoyaltyReceiver(
-        address _royaltyReceiver
-    ) external onlyOwner {
-        royaltyReceiver = _royaltyReceiver;
-        emit RoyaltyReceiverUpdate(_royaltyReceiver);
+    function updateMintPrice(uint256 newPrice) external onlyOwner {
+        _mintPrice = newPrice;
+        emit MintPriceUpdate(newPrice);
     }
 
-    function updateRoyaltyPortion(uint16 _royaltyPortion) external onlyOwner {
-        royaltyPortion = _royaltyPortion;
-        emit RoyaltyPortionUpdate(_royaltyPortion);
+    function mintPrice() external view returns (uint256) {
+        return _mintPrice;
     }
 
-    function mint_(
-        address _to,
-        string calldata _uri,
-        address _model,
-        uint256 tokenId
-    ) internal returns (uint256) {
-        if (_model == address(0)) revert InvalidModel();
-        if (msg.value < mintPrice) revert InsufficientFunds();
+    function updateRoyaltyReceiver(address newReceiver) external onlyOwner {
+        _royaltyReceiver = newReceiver;
+        emit RoyaltyReceiverUpdate(newReceiver);
+    }
 
-        _safeMint(_to, tokenId);
-        _setTokenURI(tokenId, _uri);
-        models[tokenId] = _model;
-        IModel(_model).setModelId(tokenId);
+    function royaltyReceiver() external view returns (address) {
+        return _royaltyReceiver;
+    }
 
-        emit NewToken(tokenId, _uri, _model, msg.sender);
+    function updateRoyaltyPortion(uint16 newPortion) external onlyOwner {
+        _royaltyPortion = newPortion;
+        emit RoyaltyPortionUpdate(newPortion);
+    }
 
-        return tokenId;
+    function royaltyPortion() external view returns (uint16) {
+        return _royaltyPortion;
     }
 
     function mint(
-        address _to,
-        string calldata _uri,
-        address _model
+        address to,
+        string calldata uri
     ) external payable onlyManager returns (uint256) {
-        while (models[nextModelId] != address(0)) {
-            nextModelId++;
-        }
-        uint256 tokenId = nextModelId++;
+        uint256 modelId = _nextModelId++;
+        if (modelId >= type(uint32).max) revert InvalidValue();
 
-        return mint_(_to, _uri, _model, tokenId);
+        return _mint(to, uri, modelId);
     }
 
-    function mintBySignature(
-        address _to,
-        string calldata _uri,
-        address _model,
-        address _manager,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public virtual returns (uint256) {
-        bytes32 hash = getHashToSign(_to, _uri, _model, _manager);
+    function _mint(
+        address to,
+        string calldata uri,
+        uint256 modelId
+    ) internal returns (uint256) {
+        if (msg.value < _mintPrice) revert InsufficientFunds();
 
-        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-        if (signer != _manager || !isManager[_manager])
-            revert InvalidSignature();
-        while (models[nextModelId] != address(0)) {
-            nextModelId++;
-        }
-        uint256 tokenId = nextModelId++;
-        return mint_(_to, _uri, _model, tokenId);
+        _safeMint(to, modelId);
+        _setTokenURI(modelId, uri);
+
+        emit NewModel(msg.sender, to, modelId, uri);
+
+        return modelId;
     }
 
-    function getHashToSign(
-        address _to,
-        string calldata _uri,
-        address _model,
-        address _manager
-    ) public view virtual returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(_to, _uri, _model, _manager));
-
-        return _hashTypedDataV4(structHash);
+    function nextModelId() external view returns (uint256) {
+        return _nextModelId;
     }
 
-    function withdraw(address _to, uint _value) external onlyOwner {
-        (bool success, ) = _to.call{value: _value}("");
-        if (!success) revert FailedTransfer();
+    function checkModelExist(uint256 modelId) external view returns (bool) {
+        return _exists(modelId);
     }
 
-    function updateTokenURI(
-        uint256 _tokenId,
-        string calldata _uri
+    function _burn(
+        uint256 modelId
+    ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
+        super._burn(modelId);
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 modelId,
+        uint256 batchSize
+    )
+        internal
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            ERC721PausableUpgradeable
+        )
+    {
+        super._beforeTokenTransfer(from, to, modelId, batchSize);
+    }
+
+    function updateModelURI(
+        uint256 modelId,
+        string calldata uri
     ) external onlyOwner {
-        _setTokenURI(_tokenId, _uri);
-        emit TokenURIUpdate(_tokenId, _uri);
-    }
-
-    function updateTokenModel(
-        uint256 _tokenId,
-        address _model
-    ) external onlyOwner {
-        require(_model != address(0), "invalid token model");
-
-        models[_tokenId] = _model;
-        emit TokenModelUpdate(_tokenId, _model);
-    }
-
-    function modelAddressOf(uint256 _tokenId) external view returns (address) {
-        return models[_tokenId];
-    }
-
-    function royaltyInfo(
-        uint256 _tokenId,
-        uint256 _salePrice
-    ) external view returns (address, uint256) {
-        _tokenId;
-        return (
-            royaltyReceiver,
-            (_salePrice * royaltyPortion) / PORTION_DENOMINATOR
-        );
+        _setTokenURI(modelId, uri);
+        emit ModelURIUpdate(modelId, uri);
     }
 
     function tokenURI(
-        uint256 _tokenId
+        uint256 modelId
     )
         public
         view
@@ -211,11 +184,21 @@ contract ModelCollection is
         )
         returns (string memory)
     {
-        return super.tokenURI(_tokenId);
+        return super.tokenURI(modelId);
+    }
+
+    function royaltyInfo(
+        uint256 modelId,
+        uint256 salePrice
+    ) external view returns (address receiver, uint256 royaltyAmount) {
+        modelId;
+
+        receiver = _royaltyReceiver;
+        royaltyAmount = (salePrice * _royaltyPortion) / PORTION_DENOMINATOR;
     }
 
     function supportsInterface(
-        bytes4 _interfaceId
+        bytes4 interfaceId
     )
         public
         view
@@ -228,41 +211,12 @@ contract ModelCollection is
         returns (bool)
     {
         return
-            _interfaceId == type(IERC2981Upgradeable).interfaceId ||
-            super.supportsInterface(_interfaceId);
+            interfaceId == type(IERC2981Upgradeable).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
-    function _beforeTokenTransfer(
-        address _from,
-        address _to,
-        uint256 _tokenId,
-        uint256 _batchSize
-    )
-        internal
-        override(
-            ERC721Upgradeable,
-            ERC721EnumerableUpgradeable,
-            ERC721PausableUpgradeable
-        )
-    {
-        super._beforeTokenTransfer(_from, _to, _tokenId, _batchSize);
-    }
-
-    function _burn(
-        uint256 _tokenId
-    ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
-        super._burn(_tokenId);
-    }
-
-    function setModelId(
-        address _model,
-        uint256 tokenId
-    ) internal returns (uint256) {
-        if (_model == address(0)) revert InvalidModel();
-
-        models[tokenId] = _model;
-        IModel(_model).setModelId(tokenId);
-
-        return tokenId;
+    function withdraw(address to, uint256 value) external onlyOwner {
+        (bool success, ) = to.call{value: value}("");
+        if (!success) revert FailedTransfer();
     }
 }
