@@ -1631,4 +1631,10 @@ contract WorkerHub is
         require(_assignmentId <= assignmentNumber, "Invalid assignment id");
         emit StreamedData(_assignmentId, _data);
     }
+
+    function getAssignmentInfo(
+        uint256 _assignmentId
+    ) external view returns (Assignment memory) {
+        return assignments[_assignmentId];
+    }
 }
