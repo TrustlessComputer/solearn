@@ -32,7 +32,10 @@ contract SystemPromptManager is
 
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
-    uint64 private constant NFT_UNLOCK_THRESHOLD = 200;
+
+    uint64 private constant NFT_UNLOCK_THRESHOLD = 100;
+    uint64 private constant NFT_COLLECTION_SIZE = 10000;
+    uint256 private constant MAX_RARITY = 10000;
 
     receive() external payable {}
 
@@ -48,7 +51,12 @@ contract SystemPromptManager is
     }
 
     function _checkAgentOwner(address _user, uint256 _agentId) internal view {
-        if (_user != _ownerOf(_agentId)) revert Unauthorized();
+        address owner = agentInfo[_agentId].owner;
+        if (owner == address(0)) {
+            owner = _ownerOf(agentInfo[_agentId].tokenId);
+        }
+
+        if (_user != owner) revert Unauthorized();
     }
 
     function initialize(
@@ -78,6 +86,7 @@ contract SystemPromptManager is
         workerHub = _workerHub;
 
         isManager[owner()] = true;
+        nextAgentId = 1;
     }
 
     function version() external pure returns (string memory) {
@@ -121,24 +130,68 @@ contract SystemPromptManager is
         emit RoyaltyPortionUpdate(_royaltyPortion);
     }
 
-    function mint_(
-        address _to,
-        // string calldata _uri,
+    function createAgent(
+        address _agentOwner,
         bytes calldata _data,
-        uint _fee,
-        uint256 agentId
-    ) internal returns (uint256) {
+        uint _fee
+    ) external returns (uint256) {
         if (_data.length == 0) revert InvalidAgentData();
-
-        _safeMint(_to, agentId);
-        // _setTokenURI(agentId, _uri);
+        uint256 agentId = nextAgentId++;
+        AgentRating storage a = agentRating[agentId];
+        if (isUnlockedAgent(agentId)) revert InvalidData();
 
         datas[agentId].fee = _fee;
         datas[agentId].sysPrompts.push(_data);
 
-        agentRating[agentId].creationTime = uint64(block.timestamp);
+        agentInfo[agentId].owner = _agentOwner;
+        agentInfo[agentId].status = AgentStatus.Pending;
 
-        emit NewToken(agentId, "", _data, _fee, _to);
+        emit NewAgent(agentId, _data, _fee, _agentOwner);
+    }
+
+    function transferAgentOwnership(
+        address _newOwner,
+        uint256 _agentId
+    ) external {
+        address owner = agentInfo[_agentId].owner;
+        // exclude minted agents
+        if (owner == address(0)) {
+            revert InvalidStatus();
+        }
+        if (owner != msg.sender) {
+            revert Unauthorized();
+        }
+
+        if (_newOwner == address(0)) revert InvalidData();
+        agentInfo[_agentId].owner = _newOwner;
+
+        emit AgentOwnerUpdate(_agentId, _newOwner);
+    }
+
+    function mint_(
+        address _to,
+        // string calldata _uri,
+        // bytes calldata _data,
+        // uint _fee,
+        uint256 tokenId,
+        uint256 agentId
+    ) internal returns (uint256) {
+        AgentRating storage a = agentRating[agentId];
+        if (isUnlockedAgent(agentId)) revert InvalidData();
+        if (a.totalPoints < NFT_UNLOCK_THRESHOLD) revert ThresholdNotReached();
+        if (agentId > NFT_COLLECTION_SIZE) revert CollectionSizeReached();
+
+        _safeMint(_to, agentId);
+        // _setTokenURI(agentId, _uri);
+
+        agentInfo[agentId].tokenId = tokenId;
+        agentInfo[agentId].owner = address(0);
+        agentInfo[agentId].status = AgentStatus.Minted;
+
+        agentRating[agentId].mintTime = uint64(block.timestamp);
+
+        ICryptoAIData(cryptoAiDataAddr).mintAgent(tokenId);
+        emit NewToken(tokenId, agentId, _to);
 
         return agentId;
     }
@@ -146,50 +199,53 @@ contract SystemPromptManager is
     function _wrapMint(
         address _to,
         // string calldata _uri,
-        bytes calldata _data,
-        uint _fee,
-        uint256 _squadId
+        // bytes calldata _data,
+        // uint _fee,
+        uint256 _squadId,
+        uint256 _agentId
     ) internal returns (uint256) {
         if (msg.value < mintPrice) revert InvalidMintingFee();
 
         while (datas[nextTokenId].sysPrompts.length != 0) {
             nextTokenId++;
         }
-        uint256 agentId = nextTokenId++;
+        uint256 tokenId = nextTokenId++;
 
-        mint_(_to, _data, _fee, agentId);
+        mint_(_to, tokenId, _agentId);
 
         if (_squadId != 0) {
-            validateAgentBeforeMoveToSquad(_to, agentId);
+            validateAgentBeforeMoveToSquad(_to, _agentId);
 
             ISquad(squadManager).moveAgentToSquad(
                 msg.sender,
-                agentId,
+                tokenId,
                 _squadId
             );
         }
 
-        return agentId;
+        return tokenId;
     }
 
     /// @notice This function open minting role to public users
     function mint(
         address _to,
         // string calldata _uri,
-        bytes calldata _data,
-        uint _fee
+        // bytes calldata _data,
+        // uint _fee
+        uint256 _agentId
     ) external payable returns (uint256) {
-        return _wrapMint(_to, _data, _fee, 0);
+        return _wrapMint(_to, _agentId, 0);
     }
 
     function mint(
         address _to,
         // string calldata _uri,
-        bytes calldata _data,
-        uint _fee,
-        uint256 _squadId
+        // bytes calldata _data,
+        // uint _fee,
+        uint256 _squadId,
+        uint256 _agentId
     ) external payable returns (uint256) {
-        return _wrapMint(_to, _data, _fee, _squadId);
+        return _wrapMint(_to, _agentId, _squadId);
     }
 
     function withdraw(address _to, uint _value) external onlyOwner {
@@ -235,9 +291,6 @@ contract SystemPromptManager is
         uint256 _randomNonce,
         bytes calldata _signature
     ) internal {
-        address agentOwner = _ownerOf(_agentId);
-        if (signaturesUsed[agentOwner][_signature]) revert SignatureUsed();
-
         address signer = recover(
             _agentId,
             _sysPrompt,
@@ -247,7 +300,8 @@ contract SystemPromptManager is
         );
 
         _checkAgentOwner(signer, _agentId);
-        signaturesUsed[agentOwner][_signature] = true;
+        if (signaturesUsed[signer][_signature]) revert SignatureUsed();
+        signaturesUsed[signer][_signature] = true;
     }
 
     function _validateAgentData(
@@ -286,20 +340,20 @@ contract SystemPromptManager is
         datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
     }
 
-    function _checkUpdateUriPermission(
-        uint256 _agentId,
-        string calldata _uri,
-        uint256 _randomNonce,
-        bytes calldata _signature
-    ) internal {
-        address agentOwner = _ownerOf(_agentId);
-        if (signaturesUsed[agentOwner][_signature]) revert SignatureUsed();
+    // function _checkUpdateUriPermission(
+    //     uint256 _agentId,
+    //     string calldata _uri,
+    //     uint256 _randomNonce,
+    //     bytes calldata _signature
+    // ) internal {
+    //     address agentOwner = _ownerOf(_agentId);
+    //     if (signaturesUsed[agentOwner][_signature]) revert SignatureUsed();
 
-        address signer = recover(_agentId, _uri, _randomNonce, _signature);
+    //     address signer = recover(_agentId, _uri, _randomNonce, _signature);
 
-        _checkAgentOwner(signer, _agentId);
-        signaturesUsed[agentOwner][_signature] = true;
-    }
+    //     _checkAgentOwner(signer, _agentId);
+    //     signaturesUsed[agentOwner][_signature] = true;
+    // }
 
     // function updateAgentUriWithSignature(
     //     uint256 _agentId,
@@ -428,6 +482,10 @@ contract SystemPromptManager is
         );
         uint256 estFeeWH = IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
 
+        address agentOwner = agentInfo[_agentId].owner;
+        if (agentOwner == address(0)) {
+            agentOwner = _ownerOf(_agentId);
+        }
         if (msg.value < estFeeWH && poolBalance[_agentId] >= estFeeWH) {
             unchecked {
                 poolBalance[_agentId] -= estFeeWH;
@@ -435,35 +493,45 @@ contract SystemPromptManager is
 
             if (msg.value > 0) {
                 TransferHelper.safeTransferNative(
-                    _ownerOf(_agentId),
+                    agentOwner,
                     msg.value
                 );
             }
         } else if (msg.value >= estFeeWH) {
             uint256 remain = msg.value - estFeeWH;
             if (remain > 0) {
-                TransferHelper.safeTransferNative(_ownerOf(_agentId), remain);
+                TransferHelper.safeTransferNative(agentOwner, remain);
             }
         } else {
             revert InsufficientFunds();
         }
 
-        agentRating[_agentId].totalPoints += 1;
+        if (!isUnlockedAgent(_agentId)) {
+            agentRating[_agentId].totalPoints += 1;
+        }
 
         return (estFeeWH, fwdData);
     }
 
-    function dataOf(
+    function dataOfAgentId(
         uint256 _agentId
     ) external view returns (TokenMetaData memory) {
         return datas[_agentId];
     }
 
+    function dataOf(
+        uint256 _tokenId
+    ) external view returns (TokenMetaData memory) {
+        uint256 agentId = tokenIdToAgentId[_tokenId];
+        if (agentId == 0) revert InvalidAgentId();
+        return datas[agentId];
+    }
+
+
     function royaltyInfo(
-        uint256 _agentId,
+        uint256 _tokenId,
         uint256 _salePrice
     ) external view returns (address, uint256) {
-        _agentId;
         return (
             royaltyReceiver,
             (_salePrice * royaltyPortion) / PORTION_DENOMINATOR
@@ -471,7 +539,7 @@ contract SystemPromptManager is
     }
 
     function tokenURI(
-        uint256 _agentId
+        uint256 _tokenId
     )
         public
         view
@@ -479,24 +547,13 @@ contract SystemPromptManager is
             ERC721Upgradeable,
             ERC721URIStorageUpgradeable,
             IERC721MetadataUpgradeable
-        )
-        returns (string memory)
-    {
+        ) returns (string memory) {
+        uint256 _agentId = tokenIdToAgentId[_tokenId];
+        if (_agentId == 0) revert InvalidAgentId();
+
         if (datas[_agentId].sysPrompts.length == 0) revert InvalidAgentData();
         ICryptoAIData cryptoAIDataContract = ICryptoAIData(cryptoAiDataAddr);
-        return string(
-            abi.encodePacked(
-                'data:application/json;base64,',
-                Base64Upgradeable.encode(
-                    abi.encodePacked(
-                        '{',
-                        '"image": "',
-                        cryptoAIDataContract.svgToImageURI(cryptoAIDataContract.renderFullSVGWithGrid(_agentId)),
-                        '}'
-                    )
-                )
-            )
-        );
+        return cryptoAIDataContract.tokenURI(_tokenId);
     }
 
     function supportsInterface(
@@ -520,7 +577,7 @@ contract SystemPromptManager is
     function _beforeTokenTransfer(
         address _from,
         address _to,
-        uint256 _agentId,
+        uint256 _tokenId,
         uint256 _batchSize
     )
         internal
@@ -530,13 +587,13 @@ contract SystemPromptManager is
             ERC721PausableUpgradeable
         )
     {
-        super._beforeTokenTransfer(_from, _to, _agentId, _batchSize);
+        super._beforeTokenTransfer(_from, _to, _tokenId, _batchSize);
     }
 
     function _burn(
-        uint256 _agentId
+        uint256 _tokenId
     ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
-        super._burn(_agentId);
+        super._burn(_tokenId);
     }
 
     function validateAgentBeforeMoveToSquad(
@@ -544,7 +601,7 @@ contract SystemPromptManager is
         uint256 _agentId
     ) public view {
         _checkAgentOwner(_user, _agentId);
-        if (_agentId >= nextTokenId) revert InvalidAgentId();
+        if (_agentId >= nextAgentId) revert InvalidAgentId();
     }
 
     function validateAgentsBeforeMoveToSquad(
@@ -555,21 +612,22 @@ contract SystemPromptManager is
 
         for (uint256 i = 0; i < len; i++) {
             _checkAgentOwner(_user, _agentIds[i]);
-            if (_agentIds[i] >= nextTokenId) revert InvalidAgentId();
+            if (_agentIds[i] >= nextAgentId) revert InvalidAgentId();
         }
     }
 
-    function getAgentIdByOwner(
+    //TODO
+    function getTokenIdsByOwner(
         address _owner
     ) external view returns (uint256[] memory) {
         uint256 len = balanceOf(_owner);
-        uint256[] memory agentIds = new uint256[](len);
+        uint256[] memory ids = new uint256[](len);
 
         for (uint256 i = 0; i < len; i++) {
-            agentIds[i] = tokenOfOwnerByIndex(_owner, i);
+            ids[i] = tokenOfOwnerByIndex(_owner, i);
         }
 
-        return agentIds;
+        return ids;
     }
 
     function updateMission(
@@ -580,7 +638,7 @@ contract SystemPromptManager is
         if (
             _missionData.length == 0 ||
             _missionIdx >= missionsOf[_agentId].length ||
-            _agentId >= nextTokenId
+            _agentId >= nextAgentId
         ) revert InvalidAgentData();
 
         emit AgentMissionUpdate(
@@ -597,7 +655,7 @@ contract SystemPromptManager is
         uint256 _agentId,
         bytes calldata _missionData
     ) external onlyAgentOwner(_agentId) {
-        if (_missionData.length == 0 || _agentId >= nextTokenId)
+        if (_missionData.length == 0 || _agentId >= nextAgentId)
             revert InvalidAgentData();
         missionsOf[_agentId].push(_missionData);
 
@@ -684,55 +742,74 @@ contract SystemPromptManager is
         return ECDSAUpgradeable.recover(hash, _signature);
     }
 
-    // function _removeSquadFromOwnerEnumeration(
-    //     address from,
-    //     uint256 squadId
-    // ) private {
-    //     uint256 lastSquadIndex = squadBalance[from] - 1;
-    //     uint256 squadIndex = ownedSquadsIndex[squadId];
+    function unlockPFP(uint256 _tokenId) external {
+        uint256 agentId = tokenIdToAgentId[_tokenId];
+        if (agentId == 0) revert InvalidAgentId();
+        if (msg.sender != _ownerOf(_tokenId)) revert Unauthorized();
+        AgentRating storage a = agentRating[agentId];
+        if (isUnlockedAgent(agentId)) revert InvalidData();
+        if (a.totalPoints < NFT_UNLOCK_THRESHOLD) revert ThresholdNotReached();
+        uint256 tokenId = agentInfo[agentId].tokenId;
+        if (tokenId == 0) revert InvalidData();
 
-    //     if (squadIndex != lastSquadIndex) {
-    //         uint256 lastSquadId = ownedSquads[from][lastSquadIndex];
-    //         ownedSquads[from][squadIndex] = lastSquadId;
-    //         ownedSquadsIndex[lastSquadId] = squadIndex;
-    //     }
+        ICryptoAIData(cryptoAiDataAddr).unlockRenderAgent(tokenId);
 
-    //     delete ownedSquadsIndex[squadId];
-    //     delete ownedSquads[from][lastSquadIndex];
-    // }
-
-    // function _removeSquadFromAllSquadsEnumeration(uint256 squadId) private {
-    //     uint256 lastSquadIndex = _allSquads.length - 1;
-    //     uint256 squadIndex = _allSquadsIndex[squadId];
-
-    //     uint256 lastSquadId = _allSquads[lastSquadIndex];
-
-    //     _allSquads[squadIndex] = lastSquadId;
-    //     _allSquadsIndex[lastSquadId] = squadIndex;
-
-    //     delete _allSquadsIndex[squadId];
-    //     _allSquads.pop();
-    // }
-
-    function unlockNFT(uint256 _agentId) external onlyAgentOwner(_agentId) {
-        AgentRating storage a = agentRating[_agentId];
-        if (!isUnlockedNFT(_agentId)) revert InvalidData();
-        if (a.unlockTime - a.creationTime < NFT_UNLOCK_THRESHOLD) revert ThresholdNotReached();
-        // TODO: compute rarity
-
-        agentRating[_agentId].unlockTime = uint64(block.timestamp);
+        agentRating[agentId].unlockTime = uint64(block.timestamp);
     }
 
-    function isUnlockedNFT(uint256 _agentId) public view returns (bool) {
-        return agentRating[_agentId].unlockTime > 0;
+    function isUnlockedAgent(uint256 _tokenId) public view returns (bool) {
+        uint256 agentId = tokenIdToAgentId[_tokenId];
+        if (agentId == 0) return false;
+        return agentInfo[agentId].tokenId > 0;
+        // return agentRating[_agentId].unlockTime > 0;
     }
 
-    function getNFTPoints(uint256 _agentId) external view returns (uint256, uint256) {
-        AgentRating storage a = agentRating[_agentId];
+    function getAgentRating(uint256 _tokenId) external view returns (uint256, uint256) {
+        uint256 agentId = tokenIdToAgentId[_tokenId];
+        if (agentId == 0) revert InvalidAgentId();
+        AgentRating storage a = agentRating[agentId];
         uint64 unlockTime = a.unlockTime;
         if (unlockTime == 0) {
             unlockTime = uint64(block.timestamp);
         }
-        return (a.totalPoints, unlockTime - a.creationTime);
+        return (a.totalPoints, unlockTime - a.mintTime);
     }
+
+    function getAgentRarity(uint256 _tokenId) external view returns (uint256) {
+        uint256 agentId = tokenIdToAgentId[_tokenId];
+        if (agentId == 0) revert InvalidAgentId();
+        AgentRating storage a = agentRating[agentId];
+        if (!isUnlockedAgent(agentId)) revert InvalidData();
+        uint256 x = a.totalPoints;
+        uint256 y = a.unlockTime - a.mintTime;
+        uint256 a1 = 4;
+        uint256 a2 = 1;
+        uint256 a3 = 4000;
+        uint256 a4 = 540;
+        uint256 b1 = 4000000;
+        uint256 b2 = 1;
+        uint256 b3 = 4000000;
+        uint256 b4 = 1;
+
+        uint256 gainedPoints = min(x * a1 / a2 + y * a3 / a4, MAX_RARITY * 80 / 100);
+        uint256 lostPoints = b1 / (b2 * max(x * a1 / a2, MAX_RARITY * 40 / 100))
+        + b3 / (b4 * max(y * a3 / a4, MAX_RARITY * 40 / 100));
+        uint256 rarity = min(gainedPoints + MAX_RARITY * 20 / 100 - lostPoints, MAX_RARITY);
+        
+        return rarity;
+    }
+
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? a : b;
+    }
+}
+
+interface IMintableAgent {
+    function isUnlockedAgent(uint256 tokenId) external view returns (bool);
+    function getAgentRating(uint256 tokenId) external view returns (uint256, uint256);
+    function getAgentRarity(uint256 tokenId) external view returns (uint256);
 }

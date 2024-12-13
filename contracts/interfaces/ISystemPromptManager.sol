@@ -17,10 +17,23 @@ interface ISystemPromptManager is
         bytes[] sysPrompts;
     }
 
+    struct AgentInfo {
+        uint256 tokenId;
+        address owner;
+        AgentStatus status;
+    }
+
     struct AgentRating {
-        uint64 creationTime;
+        uint64 mintTime;
         uint64 unlockTime;
         uint64 totalPoints;
+    }
+
+    enum AgentStatus {
+        Empty,
+        Pending,
+        Minted,
+        Unlocked
     }
 
     event MintPriceUpdate(uint256 newValue);
@@ -28,14 +41,19 @@ interface ISystemPromptManager is
     event RoyaltyReceiverUpdate(address newAddress);
     event ManagerAuthorization(address indexed account);
     event ManagerDeauthorization(address indexed account);
-    event NewToken(
-        uint256 indexed tokenId,
-        string uri,
+    event NewAgent(
+        uint256 indexed agentId,
         bytes sysPrompt,
         uint fee,
+        address indexed creator
+    );
+    event NewToken(
+        uint256 indexed tokenId,
+        uint256 indexed agentId,
         address indexed minter
     );
     event AgentURIUpdate(uint256 indexed agentId, string uri);
+    event AgentOwnerUpdate(uint256 indexed agentId, address indexed owner);
     event AgentDataUpdate(
         uint256 indexed agentId,
         uint256 promptIndex,
@@ -75,7 +93,9 @@ interface ISystemPromptManager is
     error SignatureUsed();
     error Unauthorized();
     error InvalidData();
+    error InvalidStatus();
     error ThresholdNotReached();
+    error CollectionSizeReached();
 
     function version() external pure returns (string memory version);
     function nextTokenId() external view returns (uint256 nextTokenId);
@@ -84,11 +104,16 @@ interface ISystemPromptManager is
 
     function isManager(address account) external view returns (bool isManager);
 
-    function mint(
-        address to,
-        // string calldata uri,
+    function createAgent(
+        address agentOwner,
         bytes calldata sysPrompt,
         uint fee
+    ) external returns (uint256);
+
+
+    function mint(
+        address to,
+        uint256 agentId
     ) external payable returns (uint256 tokenId);
 
     function validateAgentBeforeMoveToSquad(

@@ -16,7 +16,7 @@ abstract contract SystemPromptManagerStorage is ISystemPromptManager {
 
     // fee
     mapping(address nftOwner => uint256) internal earnedFees;
-    mapping(uint256 nftId => uint256) public poolBalance;
+    mapping(uint256 agentId => uint256) public poolBalance;
     mapping(address nftOwner => uint256) internal nonce;
     mapping(address nftOwner => mapping(bytes signature => bool))
         public signaturesUsed;
@@ -24,8 +24,14 @@ abstract contract SystemPromptManagerStorage is ISystemPromptManager {
     mapping(uint256 agentId => bytes[]) internal missionsOf;
     address squadManager;
 
-    mapping(uint256 agentId => AgentRating) public agentRating;
     address cryptoAiDataAddr;
+    uint256 public nextAgentId;
+    mapping (uint256 agentId => AgentInfo) agentInfo;
+    mapping (uint256 agentId => AgentRating) public agentRating;
+    
+    
+    mapping (uint256 tokenId => uint256 agentId) tokenIdToAgentId;
+
 
     uint256[46] private __gap;
 }
