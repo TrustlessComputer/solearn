@@ -10,11 +10,10 @@ import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-import {IHybridModel} from "./interfaces/IHybridModel.sol";
+import {IStakingHub} from "./interfaces/IStakingHub.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
-// import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
 import {ISquad} from "./interfaces/ISquad.sol";
 
 contract SystemPromptManager is
@@ -25,9 +24,6 @@ contract SystemPromptManager is
     ERC721URIStorageUpgradeable,
     OwnableUpgradeable
 {
-    // using SystemPromptHelper for TokenMetaData;
-    // using Set for Set.Uint256Set;
-
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
@@ -365,14 +361,20 @@ contract SystemPromptManager is
     }
 
     function infer(
+        uint32 modelId,
         uint256 _agentId,
         bytes calldata _calldata,
         string calldata _externalData,
         bool _flag
     ) external payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(_agentId, _calldata);
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+            modelId,
+            _agentId,
+            _calldata
+        );
 
-        uint256 inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+        uint256 inferId = IWorkerHub(workerHub).infer(
+            modelId,
             fwdData,
             msg.sender,
             _flag
@@ -389,13 +391,19 @@ contract SystemPromptManager is
     }
 
     function infer(
+        uint32 modelId,
         uint256 _agentId,
         bytes calldata _calldata,
         string calldata _externalData
     ) external payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(_agentId, _calldata);
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+            modelId,
+            _agentId,
+            _calldata
+        );
 
-        uint256 inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+        uint256 inferId = IWorkerHub(workerHub).infer(
+            modelId,
             fwdData,
             msg.sender
         );
@@ -411,6 +419,7 @@ contract SystemPromptManager is
     }
 
     function _infer(
+        uint32 modelId,
         uint256 _agentId,
         bytes calldata _calldata
     ) internal returns (uint256, bytes memory) {
@@ -421,7 +430,7 @@ contract SystemPromptManager is
             concatSystemPrompts(datas[_agentId]),
             _calldata
         );
-        uint256 estFeeWH = IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
+        uint256 estFeeWH = IStakingHub(workerHub).getMinFeeToUse(modelId);
 
         if (msg.value < estFeeWH && poolBalance[_agentId] >= estFeeWH) {
             unchecked {

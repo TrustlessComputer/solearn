@@ -4,13 +4,12 @@ pragma solidity ^0.8.0;
 import {IModelCollection} from "../interfaces/IModelCollection.sol";
 
 abstract contract ModelCollectionStorage is IModelCollection {
-    mapping(uint256 => address) internal models;
-    uint256 public nextModelId;
-    uint256 public mintPrice;
-    address public royaltyReceiver;
-    uint16 public royaltyPortion;
+    uint256 public _nextModelId;
+    uint256 public _mintPrice;
+    address public _royaltyReceiver;
+    uint16 public _royaltyPortion;
 
-    mapping(address => bool) public isManager;
+    mapping(address => bool) public _isManager;
 
-    uint256[49] private __gap;
+    uint256[50] private __gap;
 }
