@@ -36,6 +36,14 @@ contract SystemPromptManager is
     uint64 private constant NFT_UNLOCK_THRESHOLD = 100;
     uint64 private constant NFT_COLLECTION_SIZE = 10000;
     uint256 private constant MAX_RARITY = 10000;
+    uint256 private constant a1 = 15;
+    uint256 private constant a2 = 1;
+    uint256 private constant a3 = 2000;
+    uint256 private constant a4 = 180;
+    uint256 private constant b1 = 9000000;
+    uint256 private constant b2 = 1;
+    uint256 private constant b3 = 4000000;
+    uint256 private constant b4 = 1;
 
     receive() external payable {}
 
@@ -480,7 +488,7 @@ contract SystemPromptManager is
             concatSystemPrompts(datas[_agentId]),
             _calldata
         );
-        uint256 estFeeWH = IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
+        uint256 estFeeWH = 0; // IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
 
         address agentOwner = agentInfo[_agentId].owner;
         if (agentOwner == address(0)) {
@@ -616,7 +624,6 @@ contract SystemPromptManager is
         }
     }
 
-    //TODO
     function getTokenIdsByOwner(
         address _owner
     ) external view returns (uint256[] memory) {
@@ -764,15 +771,27 @@ contract SystemPromptManager is
         // return agentRating[_agentId].unlockTime > 0;
     }
 
-    function getAgentRating(uint256 _tokenId) external view returns (uint256, uint256) {
-        uint256 agentId = tokenIdToAgentId[_tokenId];
-        if (agentId == 0) revert InvalidAgentId();
-        AgentRating storage a = agentRating[agentId];
+    function getAgentRating(uint256 _agentId) external view returns (uint256, uint256) {
+        AgentRating storage a = agentRating[_agentId];
         uint64 unlockTime = a.unlockTime;
         if (unlockTime == 0) {
             unlockTime = uint64(block.timestamp);
         }
         return (a.totalPoints, unlockTime - a.mintTime);
+    }
+
+    function getAgentPendingRarity(uint256 _agentId) external view returns (uint256) {
+        AgentRating storage a = agentRating[_agentId];
+        if (!isUnlockedAgent(_agentId)) revert InvalidData();
+        uint256 x = a.totalPoints;
+        uint256 y = (a.unlockTime - a.mintTime + (1 days) - 1) / 1 days;
+
+        uint256 gainedPoints = min(x * a1 / a2 + y * a3 / a4, MAX_RARITY * 80 / 100);
+        uint256 lostPoints = b1 / (b2 * max(x * a1 / a2, MAX_RARITY * 40 / 100))
+        + b3 / (b4 * max(y * a3 / a4, MAX_RARITY * 40 / 100));
+        uint256 rarity = min(gainedPoints + MAX_RARITY * 20 / 100 - lostPoints, MAX_RARITY);
+        
+        return rarity;
     }
 
     function getAgentRarity(uint256 _tokenId) external view returns (uint256) {
@@ -781,15 +800,7 @@ contract SystemPromptManager is
         AgentRating storage a = agentRating[agentId];
         if (!isUnlockedAgent(agentId)) revert InvalidData();
         uint256 x = a.totalPoints;
-        uint256 y = a.unlockTime - a.mintTime;
-        uint256 a1 = 4;
-        uint256 a2 = 1;
-        uint256 a3 = 4000;
-        uint256 a4 = 540;
-        uint256 b1 = 4000000;
-        uint256 b2 = 1;
-        uint256 b3 = 4000000;
-        uint256 b4 = 1;
+        uint256 y = (a.unlockTime - a.mintTime + (1 days) - 1) / 1 days;
 
         uint256 gainedPoints = min(x * a1 / a2 + y * a3 / a4, MAX_RARITY * 80 / 100);
         uint256 lostPoints = b1 / (b2 * max(x * a1 / a2, MAX_RARITY * 40 / 100))
