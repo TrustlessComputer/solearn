@@ -3,24 +3,22 @@ pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import {IDAOToken} from "./tokens/IDAOToken.sol";
-import {TransferHelper} from "./lib/TransferHelper.sol";
 
 contract Treasury is OwnableUpgradeable, ReentrancyGuardUpgradeable {
-    address public daoToken;
+    address public wEAIToken;
     uint256[100] private __gap;
 
     event Receive(uint256 _amount, address _from);
 
-    function initialize(address _daoToken) external initializer {
+    function initialize(address _wEAIToken) external initializer {
         require(
-            _daoToken != address(0),
-            "Treasury: daoToken is the zero address"
+            _wEAIToken != address(0),
+            "Treasury: wEAIToken is the zero address"
         );
         __Ownable_init();
         __ReentrancyGuard_init();
 
-        daoToken = _daoToken;
+        wEAIToken = _wEAIToken;
     }
 
     receive() external payable {

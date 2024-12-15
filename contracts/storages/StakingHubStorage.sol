@@ -7,9 +7,9 @@ import {Set} from "../lib/Set.sol";
 
 abstract contract StakingHubStorage is IStakingHub {
     Random.Randomizer internal _randomizer;
-    address public _wEAI;
+    address public _wEAIToken;
     address public _modelCollection;
-    address public _workerHub;
+    address public _promptScheduler;
     address public _treasury;
 
     mapping(uint32 => Model) public _models;

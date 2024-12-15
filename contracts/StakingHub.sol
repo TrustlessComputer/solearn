@@ -24,7 +24,6 @@ contract StakingHub is
     using Random for Random.Randomizer;
     using Set for Set.AddressSet;
     using Set for Set.Uint256Set;
-    // using Set for Set.Bytes32Set;
 
     string private constant VERSION = "v0.0.2";
     uint256 internal constant PERCENTAGE_DENOMINATOR = 100_00;
@@ -32,21 +31,21 @@ contract StakingHub is
 
     receive() external payable {}
 
-    modifier onlyOwnerOrWorkerHub() {
+    modifier onlyOwnerOrPromptScheduler() {
         require(
-            msg.sender == owner() || msg.sender == _workerHub,
-            "Only Owner or WorkerHub"
+            msg.sender == owner() || msg.sender == _promptScheduler,
+            "Only Owner or PromptScheduler"
         );
         _;
     }
 
-    modifier onlyWorkerHub() {
-        require(msg.sender == _workerHub, "Only WorkerHub");
+    modifier onlyPromptScheduler() {
+        require(msg.sender == _promptScheduler, "Only PromptScheduler");
         _;
     }
 
     function initialize(
-        address wEAI_,
+        address wEAIToken_,
         address modelCollection_,
         address treasury_,
         uint256 minerMinimumStake_,
@@ -57,12 +56,12 @@ contract StakingHub is
         uint16 finePercentage_,
         uint256 minFeeToUse_
     ) external initializer {
+        if (wEAIToken_ == address(0) || modelCollection_ == address(0))
+            revert InvalidAddress();
+
         __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-
-        if (wEAI_ == address(0) || modelCollection_ == address(0))
-            revert InvalidAddress();
 
         _minerMinimumStake = minerMinimumStake_;
         _blocksPerEpoch = blocksPerEpoch_;
@@ -75,7 +74,7 @@ contract StakingHub is
         _maximumTier = 1;
         _lastBlock = block.number;
 
-        _wEAI = wEAI_;
+        _wEAIToken = wEAIToken_;
         _modelCollection = modelCollection_;
         _treasury = treasury_;
     }
@@ -88,11 +87,11 @@ contract StakingHub is
         _minerMinimumStake = _minerMinimumStake;
     }
 
-    function setWEAIAddress(address _wEAI) external onlyOwner {
+    function setWEAIAddress(address wEAIToken) external onlyOwner {
         _updateEpoch();
 
-        if (_wEAI == address(0)) revert InvalidAddress();
-        _wEAI = _wEAI;
+        if (wEAIToken == address(0)) revert InvalidAddress();
+        _wEAIToken = wEAIToken;
     }
 
     function registerModel(
@@ -178,7 +177,7 @@ contract StakingHub is
         miner.modelId = modelId;
 
         TransferHelper.safeTransferFrom(
-            _wEAI,
+            _wEAIToken,
             msg.sender,
             address(this),
             _minerMinimumStake
@@ -252,7 +251,7 @@ contract StakingHub is
         if (miner.tier == 0) revert NotRegistered();
 
         TransferHelper.safeTransferFrom(
-            _wEAI,
+            _wEAIToken,
             msg.sender,
             address(this),
             wEAIAmt
@@ -273,7 +272,7 @@ contract StakingHub is
         uint256 stake = unstakeRequest.stake;
         if (stake == 0) revert ZeroValue();
         unstakeRequest.stake = 0;
-        TransferHelper.safeTransfer(_wEAI, msg.sender, stake);
+        TransferHelper.safeTransfer(_wEAIToken, msg.sender, stake);
 
         emit MinerUnstake(msg.sender, stake);
     }
@@ -305,7 +304,7 @@ contract StakingHub is
         emit Restake(msg.sender, miner.modelId, unstakeAmount);
     }
 
-    function updateEpoch() external onlyWorkerHub {
+    function updateEpoch() external onlyPromptScheduler {
         _updateEpoch();
     }
 
@@ -338,7 +337,7 @@ contract StakingHub is
     function slashMiner(
         address miner,
         bool isFined
-    ) public virtual onlyOwnerOrWorkerHub {
+    ) public virtual onlyOwnerOrPromptScheduler {
         _updateEpoch();
 
         if (miner == address(0)) revert InvalidMiner();
@@ -402,7 +401,7 @@ contract StakingHub is
             // reset _boost
             _boost[miner].reserved1 = 0;
 
-            TransferHelper.safeTransfer(_wEAI, _treasury, collectedFine);
+            TransferHelper.safeTransfer(_wEAIToken, _treasury, collectedFine);
 
             emit FraudulentMinerPenalized(
                 miner,
@@ -424,7 +423,7 @@ contract StakingHub is
         _miners[miner].lastClaimedEpoch = _currentEpoch;
         if (rewardAmount > 0 && isTransfer) {
             _minerRewards[miner] = 0;
-            TransferHelper.safeTransfer(_wEAI, miner, rewardAmount);
+            TransferHelper.safeTransfer(_wEAIToken, miner, rewardAmount);
 
             emit RewardClaim(miner, rewardAmount);
         } else if (rewardAmount > 0) {
@@ -535,11 +534,13 @@ contract StakingHub is
         _unstakeDelayTime = delayTime;
     }
 
-    function setWorkerHubAddress(address newWorkerHub) external onlyOwner {
+    function setPromptSchedulerAddress(
+        address newPromptScheduler
+    ) external onlyOwner {
         _updateEpoch();
 
-        if (newWorkerHub == address(0)) revert InvalidAddress();
-        _workerHub = newWorkerHub;
+        if (newPromptScheduler == address(0)) revert InvalidAddress();
+        _promptScheduler = newPromptScheduler;
     }
 
     function getMinFeeToUse(uint32 modelId) external view returns (uint256) {

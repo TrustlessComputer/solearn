@@ -51,11 +51,11 @@ contract SystemPromptManager is
         address _royaltyReceiver,
         uint16 _royaltyPortion,
         uint256 _nextTokenId,
-        address _hybridModel,
-        address _workerHub
+        address _workerHub,
+        address _stakingHub
     ) external initializer {
         require(
-            _hybridModel != address(0) && _workerHub != address(0),
+            _stakingHub != address(0) && _workerHub != address(0),
             "Zero address"
         );
 
@@ -67,7 +67,7 @@ contract SystemPromptManager is
         royaltyReceiver = _royaltyReceiver;
         royaltyPortion = _royaltyPortion;
         nextTokenId = _nextTokenId;
-        hybridModel = _hybridModel;
+        stakingHub = _stakingHub;
         workerHub = _workerHub;
 
         isManager[owner()] = true;
@@ -327,8 +327,8 @@ contract SystemPromptManager is
         emit AgentFeeUpdate(_agentId, _fee);
     }
 
-    function setHybridModel(address _hybridModel) external onlyOwner {
-        hybridModel = _hybridModel;
+    function setStakingHub(address _stakingHub) external onlyOwner {
+        stakingHub = _stakingHub;
     }
 
     function setWorkerHub(address _workerHub) external onlyOwner {
@@ -430,7 +430,7 @@ contract SystemPromptManager is
             concatSystemPrompts(datas[_agentId]),
             _calldata
         );
-        uint256 estFeeWH = IStakingHub(workerHub).getMinFeeToUse(modelId);
+        uint256 estFeeWH = IStakingHub(stakingHub).getMinFeeToUse(modelId);
 
         if (msg.value < estFeeWH && poolBalance[_agentId] >= estFeeWH) {
             unchecked {

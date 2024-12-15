@@ -12,7 +12,7 @@ abstract contract SystemPromptManagerStorage is ISystemPromptManager {
 
     mapping(address => bool) public isManager;
     address public workerHub;
-    address public hybridModel;
+    address public stakingHub;
 
     // fee
     mapping(address nftOwner => uint256) internal earnedFees;

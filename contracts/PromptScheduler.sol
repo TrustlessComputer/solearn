@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {PromptSchedulerStorage, Set} from "./storages/PromptSchedulerStorage.sol";
@@ -12,9 +12,9 @@ import {IStakingHub} from "./interfaces/IStakingHub.sol";
 
 contract PromptScheduler is
     PromptSchedulerStorage,
-    Ownable,
-    Pausable,
-    ReentrancyGuard
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     using Set for Set.Uint256Set;
 
@@ -24,21 +24,25 @@ contract PromptScheduler is
 
     receive() external payable {}
 
-    constructor(
-        address wEAI_,
+    function initialize(
+        address wEAIToken_,
         address stakingHub_,
         uint8 minerRequirement_,
         uint40 submitDuration_,
-        uint16 feeRatioMinerValidator_,
+        uint16 minerValidatorFeeRatio_,
         uint40 batchPeriod_
-    ) {
-        if (stakingHub_ == address(0) || wEAI_ == address(0))
+    ) external initializer {
+        if (stakingHub_ == address(0) || wEAIToken_ == address(0))
             revert InvalidAddress();
         if (batchPeriod_ == 0) revert InvalidValue();
 
-        _wEAI = wEAI_;
+        __Ownable_init();
+        __Pausable_init();
+        __ReentrancyGuard_init();
+
+        _wEAIToken = wEAIToken_;
         _stakingHub = stakingHub_;
-        _feeRatioMinerValidator = feeRatioMinerValidator_;
+        _minerValidatorFeeRatio = minerValidatorFeeRatio_;
         _minerRequirement = minerRequirement_;
         _submitDuration = submitDuration_;
         _lastBatchTimestamp = block.timestamp;
@@ -57,9 +61,9 @@ contract PromptScheduler is
         _unpause();
     }
 
-    function setWEAIAddress(address wEAI) external onlyOwner {
-        if (wEAI == address(0)) revert InvalidAddress();
-        _wEAI = wEAI;
+    function setWEAIAddress(address wEAIToken) external onlyOwner {
+        if (wEAIToken == address(0)) revert InvalidAddress();
+        _wEAIToken = wEAIToken;
     }
 
     function infer(
@@ -88,7 +92,7 @@ contract PromptScheduler is
         (address miner, uint256 modelFee) = IStakingHub(_stakingHub)
             .validateModelAndChooseRandomMiner(modelId, _minerRequirement);
 
-        uint64 inferId = ++_inferenceNumber;
+        uint64 inferId = ++_inferenceCounter;
         Inference storage inference = _inferences[inferId];
         uint32 lModelId = modelId;
 
@@ -101,7 +105,7 @@ contract PromptScheduler is
 
         // transfer model fee (fee to use model) to staking hub
         TransferHelper.safeTransferFrom(
-            _wEAI,
+            _wEAIToken,
             msg.sender,
             address(this),
             modelFee
@@ -129,10 +133,14 @@ contract PromptScheduler is
         uint64 batchId = uint64(
             (block.timestamp - _lastBatchTimestamp) / _batchPeriod
         );
-        uint64[] storage inferIds = _batchInfos[modelId][batchId].inferIds;
-        inferIds.push(inferId);
+
+        _batchInfos[modelId][batchId].inferIds.push(inferId);
 
         emit AppendToBatch(batchId, modelId, inferId);
+    }
+
+    function inferenceCounter() external view returns (uint64) {
+        return _inferenceCounter;
     }
 
     function _validateSolution(bytes calldata data) internal pure virtual {
@@ -170,9 +178,9 @@ contract PromptScheduler is
         inference.status = InferenceStatus.Commit;
 
         // transfer fee to miner
-        uint256 minerFee = (inference.value * _feeRatioMinerValidator) /
+        uint256 minerFee = (inference.value * _minerValidatorFeeRatio) /
             PERCENTAGE_DENOMINATOR;
-        TransferHelper.safeTransfer(_wEAI, msg.sender, minerFee);
+        TransferHelper.safeTransfer(_wEAIToken, msg.sender, minerFee);
 
         // calculate accumulated fee for validators
         uint64 currentBatchId = uint64(
@@ -201,5 +209,16 @@ contract PromptScheduler is
         address miner
     ) external view returns (uint256[] memory) {
         return _inferencesByMiner[miner].values;
+    }
+
+    // Only for testing
+    function getBatchInfo(
+        uint32 modelId,
+        uint64 batchId
+    ) external view returns (uint256, uint64[] memory) {
+        return (
+            _batchInfos[modelId][batchId].validatorFee,
+            _batchInfos[modelId][batchId].inferIds
+        );
     }
 }

@@ -114,6 +114,10 @@ contract ModelCollection is
         string calldata uri
     ) external payable onlyManager returns (uint256) {
         uint256 modelId = _nextModelId++;
+
+        while (_exists(modelId)) {
+            modelId++;
+        }
         if (modelId >= type(uint32).max) revert InvalidValue();
 
         return _mint(to, uri, modelId);
