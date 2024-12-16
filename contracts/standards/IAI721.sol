@@ -9,6 +9,8 @@ interface IAI721 {
     struct TokenMetaData {
         uint128 fee;
         bool isUsed;
+        uint32 modelId;
+        address promptScheduler;
         mapping(string => bytes[]) sysPrompts;
     }
 
@@ -62,11 +64,23 @@ interface IAI721 {
     function nextTokenId() external view returns (uint256 nextTokenId);
     function royaltyReceiver() external view returns (address royaltyReceiver);
     function royaltyPortion() external view returns (uint16 royaltyPortion);
-    function getAgentIdByOwner(address _owner) external view returns (uint256[] memory);
-    function createMission(uint256 _agentId, bytes calldata _missionData) external;
-    function getMissionIdsByAgentId(uint256 _agentId) external view returns (bytes[] memory);
+    function getAgentIdByOwner(
+        address _owner
+    ) external view returns (uint256[] memory);
+    function createMission(
+        uint256 _agentId,
+        bytes calldata _missionData
+    ) external;
+    function getMissionIdsByAgentId(
+        uint256 _agentId
+    ) external view returns (bytes[] memory);
     function updateAgentURI(uint256 agentId, string calldata uri) external;
-    function updateAgentData(uint256 agentId, bytes calldata sysPrompt, string calldata promptKey, uint256 promptIdx) external;
+    function updateAgentData(
+        uint256 agentId,
+        bytes calldata sysPrompt,
+        string calldata promptKey,
+        uint256 promptIdx
+    ) external;
     function updateAgentDataWithSignature(
         uint256 agentId,
         bytes calldata sysPrompt,
@@ -89,10 +103,7 @@ interface IAI721 {
         bytes calldata sysPrompt
     ) external;
 
-    function updateAgentFee(
-        uint256 agentId,
-        uint fee
-    ) external;
+    function updateAgentFee(uint256 agentId, uint fee) external;
 
     function topUpPoolBalance(uint256 agentId, uint256 amount) external;
 
@@ -104,17 +115,15 @@ interface IAI721 {
         bytes calldata _calldata,
         string calldata _externalData,
         string calldata _promptKey,
-        uint256 _modelId,
         uint256 _feeAmount
-    ) external payable;
+    ) external;
 
     function infer(
         uint256 _agentId,
         bytes calldata _calldata,
         string calldata _externalData,
         string calldata _promptKey,
-        uint256 _modelId,
         bool _flag,
         uint256 _feeAmount
-    ) external payable;
+    ) external;
 }

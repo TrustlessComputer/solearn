@@ -9,10 +9,8 @@ import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 
 pragma solidity ^0.8.20;
 
-interface IWorkerHub {
-    function getMinFeeToUse(
-        address _modelAddress
-    ) external view returns (uint256);
+interface IStakingHub {
+    function getMinFeeToUse(uint32 modelId) external view returns (uint256);
 }
 
 interface IInferable {
@@ -20,14 +18,14 @@ interface IInferable {
         uint256 modelId,
         bytes calldata data,
         address creator
-    ) external payable returns (uint256 inferenceId);
+    ) external returns (uint256 inferenceId);
 
     function infer(
         uint256 modelId,
         bytes calldata data,
         address creator,
         bool flag
-    ) external payable returns (uint256 inferenceId);
+    ) external returns (uint256 inferenceId);
 }
 
 contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
@@ -38,8 +36,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     uint256 private _mintPrice;
     address private _royaltyReceiver;
     uint16 private _royaltyPortion;
-    address public _workerHub;
-    address public _hybridModel;
+    address public _stakingHub;
     IERC20 private immutable _tokenFee;
 
     mapping(uint256 nftId => uint256) public _poolBalance;
@@ -60,22 +57,20 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         address royaltyReceiver_,
         uint16 royaltyPortion_,
         uint256 nextTokenId_,
-        address hybridModel_,
-        address workerHub_,
+        address stakingHub_,
         IERC20 tokenFee_
     ) ERC721(name_, symbol_) {
         _mintPrice = mintPrice_;
         _royaltyReceiver = royaltyReceiver_;
         _royaltyPortion = royaltyPortion_;
         _nextTokenId = nextTokenId_;
-        _hybridModel = hybridModel_;
-        _workerHub = workerHub_;
+        _stakingHub = stakingHub_;
         _tokenFee = tokenFee_;
     }
 
     function _setMintPrice(uint256 mintPrice) internal virtual {
         _mintPrice = mintPrice;
-        
+
         emit MintPriceUpdate(mintPrice);
     }
 
@@ -91,12 +86,8 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         emit RoyaltyPortionUpdate(royaltyPortion_);
     }
 
-    function _setHybridModel(address hybridModel) internal virtual {
-        hybridModel = hybridModel;
-    }
-
-    function _setWorkerHub(address workerHub) internal virtual {
-        _workerHub = workerHub;
+    function _setStakingHub(address stakingHub) internal virtual {
+        _stakingHub = stakingHub;
     }
 
     function _mint(
@@ -105,7 +96,9 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         bytes calldata data,
         uint fee,
         uint256 agentId,
-        string calldata promptKey
+        string calldata promptKey,
+        address promptScheduler,
+        uint32 modelId
     ) internal virtual returns (uint256) {
         if (data.length == 0) revert InvalidAgentData();
 
@@ -115,6 +108,8 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         _datas[agentId].fee = uint128(fee);
         _datas[agentId].sysPrompts[promptKey].push(data);
         _datas[agentId].isUsed = true;
+        _datas[agentId].promptScheduler = promptScheduler;
+        _datas[agentId].modelId = modelId;
 
         emit NewToken(agentId, uri, data, fee, to);
 
@@ -126,20 +121,28 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         string calldata uri,
         bytes calldata data,
         uint fee,
-        string calldata promptKey
+        string calldata promptKey,
+        address promptScheduler,
+        uint32 modelId
     ) internal virtual returns (uint256) {
-        SafeERC20.safeTransferFrom(_tokenFee, msg.sender, address(this), _mintPrice);
+        SafeERC20.safeTransferFrom(
+            _tokenFee,
+            msg.sender,
+            address(this),
+            _mintPrice
+        );
+
         while (_datas[_nextTokenId].isUsed) {
             _nextTokenId++;
         }
         uint256 agentId = _nextTokenId++;
 
-        _mint(to, uri, data, fee, agentId, promptKey);
+        _mint(to, uri, data, fee, agentId, promptKey, promptScheduler, modelId);
 
         return agentId;
     }
 
-    function _validateURI(string calldata uri) internal virtual pure {
+    function _validateURI(string calldata uri) internal pure virtual {
         if (bytes(uri).length == 0) revert InvalidAgentData();
     }
 
@@ -203,7 +206,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         bytes calldata sysPrompt,
         uint256 promptIdx,
         string calldata promptKey
-    ) internal virtual view {
+    ) internal view virtual {
         if (sysPrompt.length == 0) revert InvalidAgentData();
         uint256 len = _datas[agentId].sysPrompts[promptKey].length;
         if (promptIdx >= len) revert InvalidAgentPromptIndex();
@@ -246,14 +249,15 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         (address signer, bytes32 signHash) = _recover(
             keccak256(
                 abi.encode(
-                        agentId, 
-                        uri, 
-                        randomNonce,
-                        address(this),
-                        block.chainid
-                    )
-                ), 
-            signature);
+                    agentId,
+                    uri,
+                    randomNonce,
+                    address(this),
+                    block.chainid
+                )
+            ),
+            signature
+        );
         if (_signaturesUsed[agentOwner][signHash]) revert SignatureUsed();
         _signaturesUsed[agentOwner][signHash] = true;
         _checkAgentOwner(signer, agentId);
@@ -295,21 +299,31 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         emit AgentFeeUpdate(agentId, fee);
     }
 
-    function topUpPoolBalance(uint256 agentId, uint256 amount) public virtual override {
-        SafeERC20.safeTransferFrom(_tokenFee, msg.sender, address(this), amount);
+    function topUpPoolBalance(
+        uint256 agentId,
+        uint256 amount
+    ) public virtual override {
+        SafeERC20.safeTransferFrom(
+            _tokenFee,
+            msg.sender,
+            address(this),
+            amount
+        );
         _poolBalance[agentId] += amount;
 
         emit TopUpPoolBalance(agentId, msg.sender, amount);
     }
 
-    function getAgentFee(uint256 agentId) public virtual view returns (uint256) {
+    function getAgentFee(
+        uint256 agentId
+    ) public view virtual returns (uint256) {
         return _datas[agentId].fee;
     }
 
     function getAgentSystemPrompt(
         uint256 agentId,
         string calldata promptKey
-    ) public virtual view returns (bytes[] memory) {
+    ) public view virtual returns (bytes[] memory) {
         return _datas[agentId].sysPrompts[promptKey];
     }
 
@@ -318,14 +332,18 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         bytes calldata fwdCalldata,
         string calldata externalData,
         string calldata promptKey,
-        uint256 modelId,
         bool flag,
         uint feeAmount
-    ) public virtual override payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(agentId, fwdCalldata, promptKey, feeAmount);
+    ) public virtual override {
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+            agentId,
+            fwdCalldata,
+            promptKey,
+            feeAmount
+        );
 
-        uint256 inferId = IInferable(_hybridModel).infer{value: estFeeWH}(
-            modelId,
+        uint256 inferId = IInferable(_datas[agentId].promptScheduler).infer(
+            _datas[agentId].modelId,
             fwdData,
             msg.sender,
             flag
@@ -346,13 +364,17 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         bytes calldata fwdCalldata,
         string calldata externalData,
         string calldata promptKey,
-        uint256 modelId,
         uint256 feeAmount
-    ) public virtual override payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(agentId, fwdCalldata, promptKey, feeAmount);
+    ) public virtual override {
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+            agentId,
+            fwdCalldata,
+            promptKey,
+            feeAmount
+        );
 
-        uint256 inferId = IInferable(_hybridModel).infer{value: estFeeWH}(
-            modelId,
+        uint256 inferId = IInferable(_datas[agentId].promptScheduler).infer(
+            _datas[agentId].modelId,
             fwdData,
             msg.sender
         );
@@ -373,15 +395,23 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         string calldata promptKey,
         uint256 feeAmount
     ) internal virtual returns (uint256, bytes memory) {
-        if (_datas[agentId].sysPrompts[promptKey].length == 0) revert InvalidAgentData();
+        if (_datas[agentId].sysPrompts[promptKey].length == 0)
+            revert InvalidAgentData();
         if (feeAmount < _datas[agentId].fee) revert InvalidAgentFee();
-        SafeERC20.safeTransferFrom(_tokenFee, msg.sender, address(this), feeAmount);
+        SafeERC20.safeTransferFrom(
+            _tokenFee,
+            msg.sender,
+            address(this),
+            feeAmount
+        );
 
         bytes memory fwdData = abi.encodePacked(
             _concatSystemPrompts(_datas[agentId].sysPrompts[promptKey]),
             fwdCalldata
         );
-        uint256 estFeeWH = IWorkerHub(_workerHub).getMinFeeToUse(_hybridModel);
+        uint256 estFeeWH = IStakingHub(_stakingHub).getMinFeeToUse(
+            _datas[agentId].modelId
+        );
 
         if (feeAmount < estFeeWH && _poolBalance[agentId] >= estFeeWH) {
             unchecked {
@@ -389,7 +419,11 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
             }
 
             if (feeAmount > 0) {
-                SafeERC20.safeTransfer(_tokenFee, _ownerOf(agentId), _datas[agentId].fee);
+                SafeERC20.safeTransfer(
+                    _tokenFee,
+                    _ownerOf(agentId),
+                    _datas[agentId].fee
+                );
             }
         } else if (feeAmount >= estFeeWH) {
             uint256 remain = feeAmount - estFeeWH;
@@ -400,19 +434,25 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
             revert InsufficientFunds();
         }
 
+        SafeERC20.safeApprove(
+            _tokenFee,
+            _datas[agentId].promptScheduler,
+            estFeeWH
+        );
+
         return (estFeeWH, fwdData);
     }
 
     function dataOf(
         uint256 agentId
-    ) public virtual view returns (uint128, bool) {
+    ) public view virtual returns (uint128, bool) {
         return (_datas[agentId].fee, _datas[agentId].isUsed);
     }
 
     function royaltyInfo(
         uint256 agentId,
         uint256 salePrice
-    ) public virtual view returns (address, uint256) {
+    ) public view virtual returns (address, uint256) {
         agentId;
         return (
             _royaltyReceiver,
@@ -422,16 +462,14 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
 
     function tokenURI(
         uint256 agentId
-    )
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (string memory)
-    {
+    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         return super.tokenURI(agentId);
     }
 
-    function _checkAgentOwner(address user, uint256 agentId) internal virtual view {
+    function _checkAgentOwner(
+        address user,
+        uint256 agentId
+    ) internal view virtual {
         if (user != _ownerOf(agentId)) revert Unauthorized();
     }
 
@@ -461,7 +499,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
 
     function getMissionIdsByAgentId(
         uint256 agentId
-    ) public virtual override view returns (bytes[] memory) {
+    ) public view virtual override returns (bytes[] memory) {
         return _missionsOf[agentId];
     }
 
@@ -479,7 +517,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
 
     function _concatSystemPrompts(
         bytes[] memory sysPrompts
-    ) internal virtual pure returns (bytes memory) {
+    ) internal pure virtual returns (bytes memory) {
         uint256 len = sysPrompts.length;
         bytes memory concatedPrompt;
 
@@ -502,7 +540,12 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         return (ECDSA.recover(hash, signature), hash);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 firstTokenId, uint256 batchSize) internal override(ERC721, ERC721Enumerable) virtual {
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal virtual override(ERC721, ERC721Enumerable) {
         super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
     }
 
@@ -515,15 +558,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     //todo: add suport interface
     function supportsInterface(
         bytes4 interfaceId
-    )
-        public
-        view
-        override(
-            ERC721Enumerable,
-            ERC721URIStorage
-        )
-        returns (bool)
-    {
+    ) public view override(ERC721Enumerable, ERC721URIStorage) returns (bool) {
         return
             interfaceId == type(IERC2981).interfaceId ||
             super.supportsInterface(interfaceId);
