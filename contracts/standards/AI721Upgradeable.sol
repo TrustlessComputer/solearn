@@ -161,6 +161,34 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
         _datas[agentId].sysPrompts[promptKey][promptIdx] = sysPrompt;
     }
 
+    function updateAgentModelId(
+        uint256 agentId,
+        uint32 newModelId
+    ) public virtual override onlyAgentOwner(agentId) {
+
+        emit AgentModelIdUpdate(
+            agentId,
+            _datas[agentId].modelId,
+            newModelId
+        );
+
+        _datas[agentId].modelId = newModelId;
+    }
+
+    function updateSchedulePrompt(
+        uint256 agentId,
+        address newPromptScheduler
+    ) public virtual onlyAgentOwner(agentId) {
+
+        emit AgentPromptSchedulerdUpdate(
+            agentId,
+            _datas[agentId].promptScheduler,
+            newPromptScheduler
+        );
+
+        _datas[agentId].promptScheduler = newPromptScheduler;
+    }
+
     function _checkUpdatePromptPermission(
         uint256 agentId,
         bytes calldata sysPrompt,
@@ -353,7 +381,7 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
         string calldata promptKey,
         uint256 feeAmount
     ) public virtual override {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+        (, bytes memory fwdData) = _infer(
             agentId,
             fwdCalldata,
             promptKey,

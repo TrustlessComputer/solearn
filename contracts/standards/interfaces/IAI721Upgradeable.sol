@@ -35,6 +35,16 @@ interface IAI721Upgradeable {
     );
     event AgentDataAddNew(uint256 indexed agentId, bytes[] sysPrompt);
     event AgentFeeUpdate(uint256 indexed agentId, uint fee);
+    event AgentModelIdUpdate(
+        uint256 indexed agentId,
+        uint256 oldModelId,
+        uint256 newModelId
+    );
+    event AgentPromptSchedulerdUpdate(
+        uint256 indexed agentId,
+        address oldPromptScheduler,
+        address newOldPromptScheduler
+    );
     event InferencePerformed(
         uint256 indexed tokenId,
         address indexed caller,
@@ -82,6 +92,10 @@ interface IAI721Upgradeable {
         bytes calldata sysPrompt,
         string calldata promptKey,
         uint256 promptIdx
+    ) external;
+    function updateAgentModelId(
+        uint256 agentId,
+        uint32 newModelId
     ) external;
     function updateAgentDataWithSignature(
         uint256 agentId,
