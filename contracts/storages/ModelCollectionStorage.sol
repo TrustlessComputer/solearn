@@ -10,6 +10,7 @@ abstract contract ModelCollectionStorage is IModelCollection {
     uint16 public _royaltyPortion;
 
     mapping(address => bool) public _isManager;
+    address public _wEAIToken;
 
     uint256[50] private __gap;
 }

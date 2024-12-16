@@ -11,6 +11,7 @@ import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/t
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 
+import {TransferHelper} from "./lib/TransferHelper.sol";
 import {ModelCollectionStorage} from "./storages/ModelCollectionStorage.sol";
 
 contract ModelCollection is
@@ -36,18 +37,22 @@ contract ModelCollection is
         uint256 mintPrice_,
         address royaltyReceiver_,
         uint16 royaltyPortion_,
-        uint256 nextModelId_
+        uint256 nextModelId_,
+        address wEAIToken_
     ) external initializer {
         __ERC721_init(name_, symbol_);
         __ERC721Pausable_init();
         __Ownable_init();
 
+        if (royaltyReceiver_ == address(0) || wEAIToken_ == address(0))
+            revert InvalidValue();
         if (nextModelId_ >= type(uint32).max) revert InvalidValue();
 
         _mintPrice = mintPrice_;
         _royaltyReceiver = royaltyReceiver_;
         _royaltyPortion = royaltyPortion_;
         _nextModelId = nextModelId_;
+        _wEAIToken = wEAIToken_;
 
         _isManager[owner()] = true;
     }
@@ -82,6 +87,17 @@ contract ModelCollection is
         return _isManager[account];
     }
 
+    function updateWEAIToken(address newToken) external onlyOwner {
+        if (newToken == address(0)) revert InvalidValue();
+
+        emit WEAITokenUpdate(_wEAIToken, newToken);
+        _wEAIToken = newToken;
+    }
+
+    function wEAIToken() external view returns (address) {
+        return _wEAIToken;
+    }
+
     function updateMintPrice(uint256 newPrice) external onlyOwner {
         _mintPrice = newPrice;
         emit MintPriceUpdate(newPrice);
@@ -112,13 +128,22 @@ contract ModelCollection is
     function mint(
         address to,
         string calldata uri
-    ) external payable onlyManager returns (uint256) {
+    ) external onlyManager returns (uint256) {
         uint256 modelId = _nextModelId++;
 
         while (_exists(modelId)) {
             modelId++;
         }
         if (modelId >= type(uint32).max) revert InvalidValue();
+
+        if (_mintPrice > 0) {
+            TransferHelper.safeTransferFrom(
+                _wEAIToken,
+                msg.sender,
+                address(this),
+                _mintPrice
+            );
+        }
 
         return _mint(to, uri, modelId);
     }
@@ -128,8 +153,6 @@ contract ModelCollection is
         string calldata uri,
         uint256 modelId
     ) internal returns (uint256) {
-        if (msg.value < _mintPrice) revert InsufficientFunds();
-
         _safeMint(to, modelId);
         _setTokenURI(modelId, uri);
 
