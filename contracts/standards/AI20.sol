@@ -7,10 +7,8 @@ import {IAI20} from "./IAI20.sol";
 import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-interface IWorkerHub {
-    function getMinFeeToUse(
-        address _modelAddress
-    ) external view returns (uint256);
+interface IStakingHub {
+    function getMinFeeToUse(uint32 modelId) external view returns (uint256);
 }
 
 interface IInferable {
@@ -18,22 +16,23 @@ interface IInferable {
         uint256 modelId,
         bytes calldata data,
         address creator
-    ) external payable returns (uint256 inferenceId);
+    ) external returns (uint256 inferenceId);
 
     function infer(
         uint256 modelId,
         bytes calldata data,
         address creator,
         bool flag
-    ) external payable returns (uint256 inferenceId);
+    ) external returns (uint256 inferenceId);
 }
 
 contract AI20 is ERC20, IAI20 {
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
     TokenMetaData private _data;
-    address public _workerHub;
-    address public _hybridModel;
+    address public _stakingHub;
+    address public _promptScheduler;
+    uint32 public _modelId;
     IERC20 private immutable _tokenFee;
     uint256 public _poolBalance;
     mapping(bytes32 signature => bool) public _signaturesUsed;
@@ -42,21 +41,27 @@ contract AI20 is ERC20, IAI20 {
     constructor(
         string memory name_,
         string memory symbol_,
-        address hybridModel_,
-        address workerHub_,
+        address promptScheduler_,
+        address stakingHub_,
+        uint32 modelId_,
         IERC20 tokenFee_
     ) ERC20(name_, symbol_) {
-        _hybridModel = hybridModel_;
-        _workerHub = workerHub_;
+        _promptScheduler = promptScheduler_;
+        _stakingHub = stakingHub_;
+        _modelId = modelId_;
         _tokenFee = tokenFee_;
     }
 
-    function _setHybridModel(address hybridModel) internal virtual {
-        hybridModel = hybridModel;
+    function _setModelId(uint32 modelId) internal virtual {
+        _modelId = modelId;
     }
 
-    function _setWorkerHub(address workerHub) internal virtual {
-        _workerHub = workerHub;
+    function _setPromptScheduler(address promptScheduler) internal virtual {
+        _promptScheduler = promptScheduler;
+    }
+
+    function _setStakingHub(address stakingHub) internal virtual {
+        _stakingHub = stakingHub;
     }
 
     function _mint(
@@ -67,11 +72,10 @@ contract AI20 is ERC20, IAI20 {
         uint256 agentId,
         string calldata promptKey
     ) internal virtual returns (uint256) {
-
         return agentId;
     }
 
-    function _validateURI(string calldata uri) internal virtual pure {
+    function _validateURI(string calldata uri) internal pure virtual {
         if (bytes(uri).length == 0) revert InvalidAgentData();
     }
 
@@ -88,7 +92,7 @@ contract AI20 is ERC20, IAI20 {
         bytes calldata sysPrompt,
         uint256 promptIdx,
         string calldata promptKey
-    ) internal virtual view {
+    ) internal view virtual {
         if (sysPrompt.length == 0) revert InvalidAgentData();
         uint256 len = _data.sysPrompts[promptKey].length;
         if (promptIdx >= len) revert InvalidAgentPromptIndex();
@@ -104,9 +108,7 @@ contract AI20 is ERC20, IAI20 {
         emit AgentDataAddNew(_data.sysPrompts[promptKey]);
     }
 
-    function _updateAgentFee(
-        uint fee
-    ) internal virtual {
+    function _updateAgentFee(uint fee) internal virtual {
         if (_data.fee != fee) {
             _data.fee = uint128(fee);
         }
@@ -115,7 +117,12 @@ contract AI20 is ERC20, IAI20 {
     }
 
     function topUpPoolBalance(uint256 amount) public virtual override {
-        SafeERC20.safeTransferFrom(_tokenFee, msg.sender, address(this), amount);
+        SafeERC20.safeTransferFrom(
+            _tokenFee,
+            msg.sender,
+            address(this),
+            amount
+        );
         _poolBalance += amount;
 
         emit TopUpPoolBalance(msg.sender, amount);
@@ -123,7 +130,7 @@ contract AI20 is ERC20, IAI20 {
 
     function getAgentSystemPrompt(
         string calldata promptKey
-    ) public virtual view returns (bytes[] memory) {
+    ) public view virtual returns (bytes[] memory) {
         return _data.sysPrompts[promptKey];
     }
 
@@ -131,14 +138,17 @@ contract AI20 is ERC20, IAI20 {
         bytes calldata fwdCalldata,
         string calldata externalData,
         string calldata promptKey,
-        uint256 modelId,
         bool flag,
         uint feeAmount
-    ) public virtual override payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(fwdCalldata, promptKey, feeAmount);
+    ) public virtual override {
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+            fwdCalldata,
+            promptKey,
+            feeAmount
+        );
 
-        uint256 inferId = IInferable(_hybridModel).infer{value: estFeeWH}(
-            modelId,
+        uint256 inferId = IInferable(_promptScheduler).infer(
+            _modelId,
             fwdData,
             msg.sender,
             flag
@@ -157,13 +167,16 @@ contract AI20 is ERC20, IAI20 {
         bytes calldata fwdCalldata,
         string calldata externalData,
         string calldata promptKey,
-        uint256 modelId,
         uint256 feeAmount
-    ) public virtual override payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(fwdCalldata, promptKey, feeAmount);
+    ) public virtual override {
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+            fwdCalldata,
+            promptKey,
+            feeAmount
+        );
 
-        uint256 inferId = IInferable(_hybridModel).infer{value: estFeeWH}(
-            modelId,
+        uint256 inferId = IInferable(_promptScheduler).infer(
+            _modelId,
             fwdData,
             msg.sender
         );
@@ -184,13 +197,18 @@ contract AI20 is ERC20, IAI20 {
     ) internal virtual returns (uint256, bytes memory) {
         if (_data.sysPrompts[promptKey].length == 0) revert InvalidAgentData();
         if (feeAmount < _data.fee) revert InvalidAgentFee();
-        SafeERC20.safeTransferFrom(_tokenFee, msg.sender, address(this), feeAmount);
+        SafeERC20.safeTransferFrom(
+            _tokenFee,
+            msg.sender,
+            address(this),
+            feeAmount
+        );
 
         bytes memory fwdData = abi.encodePacked(
             _concatSystemPrompts(_data.sysPrompts[promptKey]),
             fwdCalldata
         );
-        uint256 estFeeWH = IWorkerHub(_workerHub).getMinFeeToUse(_hybridModel);
+        uint256 estFeeWH = IStakingHub(_stakingHub).getMinFeeToUse(_modelId);
 
         if (feeAmount < estFeeWH && _poolBalance >= estFeeWH) {
             unchecked {
@@ -210,28 +228,34 @@ contract AI20 is ERC20, IAI20 {
             revert InsufficientFunds();
         }
 
+        SafeERC20.safeApprove(_tokenFee, _promptScheduler, estFeeWH);
+
         return (estFeeWH, fwdData);
     }
 
-    function inferData() public virtual view returns(uint256) {
+    function inferData() public view virtual returns (uint256) {
         return _data.fee;
     }
 
-    function _createMission(
-        bytes memory missionData
-    ) internal virtual {
+    function _createMission(bytes memory missionData) internal virtual {
         // _mission = missionData;
 
         emit AgentMissionAddNew(_mission);
     }
 
-    function getMission() public virtual override view returns (bytes[] memory) {
+    function getMission()
+        public
+        view
+        virtual
+        override
+        returns (bytes[] memory)
+    {
         return _mission;
     }
 
     function _concatSystemPrompts(
         bytes[] memory sysPrompts
-    ) internal virtual pure returns (bytes memory) {
+    ) internal pure virtual returns (bytes memory) {
         uint256 len = sysPrompts.length;
         bytes memory concatedPrompt;
 
@@ -245,5 +269,4 @@ contract AI20 is ERC20, IAI20 {
 
         return concatedPrompt;
     }
-
 }

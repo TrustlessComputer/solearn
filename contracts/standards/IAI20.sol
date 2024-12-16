@@ -40,7 +40,7 @@ interface IAI20 {
     error InvalidAgentData();
     error Unauthorized();
     error InvalidData();
-        error InvalidAgentPromptIndex();
+    error InvalidAgentPromptIndex();
 
     function getMission() external view returns (bytes[] memory);
     function topUpPoolBalance(uint256 amount) external;
@@ -52,16 +52,14 @@ interface IAI20 {
         bytes calldata fwdCalldata,
         string calldata externalData,
         string calldata promptKey,
-        uint256 modelId,
         uint256 feeAmount
-    ) external payable;
+    ) external;
 
     function infer(
-        bytes calldata _calldata,
-        string calldata _externalData,
-        string calldata _promptKey,
-        uint256 _modelId,
-        bool _flag,
-        uint256 _feeAmount
-    ) external payable;
+        bytes calldata fwdCalldata,
+        string calldata externalData,
+        string calldata promptKey,
+        bool flag,
+        uint256 feeAmount
+    ) external;
 }
