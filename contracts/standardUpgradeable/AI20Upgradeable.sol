@@ -25,10 +25,11 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
         uint32 modelId_,
         IERC20Upgradeable tokenFee_
     ) external onlyInitializing {
-        require(
-            _stakingHub != address(0) && _promptScheduler != address(0),
-            "Zero address"
-        );
+        if (
+            promptScheduler_ == address(0) ||
+            stakingHub_ == address(0) ||
+            address(tokenFee_) == address(0)
+        ) revert InvalidData();
 
         _promptScheduler = promptScheduler_;
         _stakingHub = stakingHub_;
@@ -37,17 +38,25 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
     }
 
     function _setModelId(uint32 modelId) internal virtual {
+        if (modelId == 0 || modelId == _modelId) revert InvalidData();
+
         _modelId = modelId;
+        emit ModelIdUpdate(modelId);
     }
 
     function _setPromptScheduler(address promptScheduler) internal virtual {
+        if (promptScheduler == address(0)) revert InvalidData();
+
         _promptScheduler = promptScheduler;
+        emit PromptSchedulerUpdate(promptScheduler);
     }
 
     function _setStakingHub(address stakingHub) internal virtual {
-        _stakingHub = stakingHub;
-    }
+        if (stakingHub == address(0)) revert InvalidData();
 
+        _stakingHub = stakingHub;
+        emit StakingHubUpdate(stakingHub);
+    }
 
     function _validateURI(string calldata uri) internal pure virtual {
         if (bytes(uri).length == 0) revert InvalidAgentData();
@@ -115,11 +124,7 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
         bool flag,
         uint feeAmount
     ) public virtual override {
-        (, bytes memory fwdData) = _infer(
-            fwdCalldata,
-            promptKey,
-            feeAmount
-        );
+        (, bytes memory fwdData) = _infer(fwdCalldata, promptKey, feeAmount);
 
         uint256 inferId = IInferable(_promptScheduler).infer(
             _modelId,
@@ -143,11 +148,7 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
         string calldata promptKey,
         uint256 feeAmount
     ) public virtual override {
-        (, bytes memory fwdData) = _infer(
-            fwdCalldata,
-            promptKey,
-            feeAmount
-        );
+        (, bytes memory fwdData) = _infer(fwdCalldata, promptKey, feeAmount);
 
         uint256 inferId = IInferable(_promptScheduler).infer(
             _modelId,
@@ -196,7 +197,11 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
         } else if (feeAmount >= estFeeWH) {
             uint256 remain = feeAmount - estFeeWH;
             if (remain > 0) {
-                SafeERC20Upgradeable.safeTransfer(_tokenFee, msg.sender, remain);
+                SafeERC20Upgradeable.safeTransfer(
+                    _tokenFee,
+                    msg.sender,
+                    remain
+                );
             }
         } else {
             revert InsufficientFunds();
@@ -212,8 +217,7 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
     }
 
     function _createMission(bytes calldata missionData) internal virtual {
-        if (missionData.length == 0)
-            revert InvalidAgentData();
+        if (missionData.length == 0) revert InvalidAgentData();
         _mission.push(missionData);
 
         emit AgentMissionAddNew(_mission);

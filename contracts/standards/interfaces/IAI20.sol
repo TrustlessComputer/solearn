@@ -13,6 +13,11 @@ interface IAI20 {
         mapping(string => bytes[]) sysPrompts;
     }
 
+    event ModelIdUpdate(uint32 modelId);
+    event PromptSchedulerUpdate(address promptScheduler);
+    event StakingHubUpdate(address stakingHub);
+    event TokenFeeUpdate(address tokenFee);
+
     event AgentURIUpdate(string uri);
     event AgentDataUpdate(
         uint256 promptIndex,

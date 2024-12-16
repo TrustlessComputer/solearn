@@ -7,7 +7,6 @@ import {IAI20, IStakingHub, IInferable} from "./interfaces/IAI20.sol";
 import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-
 contract AI20 is ERC20, IAI20 {
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
@@ -28,6 +27,12 @@ contract AI20 is ERC20, IAI20 {
         uint32 modelId_,
         IERC20 tokenFee_
     ) ERC20(name_, symbol_) {
+        if (
+            promptScheduler_ == address(0) ||
+            stakingHub_ == address(0) ||
+            address(tokenFee_) == address(0)
+        ) revert InvalidData();
+
         _promptScheduler = promptScheduler_;
         _stakingHub = stakingHub_;
         _modelId = modelId_;
@@ -35,15 +40,24 @@ contract AI20 is ERC20, IAI20 {
     }
 
     function _setModelId(uint32 modelId) internal virtual {
+        if (modelId == 0 || modelId == _modelId) revert InvalidData();
+
         _modelId = modelId;
+        emit ModelIdUpdate(modelId);
     }
 
     function _setPromptScheduler(address promptScheduler) internal virtual {
+        if (promptScheduler == address(0)) revert InvalidData();
+
         _promptScheduler = promptScheduler;
+        emit PromptSchedulerUpdate(promptScheduler);
     }
 
     function _setStakingHub(address stakingHub) internal virtual {
+        if (stakingHub == address(0)) revert InvalidData();
+
         _stakingHub = stakingHub;
+        emit StakingHubUpdate(stakingHub);
     }
 
     function _validateURI(string calldata uri) internal pure virtual {
@@ -112,11 +126,7 @@ contract AI20 is ERC20, IAI20 {
         bool flag,
         uint feeAmount
     ) public virtual override {
-        (, bytes memory fwdData) = _infer(
-            fwdCalldata,
-            promptKey,
-            feeAmount
-        );
+        (, bytes memory fwdData) = _infer(fwdCalldata, promptKey, feeAmount);
 
         uint256 inferId = IInferable(_promptScheduler).infer(
             _modelId,
@@ -140,11 +150,7 @@ contract AI20 is ERC20, IAI20 {
         string calldata promptKey,
         uint256 feeAmount
     ) public virtual override {
-        (, bytes memory fwdData) = _infer(
-            fwdCalldata,
-            promptKey,
-            feeAmount
-        );
+        (, bytes memory fwdData) = _infer(fwdCalldata, promptKey, feeAmount);
 
         uint256 inferId = IInferable(_promptScheduler).infer(
             _modelId,
@@ -209,8 +215,7 @@ contract AI20 is ERC20, IAI20 {
     }
 
     function _createMission(bytes memory missionData) internal virtual {
-        if (missionData.length == 0)
-            revert InvalidAgentData();
+        if (missionData.length == 0) revert InvalidAgentData();
         _mission.push(missionData);
 
         emit AgentMissionAddNew(_mission);

@@ -9,7 +9,6 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-
 contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
@@ -404,7 +403,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
                 SafeERC20.safeTransfer(
                     _tokenFee,
                     _ownerOf(agentId),
-                    _datas[agentId].fee
+                    _datas[agentId].fee // mr @issac review, should be feeAmount
                 );
             }
         } else if (feeAmount >= estFeeWH) {
