@@ -20,7 +20,7 @@ contract PromptScheduler is
 
     string private constant VERSION = "v0.0.2";
     uint256 internal constant PERCENTAGE_DENOMINATOR = 100_00;
-    uint256 private constant BLOCK_PER_YEAR = 365 days / 2; // 2s per block
+    uint256 private constant BLOCK_PER_YEAR = 365 days;
 
     receive() external payable {}
 

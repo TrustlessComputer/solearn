@@ -24,6 +24,7 @@ interface IModelCollection is
         string uri
     );
     event ModelURIUpdate(uint256 indexed modelId, string uri);
+    event WEAITokenUpdate(address oldToken, address newToken);
 
     error AlreadyMinted();
     error Authorized();
@@ -45,5 +46,5 @@ interface IModelCollection is
     function mint(
         address to,
         string calldata uri
-    ) external payable returns (uint256 modelId);
+    ) external returns (uint256 modelId);
 }

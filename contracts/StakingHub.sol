@@ -56,8 +56,11 @@ contract StakingHub is
         uint16 finePercentage_,
         uint256 minFeeToUse_
     ) external initializer {
-        if (wEAIToken_ == address(0) || modelCollection_ == address(0))
-            revert InvalidAddress();
+        if (
+            wEAIToken_ == address(0) ||
+            modelCollection_ == address(0) ||
+            treasury_ == address(0)
+        ) revert InvalidAddress();
 
         __Ownable_init();
         __Pausable_init();
