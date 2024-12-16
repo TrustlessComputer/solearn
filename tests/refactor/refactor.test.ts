@@ -29,7 +29,10 @@ describe("WorkerHub contract", async () => {
 
     const wEAI = await TestHelper.deployWEAI();
     const treasury = await TestHelper.deployTreasury(wEAI);
-    const modelCollection = await TestHelper.deployModelCollection(treasury);
+    const modelCollection = await TestHelper.deployModelCollection(
+      treasury,
+      wEAI
+    );
     const stakingHub = await TestHelper.deployStakingHub(
       wEAI,
       modelCollection,

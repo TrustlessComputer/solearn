@@ -33,8 +33,9 @@ export async function deployTreasury(wrappedToken: string) {
   return proxy.target as string;
 }
 
-export async function deployModelCollection(treasury: string) {
+export async function deployModelCollection(treasury: string, wEAI: string) {
   assert.ok(treasury, "treasury is required");
+  assert.ok(wEAI, "wEAI is required");
 
   const name = "Eternal AI";
   const symbol = "";
@@ -50,6 +51,7 @@ export async function deployModelCollection(treasury: string) {
     royaltyReceiver,
     royalPortion,
     nextModelId,
+    wEAI,
   ];
 
   const fact = await ethers.getContractFactory("ModelCollection");
