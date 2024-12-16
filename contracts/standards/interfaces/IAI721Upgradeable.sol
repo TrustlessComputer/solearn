@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.20;
 
+import "./IBase.sol";
+
 /**
  * @dev Interface of the ERC721 standard as defined in the EIP.
  */
-interface IAI721 {
+interface IAI721Upgradeable {
     struct TokenMetaData {
         uint128 fee;
         bool isUsed;

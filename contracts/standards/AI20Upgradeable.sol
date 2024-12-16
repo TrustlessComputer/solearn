@@ -2,50 +2,34 @@
 
 pragma solidity ^0.8.20;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IAI20} from "./IAI20.sol";
-import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
-import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {IAI20Upgradeable, IStakingHub, IInferable} from "./interfaces/IAI20Upgradeable.sol";
+import {IERC2981Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
+import {SafeERC20Upgradeable, IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-interface IStakingHub {
-    function getMinFeeToUse(uint32 modelId) external view returns (uint256);
-}
-
-interface IInferable {
-    function infer(
-        uint256 modelId,
-        bytes calldata data,
-        address creator
-    ) external returns (uint256 inferenceId);
-
-    function infer(
-        uint256 modelId,
-        bytes calldata data,
-        address creator,
-        bool flag
-    ) external returns (uint256 inferenceId);
-}
-
-contract AI20 is ERC20, IAI20 {
+contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
     TokenMetaData private _data;
     address public _stakingHub;
     address public _promptScheduler;
     uint32 public _modelId;
-    IERC20 private immutable _tokenFee;
+    IERC20Upgradeable private _tokenFee;
     uint256 public _poolBalance;
     mapping(bytes32 signature => bool) public _signaturesUsed;
     bytes[] private _mission;
 
-    constructor(
-        string memory name_,
-        string memory symbol_,
+    function _AI20_init(
         address promptScheduler_,
         address stakingHub_,
         uint32 modelId_,
-        IERC20 tokenFee_
-    ) ERC20(name_, symbol_) {
+        IERC20Upgradeable tokenFee_
+    ) external onlyInitializing {
+        require(
+            _stakingHub != address(0) && _promptScheduler != address(0),
+            "Zero address"
+        );
+
         _promptScheduler = promptScheduler_;
         _stakingHub = stakingHub_;
         _modelId = modelId_;
@@ -64,16 +48,6 @@ contract AI20 is ERC20, IAI20 {
         _stakingHub = stakingHub;
     }
 
-    function _mint(
-        address to,
-        string calldata uri,
-        bytes calldata data,
-        uint fee,
-        uint256 agentId,
-        string calldata promptKey
-    ) internal virtual returns (uint256) {
-        return agentId;
-    }
 
     function _validateURI(string calldata uri) internal pure virtual {
         if (bytes(uri).length == 0) revert InvalidAgentData();
@@ -117,7 +91,7 @@ contract AI20 is ERC20, IAI20 {
     }
 
     function topUpPoolBalance(uint256 amount) public virtual override {
-        SafeERC20.safeTransferFrom(
+        SafeERC20Upgradeable.safeTransferFrom(
             _tokenFee,
             msg.sender,
             address(this),
@@ -141,7 +115,7 @@ contract AI20 is ERC20, IAI20 {
         bool flag,
         uint feeAmount
     ) public virtual override {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+        (, bytes memory fwdData) = _infer(
             fwdCalldata,
             promptKey,
             feeAmount
@@ -169,7 +143,7 @@ contract AI20 is ERC20, IAI20 {
         string calldata promptKey,
         uint256 feeAmount
     ) public virtual override {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+        (, bytes memory fwdData) = _infer(
             fwdCalldata,
             promptKey,
             feeAmount
@@ -197,7 +171,7 @@ contract AI20 is ERC20, IAI20 {
     ) internal virtual returns (uint256, bytes memory) {
         if (_data.sysPrompts[promptKey].length == 0) revert InvalidAgentData();
         if (feeAmount < _data.fee) revert InvalidAgentFee();
-        SafeERC20.safeTransferFrom(
+        SafeERC20Upgradeable.safeTransferFrom(
             _tokenFee,
             msg.sender,
             address(this),
@@ -221,14 +195,14 @@ contract AI20 is ERC20, IAI20 {
             // }
         } else if (feeAmount >= estFeeWH) {
             uint256 remain = feeAmount - estFeeWH;
-            // if (remain > 0) {
-            //     SafeERC20.safeTransfer(_tokenFee, _ownerOf(agentId), remain);
-            // }
+            if (remain > 0) {
+                SafeERC20Upgradeable.safeTransfer(_tokenFee, msg.sender, remain);
+            }
         } else {
             revert InsufficientFunds();
         }
 
-        SafeERC20.safeApprove(_tokenFee, _promptScheduler, estFeeWH);
+        SafeERC20Upgradeable.safeApprove(_tokenFee, _promptScheduler, estFeeWH);
 
         return (estFeeWH, fwdData);
     }
@@ -237,8 +211,10 @@ contract AI20 is ERC20, IAI20 {
         return _data.fee;
     }
 
-    function _createMission(bytes memory missionData) internal virtual {
-        // _mission = missionData;
+    function _createMission(bytes calldata missionData) internal virtual {
+        if (missionData.length == 0)
+            revert InvalidAgentData();
+        _mission.push(missionData);
 
         emit AgentMissionAddNew(_mission);
     }
@@ -269,4 +245,11 @@ contract AI20 is ERC20, IAI20 {
 
         return concatedPrompt;
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[44] private __gap;
 }

@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.20;
 
+import "./IBase.sol";
+
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
  */
-interface IAI20 {
+interface IAI20Upgradeable {
     struct TokenMetaData {
         uint256 fee;
         mapping(string => bytes[]) sysPrompts;
