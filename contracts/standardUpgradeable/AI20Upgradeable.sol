@@ -18,6 +18,7 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
     uint256 public _poolBalance;
     mapping(bytes32 signature => bool) public _signaturesUsed;
     bytes[] private _mission;
+    uint256 private _totalFee;
 
     function _AI20_init(
         address promptScheduler_,
@@ -97,6 +98,15 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
         }
 
         emit AgentFeeUpdate(fee);
+    }
+
+    function _withdrawFee(address recipient, uint256 amount) internal virtual {
+        uint256 withdrawAmount = _totalFee < amount ? _totalFee : amount;
+
+        if (withdrawAmount > 0) {
+            _totalFee -= withdrawAmount;
+            SafeERC20Upgradeable.safeTransfer(_tokenFee, recipient, withdrawAmount);
+        }
     }
 
     function topUpPoolBalance(uint256 amount) public virtual override {
@@ -190,18 +200,13 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
                 _poolBalance -= estFeeWH;
             }
 
-            // todo:
-            // if (feeAmount > 0) {
-            //     SafeERC20.safeTransfer(_tokenFee, _ownerOf(agentId), _datas.fee);
-            // }
+            if (feeAmount > 0) {
+                _totalFee += feeAmount;
+            }
         } else if (feeAmount >= estFeeWH) {
             uint256 remain = feeAmount - estFeeWH;
             if (remain > 0) {
-                SafeERC20Upgradeable.safeTransfer(
-                    _tokenFee,
-                    msg.sender,
-                    remain
-                );
+                _totalFee += remain;
             }
         } else {
             revert InsufficientFunds();

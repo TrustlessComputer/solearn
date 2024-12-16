@@ -18,6 +18,7 @@ contract AI20 is ERC20, IAI20 {
     uint256 public _poolBalance;
     mapping(bytes32 signature => bool) public _signaturesUsed;
     bytes[] private _mission;
+    uint256 private _totalFee;
 
     constructor(
         string memory name_,
@@ -58,6 +59,15 @@ contract AI20 is ERC20, IAI20 {
 
         _stakingHub = stakingHub;
         emit StakingHubUpdate(stakingHub);
+    }
+
+    function _withdrawFee(address recipient, uint256 amount) internal virtual {
+        uint256 withdrawAmount = _totalFee < amount ? _totalFee : amount;
+
+        if (withdrawAmount > 0) {
+            _totalFee -= withdrawAmount;
+            SafeERC20.safeTransfer(_tokenFee, recipient, withdrawAmount);
+        }
     }
 
     function _validateURI(string calldata uri) internal pure virtual {
@@ -192,14 +202,13 @@ contract AI20 is ERC20, IAI20 {
                 _poolBalance -= estFeeWH;
             }
 
-            // todo:
-            // if (feeAmount > 0) {
-            //     SafeERC20.safeTransfer(_tokenFee, _ownerOf(agentId), _datas.fee);
-            // }
+            if (feeAmount > 0) {
+                _totalFee += feeAmount;
+            }
         } else if (feeAmount >= estFeeWH) {
             uint256 remain = feeAmount - estFeeWH;
             if (remain > 0) {
-                SafeERC20.safeTransfer(_tokenFee, msg.sender, remain);
+                _totalFee += remain;
             }
         } else {
             revert InsufficientFunds();

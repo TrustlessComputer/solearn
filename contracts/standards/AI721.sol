@@ -403,7 +403,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
                 SafeERC20.safeTransfer(
                     _tokenFee,
                     _ownerOf(agentId),
-                    _datas[agentId].fee // mr @issac review, should be feeAmount
+                    feeAmount 
                 );
             }
         } else if (feeAmount >= estFeeWH) {

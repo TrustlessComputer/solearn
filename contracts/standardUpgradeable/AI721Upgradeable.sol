@@ -437,7 +437,7 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
                 SafeERC20.safeTransfer(
                     _tokenFee,
                     _ownerOf(agentId),
-                    _datas[agentId].fee
+                    feeAmount
                 );
             }
         } else if (feeAmount >= estFeeWH) {
