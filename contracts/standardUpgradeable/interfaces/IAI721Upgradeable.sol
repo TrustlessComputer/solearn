@@ -55,14 +55,6 @@ interface IAI721Upgradeable {
     );
     event TopUpPoolBalance(uint256 agentId, address caller, uint256 amount);
 
-    event AgentMissionAddNew(uint256 indexed agentId, bytes[] missions);
-    event AgentMissionUpdate(
-        uint256 indexed agentId,
-        uint256 missionIndex,
-        bytes oldSysMission,
-        bytes newSysMission
-    );
-
     error InsufficientFunds();
     error InvalidAgentId();
     error InvalidAgentFee();
@@ -79,13 +71,6 @@ interface IAI721Upgradeable {
     function getAgentIdByOwner(
         address _owner
     ) external view returns (uint256[] memory);
-    function createMission(
-        uint256 _agentId,
-        bytes calldata _missionData
-    ) external;
-    function getMissionIdsByAgentId(
-        uint256 _agentId
-    ) external view returns (bytes[] memory);
     function updateAgentURI(uint256 agentId, string calldata uri) external;
     function updateAgentData(
         uint256 agentId,

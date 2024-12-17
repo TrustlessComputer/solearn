@@ -35,13 +35,6 @@ interface IAI20Upgradeable {
     );
     event TopUpPoolBalance(address caller, uint256 amount);
 
-    event AgentMissionAddNew(bytes[] missions);
-    event AgentMissionUpdate(
-        uint256 missionIndex,
-        bytes oldSysMission,
-        bytes newSysMission
-    );
-
     error InsufficientFunds();
     error InvalidAgentFee();
     error InvalidAgentData();
@@ -49,7 +42,6 @@ interface IAI20Upgradeable {
     error InvalidData();
     error InvalidAgentPromptIndex();
 
-    function getMission() external view returns (bytes[] memory);
     function topUpPoolBalance(uint256 amount) external;
 
     /**

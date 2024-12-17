@@ -16,7 +16,6 @@ contract AI20 is ERC20, IAI20 {
     IERC20 private immutable _tokenFee;
     uint256 public _poolBalance;
     mapping(bytes32 signature => bool) public _signaturesUsed;
-    bytes[] private _mission;
     uint256 private _totalFee;
 
     constructor(
@@ -220,23 +219,6 @@ contract AI20 is ERC20, IAI20 {
 
     function inferData() public view virtual returns (uint256) {
         return _data.fee;
-    }
-
-    function _createMission(bytes memory missionData) internal virtual {
-        if (missionData.length == 0) revert InvalidAgentData();
-        _mission.push(missionData);
-
-        emit AgentMissionAddNew(_mission);
-    }
-
-    function getMission()
-        public
-        view
-        virtual
-        override
-        returns (bytes[] memory)
-    {
-        return _mission;
     }
 
     function _concatSystemPrompts(

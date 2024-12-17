@@ -32,8 +32,6 @@ contract AI721Upgradeable is
     mapping(address nftId => mapping(bytes32 signature => bool))
         public _signaturesUsed;
 
-    mapping(uint256 nftId => bytes[]) private _missionsOf;
-
     modifier onlyAgentOwner(uint256 nftId) {
         _checkAgentOwner(msg.sender, nftId);
         _;
@@ -498,23 +496,6 @@ contract AI721Upgradeable is
         }
 
         return agentIds;
-    }
-
-    function createMission(
-        uint256 agentId,
-        bytes calldata missionData
-    ) public virtual override onlyAgentOwner(agentId) {
-        if (missionData.length == 0 || agentId >= _nextTokenId)
-            revert InvalidAgentData();
-        _missionsOf[agentId].push(missionData);
-
-        emit AgentMissionAddNew(agentId, _missionsOf[agentId]);
-    }
-
-    function getMissionIdsByAgentId(
-        uint256 agentId
-    ) public view virtual override returns (bytes[] memory) {
-        return _missionsOf[agentId];
     }
 
     function nextTokenId() external view returns (uint256) {

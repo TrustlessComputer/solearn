@@ -99,24 +99,6 @@ interface IAI20 {
     event TopUpPoolBalance(address caller, uint256 amount);
 
     /**
-     * @dev Emitted when new agent missions are added.
-     * @param missions The new mission data.
-     */
-    event AgentMissionAddNew(bytes[] missions);
-
-    /**
-     * @dev Emitted when agent missions are updated.
-     * @param missionIndex The index of the mission being updated.
-     * @param oldSysMission The old system mission data.
-     * @param newSysMission The new system mission data.
-     */
-    event AgentMissionUpdate(
-        uint256 missionIndex,
-        bytes oldSysMission,
-        bytes newSysMission
-    );
-
-    /**
      * @dev Error thrown when there are insufficient funds.
      */
     error InsufficientFunds();
@@ -140,12 +122,6 @@ interface IAI20 {
      * @dev Error thrown when the agent prompt index is invalid.
      */
     error InvalidAgentPromptIndex();
-
-    /**
-     * @dev Returns the mission data.
-     * @return The mission data as an array of bytes.
-     */
-    function getMission() external view returns (bytes[] memory);
 
     /**
      * @dev Tops up the pool balance with the specified amount.

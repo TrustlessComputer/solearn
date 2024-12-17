@@ -16,7 +16,6 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
     IERC20Upgradeable private _tokenFee;
     uint256 public _poolBalance;
     mapping(bytes32 signature => bool) public _signaturesUsed;
-    bytes[] private _mission;
     uint256 private _totalFee;
 
     function _AI20_init(
@@ -218,23 +217,6 @@ contract AI20Upgradeable is ERC20Upgradeable, IAI20Upgradeable {
 
     function inferData() public view virtual returns (uint256) {
         return _data.fee;
-    }
-
-    function _createMission(bytes calldata missionData) internal virtual {
-        if (missionData.length == 0) revert InvalidAgentData();
-        _mission.push(missionData);
-
-        emit AgentMissionAddNew(_mission);
-    }
-
-    function getMission()
-        public
-        view
-        virtual
-        override
-        returns (bytes[] memory)
-    {
-        return _mission;
     }
 
     function _concatSystemPrompts(
