@@ -12,6 +12,19 @@ contract Dagent721 is
     OwnableUpgradeable,
     AI721Upgradeable
 {
+
+    // storage
+    mapping(uint256 nftId => bytes[]) private _missionsOf;
+
+    // event
+    event AgentMissionAddNew(uint256 indexed agentId, bytes[] missions);
+    event AgentMissionUpdate(
+        uint256 indexed agentId,
+        uint256 missionIndex,
+        bytes oldSysMission,
+        bytes newSysMission
+    );
+
     function initialize(
         string calldata name_,
         string calldata symbol_,
@@ -98,6 +111,23 @@ contract Dagent721 is
         returns (string memory)
     {
         return super.tokenURI(_agentId);
+    }
+
+    function createMission(
+        uint256 agentId,
+        bytes calldata missionData
+    ) public onlyAgentOwner(agentId) {
+        if (missionData.length == 0 )
+            revert InvalidAgentData();
+        _missionsOf[agentId].push(missionData);
+
+        emit AgentMissionAddNew(agentId, _missionsOf[agentId]);
+    }
+
+    function getMissionIdsByAgentId(
+        uint256 agentId
+    ) public view returns (bytes[] memory) {
+        return _missionsOf[agentId];
     }
 
     function supportsInterface(
