@@ -11,8 +11,13 @@ import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/t
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "hardhat/console.sol";
 
-contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgradeable, IAI721Upgradeable {
+contract AI721Upgradeable is
+    ERC721EnumerableUpgradeable,
+    ERC721URIStorageUpgradeable,
+    IAI721Upgradeable
+{
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
     mapping(uint256 nftId => TokenMetaData) private _datas;
@@ -41,11 +46,8 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
         uint256 nextTokenId_,
         address stakingHub_,
         IERC20 tokenFee_
-    ) external onlyInitializing {
-        require(
-            _stakingHub != address(0),
-            "Zero address"
-        );
+    ) internal onlyInitializing {
+        require(stakingHub_ != address(0), "Zero address");
 
         _mintPrice = mintPrice_;
         _royaltyReceiver = royaltyReceiver_;
@@ -165,12 +167,7 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
         uint256 agentId,
         uint32 newModelId
     ) public virtual override onlyAgentOwner(agentId) {
-
-        emit AgentModelIdUpdate(
-            agentId,
-            _datas[agentId].modelId,
-            newModelId
-        );
+        emit AgentModelIdUpdate(agentId, _datas[agentId].modelId, newModelId);
 
         _datas[agentId].modelId = newModelId;
     }
@@ -179,7 +176,6 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
         uint256 agentId,
         address newPromptScheduler
     ) public virtual onlyAgentOwner(agentId) {
-
         emit AgentPromptSchedulerdUpdate(
             agentId,
             _datas[agentId].promptScheduler,
@@ -413,6 +409,7 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
         if (_datas[agentId].sysPrompts[promptKey].length == 0)
             revert InvalidAgentData();
         if (feeAmount < _datas[agentId].fee) revert InvalidAgentFee();
+
         SafeERC20.safeTransferFrom(
             _tokenFee,
             msg.sender,
@@ -434,11 +431,7 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
             }
 
             if (feeAmount > 0) {
-                SafeERC20.safeTransfer(
-                    _tokenFee,
-                    _ownerOf(agentId),
-                    _datas[agentId].fee
-                );
+                SafeERC20.safeTransfer(_tokenFee, _ownerOf(agentId), feeAmount);
             }
         } else if (feeAmount >= estFeeWH) {
             uint256 remain = feeAmount - estFeeWH;
@@ -477,7 +470,13 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
 
     function tokenURI(
         uint256 agentId
-    ) public view override(ERC721Upgradeable, ERC721URIStorageUpgradeable) returns (string memory) {
+    )
+        public
+        view
+        virtual
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+        returns (string memory)
+    {
         return super.tokenURI(agentId);
     }
 
@@ -560,20 +559,34 @@ contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgrad
         address to,
         uint256 firstTokenId,
         uint256 batchSize
-    ) internal virtual override(ERC721Upgradeable, ERC721EnumerableUpgradeable) {
+    )
+        internal
+        virtual
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
+    {
         super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
     }
 
     function _burn(
         uint256 agentId
-    ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
+    )
+        internal
+        virtual
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+    {
         super._burn(agentId);
     }
 
     //todo: add suport interface
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(ERC721EnumerableUpgradeable, ERC721URIStorageUpgradeable) returns (bool) {
+    )
+        public
+        view
+        virtual
+        override(ERC721EnumerableUpgradeable, ERC721URIStorageUpgradeable)
+        returns (bool)
+    {
         return
             interfaceId == type(IERC2981Upgradeable).interfaceId ||
             super.supportsInterface(interfaceId);
