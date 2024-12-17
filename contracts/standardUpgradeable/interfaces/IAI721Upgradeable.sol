@@ -100,8 +100,8 @@ interface IAI721Upgradeable {
     function updateAgentDataWithSignature(
         uint256 agentId,
         bytes calldata sysPrompt,
-        uint256 promptIdx,
         string calldata promptKey,
+        uint256 promptIdx,
         uint256 randomNonce,
         bytes calldata signature
     ) external;
