@@ -10,14 +10,14 @@ import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-import {IHybridModel} from "./interfaces/IHybridModel.sol";
+// import {IStakingHub} from "./interfaces/IStakingHub.sol";
 import {IWorkerHub} from "./interfaces/IWorkerHub.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {SystemPromptManagerStorage} from "./storages/SystemPromptManagerStorage.sol";
-// import {SystemPromptHelper} from "./lib/SystemPromptHelper.sol";
 import {ISquad} from "./interfaces/ISquad.sol";
 import {Base64Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/Base64Upgradeable.sol";
 import {ICryptoAIData} from "./interfaces/ICryptoAIData.sol";
+import {IAI721Upgradeable, IStakingHub, IInferable} from "./standardUpgradeable/interfaces/IAI721Upgradeable.sol";
 
 contract SystemPromptManager is
     SystemPromptManagerStorage,
@@ -25,11 +25,9 @@ contract SystemPromptManager is
     ERC721EnumerableUpgradeable,
     ERC721PausableUpgradeable,
     ERC721URIStorageUpgradeable,
+    IAI721Upgradeable,
     OwnableUpgradeable
 {
-    // using SystemPromptHelper for TokenMetaData;
-    // using Set for Set.Uint256Set;
-
     string private constant VERSION = "v0.0.1";
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
@@ -71,14 +69,16 @@ contract SystemPromptManager is
         string calldata _name,
         string calldata _symbol,
         uint256 _mintPrice,
-        address _royaltyReceiver,
-        uint16 _royaltyPortion,
-        uint256 _nextTokenId,
-        address _hybridModel,
-        address _workerHub
+        address _argRoyaltyReceiver,
+        uint16 _argRoyaltyPortion,
+        uint256 _argNextTokenId,
+        address _workerHub,
+        address _stakingHub,
+        address _feeTokenAddr,
+        address _cryptoAiDataAddr
     ) external initializer {
         require(
-            _hybridModel != address(0) && _workerHub != address(0),
+            _stakingHub != address(0) && _workerHub != address(0),
             "Zero address"
         );
 
@@ -87,11 +87,13 @@ contract SystemPromptManager is
         __Ownable_init();
 
         mintPrice = _mintPrice;
-        royaltyReceiver = _royaltyReceiver;
-        royaltyPortion = _royaltyPortion;
-        nextTokenId = _nextTokenId;
-        hybridModel = _hybridModel;
+        _royaltyReceiver = _argRoyaltyReceiver;
+        _royaltyPortion = _argRoyaltyPortion;
+        _nextTokenId = _argNextTokenId;
+        stakingHub = _stakingHub;
         workerHub = _workerHub;
+        cryptoAiDataAddr = _cryptoAiDataAddr;
+        feeTokenAddr = _feeTokenAddr;
 
         isManager[owner()] = true;
         nextAgentId = 1;
@@ -127,21 +129,23 @@ contract SystemPromptManager is
     }
 
     function updateRoyaltyReceiver(
-        address _royaltyReceiver
+        address _argRoyaltyReceiver
     ) external onlyOwner {
-        royaltyReceiver = _royaltyReceiver;
+        _royaltyReceiver = _argRoyaltyReceiver;
         emit RoyaltyReceiverUpdate(_royaltyReceiver);
     }
 
-    function updateRoyaltyPortion(uint16 _royaltyPortion) external onlyOwner {
-        royaltyPortion = _royaltyPortion;
+    function updateRoyaltyPortion(uint16 _argRoyaltyPortion) external onlyOwner {
+        _royaltyPortion = _argRoyaltyPortion;
         emit RoyaltyPortionUpdate(_royaltyPortion);
     }
 
     function createAgent(
         address _agentOwner,
+        string calldata _promptKey,
         bytes calldata _data,
-        uint _fee
+        uint128 _fee,
+        uint32 _modelId
     ) external returns (uint256) {
         if (_data.length == 0) revert InvalidAgentData();
         uint256 agentId = nextAgentId++;
@@ -149,7 +153,8 @@ contract SystemPromptManager is
         if (isUnlockedAgent(agentId)) revert InvalidData();
 
         datas[agentId].fee = _fee;
-        datas[agentId].sysPrompts.push(_data);
+        datas[agentId].modelId = uint32(_modelId);
+        datas[agentId].sysPrompts[_promptKey].push(_data);
 
         agentInfo[agentId].owner = _agentOwner;
         agentInfo[agentId].status = AgentStatus.Pending;
@@ -187,7 +192,7 @@ contract SystemPromptManager is
         AgentRating storage a = agentRating[agentId];
         if (isUnlockedAgent(agentId)) revert InvalidData();
         if (a.totalPoints < NFT_UNLOCK_THRESHOLD) revert ThresholdNotReached();
-        if (agentId > NFT_COLLECTION_SIZE) revert CollectionSizeReached();
+        if (tokenId > NFT_COLLECTION_SIZE) revert CollectionSizeReached();
 
         _safeMint(_to, agentId);
         // _setTokenURI(agentId, _uri);
@@ -197,6 +202,7 @@ contract SystemPromptManager is
         agentInfo[agentId].status = AgentStatus.Minted;
 
         agentRating[agentId].mintTime = uint64(block.timestamp);
+        tokenIdToAgentId[tokenId] = agentId;
 
         ICryptoAIData(cryptoAiDataAddr).mintAgent(tokenId);
         emit NewToken(tokenId, agentId, _to);
@@ -212,12 +218,17 @@ contract SystemPromptManager is
         uint256 _squadId,
         uint256 _agentId
     ) internal returns (uint256) {
-        if (msg.value < mintPrice) revert InvalidMintingFee();
+        TransferHelper.safeTransferFrom(
+            feeTokenAddr,
+            msg.sender,
+            address(this),
+            mintPrice
+        );
 
-        while (datas[nextTokenId].sysPrompts.length != 0) {
-            nextTokenId++;
+        while (agentInfo[_nextTokenId].status != AgentStatus.Empty) {
+            _nextTokenId++;
         }
-        uint256 tokenId = nextTokenId++;
+        uint256 tokenId = _nextTokenId++;
 
         mint_(_to, tokenId, _agentId);
 
@@ -242,7 +253,7 @@ contract SystemPromptManager is
         // uint _fee
         uint256 _agentId
     ) external payable returns (uint256) {
-        return _wrapMint(_to, _agentId, 0);
+        return _wrapMint(_to, 0, _agentId);
     }
 
     function mint(
@@ -253,7 +264,7 @@ contract SystemPromptManager is
         uint256 _squadId,
         uint256 _agentId
     ) external payable returns (uint256) {
-        return _wrapMint(_to, _agentId, _squadId);
+        return _wrapMint(_to, _squadId, _agentId);
     }
 
     function withdraw(address _to, uint _value) external onlyOwner {
@@ -265,35 +276,47 @@ contract SystemPromptManager is
         if (bytes(_uri).length == 0) revert InvalidAgentData();
     }
 
-    // function updateAgentURI(
-    //     uint256 _agentId,
-    //     string calldata _uri
-    // ) external onlyAgentOwner(_agentId) {
-    //     _validateURI(_uri);
-
-    //     _setTokenURI(_agentId, _uri);
-    //     emit AgentURIUpdate(_agentId, _uri);
-    // }
+    function updateAgentURI(
+        uint256 _agentId,
+        string calldata _uri
+    ) external onlyAgentOwner(_agentId) {
+        revert UriChangeNotAllowed();
+    }
 
     function updateAgentData(
         uint256 _agentId,
         bytes calldata _sysPrompt,
+        string calldata _promptKey,
         uint256 _promptIdx
     ) external onlyAgentOwner(_agentId) {
-        _validateAgentData(_agentId, _sysPrompt, _promptIdx);
+        _validateAgentData(_agentId, _promptKey, _sysPrompt, _promptIdx);
 
         emit AgentDataUpdate(
             _agentId,
             _promptIdx,
-            datas[_agentId].sysPrompts[_promptIdx],
+            datas[_agentId].sysPrompts[_promptKey][_promptIdx],
             _sysPrompt
         );
 
-        datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
+        datas[_agentId].sysPrompts[_promptKey][_promptIdx] = _sysPrompt;
     }
+
+    function addNewAgentData(
+        uint256 agentId,
+        string calldata promptKey,
+        bytes calldata sysPrompt
+    ) external onlyAgentOwner(agentId) {
+        if (sysPrompt.length == 0) revert InvalidAgentData();
+
+        datas[agentId].sysPrompts[promptKey].push(sysPrompt);
+
+        emit AgentDataAddNew(agentId, datas[agentId].sysPrompts[promptKey]);
+    }
+
 
     function _checkUpdatePromptPermission(
         uint256 _agentId,
+        string calldata _promptKey,
         bytes calldata _sysPrompt,
         uint256 _promptIdx,
         uint256 _randomNonce,
@@ -301,6 +324,7 @@ contract SystemPromptManager is
     ) internal {
         address signer = recover(
             _agentId,
+            _promptKey,
             _sysPrompt,
             _promptIdx,
             _randomNonce,
@@ -314,24 +338,27 @@ contract SystemPromptManager is
 
     function _validateAgentData(
         uint256 _agentId,
+        string memory _promptKey,
         bytes calldata _sysPrompt,
         uint256 _promptIdx
     ) internal view {
         if (_sysPrompt.length == 0) revert InvalidAgentData();
-        uint256 len = datas[_agentId].sysPrompts.length;
+        uint256 len = datas[_agentId].sysPrompts[_promptKey].length;
         if (_promptIdx >= len) revert InvalidAgentPromptIndex();
     }
 
     function updateAgentDataWithSignature(
         uint256 _agentId,
         bytes calldata _sysPrompt,
+        string calldata _promptKey,
         uint256 _promptIdx,
         uint256 _randomNonce,
         bytes calldata _signature
     ) external {
-        _validateAgentData(_agentId, _sysPrompt, _promptIdx);
+        _validateAgentData(_agentId, _promptKey, _sysPrompt, _promptIdx);
         _checkUpdatePromptPermission(
             _agentId,
+            _promptKey,
             _sysPrompt,
             _promptIdx,
             _randomNonce,
@@ -341,12 +368,22 @@ contract SystemPromptManager is
         emit AgentDataUpdate(
             _agentId,
             _promptIdx,
-            datas[_agentId].sysPrompts[_promptIdx],
+            datas[_agentId].sysPrompts[_promptKey][_promptIdx],
             _sysPrompt
         );
 
-        datas[_agentId].sysPrompts[_promptIdx] = _sysPrompt;
+        datas[_agentId].sysPrompts[_promptKey][_promptIdx] = _sysPrompt;
     }
+
+    function updateAgentModelId(
+        uint256 agentId,
+        uint32 newModelId
+    ) external onlyAgentOwner(agentId) {
+        uint32 oldModelId = datas[agentId].modelId;
+        datas[agentId].modelId = newModelId;
+        emit AgentModelIdUpdate(agentId, oldModelId, newModelId);
+    }
+
 
     // function _checkUpdateUriPermission(
     //     uint256 _agentId,
@@ -363,43 +400,28 @@ contract SystemPromptManager is
     //     signaturesUsed[agentOwner][_signature] = true;
     // }
 
-    // function updateAgentUriWithSignature(
-    //     uint256 _agentId,
-    //     string calldata _uri,
-    //     uint256 _randomNonce,
-    //     bytes calldata _signature
-    // ) external {
-    //     _validateURI(_uri);
-
-    //     _checkUpdateUriPermission(_agentId, _uri, _randomNonce, _signature);
-    //     _setTokenURI(_agentId, _uri);
-    //     emit AgentURIUpdate(_agentId, _uri);
-    // }
-
-    function addNewAgentData(
+    function updateAgentUriWithSignature(
         uint256 _agentId,
-        bytes calldata _sysPrompt
-    ) external onlyAgentOwner(_agentId) {
-        if (_sysPrompt.length == 0) revert InvalidAgentData();
-
-        datas[_agentId].sysPrompts.push(_sysPrompt);
-
-        emit AgentDataAddNew(_agentId, datas[_agentId].sysPrompts);
+        string calldata _uri,
+        uint256 _randomNonce,
+        bytes calldata _signature
+    ) external {
+        revert UriChangeNotAllowed();
     }
 
     function updateAgentFee(
         uint256 _agentId,
-        uint _fee
+        uint256 _fee
     ) external onlyAgentOwner(_agentId) {
-        if (datas[_agentId].fee != _fee) {
-            datas[_agentId].fee = _fee;
+        if (datas[_agentId].fee != uint128(_fee)) {
+            datas[_agentId].fee = uint128(_fee);
         }
 
         emit AgentFeeUpdate(_agentId, _fee);
     }
 
-    function setHybridModel(address _hybridModel) external onlyOwner {
-        hybridModel = _hybridModel;
+    function setStakingHub(address _stakingHub) external onlyOwner {
+        stakingHub = _stakingHub;
     }
 
     function setWorkerHub(address _workerHub) external onlyOwner {
@@ -415,31 +437,44 @@ contract SystemPromptManager is
         emit FeesClaimed(msg.sender, totalFee);
     }
 
-    function topUpPoolBalance(uint256 _agentId) external payable {
-        poolBalance[_agentId] += msg.value;
+    function topUpPoolBalance(uint256 agentId, uint256 amount) external {
+        TransferHelper.safeTransferFrom(feeTokenAddr, msg.sender, address(this), amount);
+        poolBalance[agentId] += amount;
 
-        emit TopUpPoolBalance(_agentId, msg.sender, msg.value);
+        emit TopUpPoolBalance(agentId, msg.sender, amount);
     }
+
 
     function getAgentFee(uint256 _agentId) external view returns (uint256) {
         return datas[_agentId].fee;
     }
 
-    function getAgentSystemPrompt(
-        uint256 _agentId
-    ) external view returns (bytes[] memory) {
-        return datas[_agentId].sysPrompts;
-    }
+    // function getAgentSystemPrompt(
+    //     uint256 _agentId
+    // ) external view returns (bytes[] memory) {
+    //     return datas[_agentId].sysPrompts;
+    // }
 
     function infer(
         uint256 _agentId,
         bytes calldata _calldata,
         string calldata _externalData,
-        bool _flag
-    ) external payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(_agentId, _calldata);
+        string calldata _promptKey,
+        bool _flag,
+        uint256 _feeAmount
+    ) external {
+        uint32 modelId = datas[_agentId].modelId;
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+            modelId,
+            _agentId,
+            _calldata,
+            _externalData,
+            _promptKey,
+            _feeAmount
+        );
 
-        uint256 inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+        uint256 inferId = IWorkerHub(workerHub).infer(
+            modelId,
             fwdData,
             msg.sender,
             _flag
@@ -458,11 +493,22 @@ contract SystemPromptManager is
     function infer(
         uint256 _agentId,
         bytes calldata _calldata,
-        string calldata _externalData
-    ) external payable {
-        (uint256 estFeeWH, bytes memory fwdData) = _infer(_agentId, _calldata);
+        string calldata _externalData,
+        string calldata _promptKey,
+        uint256 _feeAmount
+    ) external {
+        uint32 modelId = datas[_agentId].modelId;
+        (uint256 estFeeWH, bytes memory fwdData) = _infer(
+            modelId,
+            _agentId,
+            _calldata,
+            _externalData,
+            _promptKey,
+            _feeAmount
+        );
 
-        uint256 inferId = IHybridModel(hybridModel).infer{value: estFeeWH}(
+        uint256 inferId = IWorkerHub(workerHub).infer(
+            modelId,
             fwdData,
             msg.sender
         );
@@ -478,37 +524,50 @@ contract SystemPromptManager is
     }
 
     function _infer(
+        uint32 modelId,
         uint256 _agentId,
-        bytes calldata _calldata
+        bytes calldata _calldata,
+        string calldata _externalData,
+        string calldata _promptKey,
+        uint256 _feeAmount
     ) internal returns (uint256, bytes memory) {
-        if (datas[_agentId].sysPrompts.length == 0) revert InvalidAgentData();
-        if (msg.value < datas[_agentId].fee) revert InvalidAgentFee();
+        if (agentInfo[_agentId].status != AgentStatus.Empty) revert InvalidAgentData();
+        if (_feeAmount < datas[_agentId].fee) revert InvalidAgentFee();
 
         bytes memory fwdData = abi.encodePacked(
-            concatSystemPrompts(datas[_agentId]),
+            concatSystemPrompts(datas[_agentId].sysPrompts[_promptKey]),
             _calldata
         );
-        uint256 estFeeWH = 0; // IWorkerHub(workerHub).getMinFeeToUse(hybridModel);
+        uint256 estFeeWH = IStakingHub(stakingHub).getMinFeeToUse(modelId);
 
         address agentOwner = agentInfo[_agentId].owner;
         if (agentOwner == address(0)) {
             agentOwner = _ownerOf(_agentId);
         }
-        if (msg.value < estFeeWH && poolBalance[_agentId] >= estFeeWH) {
+
+        TransferHelper.safeTransferFrom(
+            feeTokenAddr,
+            msg.sender,
+            address(this),
+            _feeAmount
+        );
+
+        if (_feeAmount < estFeeWH && poolBalance[_agentId] >= estFeeWH) {
             unchecked {
                 poolBalance[_agentId] -= estFeeWH;
             }
 
-            if (msg.value > 0) {
-                TransferHelper.safeTransferNative(
+            if (_feeAmount > 0) {
+                TransferHelper.safeTransfer(
+                    feeTokenAddr,
                     agentOwner,
-                    msg.value
+                    _feeAmount
                 );
             }
-        } else if (msg.value >= estFeeWH) {
-            uint256 remain = msg.value - estFeeWH;
+        } else if (_feeAmount >= estFeeWH) {
+            uint256 remain = _feeAmount - estFeeWH;
             if (remain > 0) {
-                TransferHelper.safeTransferNative(agentOwner, remain);
+                TransferHelper.safeTransfer(feeTokenAddr, agentOwner, remain);
             }
         } else {
             revert InsufficientFunds();
@@ -521,29 +580,43 @@ contract SystemPromptManager is
         return (estFeeWH, fwdData);
     }
 
-    function dataOfAgentId(
+    function getAgentId(uint256 _tokenId) external view returns (uint256) {
+        return tokenIdToAgentId[_tokenId];
+    }
+
+    function getAgentData(
         uint256 _agentId
-    ) external view returns (TokenMetaData memory) {
-        return datas[_agentId];
+    ) external view returns (uint128 fee, bool isUsed, uint32 modelId, address promptScheduler) {
+        IAI721Upgradeable.TokenMetaData storage d = datas[_agentId];
+        fee = d.fee;
+        isUsed = d.isUsed;
+        modelId = d.modelId;
+        promptScheduler = d.promptScheduler;
     }
 
-    function dataOf(
-        uint256 _tokenId
-    ) external view returns (TokenMetaData memory) {
-        uint256 agentId = tokenIdToAgentId[_tokenId];
-        if (agentId == 0) revert InvalidAgentId();
-        return datas[agentId];
+    function getAgentSysPrompts(
+        uint256 _agentId,
+        string calldata _promptKey
+    ) external view returns (bytes[] memory) {
+        return datas[_agentId].sysPrompts[_promptKey];
     }
-
 
     function royaltyInfo(
         uint256 _tokenId,
         uint256 _salePrice
     ) external view returns (address, uint256) {
         return (
-            royaltyReceiver,
-            (_salePrice * royaltyPortion) / PORTION_DENOMINATOR
+            _royaltyReceiver,
+            (_salePrice * _royaltyPortion) / PORTION_DENOMINATOR
         );
+    }
+
+    function royaltyReceiver() external view returns (address) {
+        return _royaltyReceiver;
+    }
+
+    function royaltyPortion() external view returns (uint16) {
+        return _royaltyPortion;
     }
 
     function tokenURI(
@@ -559,7 +632,7 @@ contract SystemPromptManager is
         uint256 _agentId = tokenIdToAgentId[_tokenId];
         if (_agentId == 0) revert InvalidAgentId();
 
-        if (datas[_agentId].sysPrompts.length == 0) revert InvalidAgentData();
+        if (agentInfo[_agentId].status != AgentStatus.Empty) revert InvalidAgentData();
         ICryptoAIData cryptoAIDataContract = ICryptoAIData(cryptoAiDataAddr);
         return cryptoAIDataContract.tokenURI(_tokenId);
     }
@@ -600,7 +673,13 @@ contract SystemPromptManager is
 
     function _burn(
         uint256 _tokenId
-    ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
+    ) internal 
+        override
+        (
+            ERC721Upgradeable,
+            ERC721URIStorageUpgradeable
+        )
+    {
         super._burn(_tokenId);
     }
 
@@ -624,9 +703,10 @@ contract SystemPromptManager is
         }
     }
 
-    function getTokenIdsByOwner(
+    function getAgentIdByOwner(
         address _owner
     ) external view returns (uint256[] memory) {
+        // only return minted agents
         uint256 len = balanceOf(_owner);
         uint256[] memory ids = new uint256[](len);
 
@@ -690,9 +770,8 @@ contract SystemPromptManager is
     }
 
     function concatSystemPrompts(
-        TokenMetaData memory data
+        bytes[] memory sysPrompts
     ) internal pure returns (bytes memory) {
-        bytes[] memory sysPrompts = data.sysPrompts;
 
         uint256 len = sysPrompts.length;
         bytes memory concatedPrompt;
@@ -706,6 +785,10 @@ contract SystemPromptManager is
         }
 
         return concatedPrompt;
+    }
+
+    function nextTokenId() external view override returns (uint256) {
+        return _nextTokenId;
     }
 
     function recover(
@@ -729,6 +812,7 @@ contract SystemPromptManager is
 
     function recover(
         uint256 _agentId,
+        string calldata _promptKey,
         bytes calldata _sysPrompt,
         uint256 _promptIdx,
         uint256 _randomNonce,
@@ -736,8 +820,9 @@ contract SystemPromptManager is
     ) internal view returns (address) {
         bytes32 structHash = keccak256(
             abi.encode(
-                _sysPrompt,
                 _agentId,
+                _promptKey,
+                _sysPrompt,
                 _promptIdx,
                 _randomNonce,
                 address(this),
@@ -800,7 +885,8 @@ contract SystemPromptManager is
         AgentRating storage a = agentRating[agentId];
         if (!isUnlockedAgent(agentId)) revert InvalidData();
         uint256 x = a.totalPoints;
-        uint256 y = (a.unlockTime - a.mintTime + (1 days) - 1) / 1 days;
+        uint256 timeUnit = 1 days;
+        uint256 y = (a.unlockTime - a.mintTime + timeUnit - 1) / timeUnit;
 
         uint256 gainedPoints = min(x * a1 / a2 + y * a3 / a4, MAX_RARITY * 80 / 100);
         uint256 lostPoints = b1 / (b2 * max(x * a1 / a2, MAX_RARITY * 40 / 100))

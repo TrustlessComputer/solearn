@@ -2,14 +2,17 @@
 
 pragma solidity ^0.8.20;
 
-import {IAI721, IStakingHub, IInferable} from "./interfaces/IAI721.sol";
-import {ERC721URIStorage, ERC721} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {IAI721Upgradeable, IStakingHub, IInferable} from "./interfaces/IAI721Upgradeable.sol";
+import {IERC2981Upgradeable} from "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
+import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {ERC721EnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import {ERC721PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
+import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
+import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
+contract AI721Upgradeable is ERC721EnumerableUpgradeable, ERC721URIStorageUpgradeable, IAI721Upgradeable {
     uint256 private constant PORTION_DENOMINATOR = 10000;
 
     mapping(uint256 nftId => TokenMetaData) private _datas;
@@ -18,7 +21,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     address private _royaltyReceiver;
     uint16 private _royaltyPortion;
     address public _stakingHub;
-    IERC20 private immutable _tokenFee;
+    IERC20 private _tokenFee;
 
     mapping(uint256 nftId => uint256) public _poolBalance;
     mapping(address nftId => mapping(bytes32 signature => bool))
@@ -31,16 +34,19 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         _;
     }
 
-    constructor(
-        string memory name_,
-        string memory symbol_,
+    function _AI721_init(
         uint256 mintPrice_,
         address royaltyReceiver_,
         uint16 royaltyPortion_,
         uint256 nextTokenId_,
         address stakingHub_,
         IERC20 tokenFee_
-    ) ERC721(name_, symbol_) {
+    ) external onlyInitializing {
+        require(
+            _stakingHub != address(0),
+            "Zero address"
+        );
+
         _mintPrice = mintPrice_;
         _royaltyReceiver = royaltyReceiver_;
         _royaltyPortion = royaltyPortion_;
@@ -155,6 +161,34 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         _datas[agentId].sysPrompts[promptKey][promptIdx] = sysPrompt;
     }
 
+    function updateAgentModelId(
+        uint256 agentId,
+        uint32 newModelId
+    ) public virtual override onlyAgentOwner(agentId) {
+
+        emit AgentModelIdUpdate(
+            agentId,
+            _datas[agentId].modelId,
+            newModelId
+        );
+
+        _datas[agentId].modelId = newModelId;
+    }
+
+    function updateSchedulePrompt(
+        uint256 agentId,
+        address newPromptScheduler
+    ) public virtual onlyAgentOwner(agentId) {
+
+        emit AgentPromptSchedulerdUpdate(
+            agentId,
+            _datas[agentId].promptScheduler,
+            newPromptScheduler
+        );
+
+        _datas[agentId].promptScheduler = newPromptScheduler;
+    }
+
     function _checkUpdatePromptPermission(
         uint256 agentId,
         bytes calldata sysPrompt,
@@ -196,8 +230,8 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
     function updateAgentDataWithSignature(
         uint256 agentId,
         bytes calldata sysPrompt,
-        uint256 promptIdx,
         string calldata promptKey,
+        uint256 promptIdx,
         uint256 randomNonce,
         bytes calldata signature
     ) public virtual override {
@@ -403,7 +437,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
                 SafeERC20.safeTransfer(
                     _tokenFee,
                     _ownerOf(agentId),
-                    _datas[agentId].fee // mr @issac review, should be feeAmount
+                    _datas[agentId].fee
                 );
             }
         } else if (feeAmount >= estFeeWH) {
@@ -443,7 +477,7 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
 
     function tokenURI(
         uint256 agentId
-    ) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+    ) public view override(ERC721Upgradeable, ERC721URIStorageUpgradeable) returns (string memory) {
         return super.tokenURI(agentId);
     }
 
@@ -517,8 +551,8 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         bytes32 structHash,
         bytes calldata signature
     ) internal pure returns (address, bytes32) {
-        bytes32 hash = ECDSA.toEthSignedMessageHash(structHash);
-        return (ECDSA.recover(hash, signature), hash);
+        bytes32 hash = ECDSAUpgradeable.toEthSignedMessageHash(structHash);
+        return (ECDSAUpgradeable.recover(hash, signature), hash);
     }
 
     function _beforeTokenTransfer(
@@ -526,22 +560,29 @@ contract AI721 is ERC721Enumerable, ERC721URIStorage, IAI721 {
         address to,
         uint256 firstTokenId,
         uint256 batchSize
-    ) internal virtual override(ERC721, ERC721Enumerable) {
+    ) internal virtual override(ERC721Upgradeable, ERC721EnumerableUpgradeable) {
         super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
     }
 
     function _burn(
         uint256 agentId
-    ) internal override(ERC721, ERC721URIStorage) {
+    ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
         super._burn(agentId);
     }
 
     //todo: add suport interface
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(ERC721Enumerable, ERC721URIStorage) returns (bool) {
+    ) public view override(ERC721EnumerableUpgradeable, ERC721URIStorageUpgradeable) returns (bool) {
         return
-            interfaceId == type(IERC2981).interfaceId ||
+            interfaceId == type(IERC2981Upgradeable).interfaceId ||
             super.supportsInterface(interfaceId);
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[44] private __gap;
 }

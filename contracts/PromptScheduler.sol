@@ -4,11 +4,10 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-import {Random} from "./lib/Random.sol";
 import {TransferHelper} from "./lib/TransferHelper.sol";
-import {PromptSchedulerStorage, IWorkerHub, Set} from "./storages/PromptSchedulerStorage.sol";
-import {IDAOToken} from "./tokens/IDAOToken.sol";
+import {PromptSchedulerStorage, Set} from "./storages/PromptSchedulerStorage.sol";
 import {IStakingHub} from "./interfaces/IStakingHub.sol";
 
 contract PromptScheduler is
@@ -17,56 +16,37 @@ contract PromptScheduler is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    using Random for Random.Randomizer;
     using Set for Set.Uint256Set;
-    using Set for Set.Bytes32Set;
 
     string private constant VERSION = "v0.0.2";
     uint256 internal constant PERCENTAGE_DENOMINATOR = 100_00;
-    uint256 private constant BLOCK_PER_YEAR = 365 days / 2; // 2s per block
+    uint256 private constant BLOCK_PER_YEAR = 365 days;
 
     receive() external payable {}
 
     function initialize(
-        address _wEAI,
-        address _l2Owner,
-        address _treasury,
-        address _daoToken,
-        address _stakingHub,
-        uint16 _feeL2Percentage,
-        uint16 _feeTreasuryPercentage,
-        uint8 _minerRequirement,
-        uint40 _submitDuration,
-        uint16 _feeRatioMinerValidor,
-        uint256 _daoTokenReward,
-        DAOTokenPercentage memory _daoTokenPercentage
+        address wEAIToken_,
+        address stakingHub_,
+        uint8 minerRequirement_,
+        uint40 submitDuration_,
+        uint16 minerValidatorFeeRatio_,
+        uint40 batchPeriod_
     ) external initializer {
+        if (stakingHub_ == address(0) || wEAIToken_ == address(0))
+            revert InvalidAddress();
+        if (batchPeriod_ == 0) revert InvalidValue();
+
         __Ownable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
-        require(
-            _l2Owner != address(0) &&
-                _treasury != address(0) &&
-                _daoToken != address(0) &&
-                _stakingHub != address(0) &&
-                _wEAI != address(0),
-            "Zero address"
-        );
-
-        l2Owner = _l2Owner;
-        treasury = _treasury;
-        daoToken = _daoToken;
-        stakingHub = _stakingHub;
-        feeL2Percentage = _feeL2Percentage;
-        feeTreasuryPercentage = _feeTreasuryPercentage;
-        feeRatioMinerValidator = _feeRatioMinerValidor;
-        minerRequirement = _minerRequirement;
-
-        daoTokenReward = _daoTokenReward;
-        submitDuration = _submitDuration;
-        daoTokenPercentage = _daoTokenPercentage;
-        wEAI = _wEAI;
+        _wEAIToken = wEAIToken_;
+        _stakingHub = stakingHub_;
+        _minerValidatorFeeRatio = minerValidatorFeeRatio_;
+        _minerRequirement = minerRequirement_;
+        _submitDuration = submitDuration_;
+        _lastBatchTimestamp = block.timestamp;
+        _batchPeriod = batchPeriod_;
     }
 
     function version() external pure returns (string memory) {
@@ -81,156 +61,164 @@ contract PromptScheduler is
         _unpause();
     }
 
-    function setWEAIAddress(address _wEAI) external onlyOwner {
-        if (_wEAI == address(0)) revert InvalidAddress();
-        wEAI = _wEAI;
-    }
-
-    function _registerReferrer(address _referrer, address _referee) internal {
-        if (_referrer == address(0) || _referee == address(0))
-            revert InvalidData();
-        if (referrerOf[_referee] != address(0)) revert AlreadySubmitted();
-
-        referrerOf[_referee] = _referrer;
-    }
-
-    function registerReferrer(
-        address[] memory _referrers,
-        address[] memory _referees
-    ) external onlyOwner {
-        if (_referrers.length != _referees.length) revert InvalidData();
-
-        for (uint256 i = 0; i < _referrers.length; i++) {
-            _registerReferrer(_referrers[i], _referees[i]);
-        }
+    function setWEAIAddress(address wEAIToken) external onlyOwner {
+        if (wEAIToken == address(0)) revert InvalidAddress();
+        _wEAIToken = wEAIToken;
     }
 
     function infer(
-        bytes calldata _input,
-        address _creator,
-        bool _flag
-    ) external payable whenNotPaused returns (uint256) {
-        return _infer(_input, _creator, 0, _flag);
+        uint32 modelId,
+        bytes calldata input,
+        address creator,
+        bool flag
+    ) external whenNotPaused returns (uint64) {
+        return _infer(modelId, input, creator, flag);
     }
 
     function infer(
-        bytes calldata _input,
-        address _creator
-    ) external payable whenNotPaused returns (uint256) {
-        return _infer(_input, _creator, 0, false);
+        uint32 modelId,
+        bytes calldata input,
+        address creator
+    ) external whenNotPaused returns (uint64) {
+        return _infer(modelId, input, creator, false);
     }
 
     function _infer(
-        bytes calldata _input,
-        address _creator,
-        uint256 _scoringFee,
-        bool _flag
-    ) internal virtual returns (uint256) {
-        IStakingHub.Model memory model = IStakingHub(stakingHub).getModelInfo(
-            msg.sender
-        );
-        if (model.tier == 0) revert Unauthorized();
+        uint32 modelId,
+        bytes calldata input,
+        address creator,
+        bool flag
+    ) internal virtual returns (uint64) {
+        (address miner, uint256 modelFee) = IStakingHub(_stakingHub)
+            .validateModelAndChooseRandomMiner(modelId, _minerRequirement);
 
-        uint256 inferenceId = ++inferenceNumber;
-        Inference storage inference = inferences[inferenceId];
+        uint64 inferId = ++_inferenceCounter;
+        Inference storage inference = _inferences[inferId];
+        uint32 lModelId = modelId;
 
-        uint256 value = msg.value - _scoringFee;
-        uint256 feeL2 = (value * feeL2Percentage) / PERCENTAGE_DENOMINATOR;
-        uint256 feeTreasury = (value * feeTreasuryPercentage) /
-            PERCENTAGE_DENOMINATOR;
+        inference.value = modelFee;
+        inference.modelId = lModelId;
+        inference.creator = creator;
+        inference.input = input;
 
-        inference.input = _input;
-        inference.feeL2 = feeL2;
-        inference.feeTreasury = feeTreasury;
-        inference.value = value - feeL2 - feeTreasury;
-        inference.creator = _creator;
-        inference.referrer = referrerOf[_creator];
-        inference.modelAddress = msg.sender;
+        _assignMiners(inferId, lModelId, miner);
 
-        _assignMiners(inferenceId, msg.sender);
-
-        emit NewInference(inferenceId, msg.sender, _creator, value, 0);
-        emit RawSubmitted(
-            inferenceId,
+        // transfer model fee (fee to use model) to staking hub
+        TransferHelper.safeTransferFrom(
+            _wEAIToken,
             msg.sender,
-            _creator,
-            value,
-            0,
-            _input,
-            _flag
+            address(this),
+            modelFee
         );
 
-        return inferenceId;
+        emit NewInference(inferId, creator, lModelId, modelFee, input, flag);
+
+        return inferId;
     }
 
-    function _assignMiners(uint256 _inferenceId, address _model) internal {
-        uint40 expiredAt = uint40(block.number + submitDuration);
-        inferences[_inferenceId].submitTimeout = expiredAt;
-        inferences[_inferenceId].status = InferenceStatus.Solving;
+    function _assignMiners(
+        uint64 inferId,
+        uint32 modelId,
+        address miner
+    ) internal {
+        uint40 expiredAt = uint40(block.number + _submitDuration);
+        _inferences[inferId].submitTimeout = expiredAt;
+        _inferences[inferId].status = InferenceStatus.Solving;
+        _inferences[inferId].processedMiner = miner;
+        _inferencesByMiner[miner].insert(inferId);
 
-        address[] memory miners = IStakingHub(stakingHub)
-            .getMinerAddressesOfModel(_model); // TODO: kelvin change, move random to stakingHub
-        uint8 index = uint8(randomizer.randomUint256() % miners.length);
-        address miner = miners[index];
-        inferences[_inferenceId].processedMiner = miner;
-        inferencesByMiner[miner].insert(_inferenceId);
+        emit NewAssignment(inferId, miner, expiredAt);
 
-        emit NewAssignment(_inferenceId, _inferenceId, miner, expiredAt);
+        // append to batch
+        uint64 batchId = uint64(
+            (block.timestamp - _lastBatchTimestamp) / _batchPeriod
+        );
+
+        _batchInfos[modelId][batchId].inferIds.push(inferId);
+
+        emit AppendToBatch(batchId, modelId, inferId);
     }
 
-    function _validatateSolution(bytes calldata _data) internal pure virtual {
-        if (_data.length == 0) revert InvalidData();
+    function inferenceCounter() external view returns (uint64) {
+        return _inferenceCounter;
     }
 
-    function submitSolution(
-        uint256 _inferId,
-        bytes calldata _data
-    ) external virtual whenNotPaused {
-        IStakingHub(stakingHub).updateEpoch();
-        _validatateSolution(_data);
+    function _validateSolution(bytes calldata data) internal pure virtual {
+        if (data.length == 0) revert InvalidData();
+    }
 
-        // Check whether miner is available (the miner had previously joined). The inactive miner is not allowed to submit solution.
-        if (!IStakingHub(stakingHub).isMinerAddress(msg.sender))
-            revert InvalidMiner();
-
-        IStakingHub(stakingHub).validateModelOfMiner(msg.sender);
-
+    function _validateInference(uint64 inferId) internal view virtual {
         // Check the msg sender is the assigned miner
-        if (msg.sender != inferences[_inferId].processedMiner)
-            revert Unauthorized();
-        if (inferences[_inferId].output.length != 0) revert AlreadySubmitted();
+        if (msg.sender != _inferences[inferId].processedMiner)
+            revert OnlyAssignedWorker();
 
-        Inference memory clonedInference = inferences[_inferId];
+        if (uint40(block.number) > _inferences[inferId].submitTimeout)
+            revert SubmitTimeout();
 
-        if (clonedInference.status != InferenceStatus.Solving) {
+        if (_inferences[inferId].status != InferenceStatus.Solving) {
             revert InvalidInferenceStatus();
         }
 
-        if (uint40(block.number) > clonedInference.submitTimeout)
-            revert SubmitTimeout();
+        if (_inferences[inferId].output.length != 0) revert AlreadySubmitted();
+    }
 
-        Inference storage inference = inferences[_inferId];
+    function submitSolution(
+        uint64 inferId,
+        bytes calldata solution
+    ) external virtual whenNotPaused {
+        _validateSolution(solution);
+        _validateInference(inferId);
 
-        inference.output = _data; //Record the solution
+        // Check whether the miner is available (the miner has previously joined).
+        // An inactive miner or one that does not belong to the correct model is not allowed to submit a solution.
+        IStakingHub(_stakingHub).validateMiner(msg.sender);
+
+        Inference storage inference = _inferences[inferId];
+        inference.output = solution; //Record the solution
         inference.status = InferenceStatus.Commit;
 
-        emit InferenceStatusUpdate(_inferId, InferenceStatus.Commit);
-        emit SolutionSubmission(msg.sender, _inferId);
+        // transfer fee to miner
+        uint256 minerFee = (inference.value * _minerValidatorFeeRatio) /
+            PERCENTAGE_DENOMINATOR;
+        TransferHelper.safeTransfer(_wEAIToken, msg.sender, minerFee);
+
+        // calculate accumulated fee for validators
+        uint64 currentBatchId = uint64(
+            (block.timestamp - _lastBatchTimestamp) / _batchPeriod
+        );
+        uint32 modelId = inference.modelId;
+        if (inferId < _batchInfos[modelId][currentBatchId].inferIds[0]) {
+            currentBatchId--;
+        }
+
+        _batchInfos[modelId][currentBatchId].validatorFee +=
+            inference.value -
+            minerFee;
+
+        emit InferenceStatusUpdate(inferId, InferenceStatus.Commit);
+        emit SolutionSubmission(msg.sender, inferId);
     }
 
     function getInferenceInfo(
-        uint256 _inferenceId
+        uint64 inferId
     ) external view returns (Inference memory) {
-        return inferences[_inferenceId];
+        return _inferences[inferId];
     }
 
-    function getMinFeeToUse(
-        address _modelAddress
-    ) external view returns (uint256) {
-        return IStakingHub(stakingHub).getMinFeeToUse(_modelAddress);
+    function getInferenceByMiner(
+        address miner
+    ) external view returns (uint256[] memory) {
+        return _inferencesByMiner[miner].values;
     }
 
-    function getTreasuryAddress() external view returns (address) {
-        return treasury;
+    // Only for testing
+    function getBatchInfo(
+        uint32 modelId,
+        uint64 batchId
+    ) external view returns (uint256, uint64[] memory) {
+        return (
+            _batchInfos[modelId][batchId].validatorFee,
+            _batchInfos[modelId][batchId].inferIds
+        );
     }
 }

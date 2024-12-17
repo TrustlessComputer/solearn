@@ -1,39 +1,26 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
-
-import {Random} from "../lib/Random.sol";
-import {Set} from "../lib/Set.sol";
+import {IWorkerHub, Set} from "../interfaces/IWorkerHub.sol";
 
 abstract contract PromptSchedulerStorage is IWorkerHub {
-    Random.Randomizer internal randomizer;
+    address public _wEAIToken;
+    address public _stakingHub;
 
-    uint256 public inferenceNumber;
-    mapping(uint256 => Inference) internal inferences;
-    mapping(address => Set.Uint256Set) internal inferencesByMiner;
+    uint64 public _inferenceCounter;
+    mapping(uint64 => Inference) internal _inferences;
+    mapping(address => Set.Uint256Set) internal _inferencesByMiner;
 
-    address internal l2Owner;
-    address internal treasury;
-    uint16 internal feeL2Percentage;
-    uint16 internal feeTreasuryPercentage;
-    uint16 internal feeRatioMinerValidator;
-    uint40 internal submitDuration;
-    uint40 internal commitDuration;
-    uint40 internal revealDuration;
-    uint8 internal minerRequirement;
-    DAOTokenPercentage internal daoTokenPercentage;
+    uint16 public _minerValidatorFeeRatio;
+    uint40 public _submitDuration;
+    uint40 internal _commitDuration;
+    uint40 internal _revealDuration;
+    uint8 public _minerRequirement;
 
-    uint256 internal daoTokenReward; // per request (in wei)
-
-    mapping(address => address) internal referrerOf;
-
-    mapping(uint256 inferId => DAOTokenReceiverInfor[])
-        internal daoReceiversInfo;
-
-    address internal wEAI;
-    address internal stakingHub;
-    address internal daoToken;
+    mapping(uint32 modelId => mapping(uint64 batchId => BatchInfo))
+        internal _batchInfos;
+    uint256 public _lastBatchTimestamp;
+    uint256 public _batchPeriod;
 
     uint256[100] private __gap;
 }

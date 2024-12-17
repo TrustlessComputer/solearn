@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ISystemPromptManager} from "./interfaces/ISystemPromptManager.sol";
+import {IAI721Upgradeable} from "./standardUpgradeable/interfaces/IAI721Upgradeable.sol";
 import {SquadStorage, Set} from "./storages/SquadStorage.sol";
 
 contract SquadManager is OwnableUpgradeable, SquadStorage {

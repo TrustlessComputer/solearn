@@ -3,13 +3,15 @@ pragma solidity ^0.8.0;
 
 interface IInferable {
     function infer(
+        uint32 modelId,
         bytes calldata data,
         address creator
-    ) external payable returns (uint256 inferenceId);
+    ) external returns (uint64 inferenceId);
 
     function infer(
+        uint32 modelId,
         bytes calldata data,
         address creator,
         bool flag
-    ) external payable returns (uint256 inferenceId);
+    ) external returns (uint64 inferenceId);
 }
