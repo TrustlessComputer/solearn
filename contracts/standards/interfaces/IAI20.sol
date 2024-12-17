@@ -5,6 +5,8 @@ pragma solidity ^0.8.20;
 import "./IBase.sol";
 
 /**
+ * @title IAI20 Interface
+ * @author EAI
  * @dev Interface of the AI20 standard.
  * This interface defines the structure and functionality for an ERC20 token that is specifically designed for AI applications.
  * It includes events for updating model IDs, prompt schedulers, staking hubs, and token fees, as well as events for agent URI updates, agent data updates, and inference performances.
