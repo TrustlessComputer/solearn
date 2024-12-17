@@ -17,6 +17,7 @@ import { EventLog, Signer } from "ethers";
 import path from "path";
 import fs from "fs";
 import { SystemPromptHelper } from "../typechain-types/contracts/lib/SystemPromptHelper";
+import { zeroAddress } from "ethereumjs-util";
 
 const config = network.config as any;
 const networkName = network.name.toUpperCase();
@@ -335,7 +336,9 @@ async function deploySystemPromptHelper() {
 async function deploySystemPromptManager(
   l2OwnerAddress: string,
   hybridModelAddress: string,
-  workerHubAddress: string
+  workerHubAddress: string,
+  feeTokenAddress: string,
+  cryptoAiAddress: string
 ) {
   console.log("DEPLOY SYSTEM PROMPT MANAGER...");
 
@@ -359,6 +362,8 @@ async function deploySystemPromptManager(
     nextModelId,
     hybridModelAddress,
     workerHubAddress,
+    feeTokenAddress,
+    cryptoAiAddress,
   ];
 
   const systemPromptManager = (await deployOrUpgrade(
@@ -430,24 +435,27 @@ async function saveDeployedAddresses(networkName: string, addresses: any) {
 async function main() {
   const masterWallet = (await ethers.getSigners())[0];
 
-  // const daoTokenAddress = await deployDAOToken();
-  // const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
-  // const stakingHubAddress = await deployStakingHub(
-  //   daoTokenAddress.toString(),
-  //   treasuryAddress.toString()
-  // );
-  // const workerHubAddress = await deployWorkerHub(
-  //   daoTokenAddress.toString(),
-  //   treasuryAddress.toString(),
-  //   stakingHubAddress.toString(),
-  //   masterWallet
-  // );
-  // const collectionAddress = await deployModelCollection();
-  const daoTokenAddress = "0x451729Ae1F747f803d1Dd26119D02BE61ac35F5a";
-  const treasuryAddress = "0x1f6D573e80166B55a7bEf04B50A5Aa6FB9BdA140";
-  const stakingHubAddress = "0x0917A5aAcD63feE36Aaf98Ba287a156885A80c67";
-  const workerHubAddress = "0x36C1ebc3a354947694525FdEE1Be273e70a45689";
-  const collectionAddress = "0xd3f291E453B650AD2C4A60dF8dcbbE699A93a616";
+  const daoTokenAddress = await deployDAOToken();
+  const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
+  const stakingHubAddress = await deployStakingHub(
+    daoTokenAddress.toString(),
+    treasuryAddress.toString()
+  );
+  const workerHubAddress = await deployWorkerHub(
+    daoTokenAddress.toString(),
+    treasuryAddress.toString(),
+    stakingHubAddress.toString(),
+    masterWallet
+  );
+  const collectionAddress = await deployModelCollection();
+  // const daoTokenAddress = "0x451729Ae1F747f803d1Dd26119D02BE61ac35F5a";
+  // const treasuryAddress = "0x1f6D573e80166B55a7bEf04B50A5Aa6FB9BdA140";
+  // const stakingHubAddress = "0x0917A5aAcD63feE36Aaf98Ba287a156885A80c67";
+  // const workerHubAddress = "0x36C1ebc3a354947694525FdEE1Be273e70a45689";
+  // const collectionAddress = "0xd3f291E453B650AD2C4A60dF8dcbbE699A93a616";
+  // TBD
+  const feeTokenAddress = "0xd3f291E453B650AD2C4A60dF8dcbbE699A93a616";
+  const cryptoAiAddress = zeroAddress.toString();
 
   const hybridModelAddress = await deployHybridModel(
     workerHubAddress.toString(),
@@ -458,7 +466,9 @@ async function main() {
   const systemPromptManagerAddress = await deploySystemPromptManager(
     config.l2OwnerAddress,
     hybridModelAddress.toString(),
-    workerHubAddress.toString()
+    workerHubAddress.toString(),
+    feeTokenAddress.toString(),
+    cryptoAiAddress.toString(),
     // systemPromptHelperAddress.toString()
   );
 

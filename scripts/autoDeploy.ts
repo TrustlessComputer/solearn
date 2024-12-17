@@ -19,6 +19,7 @@ import { EventLog, Signer } from "ethers";
 import path from "path";
 import fs from "fs";
 import { SystemPromptHelper } from "../typechain-types/contracts/lib/SystemPromptHelper";
+import { zeroAddress } from "ethereumjs-util";
 
 const config = network.config as any;
 const networkName = network.name.toUpperCase();
@@ -26,9 +27,9 @@ const networkName = network.name.toUpperCase();
 async function deployWrappedEAI() {
   console.log("DEPLOY WEAI...");
 
-  const ins = (await deployContract("WrappedEAI", [], {
+  const ins = (await deployOrUpgrade(undefined, "TestEAI", [], {
     noVerify: true,
-  })) as unknown as WrappedEAI;
+  }, false)) as unknown as WrappedEAI;
 
   return ins.target;
 }
@@ -196,66 +197,70 @@ async function deployPromptScheduler(
   return promptSchedulerAddress;
 }
 
-// async function deploySystemPromptManager(
-//   promptSchedulerAddress: string,
-//   stakingHubAddress: string,
-//   treasureAddress: string
-// ) {
-//   console.log("DEPLOY SYSTEM PROMPT MANAGER...");
+async function deploySystemPromptManager(
+  promptSchedulerAddress: string,
+  stakingHubAddress: string,
+  treasureAddress: string,
+  feeTokenAddress: string,
+  cryptoAiDataAddress: string,
+) {
+  console.log("DEPLOY SYSTEM PROMPT MANAGER...");
 
-//   assert.ok(
-//     promptSchedulerAddress,
-//     `Missing ${networkName}_PROMPT_SCHEDULER_ADDRESS!`
-//   );
-//   assert.ok(stakingHubAddress, `Missing ${networkName}_STAKING_HUB_ADDRESS!`);
-//   assert.ok(treasureAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
+  assert.ok(
+    promptSchedulerAddress,
+    `Missing ${networkName}_PROMPT_SCHEDULER_ADDRESS!`
+  );
+  assert.ok(stakingHubAddress, `Missing ${networkName}_STAKING_HUB_ADDRESS!`);
+  assert.ok(treasureAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
 
-//   const name = "Eternal AI";
-//   const symbol = "";
-//   const mintPrice = ethers.parseEther("0");
-//   const royaltyReceiver = treasureAddress;
-//   const royalPortion = 5_00;
-//   const nextModelId = 1;
+  const name = "Eternal AI";
+  const symbol = "";
+  const mintPrice = ethers.parseEther("0");
+  const royaltyReceiver = treasureAddress;
+  const royalPortion = 5_00;
+  const nextModelId = 1;
 
-//   const constructorParams = [
-//     name,
-//     symbol,
-//     mintPrice,
-//     royaltyReceiver,
-//     royalPortion,
-//     nextModelId,
-//     promptSchedulerAddress,
-//     stakingHubAddress,
-//   ];
+  const constructorParams = [
+    name,
+    symbol,
+    mintPrice,
+    royaltyReceiver,
+    royalPortion,
+    nextModelId,
+    promptSchedulerAddress,
+    stakingHubAddress,
+    feeTokenAddress,
+    cryptoAiDataAddress,
+  ];
 
-//   const systemPromptManager = (await deployOrUpgrade(
-//     undefined,
-//     "SystemPromptManager",
-//     constructorParams,
-//     config,
-//     true
-//   )) as unknown as SystemPromptManager;
+  const systemPromptManager = (await deployOrUpgrade(
+    undefined,
+    "SystemPromptManager",
+    constructorParams,
+    config,
+    true
+  )) as unknown as SystemPromptManager;
 
-//   //
-//   // console.log("SYSTEM PROMPT MANAGER SET WORKER HUB ADDRESS...");
-//   // const ins = (await getContractInstance(
-//   //   config.systemPromptManagerAddress,
-//   //   "SystemPromptManager"
-//   // )) as SystemPromptManager;
-//   // const tx = await ins.setWorkerHub(workerHubAddress);
-//   // const receipt = await tx.wait();
-//   // console.log("Tx hash: ", receipt?.hash);
-//   // console.log("Tx status: ", receipt?.status);
+  //
+  // console.log("SYSTEM PROMPT MANAGER SET WORKER HUB ADDRESS...");
+  // const ins = (await getContractInstance(
+  //   config.systemPromptManagerAddress,
+  //   "SystemPromptManager"
+  // )) as SystemPromptManager;
+  // const tx = await ins.setWorkerHub(workerHubAddress);
+  // const receipt = await tx.wait();
+  // console.log("Tx hash: ", receipt?.hash);
+  // console.log("Tx status: ", receipt?.status);
 
-//   return systemPromptManager.target;
-// }
+  return systemPromptManager.target;
+}
 
 async function deployAI721(
   wEAIAddress: string,
   stakingHubAddress: string,
   treasureAddress: string
 ) {
-  console.log("DEPLOY SYSTEM PROMPT MANAGER...");
+  console.log("DEPLOY AI721...");
 
   assert.ok(wEAIAddress, `Missing ${networkName}_WEAI!`);
   assert.ok(stakingHubAddress, `Missing ${networkName}_STAKING_HUB_ADDRESS!`);
@@ -282,7 +287,7 @@ async function deployAI721(
 
   const ai721 = (await deployOrUpgrade(
     undefined,
-    "AI721",
+    "Dagent721",
     constructorParams,
     config,
     true
@@ -377,6 +382,16 @@ async function main() {
     stakingHubAddress.toString(),
     treasuryAddress.toString()
   );
+  const feeTokenAddress = zeroAddress();
+  const cryptoAiDataAddress = zeroAddress();
+
+  const systemPromptManagerAddress = await deploySystemPromptManager(
+    promptSchedulerAddress.toString(),
+    stakingHubAddress.toString(),
+    treasuryAddress.toString(),
+    feeTokenAddress.toString(),
+    cryptoAiDataAddress.toString()
+  );
 
   const deployedAddresses = {
     deployer,
@@ -386,6 +401,7 @@ async function main() {
     stakingHubAddress,
     promptSchedulerAddress,
     dagent721,
+    systemPromptManagerAddress,
   };
 
   const networkName = network.name.toUpperCase();

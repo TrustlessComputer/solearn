@@ -1,6 +1,6 @@
 import { Provider, Wallet } from "zksync-ethers";
 import { Deployer } from "@matterlabs/hardhat-zksync";
-import { ethers } from "ethers";
+import { ContractFactory, ethers } from "ethers";
 import { upgrades, zkUpgrades } from "hardhat";
 import * as hre from "hardhat";
 import * as dotenv from "dotenv";
@@ -93,29 +93,37 @@ async function deployOrUpgradeLocal(
   constructorParams: any[],
   isInitializable: boolean
 ) {
-  const contractFactory = await hre.ethers.getContractFactory(contractName);
+  const contractFactory: ContractFactory = await hre.ethers.getContractFactory(contractName);
   return (address = address
     ? await (async () => {
-        var contract = await upgrades.upgradeProxy(address, contractFactory);
-        await contract.waitForDeployment();
-        console.log(`${contractName} contract is upgraded to ${address}`);
-        return contract;
-        // return address;
-      })()
+      var contract = await upgrades.upgradeProxy(address, contractFactory);
+      await contract.waitForDeployment();
+      console.log(`${contractName} contract is upgraded to ${address}`);
+      return contract;
+      // return address;
+    })()
     : await (async () => {
-        const options = isInitializable ? { initializer: "initialize" } : {};
-        var contract = await upgrades.deployProxy(
-          contractFactory,
-          constructorParams,
-          options
-        );
-        await contract.waitForDeployment();
+      if (!isInitializable) {
+        const c = await contractFactory.deploy(...constructorParams);
+        await c.waitForDeployment();
         console.log(
-          `${contractName} contract is deployed to ${await contract.getAddress()}`
+          `${contractName} contract is deployed to ${await c.getAddress()}`
         );
-        return contract;
-        // return await contractDeployer.getAddress();
-      })());
+        return c;
+      }
+      const options = isInitializable ? { initializer: "initialize" } : {};
+      var contract = await upgrades.deployProxy(
+        contractFactory,
+        constructorParams,
+        options
+      );
+      await contract.waitForDeployment();
+      console.log(
+        `${contractName} contract is deployed to ${await contract.getAddress()}`
+      );
+      return contract;
+      // return await contractDeployer.getAddress();
+    })());
 }
 
 type DeployContractOptions = {

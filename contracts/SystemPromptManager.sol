@@ -728,12 +728,12 @@ contract SystemPromptManager is
             _agentId >= nextAgentId
         ) revert InvalidAgentData();
 
-        emit AgentMissionUpdate(
-            _agentId,
-            _missionIdx,
-            missionsOf[_agentId][_missionIdx],
-            _missionData
-        );
+        // emit AgentMissionUpdate(
+        //     _agentId,
+        //     _missionIdx,
+        //     missionsOf[_agentId][_missionIdx],
+        //     _missionData
+        // );
 
         missionsOf[_agentId][_missionIdx] = _missionData;
     }
@@ -746,7 +746,7 @@ contract SystemPromptManager is
             revert InvalidAgentData();
         missionsOf[_agentId].push(_missionData);
 
-        emit AgentMissionAddNew(_agentId, missionsOf[_agentId]);
+        // emit AgentMissionAddNew(_agentId, missionsOf[_agentId]);
     }
 
     function getMissionIdsByAgentId(
@@ -758,6 +758,11 @@ contract SystemPromptManager is
     function setSquadManager(address _squadManager) external onlyOwner {
         if (_squadManager == address(0)) revert InvalidData();
         squadManager = _squadManager;
+    }
+
+    function setCryptoAiDataAddr(address _cryptoAiDataAddr) external onlyOwner {
+        if (_cryptoAiDataAddr == address(0)) revert InvalidData();
+        cryptoAiDataAddr = _cryptoAiDataAddr;
     }
 
     function _checkSquadManager() internal view {
