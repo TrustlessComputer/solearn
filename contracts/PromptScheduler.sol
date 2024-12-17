@@ -9,6 +9,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 import {TransferHelper} from "./lib/TransferHelper.sol";
 import {PromptSchedulerStorage, Set} from "./storages/PromptSchedulerStorage.sol";
 import {IStakingHub} from "./interfaces/IStakingHub.sol";
+import "hardhat/console.sol";
 
 contract PromptScheduler is
     PromptSchedulerStorage,

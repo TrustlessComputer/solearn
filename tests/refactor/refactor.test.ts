@@ -12,6 +12,7 @@ import {
   DAOToken,
   WrappedEAI,
   SystemPromptManager,
+  Dagent721,
 } from "../../typechain-types/index.js";
 import { AbiCoder, EventLog } from "ethers";
 import { StakingHub } from "../../typechain-types/contracts/StakingHub.js";
@@ -42,15 +43,10 @@ describe("WorkerHub contract", async () => {
       wEAI,
       stakingHub
     );
-
-    const systemPromptManager = await TestHelper.deploySystemPromptManager(
-      promptScheduler,
+    const dagent721 = await TestHelper.deployDagent721(
+      wEAI,
       stakingHub,
       treasury
-    );
-
-    const squadManager = await TestHelper.deploySquadManager(
-      systemPromptManager
     );
 
     return {
@@ -60,8 +56,7 @@ describe("WorkerHub contract", async () => {
       modelCollection,
       stakingHub,
       promptScheduler,
-      systemPromptManager,
-      squadManager,
+      dagent721,
     };
   }
 
@@ -70,7 +65,7 @@ describe("WorkerHub contract", async () => {
     stakingHubAddress: string,
     wEAIAddress: string,
     modelCollectionAddress: string,
-    systemPromptManagerAddress: string
+    dagent721Address: string
   ) {
     const promptScheduler = (await TestHelper.getContractInstance(
       "PromptScheduler",
@@ -88,6 +83,13 @@ describe("WorkerHub contract", async () => {
       "ModelCollection",
       modelCollectionAddress
     )) as ModelCollection;
+    console.log("dagent721Address: ", dagent721Address);
+    console.log("promptSchedulerAddress: ", promptSchedulerAddress);
+
+    const dagent721 = (await TestHelper.getContractInstance(
+      "Dagent721",
+      dagent721Address
+    )) as Dagent721;
 
     const [admin] = await ethers.getSigners();
 
@@ -96,7 +98,12 @@ describe("WorkerHub contract", async () => {
     const currentModelId = Number((await modelCollection.nextModelId()) - 1n);
 
     // Mint an agent
-    await TestHelper.mintAgent(systemPromptManagerAddress, admin.address);
+    await TestHelper.mintAgent(
+      dagent721Address,
+      admin.address,
+      promptSchedulerAddress,
+      currentModelId
+    );
     await TestHelper.registerModel(stakingHubAddress, currentModelId);
     // check register model
     expect(await stakingHub.getModelIds()).to.be.deep.eq([currentModelId]);
@@ -126,63 +133,14 @@ describe("WorkerHub contract", async () => {
     }
     expect((await stakingHub.getMinerAddresses()).length).to.eq(3);
 
-    const modelInput = ethers.encodeBytes32String("test");
     await ethers.provider.send("hardhat_setBalance", [
       address18[16],
       hexBalance,
     ]);
-    let impersonatedUser = await ethers.getImpersonatedSigner(address18[16]);
-
-    await wEAI
-      .connect(impersonatedUser)
-      .wrap({ value: ethers.parseEther("50") });
-
-    await wEAI
-      .connect(impersonatedUser)
-      .approve(promptSchedulerAddress, ethers.parseEther("100"));
-
-    //get block number
-    const blockNumber = await ethers.provider.getBlockNumber();
-
-    await promptScheduler
-      .connect(impersonatedUser)
-      ["infer(uint32,bytes,address)"](
-        currentModelId,
-        modelInput,
-        impersonatedUser.address
-      );
-
-    // expect inference id to be 1
-    expect(await promptScheduler.inferenceCounter()).to.eq(1);
-
-    const inferInfo = await promptScheduler.getInferenceInfo(1n);
-    //check inference info
-    expect(inferInfo.input).to.eq(modelInput);
-    expect(inferInfo.output).to.eq("0x");
-    expect([address18[0], address18[1], address18[2]]).to.include(
-      inferInfo.processedMiner
-    );
-
-    expect(inferInfo.status).to.eq(1); //Solving
-    expect(inferInfo.submitTimeout).to.eq(
-      BigInt(blockNumber + 1) + (await promptScheduler._submitDuration())
-    );
-    expect(inferInfo.modelId).to.eq(currentModelId);
-    expect(inferInfo.value).to.eq(ethers.parseEther("0.1"));
-
-    expect(
-      await promptScheduler.getInferenceByMiner(inferInfo.processedMiner)
-    ).to.include(1n);
-    expect(await promptScheduler.getBatchInfo(currentModelId, 0)).to.eql([
-      0n, // validators fee
-      [1n], // inference ids
-    ]);
-
-    return inferInfo.processedMiner;
   }
 
   describe("WorkerHub contract", async () => {
-    it.only("Should process the first infer", async () => {
+    it("Should process the first infer", async () => {
       const {
         admin,
         treasury,
@@ -190,17 +148,20 @@ describe("WorkerHub contract", async () => {
         modelCollection,
         stakingHub,
         promptScheduler,
-        systemPromptManager,
-        squadManager,
+        dagent721,
       } = await loadFixture(deployWorkerHubFixture);
 
-      let assignedMiner = await simulate(
+      await simulate(
         promptScheduler,
         stakingHub,
         wEAI,
         modelCollection,
-        systemPromptManager
+        dagent721
       );
+      const wEAIIns = (await TestHelper.getContractInstance(
+        "WrappedEAI",
+        wEAI
+      )) as WrappedEAI;
       const modelCollectionIns = (await TestHelper.getContractInstance(
         "ModelCollection",
         modelCollection
@@ -215,64 +176,140 @@ describe("WorkerHub contract", async () => {
         promptScheduler
       )) as PromptScheduler;
 
+      // ***INFER***
+      let impersonatedUser = await ethers.getImpersonatedSigner(address18[16]);
+
+      await wEAIIns
+        .connect(impersonatedUser)
+        .wrap({ value: ethers.parseEther("50") });
+
+      await wEAIIns
+        .connect(impersonatedUser)
+        .approve(promptScheduler, ethers.parseEther("100"));
+
+      // get block number
+      const blockNumber = await ethers.provider.getBlockNumber();
+      const modelInput = ethers.encodeBytes32String("test");
+
+      await promptSchedulerIns
+        .connect(impersonatedUser)
+        ["infer(uint32,bytes,address)"](
+          currentModelId,
+          modelInput,
+          impersonatedUser.address
+        );
+
+      // expect inference id to be 1
+      expect(await promptSchedulerIns.inferenceCounter()).to.eq(1);
+
+      const inferInfo = await promptSchedulerIns.getInferenceInfo(1n);
+      const assignedMiner = inferInfo.processedMiner;
+      // check inference info
+      expect(inferInfo.input).to.eq(modelInput);
+      expect(inferInfo.output).to.eq("0x");
+      expect([address18[0], address18[1], address18[2]]).to.include(
+        inferInfo.processedMiner
+      );
+
+      expect(inferInfo.status).to.eq(1); //Solving
+      expect(inferInfo.submitTimeout).to.eq(
+        BigInt(blockNumber + 1) + (await promptSchedulerIns._submitDuration())
+      );
+      expect(inferInfo.modelId).to.eq(currentModelId);
+      expect(inferInfo.value).to.eq(ethers.parseEther("0.1"));
+
+      expect(
+        await promptSchedulerIns.getInferenceByMiner(inferInfo.processedMiner)
+      ).to.include(1n);
+      expect(await promptSchedulerIns.getBatchInfo(currentModelId, 0)).to.eql([
+        0n, // validators fee
+        [1n], // inference ids
+      ]);
+
       // submit solution
       let miner = await ethers.getImpersonatedSigner(assignedMiner);
       let solution = ethers.solidityPacked(["string"], ["No"]);
       await promptSchedulerIns.connect(miner).submitSolution(1, solution);
+      await expect(
+        promptSchedulerIns.connect(miner).submitSolution(1, solution)
+      ).to.be.revertedWithCustomError(
+        promptSchedulerIns,
+        "InvalidInferenceStatus()"
+      );
 
       // check solution
-      const inferInfo = await promptSchedulerIns.getInferenceInfo(1n);
-      expect(inferInfo.status).to.eq(2); //Commit
-      expect(inferInfo.output).to.eq(solution);
+      const inferInfo1 = await promptSchedulerIns.getInferenceInfo(1n);
+      expect(inferInfo1.status).to.eq(2); //Commit
+      expect(inferInfo1.output).to.eq(solution);
       expect(await promptSchedulerIns.getBatchInfo(currentModelId, 0)).to.eql([
         ethers.parseEther("0.05"), // validators fee
         [1n], // inference ids
       ]);
     });
 
-    it("Should update agent", async () => {
-      const { admin, systemPromptManagerAddress, systemPromptHelperAddress } =
-        await loadFixture(deployWorkerHubFixture);
+    it.only("Should process the first infer call from dagent721", async () => {
+      const {
+        admin,
+        treasury,
+        wEAI,
+        modelCollection,
+        stakingHub,
+        promptScheduler,
+        dagent721,
+      } = await loadFixture(deployWorkerHubFixture);
 
-      const ins = await getSystemPromptManagerInstance(
-        systemPromptManagerAddress,
-        systemPromptHelperAddress
+      await simulate(
+        promptScheduler,
+        stakingHub,
+        wEAI,
+        modelCollection,
+        dagent721
+      );
+      const wEAIIns = (await TestHelper.getContractInstance(
+        "WrappedEAI",
+        wEAI
+      )) as WrappedEAI;
+      const modelCollectionIns = (await TestHelper.getContractInstance(
+        "ModelCollection",
+        modelCollection
+      )) as ModelCollection;
+
+      const currentModelId = Number(
+        (await modelCollectionIns.nextModelId()) - 1n
       );
 
-      console.log("owner: ", await ins.ownerOf(1));
-      const [admin1] = await ethers.getSigners();
-      console.log(admin1.address);
+      const promptSchedulerIns = (await TestHelper.getContractInstance(
+        "PromptScheduler",
+        promptScheduler
+      )) as PromptScheduler;
 
-      const linkPrompt =
-        "ipfs://bafkreide4kf4se2atgdi3kjie5eigvvr3wnkyolitbrj6cuj3sfzfyowui";
-      const data = ethers.toUtf8Bytes(linkPrompt);
+      const dagent721Ins = (await TestHelper.getContractInstance(
+        "Dagent721",
+        dagent721
+      )) as Dagent721;
 
-      const agentId = 1n;
-      const promptIdx = 0n;
-      const randomBytes = ethers.randomBytes(8);
-      const randomNonce = BigInt(
-        "0x" + Buffer.from(randomBytes).toString("hex")
-      ); // Convert bytes to BigInt
+      // ***INFER***
+      const modelInput = ethers.encodeBytes32String("test");
 
-      const address = systemPromptManagerAddress;
-      const chainId = 31337n;
-      // const chainId = 8453n;
+      let impersonatedUser = await ethers.getImpersonatedSigner(address18[16]);
+      await wEAIIns
+        .connect(impersonatedUser)
+        .wrap({ value: ethers.parseEther("50") });
 
-      const coder = AbiCoder.defaultAbiCoder();
-      const encodedData = coder.encode(
-        ["bytes", "uint256", "uint256", "uint256", "address", "uint256"],
-        [data, agentId, promptIdx, randomNonce, address, chainId]
-      );
+      await wEAIIns
+        .connect(impersonatedUser)
+        .approve(dagent721, ethers.parseEther("100"));
 
-      const hashData = ethers.keccak256(encodedData);
-      const signature = await admin.signMessage(ethers.getBytes(hashData));
-      const tx = await ins.updateAgentDataWithSignature(
-        agentId,
-        data,
-        promptIdx,
-        randomNonce,
-        signature
-      );
+      await dagent721Ins
+        .connect(impersonatedUser)
+        ["infer(uint256,bytes,string,string,bool,uint256)"](
+          1,
+          modelInput,
+          "eternal ai",
+          "tiktok",
+          false,
+          ethers.parseEther("0.1")
+        );
     });
 
     it("Should update agent uri", async () => {

@@ -7,15 +7,15 @@ interface IStakingHub {
 
 interface IInferable {
     function infer(
-        uint256 modelId,
+        uint32 modelId,
         bytes calldata data,
         address creator
-    ) external returns (uint256 inferenceId);
+    ) external returns (uint64 inferenceId);
 
     function infer(
-        uint256 modelId,
+        uint32 modelId,
         bytes calldata data,
         address creator,
         bool flag
-    ) external returns (uint256 inferenceId);
+    ) external returns (uint64 inferenceId);
 }
