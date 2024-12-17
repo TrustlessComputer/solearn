@@ -260,9 +260,11 @@ async function deployHybridModel(
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "ETERNAL V2",
+    model_name: "lmstudio-community/INTELLECT-1-Instruct-GGUF",
+    model: "lmstudio-community/INTELLECT-1-Instruct-GGUF",
     model_type: "text",
-    model_url: "",
+    model_url:
+      "https://gateway.lighthouse.storage/ipfs/bafkreicfatxjtql4slrusen6topmppmt76k6d3kcp44tzu34aqblpuxgum",
     model_file_hash: "",
     min_hardware: 1,
     verifier_url: "",

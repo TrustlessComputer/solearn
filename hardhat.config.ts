@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "polygon_mainnet",
+  defaultNetwork: "base_mainnet",
   solidity: {
     compilers: [
       {
@@ -217,6 +217,9 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_HERMES_1,
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_HERMES_2,
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_HERMES_3,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_INTELLECT_1,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_INTELLECT_2,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_INTELLECT_3,
       ],
       l2OwnerAddress: process.env.BASE_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.BASE_MAINNET_TREASURY_ADDRESS,
@@ -228,6 +231,7 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_WORKER_HUB_SCORING_ADDRESS,
       hybridModelAddress_1: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_1,
       hybridModelAddress_2: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_2,
+      hybridModelAddress_3: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_3,
       hybridModelScoringAddress:
         process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
