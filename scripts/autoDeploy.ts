@@ -25,12 +25,23 @@ const networkName = network.name.toUpperCase();
 
 async function deployWrappedEAI() {
   console.log("DEPLOY WEAI...");
+  let wEAIAddress = "";
 
-  const ins = (await deployContract("WrappedEAI", [], {
-    noVerify: true,
-  })) as unknown as WrappedEAI;
+  if (config.zksync) {
+    const ins = (await deployContract("WrappedEAI", [], {
+      noVerify: true,
+    })) as unknown as WrappedEAI;
 
-  return ins.target;
+    wEAIAddress = ins.target as string;
+  } else {
+    const fact = await ethers.getContractFactory("WrappedEAI");
+    const ins = (await fact.deploy()) as WrappedEAI;
+    await ins.waitForDeployment();
+
+    wEAIAddress = ins.target as string;
+  }
+
+  return wEAIAddress;
 }
 
 async function deployTreasury(wEAIAddress: string) {
