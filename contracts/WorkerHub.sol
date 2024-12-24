@@ -760,4 +760,8 @@ contract WorkerHub is
     ) external view returns (Assignment memory) {
         return assignments[_assignmentId];
     }
+
+    function getMinerRequirement() external view returns (uint8) {
+        return minerRequirement;
+    }
 }

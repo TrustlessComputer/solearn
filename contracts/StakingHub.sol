@@ -617,4 +617,9 @@ contract StakingHub is
             }
         }
     }
+
+    function isActiveModel(address model) external view returns (bool) {
+        uint8 minerRequirement = IWorkerHub(workerHub).getMinerRequirement();
+        return minerAddressesByModel[model].values.length >= minerRequirement;
+    }
 }

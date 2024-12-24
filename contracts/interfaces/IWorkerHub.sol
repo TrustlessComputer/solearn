@@ -180,4 +180,6 @@ interface IWorkerHub is IInferable {
     function getAssignmentInfo(
         uint256 _assignmentId
     ) external view returns (Assignment memory);
+
+    function getMinerRequirement() external view returns (uint8);
 }

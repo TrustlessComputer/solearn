@@ -98,6 +98,7 @@ interface IStakingHub {
     function getMinerAddressesOfModel(
         address _model
     ) external view returns (address[] memory);
+    function isActiveModel(address _model) external view returns (bool);
     function isMinerAddress(address _miner) external view returns (bool);
     function validateModelOfMiner(address _miner) external view;
     function slashMiner(address _miner, bool _isFined) external;
