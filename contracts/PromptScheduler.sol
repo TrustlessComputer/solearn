@@ -239,6 +239,14 @@ contract PromptScheduler is
         submitDuration = _submitDuration;
     }
 
+    function getSubmitDuration() external view returns (uint40) {
+        return submitDuration;
+    }
+
+    function getMinerRequirement() external view returns (uint8) {
+        return minerRequirement;
+    }
+
     function setStakingHubAddress(address _stakingHub) external onlyOwner {
         if (_stakingHub == address(0)) revert InvalidAddress();
         stakingHub = _stakingHub;
