@@ -33,7 +33,7 @@
       "0x1A9C75eF8E85A5D4E98B1E35239Ba98cfad1ee93"
     ],
     "systemPromptManagerAddress": "0xAed016e060e2fFE3092916b1650Fc558D62e1CCC",
-    "modelLoadBalancer": "0x7ea4D5C0bfa1450E532B30eA3Fcbdc3D7bCd9a46"
+    "modelLoadBalancer": "0x4764dF74EBA778523E1aDa79848714C742De48f0"
   },
   "ETHEREUM_MAINNET": {
     "daoTokenAddress": "0x3eda761C5a06aF51aa67358227Fa7271Ba9111b3",
