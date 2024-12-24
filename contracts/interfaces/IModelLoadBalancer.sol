@@ -4,28 +4,28 @@ pragma solidity ^0.8.0;
 import {Set} from "../lib/Set.sol";
 
 interface IModelLoadBalancer {
-    struct SubnetGroup {
+    struct ClusterGroup {
         uint16 anchorPoint;
         string name;
-        Set.AddressSet subnets;
+        Set.AddressSet clusters;
     }
 
-    event GroupCreated(bytes32 indexed groupId, string name);
-    event GroupRemoved(bytes32 indexed groupId, string name);
-    event SubnetAdded(bytes32 indexed groupId, address indexed subnet);
-    event SubnetRemoved(bytes32 indexed groupId, address indexed subnet);
+    event ClusterGroupCreated(bytes32 indexed groupId, string name);
+    event ClusterGroupRemoved(bytes32 indexed groupId, string name);
+    event ClusterAdded(bytes32 indexed groupId, address indexed cluster);
+    event ClusterRemoved(bytes32 indexed groupId, address indexed cluster);
     event InferencePerformed(
         address indexed caller,
         uint256 indexed inferenceId,
         bytes32 indexed groupId,
-        address subnet,
+        address cluster,
         bytes data
     );
 
-    error SubnetGroupAlreadyExist(string name);
-    error GroupNotFound(string name);
+    error ClusterGroupAlreadyExist(string name);
+    error ClusterGroupNotFound(string name);
     error InvalidData();
-    error InactiveSubnetGroup();
+    error InactiveClusterGroup();
 
     function infer(
         string memory groupName,
