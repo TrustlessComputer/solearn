@@ -168,7 +168,7 @@ export const deployContract = async (
 
   // Display contract deployment info
   log(`\n"${artifact.contractName}" was successfully deployed:`);
-  log(` - Contract address: ${contract.address}`);
+  log(` - Contract address: ${contract.target}`);
   log(` - Contract source: ${fullContractSource}`);
   log(` - Encoded constructor arguments: ${constructorArgs}\n`);
 

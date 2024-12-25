@@ -13,7 +13,7 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "bsc_mainnet",
+  defaultNetwork: "abstract_testnet",
   solidity: {
     compilers: [
       {
@@ -495,6 +495,31 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,
+      gasPrice: "auto",
+    } as any,
+    abstract_testnet: {
+      url: "https://api.testnet.abs.xyz",
+      chainId: 11124,
+      accounts: [
+        process.env.ABSTRACT_TESTNET_PRIVATE_KEY,
+        process.env.ABSTRACT_TESTNET_PRIVATE_KEY_WORKER_1,
+        process.env.ABSTRACT_TESTNET_PRIVATE_KEY_WORKER_2,
+        process.env.ABSTRACT_TESTNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.ABSTRACT_TESTNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.ABSTRACT_TESTNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.ABSTRACT_TESTNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.ABSTRACT_TESTNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.ABSTRACT_TESTNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.ABSTRACT_TESTNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.ABSTRACT_TESTNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.ABSTRACT_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      squadManagerAddress: process.env.ABSTRACT_TESTNET_SQUAD_MANAGER_ADDRESS,
+      wEAIAddress: process.env.ABSTRACT_TESTNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: true,
       gasPrice: "auto",
     } as any,
   },
