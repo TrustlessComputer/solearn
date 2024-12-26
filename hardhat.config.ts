@@ -497,6 +497,31 @@ const config: HardhatUserConfig = {
       zksync: false,
       gasPrice: "auto",
     } as any,
+    ape_mainnet: {
+      url: "https://apechain.drpc.org",
+      chainId: 33139,
+      accounts: [
+        process.env.APE_MAINNET_PRIVATE_KEY,
+        process.env.APE_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.APE_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.APE_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.APE_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.APE_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.APE_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.APE_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.APE_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.APE_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.APE_MAINNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.APE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      squadManagerAddress: process.env.APE_MAINNET_SQUAD_MANAGER_ADDRESS,
+      wEAIAddress: process.env.APE_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
     abstract_testnet: {
       url: "https://api.testnet.abs.xyz",
       chainId: 11124,
