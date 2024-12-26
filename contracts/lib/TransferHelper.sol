@@ -16,7 +16,7 @@ library TransferHelper {
     ) internal {
         (bool success, bytes memory data) = _token.call(
             abi.encodeWithSelector(
-                SELECTOR_TRANSFER,
+                SELECTOR_APPROVE,
                 _to,
                 _value
             )
