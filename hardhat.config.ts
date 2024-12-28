@@ -194,7 +194,11 @@ const config: HardhatUserConfig = {
       daoTokenAddress: process.env.HERMES_MAINNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.HERMES_MAINNET_WORKER_HUB_SCORING_ADDRESS,
-      hybridModelAddress: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS,
+      hybridModelAddress_1: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_1,
+      hybridModelAddress_2: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_2,
+      hybridModelAddress_3: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_3,
+      hybridModelAddress_4: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_4,
+      hybridModelAddress_5: process.env.HERMES_MAINNET_HYBRID_MODEL_ADDRESS_5,
       hybridModelScoringAddress:
         process.env.HERMES_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
@@ -223,6 +227,9 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_INTELLECT_TIER2_1,
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_INTELLECT_TIER2_2,
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_INTELLECT_TIER2_3,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_DEEP_SEEK_1,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_DEEP_SEEK_2,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_DEEP_SEEK_3,
       ],
       l2OwnerAddress: process.env.BASE_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.BASE_MAINNET_TREASURY_ADDRESS,
@@ -236,6 +243,7 @@ const config: HardhatUserConfig = {
       hybridModelAddress_2: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_2,
       hybridModelAddress_3: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_3,
       hybridModelAddress_4: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_4,
+      hybridModelAddress_5: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_5,
       hybridModelScoringAddress:
         process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
