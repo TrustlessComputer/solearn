@@ -19,7 +19,7 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.19",
         settings: {
-          optimizer: { enabled: true, runs: 2000000 },
+          optimizer: { enabled: true, runs: 200000 },
           viaIR: true,
           evmVersion: "paris",
         },
@@ -27,7 +27,7 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.20",
         settings: {
-          optimizer: { enabled: true, runs: 2000000 },
+          optimizer: { enabled: true, runs: 200000 },
           viaIR: true,
           evmVersion: "paris",
         },
@@ -547,6 +547,32 @@ const config: HardhatUserConfig = {
       zksync: true,
       gasPrice: "auto",
     } as any,
+    subtensor_mainnet: {
+      url: "https://evm-subtensor.eternalai.org",
+      chainId: 964,
+      accounts: [
+        process.env.SUBTENSOR_MAINNET_PRIVATE_KEY,
+        process.env.SUBTENSOR_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.SUBTENSOR_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.SUBTENSOR_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      proxyAdminAddress: process.env.SUBTENSOR_MAINNET_PROXY_ADMIN_ADDRESS,
+      l2OwnerAddress: process.env.SUBTENSOR_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.SUBTENSOR_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.SUBTENSOR_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.SUBTENSOR_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.SUBTENSOR_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.SUBTENSOR_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.SUBTENSOR_MAINNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.SUBTENSOR_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      squadManagerAddress: process.env.SUBTENSOR_MAINNET_SQUAD_MANAGER_ADDRESS,
+      wEAIAddress: process.env.SUBTENSOR_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: 10000000000,
+    } as any,
   },
   namedAccounts: {
     deployer: 0,
@@ -574,7 +600,7 @@ const config: HardhatUserConfig = {
     ],
   },
   mocha: {
-    timeout: 2000000,
+    timeout: 20000000,
     color: true,
     reporter: "mocha-multi-reporters",
     reporterOptions: {

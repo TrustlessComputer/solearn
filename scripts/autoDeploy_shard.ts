@@ -6,6 +6,7 @@ import {
   IWorkerHub,
   ModelCollection,
   ProxyAdmin,
+  StakingHub,
   SystemPromptManager,
   Treasury,
   WorkerHub,
@@ -43,6 +44,12 @@ async function deployImpl(contractName: string) {
 }
 
 async function deployProxy(logic: string, admin: string, data: string) {
+  const signer = (await ethers.getSigners())[0];
+  const currentNonce = await signer.getNonce();
+  console.log(`Deploying with nonce: ${currentNonce}`);
+
+  // console.log("balance: ", await ethers.provider.getBalance(signer.address));
+
   const factory = await ethers.getContractFactory(
     "TransparentUpgradeableProxy"
   );
@@ -50,6 +57,31 @@ async function deployProxy(logic: string, admin: string, data: string) {
   const proxy = await factory.deploy(logic, admin, data);
   console.log("Proxy deployed to: ", proxy.target);
   return proxy.target;
+}
+
+async function deployProxy2(logic: string, admin: string, data: string) {
+  const signer = (await ethers.getSigners())[0];
+  const currentNonce = await signer.getNonce();
+
+  const factory = await ethers.getContractFactory(
+    "TransparentUpgradeableProxy"
+  );
+  const x = await factory.getDeployTransaction(logic, admin, data);
+  const customNonce: number = 8;
+  console.log(`Deploying with nonce: ${customNonce}`);
+
+  const tx = {
+    data: x.data,
+    nonce: customNonce ?? (await signer.getNonce()),
+  };
+
+  const deployTx = await signer.sendTransaction(tx);
+  const receipt = await deployTx.wait();
+
+  console.log(`Deployed to: ${receipt?.contractAddress}`);
+  console.log(`Used nonce: ${tx.nonce}`);
+
+  return receipt?.contractAddress;
 }
 
 async function upgrade(proxy: string, logic: string, admin: string) {
@@ -76,27 +108,26 @@ async function deployDAOToken() {
 
   // deploy implementation
   // const impAddr = await deployImpl("DAOToken");
-  const impAddr = "0x8377869e71e12F8a5c12115Cb745cAB7939D190f";
+  // const impAddr = "0x8377869e71e12F8a5c12115Cb745cAB7939D190f"; #shard
+  const impAddr = "0xc3A7148E6DDA09d0f077F8eCAf3eb4F6586D3B72"; // bittensor
 
   // deploy proxy
   // Encode the function call
   const functionSignature = "initialize(string,string,uint256)";
   const iface = new ethers.Interface([`function ${functionSignature}`]);
   const data = iface.encodeFunctionData("initialize", initializedParams);
+  const proxyAdminAddress = "0xe59647F07F8e250BAc45b767ef0Cb4f947242d0e";
 
   // const proxyAddr = await deployProxy(
   //   impAddr.toString(),
-  //   config.proxyAdminAddress,
+  //   proxyAdminAddress,
   //   data
   // );
-  const proxyAddr = "0x8E8019829aAAE4eC9260D8c46ab24B71D105bEAe";
+  // const proxyAddr = "0x8E8019829aAAE4eC9260D8c46ab24B71D105bEAe"; //shard
+  const proxyAddr = "0x8d6F08c068EAfd8A2Bc642452dE7A1a4dc40C023"; //bittensor
 
   // Upgrade
-  await upgrade(
-    proxyAddr.toString(),
-    impAddr.toString(),
-    config.proxyAdminAddress
-  );
+  await upgrade(proxyAddr.toString(), impAddr.toString(), proxyAdminAddress);
 }
 
 async function deployWEAIToken() {
@@ -116,39 +147,45 @@ async function deployTreasury(daoTokenAddress: string) {
 
   // deploy implementation
   // const impAddr = await deployImpl("Treasury");
-  const impAddr = "0xfd592EAfea082F7626c0e2860b768d20BBd2EEb3";
+  // const impAddr = "0xfd592EAfea082F7626c0e2860b768d20BBd2EEb3"; //shard
+  const impAddr = "0xFEe261Bc0ED05D44DfBe930edFbf58D73c9C0c43"; //bittensor
 
   // deploy proxy
   // Encode the function call
-  // const functionSignature = "initialize(address)";
-  // const iface = new ethers.Interface([`function ${functionSignature}`]);
-  // const data = iface.encodeFunctionData("initialize", initializedParams);
+  const functionSignature = "initialize(address)";
+  const iface = new ethers.Interface([`function ${functionSignature}`]);
+  const data = iface.encodeFunctionData("initialize", initializedParams);
 
   // const proxyAddr = await deployProxy(
   //   impAddr.toString(),
   //   config.proxyAdminAddress,
   //   data
   // );
-  const proxyAddr = "0x47fb0318d560461E9473699d3830A9Bf2e5FdE8D";
+  // const proxyAddr = "0x47fb0318d560461E9473699d3830A9Bf2e5FdE8D"; //shard
+  const proxyAddr = "0xa747bDD8621416AC0A76634abaAfe5190bCff808"; //bittensor
 
   // Upgrade
-  await upgrade(
-    proxyAddr.toString(),
-    impAddr.toString(),
-    config.proxyAdminAddress
-  );
+  // await upgrade(
+  //   proxyAddr.toString(),
+  //   impAddr.toString(),
+  //   config.proxyAdminAddress
+  // );
 
   // return proxyAddr;
 }
 
-async function deployWorkerHub(
+async function deployStakingHub(
   daoTokenAddress: string,
-  treasuryAddress: string,
-  masterWallet: Signer
+  treasuryAddress: string
 ) {
-  console.log("DEPLOY WORKER HUB...");
+  console.log("DEPLOY STAKING HUB...");
 
   const l2OwnerAddress = config.l2OwnerAddress;
+  const wEAIAddress = config.wEAIAddress;
+  assert.ok(
+    wEAIAddress,
+    `Missing ${networkName}_WEAI from environment variables!`
+  );
   assert.ok(
     l2OwnerAddress,
     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
@@ -156,20 +193,84 @@ async function deployWorkerHub(
   assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
   assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
 
-  const feeL2Percentage = 0;
-  const feeTreasuryPercentage = 100_00;
-  const minerMinimumStake = ethers.parseEther("0.1");
-  const minerRequirement = 3;
+  const minerMinimumStake = ethers.parseEther("25000");
   const blockPerEpoch = 600 * 2;
   const rewardPerEpoch = ethers.parseEther("0.38");
-  const submitDuration = 10 * 6 * 5;
-  const commitDuration = 10 * 6 * 5;
-  const revealDuration = 10 * 6 * 5;
-  const unstakeDelayTime = 1814400; // NOTE:  1,814,400 blocks = 21 days
+
+  const unstakeDelayTime = 151200; // NOTE:  151200 blocks = 21 days (blocktime = 12)
+  // const unstakeDelayTime = 907200; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
+  // const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // BSC
+  // const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // TRON
   const penaltyDuration = 0; // NOTE: 3.3 hours
   const finePercentage = 0;
-  const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
   const minFeeToUse = ethers.parseEther("0");
+
+  const constructorParams = [
+    wEAIAddress,
+    minerMinimumStake,
+    blockPerEpoch,
+    rewardPerEpoch,
+    unstakeDelayTime,
+    penaltyDuration,
+    finePercentage,
+    minFeeToUse,
+  ];
+
+  // deploy implementation
+  // const impAddr = await deployImpl("StakingHub");
+  const impAddr = "0x88b28bFb179cbe476645D22B9B1B44173CF83bd3";
+
+  // deploy proxy
+  // Encode the function call
+  const functionSignature =
+    "initialize(address,uint256,uint256,uint256,uint40,uint40,uint16,uint256)";
+  const iface = new ethers.Interface([`function ${functionSignature}`]);
+  const data = iface.encodeFunctionData("initialize", constructorParams);
+
+  // const proxyAddr = await deployProxy(
+  //   impAddr.toString(),
+  //   config.proxyAdminAddress,
+  //   data
+  // );
+  const proxyAddr = "0x70bf394A2bfCD3AA49F2921A12C75B998b495CC1";
+
+  // Upgrade
+  // await upgrade(
+  //   proxyAddr.toString(),
+  //   impAddr.toString(),
+  //   config.proxyAdminAddress
+  // );
+}
+
+async function deployWorkerHub(
+  daoTokenAddress: string,
+  treasuryAddress: string,
+  stakingHubAddress: string,
+  masterWallet: Signer
+) {
+  console.log("DEPLOY WORKER HUB...");
+
+  const l2OwnerAddress = config.l2OwnerAddress;
+  const wEAIAddress = config.wEAIAddress;
+  assert.ok(
+    wEAIAddress,
+    `Missing ${networkName}_WEAI from environment variables!`
+  );
+  assert.ok(
+    l2OwnerAddress,
+    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+  assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
+  assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
+  assert.ok(stakingHubAddress, `Missing ${networkName}_STAKING_HUB_ADDRESS!`);
+
+  const feeL2Percentage = 0;
+  const feeTreasuryPercentage = 100_00;
+  const minerRequirement = 3;
+  const submitDuration = 10 * 6 * 90;
+  const commitDuration = 10 * 6 * 90;
+  const revealDuration = 10 * 6 * 90;
+  const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
   const daoTokenReward = ethers.parseEther("0");
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
     minerPercentage: 50_00,
@@ -179,28 +280,17 @@ async function deployWorkerHub(
     l2OwnerPercentage: 10_00,
   };
 
-  const duration = combineDurations(
-    submitDuration,
-    commitDuration,
-    revealDuration,
-    unstakeDelayTime,
-    penaltyDuration
-  );
-
-  const initializedParams = [
+  const constructorParams = [
+    wEAIAddress,
     l2OwnerAddress,
     treasuryAddress,
     daoTokenAddress,
+    stakingHubAddress,
     feeL2Percentage,
     feeTreasuryPercentage,
-    minerMinimumStake,
     minerRequirement,
-    blockPerEpoch,
-    rewardPerEpoch,
-    duration,
-    finePercentage,
+    submitDuration,
     feeRatioMinerValidator,
-    minFeeToUse,
     daoTokenReward,
     [
       daoTokenPercentage.minerPercentage,
@@ -212,37 +302,31 @@ async function deployWorkerHub(
   ];
 
   // deploy implementation
-  // const impAddr = await deployImpl("WorkerHub");
-  const impAddr = "0x050dd45E11bDEb0a79135ba0e5f0471cBe74B5A1";
+  // const impAddr = await deployImpl("PromptScheduler");
+  const impAddr = "0x809e66FA061120e2F4fC8f83bBffaB3e70A2Cce8";
 
   // deploy proxy
   // Encode the function call
-  // const functionSignature =
-  //   "initialize(address,address,address,uint16,uint16,uint256,uint8,uint256,uint256,uint256,uint16,uint16,uint256,uint256,(uint16,uint16,uint16,uint16,uint16))";
-  // const iface = new ethers.Interface([`function ${functionSignature}`]);
-  // const data = iface.encodeFunctionData("initialize", initializedParams);
+  const functionSignature =
+    "initialize(address,address,address,address,address,uint16,uint16,uint8,uint40,uint16,uint256,(uint16,uint16,uint16,uint16,uint16))";
+  const iface = new ethers.Interface([`function ${functionSignature}`]);
+  const data = iface.encodeFunctionData("initialize", constructorParams);
 
   // const proxyAddr = await deployProxy(
   //   impAddr.toString(),
   //   config.proxyAdminAddress,
   //   data
   // );
-  const proxyAddr = "0x620Bb2A3c52dc3DD4078D5D77d8694b411cd4Df8";
+  const proxyAddr = "0x0A77958AB03E60a7e939f660D4cdC8862Ae0e966";
 
-  // Upgrade
+  // Upgrade;
   // await upgrade(
   //   proxyAddr.toString(),
   //   impAddr.toString(),
   //   config.proxyAdminAddress
   // );
-  const ins = (await getContractInstance(proxyAddr, "WorkerHub")) as WorkerHub;
-  // const tx = await ins.setMinerMinimumStake(ethers.parseEther("25000"));
-  // const res = await tx.wait();
-  // console.log(`setMinerMinimumStake tx hash: ${res?.hash}`);
-  // console.log(`setMinerMinimumStake status: ${res?.status}`);
-  console.log("x ", await ins.minerMinimumStake());
 
-  // const workerHubAddress = workerHub.target;
+  const workerHubAddress = proxyAddr;
 
   // DAO TOKEN UPDATE WORKER HUB ADDRESS
   // console.log("DAO TOKEN UPDATE WORKER HUB ADDRESS...");
@@ -257,6 +341,20 @@ async function deployWorkerHub(
   // const receipt = await tx.wait();
   // console.log("Tx hash: ", receipt?.hash);
   // console.log("Tx status: ", receipt?.status);
+
+  // Staking Hub update WorkerHub Address
+  // console.log("STAKING HUB UPDATE WORKER HUB ADDRESS...");
+  // const stakingHubContract = (await getContractInstance(
+  //   stakingHubAddress,
+  //   "StakingHub"
+  // )) as unknown as StakingHub;
+
+  // const txUpdate = await stakingHubContract.setWorkerHubAddress(
+  //   workerHubAddress
+  // );
+  // const receiptUpdate = await txUpdate.wait();
+  // console.log("Tx hash: ", receiptUpdate?.hash);
+  // console.log("Tx status: ", receiptUpdate?.status);
 
   // return workerHubAddress;
 }
@@ -275,9 +373,12 @@ async function deployModelCollection() {
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
-  const nextModelId = 600_001; //
+  // const nextModelId = 140_001; // AVAX
+  // const nextModelId = 150_001; // BSC
+  // const nextModelId = 160_001; // TRON
+  const nextModelId = 180_001; // Biittensor
 
-  const initializedParams = [
+  const constructorParams = [
     name,
     symbol,
     mintPrice,
@@ -288,36 +389,187 @@ async function deployModelCollection() {
 
   // deploy implementation
   // const impAddr = await deployImpl("ModelCollection");
-  const impAddr = "0xc35F8766BAE79cb3B7E277E6436fCC0b3bAda970";
+  const impAddr = "0x9E78Dd04eFAF8222BAaddbBe987088f50A8Bfbe5";
 
   // deploy proxy
   // Encode the function call
   const functionSignature =
     "initialize(string,string,uint256,address,uint16,uint256)";
   const iface = new ethers.Interface([`function ${functionSignature}`]);
-  const data = iface.encodeFunctionData("initialize", initializedParams);
+  const data = iface.encodeFunctionData("initialize", constructorParams);
 
   // const proxyAddr = await deployProxy(
   //   impAddr.toString(),
   //   config.proxyAdminAddress,
   //   data
   // );
-  const proxyAddr = "0x83bEA4E15b0633D980131A96C19a34a25D98262f";
+  const proxyAddr = "0x15e92aB726473773C2afedadc6ACDb2f8f449E58";
 
   // Upgrade
-  await upgrade(
-    proxyAddr.toString(),
-    impAddr.toString(),
-    config.proxyAdminAddress
-  );
+  // await upgrade(
+  //   proxyAddr.toString(),
+  //   impAddr.toString(),
+  //   config.proxyAdminAddress
+  // );
 }
+
+// async function deployModelCollection() {
+//   console.log("DEPLOY MODEL COLLECTION...");
+
+//   const treasuryAddress = config.l2OwnerAddress;
+//   assert.ok(
+//     treasuryAddress,
+//     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+//   );
+
+//   const name = "Eternal AI";
+//   const symbol = "";
+//   const mintPrice = ethers.parseEther("0");
+//   const royaltyReceiver = treasuryAddress;
+//   const royalPortion = 5_00;
+//   const nextModelId = 600_001; //
+
+//   const initializedParams = [
+//     name,
+//     symbol,
+//     mintPrice,
+//     royaltyReceiver,
+//     royalPortion,
+//     nextModelId,
+//   ];
+
+//   // deploy implementation
+//   // const impAddr = await deployImpl("ModelCollection");
+//   const impAddr = "0xc35F8766BAE79cb3B7E277E6436fCC0b3bAda970";
+
+//   // deploy proxy
+//   // Encode the function call
+//   const functionSignature =
+//     "initialize(string,string,uint256,address,uint16,uint256)";
+//   const iface = new ethers.Interface([`function ${functionSignature}`]);
+//   const data = iface.encodeFunctionData("initialize", initializedParams);
+
+//   // const proxyAddr = await deployProxy(
+//   //   impAddr.toString(),
+//   //   config.proxyAdminAddress,
+//   //   data
+//   // );
+//   const proxyAddr = "0x83bEA4E15b0633D980131A96C19a34a25D98262f";
+
+//   // Upgrade
+//   await upgrade(
+//     proxyAddr.toString(),
+//     impAddr.toString(),
+//     config.proxyAdminAddress
+//   );
+// }
+
+// async function deployHybridModel(
+//   workerHubAddress: string,
+//   collectionAddress: string
+// ) {
+//   console.log("DEPLOY HYBRID MODEL...");
+//   const WorkerHub = await ethers.getContractFactory("WorkerHub");
+//   const ModelCollection = await ethers.getContractFactory("ModelCollection");
+
+//   assert.ok(collectionAddress, `Missing ${networkName}_COLLECTION_ADDRESS !`);
+//   assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
+//   const modelOwnerAddress = config.l2OwnerAddress;
+//   assert.ok(
+//     modelOwnerAddress,
+//     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+//   );
+
+//   const identifier = 0;
+//   const name = "FANS V2";
+//   const minHardware = 1;
+//   const metadataObj = {
+//     version: 1,
+//     model_name: "FANS V2",
+//     model_type: "image",
+//     model_url: "",
+//     model_file_hash: "",
+//     min_hardware: 1,
+//     verifier_url: "",
+//     verifier_file_hash: "",
+//   };
+//   const metadata = JSON.stringify(metadataObj, null, "\t");
+
+//   const initializedParams = [
+//     workerHubAddress,
+//     collectionAddress,
+//     identifier,
+//     name,
+//     metadata,
+//   ];
+
+//   // deploy implementation
+//   // const impAddr = await deployImpl("HybridModel");
+//   const impAddr = "0xA8023d8cbE685d3BEA81AE2BA53E2064901fE7Bb";
+
+//   // deploy proxy
+//   // Encode the function call
+//   const functionSignature = "initialize(address,address,uint256,string,string)";
+//   const iface = new ethers.Interface([`function ${functionSignature}`]);
+//   const data = iface.encodeFunctionData("initialize", initializedParams);
+
+//   // const proxyAddr = await deployProxy(
+//   //   impAddr.toString(),
+//   //   config.proxyAdminAddress,
+//   //   data
+//   // );
+//   const proxyAddr = "0xA339801ec19B384246574C9863B5af224D9F85cf";
+
+//   // Upgrade
+//   // await upgrade(
+//   //   proxyAddr.toString(),
+//   //   impAddr.toString(),
+//   //   config.proxyAdminAddress
+//   // );
+
+//   const hybridModelAddress = proxyAddr;
+
+//   // COLLECTION MINT NFT TO MODEL OWNER
+//   // const signer1 = (await ethers.getSigners())[0];
+//   // console.log("COLLECTION MINT NFT TO MODEL OWNER...");
+//   // const collection = ModelCollection.attach(
+//   //   collectionAddress
+//   // ) as ModelCollection;
+//   // const mintReceipt = await (
+//   //   await collection
+//   //     .connect(signer1)
+//   //     .mint(modelOwnerAddress, metadata, hybridModelAddress)
+//   // ).wait();
+
+//   // const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
+//   //   (event: EventLog) => event.eventName === "NewToken"
+//   // );
+//   // if (newTokenEvent) {
+//   //   console.log("tokenId: ", newTokenEvent.args?.tokenId);
+//   // }
+
+//   // WORKER HUB REGISTER MODEL
+//   console.log("WORKER HUB REGISTER MODEL...");
+//   const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
+//   const txRegis = await workerHub.registerModel(
+//     hybridModelAddress,
+//     minHardware,
+//     ethers.parseEther("0")
+//   );
+//   const receipt = await txRegis.wait();
+//   console.log("Tx hash: ", receipt?.hash);
+//   console.log("Tx status: ", receipt?.status);
+
+//   // return hybridModelAddress;
+// }
 
 async function deployHybridModel(
   workerHubAddress: string,
+  stakingHubAddress: string,
   collectionAddress: string
 ) {
   console.log("DEPLOY HYBRID MODEL...");
-  const WorkerHub = await ethers.getContractFactory("WorkerHub");
+  const StakingHub = await ethers.getContractFactory("StakingHub");
   const ModelCollection = await ethers.getContractFactory("ModelCollection");
 
   assert.ok(collectionAddress, `Missing ${networkName}_COLLECTION_ADDRESS !`);
@@ -329,12 +581,12 @@ async function deployHybridModel(
   );
 
   const identifier = 0;
-  const name = "FANS V2";
+  const name = "ETERNAL V2";
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "FANS V2",
-    model_type: "image",
+    model_name: "ETERNAL V2",
+    model_type: "text",
     model_url: "",
     model_file_hash: "",
     min_hardware: 1,
@@ -343,7 +595,7 @@ async function deployHybridModel(
   };
   const metadata = JSON.stringify(metadataObj, null, "\t");
 
-  const initializedParams = [
+  const constructorParams = [
     workerHubAddress,
     collectionAddress,
     identifier,
@@ -353,20 +605,20 @@ async function deployHybridModel(
 
   // deploy implementation
   // const impAddr = await deployImpl("HybridModel");
-  const impAddr = "0xA8023d8cbE685d3BEA81AE2BA53E2064901fE7Bb";
+  const impAddr = "0x0f520ea04b1d7D228D5486e3cfC3F64cF7575EDE";
 
   // deploy proxy
   // Encode the function call
   const functionSignature = "initialize(address,address,uint256,string,string)";
   const iface = new ethers.Interface([`function ${functionSignature}`]);
-  const data = iface.encodeFunctionData("initialize", initializedParams);
+  const data = iface.encodeFunctionData("initialize", constructorParams);
 
   // const proxyAddr = await deployProxy(
   //   impAddr.toString(),
   //   config.proxyAdminAddress,
   //   data
   // );
-  const proxyAddr = "0xA339801ec19B384246574C9863B5af224D9F85cf";
+  const proxyAddr = "0xC47E14AC0ea793e25e9644b555cb5902423F78E7";
 
   // Upgrade
   // await upgrade(
@@ -378,7 +630,7 @@ async function deployHybridModel(
   const hybridModelAddress = proxyAddr;
 
   // COLLECTION MINT NFT TO MODEL OWNER
-  // const signer1 = (await ethers.getSigners())[0];
+  const signer1 = (await ethers.getSigners())[0];
   // console.log("COLLECTION MINT NFT TO MODEL OWNER...");
   // const collection = ModelCollection.attach(
   //   collectionAddress
@@ -396,232 +648,17 @@ async function deployHybridModel(
   //   console.log("tokenId: ", newTokenEvent.args?.tokenId);
   // }
 
-  // WORKER HUB REGISTER MODEL
-  console.log("WORKER HUB REGISTER MODEL...");
-  const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
-  const txRegis = await workerHub.registerModel(
-    hybridModelAddress,
-    minHardware,
-    ethers.parseEther("0")
-  );
-  const receipt = await txRegis.wait();
-  console.log("Tx hash: ", receipt?.hash);
-  console.log("Tx status: ", receipt?.status);
-
-  // return hybridModelAddress;
-}
-
-async function deployWorkerHubScoring(
-  l2OwnerAddress: string,
-  treasuryAddress: string,
-  daoTokenAddress: string
-) {
-  console.log("DEPLOY WORKER HUB SCORING ...");
-
-  assert.ok(l2OwnerAddress, `Missing ${networkName}_L2_OWNER_ADDRESS!`);
-  assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
-  assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
-
-  const feeL2Percentage = 0;
-  const feeTreasuryPercentage = 100_00;
-  const minerMinimumStake = ethers.parseEther("0.1");
-  const minerRequirement = 3;
-  const blockPerEpoch = 600 * 2;
-  const rewardPerEpoch = ethers.parseEther("0"); //ethers.parseEther("0.6659");
-  const submitDuration = 10 * 6 * 5;
-  const commitDuration = 10 * 6 * 5;
-  const revealDuration = 10 * 6 * 5;
-  const unstakeDelayTime = 1814400; // NOTE:  1,814,400 blocks = 21 days
-  const penaltyDuration = 0; // NOTE: 3.3 hours
-  const finePercentage = 0;
-  const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
-  const minFeeToUse = ethers.parseEther("0");
-  const daoTokenReward = ethers.parseEther("0"); //
-  const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
-    minerPercentage: 50_00,
-    userPercentage: 30_00,
-    referrerPercentage: 5_00,
-    refereePercentage: 5_00,
-    l2OwnerPercentage: 10_00,
-  };
-
-  const duration = combineDurations(
-    submitDuration,
-    commitDuration,
-    revealDuration,
-    unstakeDelayTime,
-    penaltyDuration
-  );
-
-  const initializedParams = [
-    l2OwnerAddress,
-    treasuryAddress,
-    daoTokenAddress,
-    feeL2Percentage,
-    feeTreasuryPercentage,
-    minerMinimumStake,
-    minerRequirement,
-    blockPerEpoch,
-    rewardPerEpoch,
-    duration,
-    finePercentage,
-    feeRatioMinerValidator,
-    minFeeToUse,
-    daoTokenReward,
-    [
-      daoTokenPercentage.minerPercentage,
-      daoTokenPercentage.userPercentage,
-      daoTokenPercentage.referrerPercentage,
-      daoTokenPercentage.refereePercentage,
-      daoTokenPercentage.l2OwnerPercentage,
-    ],
-  ];
-
-  // deploy implementation
-  // const impAddr = await deployImpl("WorkerHubScoring");
-  const impAddr = "0xb2090eb064EDe2FD984CF9d9A00ac1D3bE810432";
-
-  // deploy proxy
-  // Encode the function call
-  const functionSignature =
-    "initialize(address,address,address,uint16,uint16,uint256,uint8,uint256,uint256,uint256,uint16,uint16,uint256,uint256,(uint16,uint16,uint16,uint16,uint16))";
-  const iface = new ethers.Interface([`function ${functionSignature}`]);
-  const data = iface.encodeFunctionData("initialize", initializedParams);
-
-  // const proxyAddr = await deployProxy(
-  //   impAddr.toString(),
-  //   config.proxyAdminAddress,
-  //   data
-  // );
-  const proxyAddr = "0x1B0515490f25517d7148a299F6532580792D331a";
-
-  // Upgrade
-  // await upgrade(
-  //   proxyAddr.toString(),
-  //   impAddr.toString(),
-  //   config.proxyAdminAddress
-  // );
-
-  // return proxyAddr;
-}
-
-async function deployHybridModelScoring(
-  collectionAddress: string,
-  workerHubScoringAddress: string,
-  workerHubAddress: string,
-  l2OwnerAddress: string
-) {
-  console.log("DEPLOY HYBRID MODEL SCORING ...");
-
-  const WorkerHubScoring = await ethers.getContractFactory("WorkerHubScoring");
-  const WorkerHub = await ethers.getContractFactory("WorkerHub");
-  const ModelCollection = await ethers.getContractFactory("ModelCollection");
-
-  assert.ok(collectionAddress, `Missing ${networkName}_COLLECTION_ADDRESS!`);
-  assert.ok(
-    workerHubScoringAddress,
-    `Missing ${networkName}_WORKER_HUB_SCORING_ADDRESS!`
-  );
-  assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
-  assert.ok(l2OwnerAddress, `Missing ${networkName}_L2_OWNER_ADDRESS!`);
-
-  const identifier = 0;
-  const name = "Scoring";
-  const minHardware = 1;
-  const metadataObj = {
-    version: 1,
-    model_name: "Scoring",
-    model_type: "scoring",
-    model_url: "",
-    model_file_hash: "",
-    min_hardware: 1,
-    verifier_url: "",
-    verifier_file_hash: "",
-  };
-  const metadata = JSON.stringify(metadataObj, null, "\t");
-  console.log(metadata);
-
-  const initializedParams = [
-    workerHubScoringAddress,
-    collectionAddress,
-    identifier,
-    name,
-    metadata,
-  ];
-
-  // deploy implementation
-  // const impAddr = await deployImpl("HybridModel");
-  const impAddr = "0x3c60b06F7742269700a0d30a456A79155BB4151F";
-
-  // deploy proxy
-  // Encode the function call
-  const functionSignature = "initialize(address,address,uint256,string,string)";
-  const iface = new ethers.Interface([`function ${functionSignature}`]);
-  const data = iface.encodeFunctionData("initialize", initializedParams);
-
-  // const proxyAddr = await deployProxy(
-  //   impAddr.toString(),
-  //   config.proxyAdminAddress,
-  //   data
-  // );
-  const proxyAddr = "0x79A41787eBbee99D05a6e22c24A095F91164383f";
-
-  // Upgrade
-  // await upgrade(
-  //   proxyAddr.toString(),
-  //   impAddr.toString(),
-  //   config.proxyAdminAddress
-  // );
-
-  const hybridModelAddress = proxyAddr;
-
-  // const collection = ModelCollection.attach(
-  //   collectionAddress
-  // ) as ModelCollection;
-  // const mintReceipt = await (
-  //   await collection.mint(l2OwnerAddress, metadata, hybridModelAddress)
-  // ).wait();
-
-  // const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
-  //   (event: EventLog) => event.eventName === "NewToken"
-  // );
-  // if (newTokenEvent) {
-  //   console.log("tokenId:", newTokenEvent.args?.tokenId);
-  // }
-
-  const workerHubScoring = WorkerHubScoring.attach(
-    workerHubScoringAddress
-  ) as WorkerHubScoring;
-  // const txRegis = await workerHubScoring.registerModel(
+  // STAKING HUB REGISTER MODEL
+  // console.log("STAKING HUB REGISTER MODEL...");
+  // const stakingHub = StakingHub.attach(stakingHubAddress) as StakingHub;
+  // const txRegis = await stakingHub.registerModel(
   //   hybridModelAddress,
   //   minHardware,
   //   ethers.parseEther("0")
   // );
-  // const receiptRegis = await txRegis.wait();
-  // console.log("TX hash: ", receiptRegis?.hash);
-  // console.log(
-  //   `Contract HybridModelScoring is registered to WorkerHubScoring: ${receiptRegis?.status}`
-  // );
-
-  // WorkerHubScoring setupScoringVar
-  // const txSetup = await workerHubScoring.setupScoringVar(workerHubAddress);
-  // const receiptSetup = await txSetup.wait();
-  // console.log("Tx hash: ", receiptSetup?.hash);
-  // console.log(
-  //   `Contract WorkerHubScoring know WorkerHub: ${receiptSetup?.status}`
-  // );
-
-  // WorkerHub setScoringInfo
-  const workerHub = WorkerHub.attach(workerHubAddress) as WorkerHub;
-  const txSetup2 = await workerHub.setScoringInfo(
-    workerHubScoringAddress,
-    hybridModelAddress
-  );
-  const receiptSetup2 = await txSetup2.wait();
-  console.log("Tx hash: ", receiptSetup2?.hash);
-  console.log(
-    `Contract WorkerHub setup Scoring Info: ${receiptSetup2?.status}`
-  );
+  // const receipt = await txRegis.wait();
+  // console.log("Tx hash: ", receipt?.hash);
+  // console.log("Tx status: ", receipt?.status);
 
   // return hybridModelAddress;
 }
@@ -634,15 +671,17 @@ async function deploySystemPromptManager(
   console.log("DEPLOY SYSTEM PROMPT MANAGER...");
 
   assert.ok(l2OwnerAddress, `Missing ${networkName}_L2_OWNER_ADDRESS!`);
+  assert.ok(hybridModelAddress, `Missing ${networkName}_HYBRID_MODEL_ADDRESS!`);
+  assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
 
   const name = "Eternal AI";
   const symbol = "";
   const mintPrice = ethers.parseEther("0");
   const royaltyReceiver = l2OwnerAddress;
   const royalPortion = 5_00;
-  const nextModelId = 1; //TODO: need to change before deployment
+  const nextModelId = 1;
 
-  const initializedParams = [
+  const constructorParams = [
     name,
     symbol,
     mintPrice,
@@ -655,21 +694,22 @@ async function deploySystemPromptManager(
 
   // deploy implementation
   // const impAddr = await deployImpl("SystemPromptManager");
-  const impAddr = "0x169c8Ee03422268E2D05F40059B9fA9fa97284a5";
+  const impAddr = "0xd84f6785C38dA3ea4BEFBe07eD02C06DEd6945F6";
 
   // deploy proxy
   // Encode the function call
   const functionSignature =
     "initialize(string,string,uint256,address,uint16,uint256,address,address)";
   const iface = new ethers.Interface([`function ${functionSignature}`]);
-  const data = iface.encodeFunctionData("initialize", initializedParams);
+  const data = iface.encodeFunctionData("initialize", constructorParams);
 
   // const proxyAddr = await deployProxy(
   //   impAddr.toString(),
   //   config.proxyAdminAddress,
   //   data
   // );
-  const proxyAddr = "0x7734c3cd8B3239eA03A8A660095d94183FE63fCD";
+
+  const proxyAddr = "0x88feb137Ab8f971df6b8C098A2C05A22d8F480e7";
 
   // Upgrade
   // await upgrade(
@@ -677,29 +717,82 @@ async function deploySystemPromptManager(
   //   impAddr.toString(),
   //   config.proxyAdminAddress
   // );
-
-  // Mint first NFT to owner
-  const nftOwner = (await ethers.getSigners())[0].address;
-  const ins = (await getContractInstance(
-    proxyAddr,
-    "SystemPromptManager"
-  )) as SystemPromptManager;
-
-  const metadataObj = {
-    agent_uri: "ipfs://meta",
-  };
-  const metadata = JSON.stringify(metadataObj, null, "\t");
-  const linkPrompt = "ifps://systemprompt";
-  const uri = metadata;
-  const _data = ethers.toUtf8Bytes(linkPrompt);
-  const fee = ethers.parseEther("0");
-  const txMint = await ins.mint(nftOwner, uri, _data, fee);
-  const res = await txMint.wait();
-  console.log(`Minted tx hash: ${res?.hash}`);
-  console.log(`Minted status: ${res?.status}`);
-
-  // return sysPromptManager.target;
 }
+
+// async function deploySystemPromptManager(
+//   l2OwnerAddress: string,
+//   hybridModelAddress: string,
+//   workerHubAddress: string
+// ) {
+//   console.log("DEPLOY SYSTEM PROMPT MANAGER...");
+
+//   assert.ok(l2OwnerAddress, `Missing ${networkName}_L2_OWNER_ADDRESS!`);
+
+//   const name = "Eternal AI";
+//   const symbol = "";
+//   const mintPrice = ethers.parseEther("0");
+//   const royaltyReceiver = l2OwnerAddress;
+//   const royalPortion = 5_00;
+//   const nextModelId = 1; //TODO: need to change before deployment
+
+//   const initializedParams = [
+//     name,
+//     symbol,
+//     mintPrice,
+//     royaltyReceiver,
+//     royalPortion,
+//     nextModelId,
+//     hybridModelAddress,
+//     workerHubAddress,
+//   ];
+
+//   // deploy implementation
+//   // const impAddr = await deployImpl("SystemPromptManager");
+//   const impAddr = "0x169c8Ee03422268E2D05F40059B9fA9fa97284a5";
+
+//   // deploy proxy
+//   // Encode the function call
+//   const functionSignature =
+//     "initialize(string,string,uint256,address,uint16,uint256,address,address)";
+//   const iface = new ethers.Interface([`function ${functionSignature}`]);
+//   const data = iface.encodeFunctionData("initialize", initializedParams);
+
+//   // const proxyAddr = await deployProxy(
+//   //   impAddr.toString(),
+//   //   config.proxyAdminAddress,
+//   //   data
+//   // );
+//   const proxyAddr = "0x7734c3cd8B3239eA03A8A660095d94183FE63fCD";
+
+//   // Upgrade
+//   // await upgrade(
+//   //   proxyAddr.toString(),
+//   //   impAddr.toString(),
+//   //   config.proxyAdminAddress
+//   // );
+
+//   // Mint first NFT to owner
+//   const nftOwner = (await ethers.getSigners())[0].address;
+//   const ins = (await getContractInstance(
+//     proxyAddr,
+//     "SystemPromptManager"
+//   )) as SystemPromptManager;
+
+//   const metadataObj = {
+//     agent_uri: "ipfs://meta",
+//   };
+//   const metadata = JSON.stringify(metadataObj, null, "\t");
+//   const linkPrompt = "ifps://systemprompt";
+//   const uri = metadata;
+//   const _data = ethers.toUtf8Bytes(linkPrompt);
+//   const fee = ethers.parseEther("0");
+//   const txMint = await ins.mint(nftOwner, uri, _data, fee);
+//   const res = await txMint.wait();
+//   console.log(`Minted tx hash: ${res?.hash}`);
+//   console.log(`Minted status: ${res?.status}`);
+
+//   // return sysPromptManager.target;
+// }
 
 export async function getContractInstance(
   proxyAddress: string,
@@ -728,8 +821,9 @@ async function main() {
   const masterWallet = (await ethers.getSigners())[0];
 
   // ProxyAdmin
-  const proxyAdminAddress = await deployProxyAdmin();
-  console.log("ProxyAdmin deployed to: ", proxyAdminAddress);
+  // const proxyAdminAddress = await deployProxyAdmin();
+  // console.log("ProxyAdmin deployed to: ", proxyAdminAddress);
+  const proxyAdminAddress = "0xe59647F07F8e250BAc45b767ef0Cb4f947242d0e";
 
   // DAO token deployment
   // await deployDAOToken();
@@ -737,11 +831,39 @@ async function main() {
   // Treasury deployment
   // await deployTreasury(config.daoTokenAddress);
 
-  const workerHubAddress = await deployWorkerHub(
-    config.daoTokenAddress,
-    config.treasuryAddress,
-    masterWallet
+  // Staking Hub deployment
+  // await deployStakingHub(config.daoTokenAddress, config.treasuryAddress);
+
+  // Worker Hub deployment
+  // await deployWorkerHub(
+  //   config.daoTokenAddress,
+  //   config.treasuryAddress,
+  //   config.stakingHubAddress,
+  //   masterWallet
+  // );
+
+  // Model Collection deployment
+  // await deployModelCollection();
+
+  // Hybrid Model deployment
+  // await deployHybridModel(
+  //   config.workerHubAddress,
+  //   config.stakingHubAddress,
+  //   config.collectionAddress
+  // );
+
+  // System Prompt Manager deployment
+  await deploySystemPromptManager(
+    config.l2OwnerAddress,
+    config.hybridModelAddress,
+    config.workerHubAddress
   );
+
+  // const workerHubAddress = await deployWorkerHub(
+  //   config.daoTokenAddress,
+  //   config.treasuryAddress,
+  //   masterWallet
+  // );
   // const collectionAddress = await deployModelCollection();
   // await deployWEAIToken();
   // const hybridModelAddress = await deployHybridModel(
@@ -817,21 +939,21 @@ async function main() {
   //   await SystemPromptManager.tokenURI(1n)
   // );
 
-  const deployedAddresses = {
-    proxyAdminAddress,
-    // daoTokenAddress,
-    // treasuryAddress,
-    // workerHubAddress,
-    // collectionAddress,
-    // hybridModelAddress,
-    // workerHubScoringAddress,
-    // hybridModelScoringAddress,
-    // systemPromptManagerAddress,
-  };
+  // const deployedAddresses = {
+  //   proxyAdminAddress,
+  //   // daoTokenAddress,
+  //   // treasuryAddress,
+  //   // workerHubAddress,
+  //   // collectionAddress,
+  //   // hybridModelAddress,
+  //   // workerHubScoringAddress,
+  //   // hybridModelScoringAddress,
+  //   // systemPromptManagerAddress,
+  // };
 
-  const networkName = network.name.toUpperCase();
+  // const networkName = network.name.toUpperCase();
 
-  await saveDeployedAddresses(networkName, deployedAddresses);
+  // await saveDeployedAddresses(networkName, deployedAddresses);
 }
 
 main()
