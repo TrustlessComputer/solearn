@@ -573,6 +573,30 @@ const config: HardhatUserConfig = {
       zksync: false,
       gasPrice: 10000000000,
     } as any,
+    duck_mainnet: {
+      url: "https://rpc.duckchain.io",
+      chainId: 5545,
+      accounts: [
+        process.env.DUCK_MAINNET_PRIVATE_KEY,
+        process.env.DUCK_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.DUCK_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.DUCK_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.DUCK_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.DUCK_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.DUCK_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.DUCK_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.DUCK_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.DUCK_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.DUCK_MAINNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.DUCK_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.DUCK_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
   },
   namedAccounts: {
     deployer: 0,
