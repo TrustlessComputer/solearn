@@ -110,5 +110,15 @@
     "hybridModelAddress": "0xf7E27f352bD7dA3c17DC0c42B1087815354AB2D4",
     "systemPromptManagerAddress": "0x19D5Fb8BFbcBBE0f4E47fC3F7cE37035C16F33EC",
     "squadManager": "0x8220b83be030a08fA3D63B98cbC5edE30871828B"
+  },
+  "DUCK_MAINNET": {
+    "wEAIAddress": "0x4B6bF1d365ea1A8d916Da37FaFd4ae8C86d061D7",
+    "daoTokenAddress": "0x925e64E2fFc65A3C434deF54e312256718Afaee3",
+    "treasuryAddress": "0x1215EE15D99C1998A41b810b10251e1D3bcf3bEE",
+    "stakingHubAddress": "0xB5d3FdaD888EB56092f6Ba8f84615D5D58EE8D00",
+    "workerHubAddress": "0xC97Acc3DDE1977118fa6939476316aA08Ec1367F",
+    "collectionAddress": "0xdd8CdD7Af139a4A983b582529a5acE965e0C37E0",
+    "hybridModelAddress": "0xe9AFDDd942Dd0ce57837b8536EeeFa0a67Ad0B9E",
+    "systemPromptManagerAddress": "0xD730878c7C96eF99866A690b56D51059e3220805"
   }
 }
