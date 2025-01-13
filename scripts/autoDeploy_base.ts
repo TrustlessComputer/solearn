@@ -75,12 +75,12 @@ async function deployStakingHub(
   assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
 
   const minerMinimumStake = ethers.parseEther("25000");
-  const blockPerEpoch = 600 * 2;
+  const blockPerEpoch = 600;
   const rewardPerEpoch = ethers.parseEther("0.38");
 
   // const unstakeDelayTime = 151200; // NOTE:  151200 blocks = 21 days (blocktime = 12)
-  // const unstakeDelayTime = 907200; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
-  const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // BSC
+  const unstakeDelayTime = 907200; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
+  // const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // BSC
   // const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // TRON
   const penaltyDuration = 0; // NOTE: 3.3 hours
   const finePercentage = 0;
@@ -217,7 +217,7 @@ async function deployModelCollection() {
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
   // const nextModelId = 140_001; // AVAX
-  const nextModelId = 150_001; // BSC
+  const nextModelId = 220_001; // MODE
   // const nextModelId = 160_001; // TRON
 
   const constructorParams = [
@@ -411,6 +411,7 @@ async function saveDeployedAddresses(networkName: string, addresses: any) {
 async function main() {
   const masterWallet = (await ethers.getSigners())[0];
 
+  const wEAIAddress = config.wEAIAddress;
   const daoTokenAddress = await deployDAOToken();
   const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
   const stakingHubAddress = await deployStakingHub(
@@ -437,11 +438,8 @@ async function main() {
     workerHubAddress.toString()
   );
 
-  const squadManager = await deploySquadManager(
-    systemPromptManagerAddress.toString()
-  );
-
   const deployedAddresses = {
+    wEAIAddress,
     daoTokenAddress,
     treasuryAddress,
     stakingHubAddress,
@@ -449,7 +447,6 @@ async function main() {
     collectionAddress,
     hybridModelAddress,
     systemPromptManagerAddress,
-    squadManager,
   };
 
   const networkName = network.name.toUpperCase();

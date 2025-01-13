@@ -597,6 +597,30 @@ const config: HardhatUserConfig = {
       zksync: false,
       gasPrice: "auto",
     } as any,
+    mode_mainnet: {
+      url: "https://mainnet.mode.network",
+      chainId: 34443,
+      accounts: [
+        process.env.MODE_MAINNET_PRIVATE_KEY,
+        process.env.MODE_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.MODE_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.MODE_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.MODE_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.MODE_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.MODE_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.MODE_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.MODE_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.MODE_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.MODE_MAINNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.MODE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.MODE_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
   },
   namedAccounts: {
     deployer: 0,
