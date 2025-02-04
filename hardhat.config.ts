@@ -316,7 +316,7 @@ const config: HardhatUserConfig = {
       timeout: 2000000,
     } as any,
     ethereum_mainnet: {
-      url: "https://mainnet.infura.io/v3/dfc35b256cf2420bbe4e153643b0560b",
+      url: "https://mainnet.infura.io/v3/eb492201628143a094aa7afaeb9f32d2",
       chainId: 1,
       accounts: [
         process.env.ETHEREUM_MAINNET_PRIVATE_KEY,
@@ -416,6 +416,9 @@ const config: HardhatUserConfig = {
         process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_1,
         process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_2,
         process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_3,
+        process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_DOBBY_1,
+        process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_DOBBY_2,
+        process.env.POLYGON_MAINNET_PRIVATE_KEY_WORKER_DOBBY_3,
       ],
       l2OwnerAddress: process.env.POLYGON_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.POLYGON_MAINNET_TREASURY_ADDRESS,
@@ -425,9 +428,8 @@ const config: HardhatUserConfig = {
       daoTokenAddress: process.env.POLYGON_MAINNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.POLYGON_MAINNET_WORKER_HUB_SCORING_ADDRESS,
-      hybridModelAddress: process.env.POLYGON_MAINNET_HYBRID_MODEL_ADDRESS,
-      hybridModelScoringAddress:
-        process.env.POLYGON_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      hybridModelAddress_1: process.env.POLYGON_MAINNET_HYBRID_MODEL_ADDRESS_1,
+      hybridModelAddress_2: process.env.POLYGON_MAINNET_HYBRID_MODEL_ADDRESS_2,
       systemPromptManagerAddress:
         process.env.POLYGON_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       squadManagerAddress: process.env.POLYGON_MAINNET_SQUAD_MANAGER_ADDRESS,
