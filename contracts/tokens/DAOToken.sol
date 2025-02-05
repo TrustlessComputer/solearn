@@ -32,13 +32,6 @@ contract DAOToken is IDAOToken, ERC20Upgradeable, OwnableUpgradeable {
         MAX_SUPPLY_CAP = _MAX_SUPPLY_CAP;
     }
 
-    function name() public pure override returns (string memory) {
-        return "UNCENSORED";
-    }
-    function symbol() public pure override returns (string memory) {
-        return "UNCENSORED";
-    }
-
     function mint(address to, uint256 amount) public onlyWorkerHub {
         require(
             totalSupply() + amount <= MAX_SUPPLY_CAP,

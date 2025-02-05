@@ -1,5 +1,4 @@
 import assert from "assert";
-import { version } from "chai";
 import { ethers, network, upgrades } from "hardhat";
 import { SystemPromptManager } from "../typechain-types";
 
@@ -19,17 +18,18 @@ async function updateAgentUri() {
     config.systemPromptManagerAddress
   ) as SystemPromptManager;
 
-  // TODO: @mr 6789 fill out the link
+  // TODO: @mr 6789 fill it
+  // ***************************
   const uri =
     "ipfs://bafkreih2hzkvh5zup3jbrfatbvoyasxtnq2slkkoeotdpwdg3pqiipwery";
-
   const agentId = 1n;
+  // ***************************
 
   const txUpdateUri = await ins.updateAgentURI(agentId, uri);
-  const resUpdateUri = await txUpdateUri.wait();
+  const receiptUpdateUri = await txUpdateUri.wait();
 
-  console.log(`Update URI tx hash: ${resUpdateUri?.hash}`);
-  console.log(`Update URI status: ${resUpdateUri?.status}`);
+  console.log(`Update URI tx hash: ${receiptUpdateUri?.hash}`);
+  console.log(`Update URI status: ${receiptUpdateUri?.status}`);
 
   // get the uri from system prompt manager contract
   const agentUri = await ins.tokenURI(agentId);

@@ -13,13 +13,13 @@ import "./scripts/tasks/control.task";
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
 const config: HardhatUserConfig = {
-  defaultNetwork: "abstract_testnet",
+  defaultNetwork: "hardhat",
   solidity: {
     compilers: [
       {
         version: "0.8.19",
         settings: {
-          optimizer: { enabled: true, runs: 200000 },
+          optimizer: { enabled: true, runs: 2000000 },
           viaIR: true,
           evmVersion: "paris",
         },
@@ -27,7 +27,7 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.20",
         settings: {
-          optimizer: { enabled: true, runs: 200000 },
+          optimizer: { enabled: true, runs: 2000000 },
           viaIR: true,
           evmVersion: "paris",
         },
@@ -232,10 +232,7 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
         process.env.BASE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
-      systemPromptHelperAddress:
-        process.env.BASE_MAINNET_SYSTEM_PROMPT_HELPER_ADDRESS,
       wEAIAddress: process.env.BASE_MAINNET_WEAI,
-      aiPoweredWallet: process.env.BASE_MAINNET_AI_POWERED_WALLET_ADDRESS,
       allowUnlimitedContractSize: true,
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,
@@ -277,7 +274,6 @@ const config: HardhatUserConfig = {
       treasuryAddress: process.env.SHARD_AI_TESTNET_TREASURY_ADDRESS,
       collectionAddress: process.env.SHARD_AI_TESTNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.SHARD_AI_TESTNET_WORKER_HUB_ADDRESS,
-      stakingHubAddress: process.env.SHARD_AI_TESTNET_STAKING_HUB_ADDRESS,
       daoTokenAddress: process.env.SHARD_AI_TESTNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.SHARD_AI_TESTNET_WORKER_HUB_SCORING_ADDRESS,
@@ -316,7 +312,7 @@ const config: HardhatUserConfig = {
       timeout: 2000000,
     } as any,
     ethereum_mainnet: {
-      url: "https://mainnet.infura.io/v3/eb492201628143a094aa7afaeb9f32d2",
+      url: "https://mainnet.infura.io/v3/dfc35b256cf2420bbe4e153643b0560b",
       chainId: 1,
       accounts: [
         process.env.ETHEREUM_MAINNET_PRIVATE_KEY,

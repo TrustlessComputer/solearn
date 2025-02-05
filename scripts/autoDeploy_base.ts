@@ -22,9 +22,13 @@ const networkName = network.name.toUpperCase();
 async function deployDAOToken() {
   console.log("DEPLOY DAO TOKEN...");
 
+  // TODO: @mr 6789 check it
+  // ***************************
   const _MAX_SUPPLY_CAP = ethers.parseEther("2100000000"); //2,1B
   const tokenName = "DAOTOKEN";
   const tokenSymbol = "DAOTOKEN";
+  // ***************************
+
   const initializedParams = [tokenName, tokenSymbol, _MAX_SUPPLY_CAP];
 
   const daoToken = (await deployOrUpgrade(
@@ -74,17 +78,16 @@ async function deployStakingHub(
   assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
   assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
 
+  // TODO: @mr 6789 check it
+  // ***************************
   const minerMinimumStake = ethers.parseEther("25000");
   const blockPerEpoch = 600;
   const rewardPerEpoch = ethers.parseEther("0.38");
-
-  // const unstakeDelayTime = 151200; // NOTE:  151200 blocks = 21 days (blocktime = 12)
   const unstakeDelayTime = 907200; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
-  // const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // BSC
-  // const unstakeDelayTime = 604800; // NOTE:  604800 blocks = 21 days (blocktime = 3s) // TRON
-  const penaltyDuration = 0; // NOTE: 3.3 hours
+  const penaltyDuration = 0;
   const finePercentage = 0;
   const minFeeToUse = ethers.parseEther("0");
+  // ***************************
 
   const constructorParams = [
     wEAIAddress,
@@ -135,8 +138,6 @@ async function deployWorkerHub(
   const feeTreasuryPercentage = 100_00;
   const minerRequirement = 3;
   const submitDuration = 10 * 6 * 90;
-  const commitDuration = 10 * 6 * 90;
-  const revealDuration = 10 * 6 * 90;
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
   const daoTokenReward = ethers.parseEther("0");
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
@@ -211,6 +212,8 @@ async function deployModelCollection() {
     `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
   );
 
+  // TODO: @mr 6789 check it
+  // ***************************
   const name = "Eternal AI";
   const symbol = "";
   const mintPrice = ethers.parseEther("0");
@@ -219,6 +222,7 @@ async function deployModelCollection() {
   // const nextModelId = 140_001; // AVAX
   const nextModelId = 220_001; // MODE
   // const nextModelId = 160_001; // TRON
+  // ***************************
 
   const constructorParams = [
     name,
@@ -362,27 +366,6 @@ async function deploySystemPromptManager(
   )) as unknown as SystemPromptManager;
 
   return systemPromptManager.target;
-}
-
-async function deploySquadManager(systemPromptManagerAddress: string) {
-  console.log("DEPLOY SQUAD MANAGER...");
-
-  assert.ok(
-    systemPromptManagerAddress,
-    `Missing ${networkName}_SQUAD_MANAGER_ADDRESS!`
-  );
-
-  const constructorParams = [systemPromptManagerAddress];
-
-  const squadManager = (await deployOrUpgrade(
-    undefined,
-    "SquadManager",
-    constructorParams,
-    config,
-    true
-  )) as unknown as SquadManager;
-
-  return squadManager.target;
 }
 
 export async function getContractInstance(
