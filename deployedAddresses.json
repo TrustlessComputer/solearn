@@ -133,5 +133,15 @@
     "collectionAddress": "0x465DB626a3899387E83B974b7Eae34f31C238Bf2",
     "hybridModelAddress": "0x42bac4c22D3DdDCC977563281f318441A3d7bEe5",
     "systemPromptManagerAddress": "0xF442B5c96C76fF7F5EAaBd5708504CFB17AE5E57"
+  },
+  "CELO_MAINNET": {
+    "wEAIAddress": "0x4B6bF1d365ea1A8d916Da37FaFd4ae8C86d061D7",
+    "daoTokenAddress": "0xadCd489C6817949F9E1Baee73514c82c379C29aE",
+    "treasuryAddress": "0xe70c3cE7D888008B650aeFFA30cCeF08591AF7a5",
+    "stakingHubAddress": "0x718a0F56Bf2b581195747Ff57418F418b41c454A",
+    "workerHubAddress": "0xf0725778FfB0b947e2B299E79BD27767BAaAE4C2",
+    "collectionAddress": "0x0ea06A22d93541552CaC1DeCa92B87aAa913146D",
+    "hybridModelAddress": "0x984808935b6C5D30a69Aa103c2392714358960aF",
+    "systemPromptManagerAddress": "0x22Db7DFc773090fde9d30B787E9EE5666088B409"
   }
 }
