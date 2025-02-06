@@ -619,6 +619,30 @@ const config: HardhatUserConfig = {
       zksync: false,
       gasPrice: "auto",
     } as any,
+    celo_mainnet: {
+      url: "https://forno.celo.org",
+      chainId: 42220,
+      accounts: [
+        process.env.CELO_MAINNET_PRIVATE_KEY,
+        process.env.CELO_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.CELO_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.CELO_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.CELO_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.CELO_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.CELO_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.CELO_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.CELO_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.CELO_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.CELO_MAINNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.CELO_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.CELO_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
   },
   namedAccounts: {
     deployer: 0,

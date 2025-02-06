@@ -81,9 +81,9 @@ async function deployStakingHub(
   // TODO: @mr 6789 check it
   // ***************************
   const minerMinimumStake = ethers.parseEther("25000");
-  const blockPerEpoch = 600;
+  const blockPerEpoch = (600 * 2) / 5;
   const rewardPerEpoch = ethers.parseEther("0.38");
-  const unstakeDelayTime = 907200; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
+  const unstakeDelayTime = 362880; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
   const penaltyDuration = 0;
   const finePercentage = 0;
   const minFeeToUse = ethers.parseEther("0");
@@ -220,8 +220,10 @@ async function deployModelCollection() {
   const royaltyReceiver = treasuryAddress;
   const royalPortion = 5_00;
   // const nextModelId = 140_001; // AVAX
-  const nextModelId = 220_001; // MODE
+  // const nextModelId = 220_001; // MODE
   // const nextModelId = 160_001; // TRON
+  const nextModelId = 230_001; // CELO
+
   // ***************************
 
   const constructorParams = [
@@ -267,9 +269,10 @@ async function deployHybridModel(
   const minHardware = 1;
   const metadataObj = {
     version: 1,
-    model_name: "ETERNAL V2",
+    model_name: "unslot-DeepSeek-R1-Distill-Llama-70B-Q8_0",
     model_type: "text",
-    model_url: "",
+    model_url:
+      "https://gateway.lighthouse.storage/ipfs/bafkreidpoxthbkrgq2zpcqhrujp2kdxqb7yysxfq5oy57inwmj4gjsv7si",
     model_file_hash: "",
     min_hardware: 1,
     verifier_url: "",
