@@ -94,14 +94,17 @@
     "squadManager": "0x309919eBCe91c06112aFf6bF1153e813Fe932D59"
   },
   "BSC_MAINNET": {
+    "wEAIAddress": "0x4b6bf1d365ea1a8d916da37fafd4ae8c86d061d7",
     "daoTokenAddress": "0xcbB919A275df0fF5E6C3fa27359a3e2D61cb72A8",
     "treasuryAddress": "0xDB6E1bb7c8E360aca9919eAb2059229052EDB9Ff",
     "stakingHubAddress": "0xA89519F23ABab8b0836865D50b6dFeaCA0BbCb80",
     "workerHubAddress": "0x7c9C1BBde91d6E9a96D93ed621921060b49DB0c0",
     "collectionAddress": "0xb09584c52e2899d89b667be5425828bbe8ab0e9F",
-    "hybridModelAddress": "0x644292A7e238Dd4EB7Fc7f4c4aFD8EB3C3d4111d",
-    "systemPromptManagerAddress": "0x08E3Da99728979024B4973112Ef3F56CBa4D5172",
-    "squadManager": "0x6bC7b101129dcbD614CADe5E920d6e9C7086CF13"
+    "hybridModelAddresses": [
+      "0x644292A7e238Dd4EB7Fc7f4c4aFD8EB3C3d4111d",
+      "0x01Cf6937Fc00e55A06457CF0e5b8f761a4de6472"
+    ],
+    "systemPromptManagerAddress": "0x08E3Da99728979024B4973112Ef3F56CBa4D5172"
   },
   "ABSTRACT_TESTNET": {
     "wEAIAddress": "0x9F06C611474666693b8c3D662eeF03ab7aA3C56E",
