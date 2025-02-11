@@ -467,13 +467,17 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
     } as any,
     bsc_mainnet: {
-      url: "https://bsc-dataseed1.defibit.io",
+      url: "https://bscrpc.com",
+      // url: "https://bsc-dataseed1.defibit.io",
       chainId: 56,
       accounts: [
         process.env.BSC_MAINNET_PRIVATE_KEY,
         process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_1,
         process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_2,
         process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_3,
+        process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_DEEPSEEK_1,
+        process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_DEEPSEEK_2,
+        process.env.BSC_MAINNET_PRIVATE_KEY_WORKER_DEEPSEEK_3,
       ],
       l2OwnerAddress: process.env.BSC_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.BSC_MAINNET_TREASURY_ADDRESS,
@@ -483,9 +487,8 @@ const config: HardhatUserConfig = {
       daoTokenAddress: process.env.BSC_MAINNET_DAO_TOKEN_ADDRESS,
       workerHubScoringAddress:
         process.env.BSC_MAINNET_WORKER_HUB_SCORING_ADDRESS,
-      hybridModelAddress: process.env.BSC_MAINNET_HYBRID_MODEL_ADDRESS,
-      hybridModelScoringAddress:
-        process.env.BSC_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      hybridModelAddress_1: process.env.BSC_MAINNET_HYBRID_MODEL_ADDRESS_1,
+      hybridModelAddress_2: process.env.BSC_MAINNET_HYBRID_MODEL_ADDRESS_2,
       systemPromptManagerAddress:
         process.env.BSC_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       squadManagerAddress: process.env.BSC_MAINNET_SQUAD_MANAGER_ADDRESS,
