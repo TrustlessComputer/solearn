@@ -319,7 +319,7 @@ contract StakingHub is
         _;
     }
 
-    function updateEpoch() external onlyWorkerHub {
+    function updateEpoch() external {
         _updateEpoch();
     }
 
@@ -329,20 +329,6 @@ contract StakingHub is
             uint256 epochPassed = (block.number - lastBlock) / blocksPerEpoch;
             if (epochPassed > 0) {
                 lastBlock += blocksPerEpoch * epochPassed;
-                // reward for this epoch
-                // rewardPerEpoch (reward one year for 1 miner)
-                // rewardPerEpoch * total miner * blocker per epoch / blocks per year
-                uint256 rewardInCurrentEpoch = (rewardPerEpoch *
-                    minerAddresses.size() *
-                    blocksPerEpoch) / BLOCK_PER_YEAR;
-
-                for (; epochPassed > 0; epochPassed--) {
-                    rewardInEpoch[currentEpoch].totalMiner = minerAddresses
-                        .size();
-                    rewardInEpoch[currentEpoch]
-                        .epochReward = rewardInCurrentEpoch;
-                    currentEpoch++;
-                }
             }
         } else {
             lastBlock = block.number;

@@ -32,7 +32,7 @@ abstract contract PromptSchedulerStorage is IWorkerHub {
         internal daoReceiversInfo;
 
     address internal wEAI;
-    address internal stakingHub;
+    address public stakingHub;
     address internal daoToken;
 
     uint256[100] private __gap;

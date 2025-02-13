@@ -38,7 +38,7 @@ abstract contract StakingHubStorage is IStakingHub {
     // determine multiplier value
     mapping(address => Boost) internal boost;
     address public wEAI;
-    address workerHub;
+    address public workerHub;
     uint256 public minFeeToUse; // The minimum fee when register model, it's also the minimum fee to create inference
 
     uint256[100] private __gap;
