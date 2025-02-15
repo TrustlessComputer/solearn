@@ -81,9 +81,9 @@ async function deployStakingHub(
   // TODO: @mr 6789 check it
   // ***************************
   const minerMinimumStake = ethers.parseEther("25000");
-  const blockPerEpoch = (600 * 2) / 5;
+  const blockPerEpoch = (600 * 2) / 6;
   const rewardPerEpoch = ethers.parseEther("0.38");
-  const unstakeDelayTime = 362880; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
+  const unstakeDelayTime = 302400; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
   const penaltyDuration = 0;
   const finePercentage = 0;
   const minFeeToUse = ethers.parseEther("0");
@@ -222,7 +222,8 @@ async function deployModelCollection() {
   // const nextModelId = 140_001; // AVAX
   // const nextModelId = 220_001; // MODE
   // const nextModelId = 160_001; // TRON
-  const nextModelId = 230_001; // CELO
+  // const nextModelId = 230_001; // CELO
+  const nextModelId = 240_001; // ZETA
 
   // ***************************
 
