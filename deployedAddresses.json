@@ -146,5 +146,15 @@
     "collectionAddress": "0x0ea06A22d93541552CaC1DeCa92B87aAa913146D",
     "hybridModelAddress": "0x984808935b6C5D30a69Aa103c2392714358960aF",
     "systemPromptManagerAddress": "0x22Db7DFc773090fde9d30B787E9EE5666088B409"
+  },
+  "ZETA_MAINNET": {
+    "wEAIAddress": "0x4B6bF1d365ea1A8d916Da37FaFd4ae8C86d061D7",
+    "daoTokenAddress": "0xDd99796EAb2A3E48aFef3559772DDc03bCAE7b20",
+    "treasuryAddress": "0xa5D6B605E40227aec1740e5cf9fAE3D8f3B0a355",
+    "stakingHubAddress": "0xa01eF70EDc59F4DF3b47A6181f07932Fcc827553",
+    "workerHubAddress": "0xce3A37aAa9Dd0248cC393A12844b02D27475E60F",
+    "collectionAddress": "0xBb06A2Cb41c95b3041B0E102a38b02Ff0c5Fa921",
+    "hybridModelAddress": "0x9C5007EC2f131Dd0D5316E40a1C1B554a00F5224",
+    "systemPromptManagerAddress": "0xDC6DEA9DD3576312bcB437872B09eb3e658D5b0B"
   }
 }
