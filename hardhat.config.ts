@@ -677,6 +677,30 @@ const config: HardhatUserConfig = {
       zksync: false,
       gasPrice: "auto",
     } as any,
+    story_mainnet: {
+      url: "https://mainnet.storyrpc.io",
+      chainId: 1514,
+      accounts: [
+        process.env.STORY_MAINNET_PRIVATE_KEY,
+        process.env.STORY_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.STORY_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.STORY_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.STORY_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.STORY_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.STORY_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.STORY_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.STORY_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.STORY_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.STORY_MAINNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.STORY_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.STORY_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
   },
   namedAccounts: {
     deployer: 0,
