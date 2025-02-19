@@ -92,14 +92,17 @@
     "squadManager": "0x1a911a6a53f2CF97822d9d3891b55278Ef6548DA"
   },
   "AVAX_MAINNET": {
+    "wEAIAddress": "0xe30f980a7ce39805fd2b75f34a8bef30b4c38859",
     "daoTokenAddress": "0xfb7c73C45802F09574012aAc513b52ee5004DEc8",
     "treasuryAddress": "0x3A88fa62aD757917f191566989559F2952F800B6",
     "stakingHubAddress": "0x3d5F25cBAa908BF928AeF2D2ff2b9FA176623bE0",
     "workerHubAddress": "0xcbeB849347e9fD09Ae125D2d280D30f68504356b",
     "collectionAddress": "0x0a7333eFb6CEC2D84cb0A1488b2e89666c861e8A",
-    "hybridModelAddress": "0x7169Ba2F90Ee0af074621262c1531d568C857E1B",
-    "systemPromptManagerAddress": "0x4AE5Db75b261108f4a586053805094ED54a14436",
-    "squadManager": "0x309919eBCe91c06112aFf6bF1153e813Fe932D59"
+    "hybridModelAddresses": [
+      "0x7169Ba2F90Ee0af074621262c1531d568C857E1B",
+      "0x31c4e363d85452B85f8888c4744Ce00efcc2E0aF"
+    ],
+    "systemPromptManagerAddress": "0x4AE5Db75b261108f4a586053805094ED54a14436"
   },
   "BSC_MAINNET": {
     "wEAIAddress": "0x4b6bf1d365ea1a8d916da37fafd4ae8c86d061d7",
