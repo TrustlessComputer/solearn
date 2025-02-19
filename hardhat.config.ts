@@ -1,4 +1,4 @@
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "@matterlabs/hardhat-zksync";
@@ -9,6 +9,34 @@ import "hardhat-contract-sizer";
 
 import "./scripts/tasks/wallet.task";
 import "./scripts/tasks/control.task";
+
+// const { HyperliquidSDK } = require("@ambitlabs/hyperliquid-sdk");
+// const privateKey =
+//   " ";
+
+// task(
+//   "changeBigBlocks",
+//   "Changes usingBigBlocks value of your account"
+// ).setAction(async (taskArgs) => {
+//   const provider = new ethers.JsonRpcProvider(
+//     "https://api.hyperliquid-testnet.xyz/evm",
+//     999,
+//     {
+//       staticNetwork: true,
+//       batchMaxCount: 1,
+//     }
+//   );
+
+//   const wallet = new ethers.Wallet(privateKey, provider);
+//   console.log("Address: " + wallet.address);
+
+//   const sdk = new HyperliquidSDK("mainnet", {
+//     signer: wallet,
+//     signatureChainId: 999,
+//   });
+//   await sdk.evmUserModifiy(true); // Change to false to disable
+//   console.log(sdk);
+// });
 
 let localTestMnemonic =
   "test test test test test test test test test test test junk";
@@ -700,6 +728,31 @@ const config: HardhatUserConfig = {
       ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
       zksync: false,
       gasPrice: "auto",
+    } as any,
+    hyper_mainnet: {
+      url: "https://rpc.hyperliquid.xyz/evm",
+      chainId: 999,
+      accounts: [
+        process.env.HYPER_MAINNET_PRIVATE_KEY,
+        process.env.HYPER_MAINNET_PRIVATE_KEY_WORKER_1,
+        process.env.HYPER_MAINNET_PRIVATE_KEY_WORKER_2,
+        process.env.HYPER_MAINNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.HYPER_MAINNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.HYPER_MAINNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.HYPER_MAINNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.HYPER_MAINNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.HYPER_MAINNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.HYPER_MAINNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.HYPER_MAINNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.HYPER_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.HYPER_MAINNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+      gasLimit: 1000000,
     } as any,
   },
   namedAccounts: {
