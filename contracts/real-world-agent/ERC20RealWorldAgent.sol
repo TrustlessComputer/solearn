@@ -14,11 +14,12 @@ contract ERC20RealWorldAgent is ERC20, ERC20Permit, ERC20Votes, RealWorldAgent {
         address recipient_,
         uint256 minFeeToUse_,
         uint32 timeout_,
-        IERC20 tokenFee_
+        IERC20 tokenFee_,
+        address worker_
     )
         ERC20(name_, symbol_)
         ERC20Permit(name_)
-        RealWorldAgent(minFeeToUse_, timeout_, tokenFee_)
+        RealWorldAgent(minFeeToUse_, timeout_, tokenFee_, worker_)
     {
         _mint(recipient_, amount_);
     }
