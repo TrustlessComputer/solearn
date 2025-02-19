@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {SSTORE2} from "solady/src/utils/SSTORE2.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IHybridModel} from "../interfaces/IHybridModel.sol";
 import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 import {IUtilityAgent} from "./IUtilityAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
 
-abstract contract UtilityAgent is IUtilityAgent, Ownable {
+contract UtilityAgent is IUtilityAgent, Ownable {
     bytes32 immutable __IPFS_SIG;
     StorageInfo internal _storageInfo;
     address internal _promptScheduler;
