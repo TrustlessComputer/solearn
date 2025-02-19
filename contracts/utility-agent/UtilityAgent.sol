@@ -8,7 +8,7 @@ import {IUtilityAgent} from "./IUtilityAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
 
 contract UtilityAgent is IUtilityAgent, Ownable {
-    bytes32 immutable __IPFS_SIG;
+    bytes32 immutable _IPFS_SIG;
     StorageInfo internal _storageInfo;
     address internal _promptScheduler;
     address internal _modelAddress;
@@ -19,7 +19,7 @@ contract UtilityAgent is IUtilityAgent, Ownable {
         address modelAddress_,
         string memory systemPrompt_,
         bytes memory storageInfo_
-    ) {
+    ) Ownable() {
         if (promptScheduler_ == address(0) || modelAddress_ == address(0)) {
             revert InvalidAddress();
         }
@@ -29,7 +29,7 @@ contract UtilityAgent is IUtilityAgent, Ownable {
         _systemPrompt = systemPrompt_;
         _saveStorageInfo(storageInfo_);
 
-        __IPFS_SIG = keccak256(abi.encodePacked("ipfs"));
+        _IPFS_SIG = keccak256(abi.encodePacked("ipfs"));
     }
 
     function _saveStorageInfo(bytes memory storageInfo) internal virtual {
@@ -100,7 +100,7 @@ contract UtilityAgent is IUtilityAgent, Ownable {
     }
 
     function fetchCode() external view virtual returns (string memory logic) {
-        if (keccak256(abi.encodePacked(getStorageMode())) == __IPFS_SIG) {
+        if (keccak256(abi.encodePacked(getStorageMode())) == _IPFS_SIG) {
             logic = _storageInfo.filename; // return the IPFS hash
         } else {
             logic = IFileStore(_storageInfo.contractAddress)
