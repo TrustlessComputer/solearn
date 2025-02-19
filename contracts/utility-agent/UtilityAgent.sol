@@ -90,7 +90,9 @@ contract UtilityAgent is IUtilityAgent, Ownable {
     function prompt(
         bytes calldata request
     ) external virtual returns (uint256 inferId) {
-        inferId = IHybridModel(_modelAddress).infer(request);
+        inferId = IHybridModel(_modelAddress).infer(
+            abi.encode(_systemPrompt, ";", request)
+        );
 
         emit PromptPerformed(msg.sender, inferId, request);
     }
