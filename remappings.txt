@@ -6,3 +6,4 @@ forge-std/=lib/forge-std/src/
 hardhat-deploy/=node_modules/hardhat-deploy/
 hardhat/=node_modules/hardhat/
 solmate/=node_modules/solmate/
+solady/=node_modules/solady
