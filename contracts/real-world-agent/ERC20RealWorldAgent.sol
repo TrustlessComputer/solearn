@@ -3,8 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import {ERC20Votes, EIP712} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import {IRealWorldAgent} from "./IRealWorldAgent.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import {RealWorldAgent} from "./RealWorldAgent.sol";
 
 contract ERC20RealWorldAgent is ERC20, ERC20Permit, ERC20Votes, RealWorldAgent {

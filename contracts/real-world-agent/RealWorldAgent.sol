@@ -23,18 +23,6 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
         _;
     }
 
-    // function initialize(
-    //     uint256 minFeeToUse_,
-    //     uint32 timeout_,
-    //     IERC20 tokenFee_
-    // ) public initializer {
-    //     __Ownable_init();
-
-    //     _minFeeToUse = minFeeToUse_;
-    //     _timeout = timeout_;
-    //     _nextActId = 0;
-    //     _tokenFee = tokenFee_;
-    // }
     constructor(
         uint256 minFeeToUse_,
         uint32 timeout_,
