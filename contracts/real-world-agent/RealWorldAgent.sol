@@ -29,6 +29,8 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
         IERC20 tokenFee_,
         address worker_
     ) Ownable() {
+        _validateAddress(worker_);
+
         _minFeeToUse = minFeeToUse_;
         _timeout = timeout_;
         _nextActId = 0;
@@ -61,7 +63,7 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
 
         // safe transfer from user to this contract
         if (_minFeeToUse > 0) {
-            _tokenFee.safeTransferFrom(msg.sender, address(this), _minFeeToUse);
+            _tokenFee.safeTransferFrom(msg.sender, _worker, _minFeeToUse);
         }
 
         // Extract signer address from signature using ecrecover
