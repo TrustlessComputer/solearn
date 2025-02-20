@@ -9,14 +9,21 @@ import {IRealWorldAgent} from "./IRealWorldAgent.sol";
 abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
     using SafeERC20 for IERC20;
 
+    bytes32 private constant SIGN_DATA_TYPEHASH = keccak256("REAL_WORLD_AGENT");
+
     uint256 private _minFeeToUse;
-    uint256 private _nextActId;
+    uint256 private _currentActId;
     // check duplicate uuid
     mapping(bytes32 => uint256) private _uuids;
     address private _worker;
     uint32 private _timeout;
     mapping(uint256 => Request) private _requests;
     IERC20 private _tokenFee;
+
+    struct SignData {
+        bytes32 uuid;
+        bytes data;
+    }
 
     modifier notZeroAddress(address addr) {
         _validateAddress(addr);
@@ -33,7 +40,6 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
 
         _minFeeToUse = minFeeToUse_;
         _timeout = timeout_;
-        _nextActId = 0;
         _tokenFee = tokenFee_;
         _worker = worker_;
     }
@@ -58,7 +64,7 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
         bytes memory signature
     ) public returns (uint256) {
         if (_uuids[uuid] != 0) revert DuplicateUuid();
-        uint256 actId = ++_nextActId;
+        uint256 actId = ++_currentActId;
         _uuids[uuid] = actId;
 
         // safe transfer from user to this contract
@@ -68,19 +74,7 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
 
         // Extract signer address from signature using ecrecover
         bytes32 messageHash = getHashToSign(uuid, data);
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-
-        assembly {
-            r := mload(add(signature, 32))
-            s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 96)))
-        }
-
-        address signer = ECDSA.recover(messageHash, v, r, s);
-        if (signer == address(0)) revert InvalidSignature();
-
+        address signer = ECDSA.recover(messageHash, signature);
         emit ExecutionRequested(actId, uuid, signer, data);
 
         // store request
@@ -145,7 +139,7 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
     }
 
     function getActId() external view returns (uint256) {
-        return _nextActId;
+        return _currentActId;
     }
 
     function getRequest(uint256 actId) external view returns (Request memory) {
@@ -162,9 +156,8 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
     ) public view virtual returns (bytes32) {
         bytes32 structHash = keccak256(
             abi.encode(
-                keccak256("Data(bytes32 uuid,bytes data)"),
-                uuid,
-                keccak256(data)
+                SIGN_DATA_TYPEHASH,
+                SignData({uuid: uuid, data: data})
             )
         );
 
