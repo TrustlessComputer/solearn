@@ -2,34 +2,29 @@
 pragma solidity ^0.8.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IHybridModel} from "../interfaces/IHybridModel.sol";
-import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
-import {IUtilityAgent} from "./IUtilityAgent.sol";
+import {IUtilityAgent, ICommonAgent} from "./IUtilityAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
 
-contract UtilityAgent is IUtilityAgent, Ownable {
+abstract contract UtilityAgent is IUtilityAgent, Ownable {
     bytes32 immutable _IPFS_SIG;
-    StorageInfo internal _storageInfo;
-    address internal _promptScheduler;
-    address internal _modelAddress;
+
     string internal _systemPrompt;
+    StorageInfo internal _storageInfo;
+    mapping(bytes32 uuid => RequestInfo) internal _requests;
+
+    modifier notZeroAddress(address addr) {
+        _validateAddress(addr);
+        _;
+    }
 
     constructor(
-        address promptScheduler_,
-        address modelAddress_,
         string memory systemPrompt_,
         bytes memory storageInfo_
     ) Ownable() {
-        if (promptScheduler_ == address(0) || modelAddress_ == address(0)) {
-            revert InvalidAddress();
-        }
-
-        _promptScheduler = promptScheduler_;
-        _modelAddress = modelAddress_;
         _systemPrompt = systemPrompt_;
         _saveStorageInfo(storageInfo_);
 
-        _IPFS_SIG = keccak256(abi.encodePacked("ipfs"));
+        _IPFS_SIG = keccak256(bytes("ipfs"));
     }
 
     function _saveStorageInfo(bytes memory storageInfo) internal virtual {
@@ -44,36 +39,16 @@ contract UtilityAgent is IUtilityAgent, Ownable {
         _storageInfo = StorageInfo(fsContractAddress, filename);
     }
 
+    function _validateAddress(address addr) internal pure {
+        if (addr == address(0)) revert ZeroAddress();
+    }
+
     function _updateFileName(string memory filename) internal virtual {
         _storageInfo.filename = filename;
     }
 
     function updateFileName(string memory filename) external virtual onlyOwner {
         _updateFileName(filename);
-    }
-
-    function updatePromptScheduler(
-        address promptScheduler
-    ) external virtual onlyOwner {
-        _promptScheduler = promptScheduler;
-
-        emit PromptSchedulerHubUpdate(promptScheduler);
-    }
-
-    function getPromptSchedulerAddress() external view returns (address) {
-        return _promptScheduler;
-    }
-
-    function updateModelAddress(
-        address modelAddress
-    ) external virtual onlyOwner {
-        _modelAddress = modelAddress;
-
-        emit ModelUpdate(modelAddress);
-    }
-
-    function getModelAddress() external view returns (address) {
-        return _modelAddress;
     }
 
     function updateSystemPrompt(
@@ -88,21 +63,47 @@ contract UtilityAgent is IUtilityAgent, Ownable {
     }
 
     function prompt(
+        bytes memory request
+    ) external payable virtual returns (uint256);
+
+    function prompt(
+        bytes32 uuid,
         bytes calldata request
-    ) external virtual returns (uint256 inferId) {
-        inferId = IHybridModel(_modelAddress).infer(
-            abi.encode(abi.encodePacked(_systemPrompt), ";", request)
-        );
+    ) external payable virtual returns (uint256);
 
-        emit PromptPerformed(msg.sender, inferId, request);
+    function forward(
+        bytes32 uuid,
+        address dstAgent,
+        bytes memory request
+    ) external payable returns (uint256 dstActionId) {
+        if (_requests[uuid].agentAddress != address(0)) {
+            revert DuplicateUuid();
+        }
+
+        bytes memory forwardData = _buildForwardData(request);
+        dstActionId = ICommonAgent(dstAgent).prompt(uuid, forwardData);
+
+        _requests[uuid] = RequestInfo(dstAgent, uint64(dstActionId));
+
+        emit ForwardPerformed(uuid, dstActionId, msg.sender, forwardData);
     }
 
-    function getResultById(uint256 id) external view returns (bytes memory) {
-        return IWorkerHub(_promptScheduler).getInferenceInfo(id).output;
+    function _buildForwardData(
+        bytes memory request
+    ) internal view returns (bytes memory) {
+        return abi.encodePacked(bytes(_systemPrompt), request);
     }
+
+    function getResultById(
+        bytes32 uuid
+    ) external view virtual returns (bytes memory);
+
+    function getResultById(
+        uint256 id
+    ) external view virtual returns (bytes memory);
 
     function fetchCode() external view virtual returns (string memory logic) {
-        if (keccak256(abi.encodePacked(getStorageMode())) == _IPFS_SIG) {
+        if (keccak256(bytes(getStorageMode())) == _IPFS_SIG) {
             logic = _storageInfo.filename; // return the IPFS hash
         } else {
             logic = IFileStore(_storageInfo.contractAddress)
