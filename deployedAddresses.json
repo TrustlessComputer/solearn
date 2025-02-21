@@ -187,5 +187,15 @@
     "collectionAddress": "0x26c49B07F4Bd07243943Db203a7915441567ff9c",
     "hybridModelAddress": "0xf65CADd63E5196072E7171e5139AD4a48D5abBD1",
     "systemPromptManagerAddress": "0x31C58DE8a5c79A535b0b581DfcEAd957F8D44EfD"
+  },
+  "MONAD_TESTNET": {
+    "wEAIAddress": "0x4b6bf1d365ea1a8d916da37fafd4ae8c86d061d7",
+    "daoTokenAddress": "0x1fA2E5294394b59F32d84C186CEB699Eb8e6df73",
+    "treasuryAddress": "0x46d84206FBb7F23eac79c5e97A9494d4aAe83ea9",
+    "stakingHubAddress": "0xF534Eb687F90a35aA02EdE4859C697D7585Ab94f",
+    "workerHubAddress": "0xa8f01b3Bd16A3E59d268bdE15efD98256168E907",
+    "collectionAddress": "0x2f8B38285BC0a4994dfB84f96F679bb63B7C35a8",
+    "hybridModelAddress": "0x2bcfb233e9E59da91fdff4fD1e20C163284cCA82",
+    "systemPromptManagerAddress": "0x7EFBB1a99f7Ac8161d05Ad286567D597B9dEAA2b"
   }
 }
