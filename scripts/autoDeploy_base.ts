@@ -81,9 +81,9 @@ async function deployStakingHub(
   // TODO: @mr 6789 check it
   // ***************************
   const minerMinimumStake = ethers.parseEther("25000");
-  const blockPerEpoch = (600 * 2) / 6;
+  const blockPerEpoch = (600 * 2) / 0.5;
   const rewardPerEpoch = ethers.parseEther("0.38");
-  const unstakeDelayTime = 302400; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
+  const unstakeDelayTime = 3628800; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
   const penaltyDuration = 0;
   const finePercentage = 0;
   const minFeeToUse = ethers.parseEther("0");
@@ -137,7 +137,7 @@ async function deployWorkerHub(
   const feeL2Percentage = 0;
   const feeTreasuryPercentage = 100_00;
   const minerRequirement = 3;
-  const submitDuration = 10 * 6 * 90;
+  const submitDuration = 10 * 6 * 90000;
   const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
   const daoTokenReward = ethers.parseEther("0");
   const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
@@ -223,7 +223,8 @@ async function deployModelCollection() {
   // const nextModelId = 220_001; // MODE
   // const nextModelId = 160_001; // TRON
   // const nextModelId = 230_001; // CELO
-  const nextModelId = 240_001; // ZETA
+  // const nextModelId = 240_001; // ZETA
+  const nextModelId = 1_020_001; // ZETA
 
   // ***************************
 

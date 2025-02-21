@@ -758,6 +758,31 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
       gasLimit: 1000000,
     } as any,
+    monad_testnet: {
+      url: "https://testnet-rpc.monad.xyz",
+      chainId: 10143,
+      accounts: [
+        process.env.MONAD_TESTNET_PRIVATE_KEY,
+        process.env.MONAD_TESTNET_PRIVATE_KEY_WORKER_1,
+        process.env.MONAD_TESTNET_PRIVATE_KEY_WORKER_2,
+        process.env.MONAD_TESTNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.MONAD_TESTNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.MONAD_TESTNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.MONAD_TESTNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.MONAD_TESTNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.MONAD_TESTNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.MONAD_TESTNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.MONAD_TESTNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.MONAD_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.MONAD_TESTNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+      gasLimit: 3000000,
+    } as any,
   },
   namedAccounts: {
     deployer: 0,
