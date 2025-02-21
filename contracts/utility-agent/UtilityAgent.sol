@@ -3,20 +3,13 @@ pragma solidity ^0.8.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IUtilityAgent} from "./IUtilityAgent.sol";
-import {ILLMAgent} from "../llm-agent/ILLMAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
 
-abstract contract UtilityAgent is IUtilityAgent, Ownable {
+contract UtilityAgent is IUtilityAgent, Ownable {
     bytes32 immutable _IPFS_SIG;
 
     string private _systemPrompt;
     StorageInfo private _storageInfo;
-    mapping(bytes32 uuid => RequestInfo) internal _requests;
-
-    modifier notZeroAddress(address addr) {
-        _validateAddress(addr);
-        _;
-    }
 
     constructor(
         string memory systemPrompt_,
@@ -40,10 +33,6 @@ abstract contract UtilityAgent is IUtilityAgent, Ownable {
         _storageInfo = StorageInfo(fsContractAddress, filename);
     }
 
-    function _validateAddress(address addr) internal pure {
-        if (addr == address(0)) revert ZeroAddress();
-    }
-
     function updateFileName(string memory filename) external onlyOwner {
         _updateFileName(filename);
     }
@@ -64,35 +53,6 @@ abstract contract UtilityAgent is IUtilityAgent, Ownable {
 
     function getSystemPrompt() external view returns (string memory) {
         return _systemPrompt;
-    }
-
-    function forward(
-        bytes32 uuid,
-        address dstAgent,
-        bytes memory request
-    ) external payable returns (uint256 dstActionId) {
-        if (_requests[uuid].agentAddress != address(0)) {
-            revert DuplicateUuid();
-        }
-
-        bytes memory forwardData = _buildForwardData(request);
-        dstActionId = ILLMAgent(dstAgent).prompt(uuid, forwardData);
-
-        _requests[uuid] = RequestInfo(dstAgent, uint64(dstActionId));
-
-        emit ForwardPerformed(uuid, dstActionId, msg.sender, forwardData);
-    }
-
-    function _buildForwardData(
-        bytes memory request
-    ) internal view virtual returns (bytes memory) {
-        return abi.encodePacked(bytes(_systemPrompt), " ; ", request);
-    }
-
-    function getRequestInfo(
-        bytes32 uuid
-    ) external view returns (RequestInfo memory) {
-        return _requests[uuid];
     }
 
     function fetchCode() external view virtual returns (string memory logic) {

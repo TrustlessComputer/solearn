@@ -21,8 +21,4 @@ _models
 _outputs
 migrate-data
 cache_forge
-out
-
-!artifacts-zk/contracts/WorkerHub.sol/WorkerHub.json
-!artifacts-zk/contracts/SystemPromptManager.sol/SystemPromptManager.json
-!artifacts/contracts/WorkerHub.sol/WorkerHub.json
+out 

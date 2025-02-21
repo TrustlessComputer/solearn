@@ -51,30 +51,30 @@ async function main() {
   );
 
   // Transfer wEAI from deployer address to workers address
-  console.log("Transfer wEAI to workers");
-  const txTransfer1 = await wEAI.transfer(
-    addrSigner1,
-    ethers.parseEther("25000")
-  );
-  const resTransfer1 = await txTransfer1.wait();
-  console.log("hash: ", resTransfer1?.hash);
-  console.log("status: ", resTransfer1?.status);
+  // console.log("Transfer wEAI to workers");
+  // const txTransfer1 = await wEAI.transfer(
+  //   addrSigner1,
+  //   ethers.parseEther("25000")
+  // );
+  // const resTransfer1 = await txTransfer1.wait();
+  // console.log("hash: ", resTransfer1?.hash);
+  // console.log("status: ", resTransfer1?.status);
 
-  const txTransfer2 = await wEAI.transfer(
-    addrSigner2,
-    ethers.parseEther("25000")
-  );
-  const resTransfer2 = await txTransfer2.wait();
-  console.log("hash: ", resTransfer2?.hash);
-  console.log("status: ", resTransfer2?.status);
+  // const txTransfer2 = await wEAI.transfer(
+  //   addrSigner2,
+  //   ethers.parseEther("25000")
+  // );
+  // const resTransfer2 = await txTransfer2.wait();
+  // console.log("hash: ", resTransfer2?.hash);
+  // console.log("status: ", resTransfer2?.status);
 
-  const txTransfer3 = await wEAI.transfer(
-    addrSigner3,
-    ethers.parseEther("25000")
-  );
-  const resTransfer3 = await txTransfer3.wait();
-  console.log("hash: ", resTransfer3?.hash);
-  console.log("status: ", resTransfer3?.status);
+  // const txTransfer3 = await wEAI.transfer(
+  //   addrSigner3,
+  //   ethers.parseEther("25000")
+  // );
+  // const resTransfer3 = await txTransfer3.wait();
+  // console.log("hash: ", resTransfer3?.hash);
+  // console.log("status: ", resTransfer3?.status);
 
   // check EAI balance
   const balance1 = await wEAI.balanceOf(addrSigner1);
@@ -86,19 +86,19 @@ async function main() {
 
   // Workers approve wEAI to StakingHub
   console.log("Approve wEAI to StakingHub");
-  const txApprove1 = await wEAI
-    .connect(signer1)
-    .approve(config.stakingHubAddress, ethers.parseEther("25000"));
-  const resApprove1 = await txApprove1.wait();
-  console.log("hash: ", resApprove1?.hash);
-  console.log("status: ", resApprove1?.status);
+  // const txApprove1 = await wEAI
+  //   .connect(signer1)
+  //   .approve(config.stakingHubAddress, ethers.parseEther("25000"));
+  // const resApprove1 = await txApprove1.wait();
+  // console.log("hash: ", resApprove1?.hash);
+  // console.log("status: ", resApprove1?.status);
 
-  const txApprove2 = await wEAI
-    .connect(signer2)
-    .approve(config.stakingHubAddress, ethers.parseEther("25000"));
-  const resApprove2 = await txApprove2.wait();
-  console.log("hash: ", resApprove2?.hash);
-  console.log("status: ", resApprove2?.status);
+  // const txApprove2 = await wEAI
+  //   .connect(signer2)
+  //   .approve(config.stakingHubAddress, ethers.parseEther("25000"));
+  // const resApprove2 = await txApprove2.wait();
+  // console.log("hash: ", resApprove2?.hash);
+  // console.log("status: ", resApprove2?.status);
 
   const txApprove3 = await wEAI
     .connect(signer3)
@@ -113,7 +113,7 @@ async function main() {
     "StakingHub"
   )) as StakingHub;
 
-  const modelAddress = ""; //TODO: fill the model address that you want to register
+  const modelAddress = "0x2bcfb233e9E59da91fdff4fD1e20C163284cCA82"; //TODO: fill the model address that you want to register
   const tier = 1;
 
   console.log("Register miners");
