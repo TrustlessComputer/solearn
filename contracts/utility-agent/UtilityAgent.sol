@@ -2,14 +2,15 @@
 pragma solidity ^0.8.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IUtilityAgent, ICommonAgent} from "./IUtilityAgent.sol";
+import {IUtilityAgent} from "./IUtilityAgent.sol";
+import {ILLMAgent} from "../llm-agent/ILLMAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
 
 abstract contract UtilityAgent is IUtilityAgent, Ownable {
     bytes32 immutable _IPFS_SIG;
 
-    string internal _systemPrompt;
-    StorageInfo internal _storageInfo;
+    string private _systemPrompt;
+    StorageInfo private _storageInfo;
     mapping(bytes32 uuid => RequestInfo) internal _requests;
 
     modifier notZeroAddress(address addr) {
@@ -43,17 +44,20 @@ abstract contract UtilityAgent is IUtilityAgent, Ownable {
         if (addr == address(0)) revert ZeroAddress();
     }
 
-    function _updateFileName(string memory filename) internal virtual {
-        _storageInfo.filename = filename;
-    }
-
-    function updateFileName(string memory filename) external virtual onlyOwner {
+    function updateFileName(string memory filename) external onlyOwner {
         _updateFileName(filename);
     }
 
-    function updateSystemPrompt(
-        string memory systemPrompt
-    ) external virtual onlyOwner {
+    function _updateFileName(string memory filename) internal virtual {
+        _storageInfo.filename = filename;
+        emit FileNameUpdate(filename);
+    }
+
+    function updateSystemPrompt(string memory systemPrompt) external onlyOwner {
+        _updateSystemPrompt(systemPrompt);
+    }
+
+    function _updateSystemPrompt(string memory systemPrompt) internal virtual {
         _systemPrompt = systemPrompt;
         emit SystemPromptUpdate(systemPrompt);
     }
@@ -61,15 +65,6 @@ abstract contract UtilityAgent is IUtilityAgent, Ownable {
     function getSystemPrompt() external view returns (string memory) {
         return _systemPrompt;
     }
-
-    function prompt(
-        bytes memory request
-    ) external payable virtual returns (uint256);
-
-    function prompt(
-        bytes32 uuid,
-        bytes calldata request
-    ) external payable virtual returns (uint256);
 
     function forward(
         bytes32 uuid,
@@ -81,7 +76,7 @@ abstract contract UtilityAgent is IUtilityAgent, Ownable {
         }
 
         bytes memory forwardData = _buildForwardData(request);
-        dstActionId = ICommonAgent(dstAgent).prompt(uuid, forwardData);
+        dstActionId = ILLMAgent(dstAgent).prompt(uuid, forwardData);
 
         _requests[uuid] = RequestInfo(dstAgent, uint64(dstActionId));
 
@@ -90,17 +85,15 @@ abstract contract UtilityAgent is IUtilityAgent, Ownable {
 
     function _buildForwardData(
         bytes memory request
-    ) internal view returns (bytes memory) {
-        return abi.encodePacked(bytes(_systemPrompt), request);
+    ) internal view virtual returns (bytes memory) {
+        return abi.encodePacked(bytes(_systemPrompt), " ; ", request);
     }
 
-    function getResultById(
+    function getRequestInfo(
         bytes32 uuid
-    ) external view virtual returns (bytes memory);
-
-    function getResultById(
-        uint256 id
-    ) external view virtual returns (bytes memory);
+    ) external view returns (RequestInfo memory) {
+        return _requests[uuid];
+    }
 
     function fetchCode() external view virtual returns (string memory logic) {
         if (keccak256(bytes(getStorageMode())) == _IPFS_SIG) {
@@ -120,12 +113,7 @@ abstract contract UtilityAgent is IUtilityAgent, Ownable {
         }
     }
 
-    function getStorageInfo()
-        external
-        view
-        virtual
-        returns (StorageInfo memory)
-    {
+    function getStorageInfo() external view returns (StorageInfo memory) {
         return _storageInfo;
     }
 

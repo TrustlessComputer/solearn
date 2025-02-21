@@ -93,9 +93,13 @@ contract LLMAgent is ILLMAgent, Ownable {
     function _forwardToModelContract(
         bytes memory request
     ) internal returns (uint256 inferId) {
-        inferId = IHybridModel(_modelAddress).infer(
-            abi.encodePacked(bytes(_systemPrompt), ";", request)
-        );
+        inferId = IHybridModel(_modelAddress).infer(_buildForwardData(request));
+    }
+
+    function _buildForwardData(
+        bytes memory request
+    ) internal view virtual returns (bytes memory) {
+        return abi.encodePacked(bytes(_systemPrompt), " ; ", request);
     }
 
     function getResultById(bytes32 uuid) external view returns (bytes memory) {
@@ -107,8 +111,4 @@ contract LLMAgent is ILLMAgent, Ownable {
         return
             IPromptScheduler(_promptScheduler).getInferenceInfo(inferId).output;
     }
-
-    function _processBeforeExecution(
-        bytes memory externalData
-    ) internal virtual {}
 }
