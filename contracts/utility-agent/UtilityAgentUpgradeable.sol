@@ -5,11 +5,13 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {IUtilityAgent} from "./IUtilityAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
 
-contract UtilityAgent is IUtilityAgent, OwnableUpgradeable {
+contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
 
     string private _systemPrompt;
     StorageInfo private _storageInfo;
+
+    uint256[50] private __gap;
 
     function initialize(
         string memory systemPrompt_,

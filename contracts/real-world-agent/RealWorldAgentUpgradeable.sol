@@ -6,7 +6,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IRealWorldAgent} from "./IRealWorldAgent.sol";
 
-contract RealWorldAgent is
+contract RealWorldAgentUpgradeable is
     IRealWorldAgent,
     OwnableUpgradeable,
     EIP712Upgradeable
@@ -23,6 +23,8 @@ contract RealWorldAgent is
     uint32 private _timeout;
     mapping(uint256 => Request) private _requests;
     IERC20 private _tokenFee;
+
+    uint256[50] private __gap;
 
     struct SignData {
         bytes32 uuid;
