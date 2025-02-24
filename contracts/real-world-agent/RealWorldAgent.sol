@@ -6,7 +6,7 @@ import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 import {EIP712, ECDSA} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {IRealWorldAgent} from "./IRealWorldAgent.sol";
 
-abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
+contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
     using SafeERC20 for IERC20;
 
     bytes32 private constant SIGN_DATA_TYPEHASH = keccak256("REAL_WORLD_AGENT");
@@ -31,11 +31,13 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
     }
 
     constructor(
+        string memory name_,
+        string memory version_,
         uint256 minFeeToUse_,
         uint32 timeout_,
         IERC20 tokenFee_,
         address worker_
-    ) Ownable() {
+    ) Ownable() EIP712(name_, version_) {
         _validateAddress(worker_);
 
         _minFeeToUse = minFeeToUse_;
@@ -155,10 +157,7 @@ abstract contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
         bytes memory data
     ) public view virtual returns (bytes32) {
         bytes32 structHash = keccak256(
-            abi.encode(
-                SIGN_DATA_TYPEHASH,
-                SignData({uuid: uuid, data: data})
-            )
+            abi.encode(SIGN_DATA_TYPEHASH, SignData({uuid: uuid, data: data}))
         );
 
         return _hashTypedDataV4(structHash);
