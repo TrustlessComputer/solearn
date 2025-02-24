@@ -16,6 +16,6 @@ interface ICommonAgent {
     error ZeroAddress();
     error DuplicateUuid();
 
-    function updateSystemPrompt(string memory _systemPrompt) external;
+    function updateSystemPrompt(string calldata _systemPrompt) external;
     function getSystemPrompt() external view returns (string memory);
 }
