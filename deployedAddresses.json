@@ -197,5 +197,15 @@
     "collectionAddress": "0x2f8B38285BC0a4994dfB84f96F679bb63B7C35a8",
     "hybridModelAddress": "0x2bcfb233e9E59da91fdff4fD1e20C163284cCA82",
     "systemPromptManagerAddress": "0x7EFBB1a99f7Ac8161d05Ad286567D597B9dEAA2b"
+  },
+  "MEGAETH_TESTNET": {
+    "wEAIAddress": "0x24842F0fd8D06864fff5F3e530b1400B48400F12",
+    "daoTokenAddress": "0x0fb3ABEC90225f08d588a306dAF4E8B4d80e890A",
+    "treasuryAddress": "0x7EaA52e3307418929C794bB73Ef83C1b87F82DE7",
+    "stakingHubAddress": "0xF37f48c70E3cD1C3d92AF33d451cdd6d39F5f279",
+    "workerHubAddress": "0x51D1E39D4E83f411033F3F6E159c13C18Fae26A2",
+    "collectionAddress": "0xFf62BEf075411172f0C43f4B00aaa79133ed6450",
+    "hybridModelAddress": "0xF5ff10edf673017A6455f7Da2994578565586Fa8",
+    "systemPromptManagerAddress": "0x0EB5DaB1B99c5aAa0C825F2B8F2aC142c12Cc9c4"
   }
 }
