@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {EIP712, ECDSA} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IRealWorldAgent} from "./IRealWorldAgent.sol";
 
-contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
+contract RealWorldAgent is
+    IRealWorldAgent,
+    OwnableUpgradeable,
+    EIP712Upgradeable
+{
     using SafeERC20 for IERC20;
 
     bytes32 private constant SIGN_DATA_TYPEHASH = keccak256("REAL_WORLD_AGENT");
@@ -30,14 +34,17 @@ contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
         _;
     }
 
-    constructor(
+    function initialize(
         string memory name_,
         string memory version_,
         uint256 minFeeToUse_,
         uint32 timeout_,
         IERC20 tokenFee_,
         address worker_
-    ) Ownable() EIP712(name_, version_) {
+    ) external initializer {
+        __Ownable_init();
+        __EIP712_init_unchained(name_, version_);
+
         _validateAddress(worker_);
 
         _minFeeToUse = minFeeToUse_;
@@ -76,7 +83,7 @@ contract RealWorldAgent is IRealWorldAgent, Ownable, EIP712 {
 
         // Extract signer address from signature using ecrecover
         bytes32 messageHash = getHashToSign(uuid, data);
-        address signer = ECDSA.recover(messageHash, signature);
+        address signer = ECDSAUpgradeable.recover(messageHash, signature);
         emit ExecutionRequested(actId, uuid, signer, data);
 
         // store request

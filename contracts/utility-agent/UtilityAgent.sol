@@ -1,24 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IUtilityAgent} from "./IUtilityAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
 
-contract UtilityAgent is IUtilityAgent, Ownable {
-    bytes32 immutable _IPFS_SIG;
+contract UtilityAgent is IUtilityAgent, OwnableUpgradeable {
+    bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
 
     string private _systemPrompt;
     StorageInfo private _storageInfo;
 
-    constructor(
+    function initialize(
         string memory systemPrompt_,
         bytes memory storageInfo_
-    ) Ownable() {
+    ) external initializer {
+        __Ownable_init();
         _systemPrompt = systemPrompt_;
         _saveStorageInfo(storageInfo_);
-
-        _IPFS_SIG = keccak256(bytes("ipfs"));
     }
 
     function _saveStorageInfo(bytes memory storageInfo) internal virtual {
