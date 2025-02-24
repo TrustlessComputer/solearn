@@ -783,6 +783,30 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
       gasLimit: 3000000,
     } as any,
+    megaeth_testnet: {
+      url: process.env.MEGAETH_TESTNET_RPC_URL,
+      chainId: 1338,
+      accounts: [
+        process.env.MEGAETH_TESTNET_PRIVATE_KEY,
+        process.env.MEGAETH_TESTNET_PRIVATE_KEY_WORKER_1,
+        process.env.MEGAETH_TESTNET_PRIVATE_KEY_WORKER_2,
+        process.env.MEGAETH_TESTNET_PRIVATE_KEY_WORKER_3,
+      ],
+      l2OwnerAddress: process.env.MEGAETH_TESTNET_L2_OWNER_ADDRESS,
+      treasuryAddress: process.env.MEGAETH_TESTNET_TREASURY_ADDRESS,
+      collectionAddress: process.env.MEGAETH_TESTNET_COLLECTION_ADDRESS,
+      workerHubAddress: process.env.MEGAETH_TESTNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.MEGAETH_TESTNET_STAKING_HUB_ADDRESS,
+      daoTokenAddress: process.env.MEGAETH_TESTNET_DAO_TOKEN_ADDRESS,
+      hybridModelAddress: process.env.MEGAETH_TESTNET_HYBRID_MODEL_ADDRESS,
+      systemPromptManagerAddress:
+        process.env.MEGAETH_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
+      wEAIAddress: process.env.MEGAETH_TESTNET_WEAI,
+      allowUnlimitedContractSize: true,
+      ethNetwork: "https://testnet.runechain.com/rpc", // The Ethereum Web3 RPC URL.
+      zksync: false,
+      gasPrice: "auto",
+    } as any,
   },
   namedAccounts: {
     deployer: 0,
