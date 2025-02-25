@@ -6,9 +6,10 @@ import {
   IWorkerHub,
   RealWorldGatewayCollection,
   RealWorldPromptScheduler,
-  StakingHub,
   SystemPromptManager,
   Treasury,
+  RealWorldStakingHub,
+  RealWorldAgentUpgradeable,
 } from "../typechain-types";
 import { deployOrUpgrade } from "./lib/utils";
 import { EventLog, Signer } from "ethers";
@@ -101,11 +102,11 @@ async function deployStakingHub(
 
   const stakingHub = (await deployOrUpgrade(
     undefined,
-    "StakingHub",
+    "RealWorldStakingHub",
     constructorParams,
     config,
     true
-  )) as unknown as StakingHub;
+  )) as unknown as RealWorldStakingHub;
   const stakingHubAddress = stakingHub.target;
 
   return stakingHubAddress;
@@ -190,7 +191,7 @@ async function deployWorkerHub(
   const stakingHubContract = (await getContractInstance(
     stakingHubAddress,
     "StakingHub"
-  )) as unknown as StakingHub;
+  )) as unknown as RealWorldStakingHub;
 
   const txUpdate = await stakingHubContract.setWorkerHubAddress(
     workerHubAddress
@@ -254,8 +255,12 @@ async function deployRealWorldHybridGateway(
 ) {
   console.log("DEPLOY HYBRID MODEL...");
   // const WorkerHub = await ethers.getContractFactory("WorkerHub");
-  const RealWorldStakingHub = await ethers.getContractFactory("RealWorldStakingHub");
-  const RealWorldGatewayCollection = await ethers.getContractFactory("RealWorldGatewayCollection");
+  const RealWorldStakingHub = await ethers.getContractFactory(
+    "RealWorldStakingHub"
+  );
+  const RealWorldGatewayCollection = await ethers.getContractFactory(
+    "RealWorldGatewayCollection"
+  );
 
   assert.ok(collectionAddress, `Missing ${networkName}_COLLECTION_ADDRESS !`);
   assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
@@ -296,7 +301,7 @@ async function deployRealWorldHybridGateway(
     true
   )) as unknown as RealWorldHybridGateway;
 
-  const RealWorldHybridGatewayAddress = RealWorldHybridGateway.target;
+  const realWorldHybridGatewayAddress = RealWorldHybridGateway.target;
 
   // COLLECTION MINT NFT TO MODEL OWNER
   const signer1 = (await ethers.getSigners())[0];
@@ -307,7 +312,7 @@ async function deployRealWorldHybridGateway(
   const mintReceipt = await (
     await collection
       .connect(signer1)
-      .mint(modelOwnerAddress, metadata, RealWorldHybridGatewayAddress)
+      .mint(modelOwnerAddress, metadata, realWorldHybridGatewayAddress)
   ).wait();
 
   const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
@@ -319,9 +324,11 @@ async function deployRealWorldHybridGateway(
 
   // STAKING HUB REGISTER MODEL
   console.log("STAKING HUB REGISTER MODEL...");
-  const stakingHub = RealWorldStakingHub.attach(stakingHubAddress) as RealWorldStakingHub;
+  const stakingHub = RealWorldStakingHub.attach(
+    stakingHubAddress
+  ) as RealWorldStakingHub;
   const txRegis = await stakingHub.registerGateway(
-    RealWorldHybridGatewayAddress,
+    realWorldHybridGatewayAddress,
     minHardware,
     ethers.parseEther("0")
   );
@@ -329,7 +336,7 @@ async function deployRealWorldHybridGateway(
   console.log("Tx hash: ", receipt?.hash);
   console.log("Tx status: ", receipt?.status);
 
-  return RealWorldHybridGatewayAddress;
+  return realWorldHybridGatewayAddress;
 }
 
 async function deploySystemPromptManager(
@@ -340,7 +347,10 @@ async function deploySystemPromptManager(
   console.log("DEPLOY SYSTEM PROMPT MANAGER...");
 
   assert.ok(l2OwnerAddress, `Missing ${networkName}_L2_OWNER_ADDRESS!`);
-  assert.ok(RealWorldHybridGatewayAddress, `Missing ${networkName}_HYBRID_MODEL_ADDRESS!`);
+  assert.ok(
+    RealWorldHybridGatewayAddress,
+    `Missing ${networkName}_HYBRID_MODEL_ADDRESS!`
+  );
   assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
 
   const name = "Eternal AI";
@@ -370,6 +380,23 @@ async function deploySystemPromptManager(
   )) as unknown as SystemPromptManager;
 
   return systemPromptManager.target;
+}
+
+async function deployRealWorldAgent(gateway: string) {
+  console.log("DEPLOY REAL WORLD AGENT...");
+  assert.ok(gateway, `Missing ${networkName}_GATEWAY_ADDRESS!`);
+
+  const initParams = ["RWAgent", "RWAgent", gateway];
+
+  const ins = (await deployOrUpgrade(
+    undefined,
+    "RealWorldAgentUpgradeable",
+    initParams,
+    config,
+    true
+  )) as any as RealWorldAgentUpgradeable;
+
+  return ins.target;
 }
 
 export async function getContractInstance(
@@ -413,16 +440,14 @@ async function main() {
   );
   const collectionAddress = await deployRealWorldGatewayCollection();
 
-  const RealWorldHybridGatewayAddress = await deployRealWorldHybridGateway(
+  const hybridGatewayAddress = await deployRealWorldHybridGateway(
     workerHubAddress.toString(),
     stakingHubAddress.toString(),
     collectionAddress.toString()
   );
 
-  const systemPromptManagerAddress = await deploySystemPromptManager(
-    config.l2OwnerAddress,
-    RealWorldHybridGatewayAddress.toString(),
-    workerHubAddress.toString()
+  const realWorldAgentAddress = await deployRealWorldAgent(
+    hybridGatewayAddress.toString()
   );
 
   const deployedAddresses = {
@@ -432,13 +457,15 @@ async function main() {
     stakingHubAddress,
     workerHubAddress,
     collectionAddress,
-    RealWorldHybridGatewayAddress,
-    systemPromptManagerAddress,
+    hybridGatewayAddress,
+    realWorldAgentAddress,
   };
+
+  console.log("DEPLOYED ADDRESSES: ", deployedAddresses);
 
   const networkName = network.name.toUpperCase();
 
-  await saveDeployedAddresses(networkName, deployedAddresses);
+  // await saveDeployedAddresses(networkName, deployedAddresses);
 }
 
 main()
