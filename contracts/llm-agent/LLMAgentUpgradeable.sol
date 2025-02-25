@@ -7,7 +7,7 @@ import {ILLMAgent} from "./ILLMAgent.sol";
 import {IPromptScheduler} from "../interfaces/IPromptScheduler.sol";
 import {IHybridModel} from "../interfaces/IHybridModel.sol";
 
-contract LLMAgent is ILLMAgent, OwnableUpgradeable {
+contract LLMAgentUpgradeable is ILLMAgent, OwnableUpgradeable {
     address internal _promptScheduler;
     address internal _modelAddress;
     string internal _systemPrompt;

@@ -10,7 +10,7 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
 
     string private _systemPrompt;
     mapping(string => string) private _endPoints;
-    uint32 private _configsNum;
+    uint256 private _configsNum;
     mapping(uint256 => StorageInfo) private _storageInfos;
 
     uint256[50] private __gap;
@@ -31,6 +31,12 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
         for (uint256 i = 0; i < len; i++) {
             _addNewStorageInfo(storageInfos_[i]);
         }
+    }
+
+    function addNewStorageInfo(
+        StorageInfo calldata storageInfo
+    ) external virtual onlyOwner {
+        _addNewStorageInfo(storageInfo);
     }
 
     /**
@@ -71,6 +77,25 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     ) internal virtual {
         _storageInfos[cfIndex] = storageInfo;
         emit StorageInfoUpdate(cfIndex, storageInfo);
+    }
+
+    /**
+     * @notice Removes the storage information for a given index.
+     * @param cfIndex The index of the storage information to remove.
+     */
+    function removeStorageInfo(uint256 cfIndex) external onlyOwner {
+        if (cfIndex >= _configsNum) {
+            revert InvalidData();
+        }
+
+        uint256 lastIdx = _configsNum - 1;
+        if (cfIndex < lastIdx) {
+            _storageInfos[cfIndex] = _storageInfos[lastIdx];
+        }
+
+        delete _storageInfos[lastIdx];
+        _configsNum--;
+        emit StorageInfoRemoved(cfIndex);
     }
 
     /**
@@ -208,5 +233,14 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
         string calldata key
     ) external view returns (string memory value) {
         value = _endPoints[key];
+    }
+
+    /**
+     * @notice Returns the number of configurations.
+     * @dev This function is a view function, meaning it does not modify the state.
+     * @return The number of configurations as a uint256.
+     */
+    function getConfigsNumber() external view returns (uint256) {
+        return _configsNum;
     }
 }

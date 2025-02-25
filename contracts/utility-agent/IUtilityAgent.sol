@@ -10,6 +10,7 @@ interface IUtilityAgent {
     }
 
     event StorageInfoUpdate(uint256 indexed cfIndex, StorageInfo newInfo);
+    event StorageInfoRemoved(uint256 indexed cfIndex);
     event EndpointUpdate(string key, string value);
     event SystemPromptUpdate(string newSystemPrompt);
 
@@ -103,4 +104,11 @@ interface IUtilityAgent {
     function getEndpoint(
         string calldata key
     ) external view returns (string memory value);
+
+    /**
+     * @notice Returns the number of configurations.
+     * @dev This function is a view function, meaning it does not modify the state.
+     * @return The number of configurations as a uint256.
+     */
+    function getConfigsNumber() external view returns (uint256);
 }
