@@ -9,7 +9,7 @@ import {Random} from "../lib/Random.sol";
 import {TransferHelper} from "../lib/TransferHelper.sol";
 import {PromptSchedulerStorage, IWorkerHub, Set} from "./storages/PromptSchedulerStorage.sol";
 import {IDAOToken} from "../tokens/IDAOToken.sol";
-import {IStakingHub} from "../interfaces/IStakingHub.sol";
+import {IStakingHub} from "./interfaces/IStakingHub.sol";
 
 contract RealWorldPromptScheduler is
     PromptSchedulerStorage,
@@ -126,10 +126,10 @@ contract RealWorldPromptScheduler is
         uint256 _scoringFee,
         bool _flag
     ) internal virtual returns (uint256) {
-        IStakingHub.Model memory model = IStakingHub(stakingHub).getModelInfo(
+        IStakingHub.Gateway memory gateway = IStakingHub(stakingHub).getGatewayInfo(
             msg.sender
         );
-        if (model.tier == 0) revert Unauthorized();
+        if (gateway.tier == 0) revert Unauthorized();
 
         uint256 promptId = ++promptNumber;
         PromptData storage promptData = prompts[promptId];
@@ -145,7 +145,7 @@ contract RealWorldPromptScheduler is
         promptData.value = value - feeL2 - feeTreasury;
         promptData.creator = _creator;
         promptData.referrer = referrerOf[_creator];
-        promptData.modelAddress = msg.sender;
+        promptData.gatewayAddress = msg.sender;
 
         _assignMiners(promptId, msg.sender);
 
@@ -163,13 +163,13 @@ contract RealWorldPromptScheduler is
         return promptId;
     }
 
-    function _assignMiners(uint256 _promptId, address _model) internal {
+    function _assignMiners(uint256 _promptId, address _gateway) internal {
         uint40 expiredAt = uint40(block.number + submitDuration);
         prompts[_promptId].submitTimeout = expiredAt;
         prompts[_promptId].status = PromptStatus.Solving;
 
         address[] memory miners = IStakingHub(stakingHub)
-            .getMinerAddressesOfModel(_model); // TODO: kelvin change, move random to stakingHub
+            .getMinerAddressesOfGateway(_gateway); // TODO: kelvin change, move random to stakingHub
         if (miners.length < minerRequirement) revert NotEnoughMiners();
         uint8 index = uint8(randomizer.randomUint256() % miners.length);
         address miner = miners[index];
@@ -194,7 +194,7 @@ contract RealWorldPromptScheduler is
         if (!IStakingHub(stakingHub).isMinerAddress(msg.sender))
             revert InvalidMiner();
 
-        IStakingHub(stakingHub).validateModelOfMiner(msg.sender);
+        IStakingHub(stakingHub).validateGatewayOfMiner(msg.sender);
 
         // Check the msg sender is the assigned miner
         if (msg.sender != prompts[_promptId].processedMiner)
@@ -226,9 +226,9 @@ contract RealWorldPromptScheduler is
     }
 
     function getMinFeeToUse(
-        address _modelAddress
+        address _gatewayAddress
     ) external view returns (uint256) {
-        return IStakingHub(stakingHub).getMinFeeToUse(_modelAddress);
+        return IStakingHub(stakingHub).getMinFeeToUse(_gatewayAddress);
     }
 
     function getTreasuryAddress() external view returns (address) {

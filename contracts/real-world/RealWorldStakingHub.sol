@@ -8,11 +8,11 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/se
 import {Random} from "../lib/Random.sol";
 import {Set} from "../lib/Set.sol";
 import {TransferHelper} from "../lib/TransferHelper.sol";
-import {StakingHubStorage} from "../storages/StakingHubStorage.sol";
+import {StakingHubStorage} from "./storages/StakingHubStorage.sol";
 import {IDAOToken} from "../tokens/IDAOToken.sol";
 import {ICallBack} from "../interfaces/ICallBack.sol";
-import {IHybridModel} from "../interfaces/IHybridModel.sol";
-import {IStakingHub} from "../interfaces/IStakingHub.sol";
+import {IHybridGateway} from "./interfaces/IHybridGateway.sol";
+import {IStakingHub} from "./interfaces/IStakingHub.sol";
 import {IWorkerHub} from "../interfaces/IWorkerHub.sol";
 
 contract RealWorldStakingHub is
@@ -77,64 +77,64 @@ contract RealWorldStakingHub is
         wEAI = _wEAI;
     }
 
-    function registerModel(
-        address _model,
+    function registerGateway(
+        address _gateway,
         uint16 _tier,
         uint256 _minimumFee
     ) external onlyOwner {
         _updateEpoch();
 
-        if (_model == address(0)) revert InvalidModel();
-        if (_minimumFee < minFeeToUse) revert FeeTooLow(); // NOTE: the minimum fee of using this model is 0.1 EAI
+        if (_gateway == address(0)) revert InvalidGateway();
+        if (_minimumFee < minFeeToUse) revert FeeTooLow(); // NOTE: the minimum fee of using this gateway is 0.1 EAI
         if (_tier == 0) revert InvalidTier();
 
-        Model storage model = models[_model];
-        if (model.tier != 0) revert AlreadyRegistered();
+        Gateway storage gateway = gateways[_gateway];
+        if (gateway.tier != 0) revert AlreadyRegistered();
 
-        model.minimumFee = _minimumFee;
-        model.tier = _tier;
-        modelAddresses.insert(_model);
+        gateway.minimumFee = _minimumFee;
+        gateway.tier = _tier;
+        gatewayAddresses.insert(_gateway);
 
-        emit ModelRegistration(_model, _tier, _minimumFee);
+        emit GatewayRegistration(_gateway, _tier, _minimumFee);
     }
 
-    function unregisterModel(address _model) external onlyOwner {
+    function unregisterGateway(address _gateway) external onlyOwner {
         _updateEpoch();
 
-        Model storage model = models[_model];
-        if (model.tier == 0) revert NotRegistered();
+        Gateway storage gateway = gateways[_gateway];
+        if (gateway.tier == 0) revert NotRegistered();
 
-        model.tier = 0;
-        modelAddresses.erase(_model);
+        gateway.tier = 0;
+        gatewayAddresses.erase(_gateway);
 
-        emit ModelUnregistration(_model);
+        emit GatewayUnregistration(_gateway);
     }
 
-    function updateModelTier(address _model, uint32 _tier) external onlyOwner {
+    function updateGatewayTier(address _gateway, uint32 _tier) external onlyOwner {
         _updateEpoch();
 
         if (_tier == 0) revert InvalidTier();
 
-        Model storage model = models[_model];
-        if (model.tier == 0) revert InvalidModel();
+        Gateway storage gateway = gateways[_gateway];
+        if (gateway.tier == 0) revert InvalidGateway();
 
-        model.tier = _tier;
+        gateway.tier = _tier;
 
-        emit ModelTierUpdate(_model, _tier);
+        emit GatewayTierUpdate(_gateway, _tier);
     }
 
-    function updateModelMinimumFee(
-        address _model,
+    function updateGatewayMinimumFee(
+        address _gateway,
         uint256 _minimumFee
     ) external onlyOwner {
         _updateEpoch();
 
-        Model storage model = models[_model];
-        if (model.tier == 0) revert InvalidModel();
+        Gateway storage gateway = gateways[_gateway];
+        if (gateway.tier == 0) revert InvalidGateway();
 
-        model.minimumFee = _minimumFee;
+        gateway.minimumFee = _minimumFee;
 
-        emit ModelMinimumFeeUpdate(_model, _minimumFee);
+        emit GatewayMinimumFeeUpdate(_gateway, _minimumFee);
     }
 
     function registerMiner(uint16 tier) external whenNotPaused {
@@ -148,10 +148,10 @@ contract RealWorldStakingHub is
         miner.stake = minerMinimumStake;
         miner.tier = tier;
 
-        address modelAddress = modelAddresses.values[
-            randomizer.randomUint256() % modelAddresses.size()
+        address gatewayAddress = gatewayAddresses.values[
+            randomizer.randomUint256() % gatewayAddresses.size()
         ];
-        miner.modelAddress = modelAddress;
+        miner.gatewayAddress = gatewayAddress;
         TransferHelper.safeTransferFrom(
             wEAI,
             msg.sender,
@@ -162,10 +162,10 @@ contract RealWorldStakingHub is
         emit MinerRegistration(msg.sender, tier, minerMinimumStake);
     }
 
-    function registerMiner(uint16 tier, address model) external whenNotPaused {
+    function registerMiner(uint16 tier, address gateway) external whenNotPaused {
         _updateEpoch();
-        if (model == address(0)) revert InvalidModel();
-        if (!modelAddresses.hasValue(model)) revert InvalidModel();
+        if (gateway == address(0)) revert InvalidGateway();
+        if (!gatewayAddresses.hasValue(gateway)) revert InvalidGateway();
 
         if (tier == 0 || tier > maximumTier) revert InvalidTier();
 
@@ -175,7 +175,7 @@ contract RealWorldStakingHub is
         miner.stake = minerMinimumStake;
         miner.tier = tier;
 
-        miner.modelAddress = model;
+        miner.gatewayAddress = gateway;
         TransferHelper.safeTransferFrom(
             wEAI,
             msg.sender,
@@ -186,22 +186,22 @@ contract RealWorldStakingHub is
         emit MinerRegistration(msg.sender, tier, minerMinimumStake);
     }
 
-    function forceChangeModelForMiner(
+    function forceChangeGatewayForMiner(
         address _miner,
-        address _modelAddress
+        address _gatewayAddress
     ) external onlyOwner {
         _updateEpoch();
 
-        if (models[_modelAddress].tier == 0) revert InvalidModel();
+        if (gateways[_gatewayAddress].tier == 0) revert InvalidGateway();
         if (!minerAddresses.hasValue(_miner)) revert NotRegistered();
 
-        address currentModelAddress = miners[_miner].modelAddress;
-        if (currentModelAddress == _modelAddress) revert SameModelAddress();
-        minerAddressesByModel[currentModelAddress].erase(_miner);
-        minerAddressesByModel[_modelAddress].insert(_miner);
+        address currentGatewayAddress = miners[_miner].gatewayAddress;
+        if (currentGatewayAddress == _gatewayAddress) revert SameGatewayAddress();
+        minerAddressesByGateway[currentGatewayAddress].erase(_miner);
+        minerAddressesByGateway[_gatewayAddress].insert(_miner);
 
-        miners[_miner].modelAddress = _modelAddress;
-        miners[_miner].tier = uint16(models[_modelAddress].tier);
+        miners[_miner].gatewayAddress = _gatewayAddress;
+        miners[_miner].tier = uint16(gateways[_gatewayAddress].tier);
     }
 
     function joinForMinting() external whenNotPaused {
@@ -213,8 +213,8 @@ contract RealWorldStakingHub is
         if (block.timestamp < miner.activeTime)
             revert MinerInDeactivationTime();
 
-        address modelAddress = miner.modelAddress;
-        minerAddressesByModel[modelAddress].insert(msg.sender);
+        address gatewayAddress = miner.gatewayAddress;
+        minerAddressesByGateway[gatewayAddress].insert(msg.sender);
         minerAddresses.insert(msg.sender);
         miner.lastClaimedEpoch = currentEpoch;
         boost[msg.sender].minerTimestamp = uint40(block.timestamp);
@@ -241,9 +241,9 @@ contract RealWorldStakingHub is
             boost[msg.sender].minerTimestamp = uint40(block.timestamp);
 
             minerAddresses.erase(msg.sender);
-            minerAddressesByModel[miner.modelAddress].erase(msg.sender);
+            minerAddressesByGateway[miner.gatewayAddress].erase(msg.sender);
         }
-        miner.modelAddress = address(0);
+        miner.gatewayAddress = address(0);
 
         uint currentUnstake = minerUnstakeRequests[msg.sender].stake;
         minerUnstakeRequests[msg.sender] = UnstakeRequest(
@@ -304,14 +304,14 @@ contract RealWorldStakingHub is
             miner.tier = tier;
         }
 
-        if (miner.modelAddress == address(0)) {
-            address modelAddress = modelAddresses.values[
-                randomizer.randomUint256() % modelAddresses.size()
+        if (miner.gatewayAddress == address(0)) {
+            address gatewayAddress = gatewayAddresses.values[
+                randomizer.randomUint256() % gatewayAddresses.size()
             ];
-            miner.modelAddress = modelAddress;
+            miner.gatewayAddress = gatewayAddress;
         }
 
-        emit Restake(msg.sender, unstakeAmount, miner.modelAddress);
+        emit Restake(msg.sender, unstakeAmount, miner.gatewayAddress);
     }
 
     modifier onlyWorkerHub() {
@@ -368,11 +368,11 @@ contract RealWorldStakingHub is
                     : boost[_miner].minerTimestamp
             );
         boost[_miner].minerTimestamp = uint40(block.timestamp);
-        address modelAddress = miner.modelAddress;
+        address gatewayAddress = miner.gatewayAddress;
 
         // Remove miner from available miner
-        if (minerAddressesByModel[modelAddress].hasValue(_miner)) {
-            minerAddressesByModel[modelAddress].erase(_miner);
+        if (minerAddressesByGateway[gatewayAddress].hasValue(_miner)) {
+            minerAddressesByGateway[gatewayAddress].erase(_miner);
             minerAddresses.erase(_miner);
         }
 
@@ -395,11 +395,11 @@ contract RealWorldStakingHub is
 
             TransferHelper.safeTransfer(wEAI, treasury, fine);
 
-            emit FraudulentMinerPenalized(_miner, modelAddress, treasury, fine);
+            emit FraudulentMinerPenalized(_miner, gatewayAddress, treasury, fine);
             return;
         }
 
-        emit MinerDeactivated(_miner, modelAddress, miner.activeTime);
+        emit MinerDeactivated(_miner, gatewayAddress, miner.activeTime);
     }
 
     function _claimReward(
@@ -536,15 +536,15 @@ contract RealWorldStakingHub is
     }
 
     function getMinFeeToUse(
-        address _modelAddress
+        address _gatewayAddress
     ) external view returns (uint256) {
-        return models[_modelAddress].minimumFee;
+        return gateways[_gatewayAddress].minimumFee;
     }
 
-    function getModelInfo(
-        address _modelAddr
-    ) external view returns (Model memory) {
-        return models[_modelAddr];
+    function getGatewayInfo(
+        address _gatewayAddr
+    ) external view returns (Gateway memory) {
+        return gateways[_gatewayAddr];
     }
 
     function getNOMiner() external view returns (uint) {
@@ -559,20 +559,20 @@ contract RealWorldStakingHub is
         return minerAddresses.hasValue(_miner);
     }
 
-    function validateModelOfMiner(address _miner) external view {
-        address modelAddrOfMiner = miners[_miner].modelAddress;
-        if (!minerAddressesByModel[modelAddrOfMiner].hasValue(_miner))
+    function validateGatewayOfMiner(address _miner) external view {
+        address gatewayAddrOfMiner = miners[_miner].gatewayAddress;
+        if (!minerAddressesByGateway[gatewayAddrOfMiner].hasValue(_miner))
             revert InvalidMiner();
     }
 
-    function getModelAddresses() external view returns (address[] memory) {
-        return modelAddresses.values;
+    function getGatewayAddresses() external view returns (address[] memory) {
+        return gatewayAddresses.values;
     }
 
-    function getMinerAddressesOfModel(
-        address _model
+    function getMinerAddressesOfGateway(
+        address _gateway
     ) external view returns (address[] memory) {
-        return minerAddressesByModel[_model].values;
+        return minerAddressesByGateway[_gateway].values;
     }
 
     function getAllMinerUnstakeRequests()

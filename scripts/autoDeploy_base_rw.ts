@@ -1,0 +1,449 @@
+import assert from "assert";
+import { ethers, network, upgrades } from "hardhat";
+import {
+  DAOToken,
+  RealWorldHybridGateway,
+  IWorkerHub,
+  RealWorldGatewayCollection,
+  RealWorldPromptScheduler,
+  StakingHub,
+  SystemPromptManager,
+  Treasury,
+} from "../typechain-types";
+import { deployOrUpgrade } from "./lib/utils";
+import { EventLog, Signer } from "ethers";
+import path from "path";
+import fs from "fs";
+
+const config = network.config as any;
+const networkName = network.name.toUpperCase();
+
+async function deployDAOToken() {
+  console.log("DEPLOY DAO TOKEN...");
+
+  // TODO: @mr 6789 check it
+  // ***************************
+  const _MAX_SUPPLY_CAP = ethers.parseEther("2100000000"); //2,1B
+  const tokenName = "DAOTOKEN";
+  const tokenSymbol = "DAOTOKEN";
+  // ***************************
+
+  const initializedParams = [tokenName, tokenSymbol, _MAX_SUPPLY_CAP];
+
+  const daoToken = (await deployOrUpgrade(
+    undefined,
+    "DAOToken",
+    initializedParams,
+    config,
+    true
+  )) as unknown as DAOToken;
+
+  return daoToken.target;
+}
+
+async function deployTreasury(daoTokenAddress: string) {
+  console.log("DEPLOY TREASURY...");
+
+  assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
+  const constructorParams = [daoTokenAddress];
+
+  const treasury = (await deployOrUpgrade(
+    undefined,
+    "Treasury",
+    constructorParams,
+    config,
+    true
+  )) as unknown as Treasury;
+
+  return treasury.target;
+}
+
+async function deployStakingHub(
+  daoTokenAddress: string,
+  treasuryAddress: string
+) {
+  console.log("DEPLOY STAKING HUB...");
+
+  const l2OwnerAddress = config.l2OwnerAddress;
+  const wEAIAddress = config.wEAIAddress;
+  assert.ok(
+    wEAIAddress,
+    `Missing ${networkName}_WEAI from environment variables!`
+  );
+  assert.ok(
+    l2OwnerAddress,
+    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+  assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
+  assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
+
+  // TODO: @mr 6789 check it
+  // ***************************
+  const minerMinimumStake = ethers.parseEther("25000");
+  const blockPerEpoch = (600 * 2) / 0.5;
+  const rewardPerEpoch = ethers.parseEther("0.38");
+  const unstakeDelayTime = 3628800; // NOTE:  907200 blocks = 21 days (blocktime = 2s) // Avax
+  const penaltyDuration = 0;
+  const finePercentage = 0;
+  const minFeeToUse = ethers.parseEther("0");
+  // ***************************
+
+  const constructorParams = [
+    wEAIAddress,
+    minerMinimumStake,
+    blockPerEpoch,
+    rewardPerEpoch,
+    unstakeDelayTime,
+    penaltyDuration,
+    finePercentage,
+    minFeeToUse,
+  ];
+
+  const stakingHub = (await deployOrUpgrade(
+    undefined,
+    "StakingHub",
+    constructorParams,
+    config,
+    true
+  )) as unknown as StakingHub;
+  const stakingHubAddress = stakingHub.target;
+
+  return stakingHubAddress;
+}
+
+async function deployWorkerHub(
+  daoTokenAddress: string,
+  treasuryAddress: string,
+  stakingHubAddress: string,
+  masterWallet: Signer
+) {
+  console.log("DEPLOY WORKER HUB...");
+
+  const l2OwnerAddress = config.l2OwnerAddress;
+  const wEAIAddress = config.wEAIAddress;
+  assert.ok(
+    wEAIAddress,
+    `Missing ${networkName}_WEAI from environment variables!`
+  );
+  assert.ok(
+    l2OwnerAddress,
+    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+  assert.ok(daoTokenAddress, `Missing ${networkName}_DAO_TOKEN_ADDRESS!`);
+  assert.ok(treasuryAddress, `Missing ${networkName}_TREASURY_ADDRESS!`);
+  assert.ok(stakingHubAddress, `Missing ${networkName}_STAKING_HUB_ADDRESS!`);
+
+  const feeL2Percentage = 0;
+  const feeTreasuryPercentage = 100_00;
+  const minerRequirement = 3;
+  const submitDuration = 10 * 6 * 90000;
+  const feeRatioMinerValidator = 50_00; // Miner earns 50% of the workers fee ( = [msg.value - L2's owner fee - treasury] )
+  const daoTokenReward = ethers.parseEther("0");
+  const daoTokenPercentage: IWorkerHub.DAOTokenPercentageStruct = {
+    minerPercentage: 50_00,
+    userPercentage: 30_00,
+    referrerPercentage: 5_00,
+    refereePercentage: 5_00,
+    l2OwnerPercentage: 10_00,
+  };
+
+  const constructorParams = [
+    wEAIAddress,
+    l2OwnerAddress,
+    treasuryAddress,
+    daoTokenAddress,
+    stakingHubAddress,
+    feeL2Percentage,
+    feeTreasuryPercentage,
+    minerRequirement,
+    submitDuration,
+    feeRatioMinerValidator,
+    daoTokenReward,
+    daoTokenPercentage,
+  ];
+
+  const workerHub = (await deployOrUpgrade(
+    undefined,
+    "RealWorldPromptScheduler",
+    constructorParams,
+    config,
+    true
+  )) as unknown as RealWorldPromptScheduler;
+  const workerHubAddress = workerHub.target;
+
+  // DAO TOKEN UPDATE WORKER HUB ADDRESS
+  console.log("DAO TOKEN UPDATE WORKER HUB ADDRESS...");
+  const daoTokenContract = (await getContractInstance(
+    daoTokenAddress,
+    "DAOToken"
+  )) as unknown as DAOToken;
+
+  const tx = await daoTokenContract
+    .connect(masterWallet)
+    .updateWorkerHub(workerHubAddress);
+  const receipt = await tx.wait();
+  console.log("Tx hash: ", receipt?.hash);
+  console.log("Tx status: ", receipt?.status);
+
+  // Staking Hub update WorkerHub Address
+  console.log("STAKING HUB UPDATE WORKER HUB ADDRESS...");
+  const stakingHubContract = (await getContractInstance(
+    stakingHubAddress,
+    "StakingHub"
+  )) as unknown as StakingHub;
+
+  const txUpdate = await stakingHubContract.setWorkerHubAddress(
+    workerHubAddress
+  );
+  const receiptUpdate = await txUpdate.wait();
+  console.log("Tx hash: ", receiptUpdate?.hash);
+  console.log("Tx status: ", receiptUpdate?.status);
+
+  return workerHubAddress;
+}
+
+async function deployRealWorldGatewayCollection() {
+  console.log("DEPLOY MODEL COLLECTION...");
+
+  const treasuryAddress = config.l2OwnerAddress;
+  assert.ok(
+    treasuryAddress,
+    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+
+  // TODO: @mr 6789 check it
+  // ***************************
+  const name = "Eternal AI";
+  const symbol = "";
+  const mintPrice = ethers.parseEther("0");
+  const royaltyReceiver = treasuryAddress;
+  const royalPortion = 5_00;
+  // const nextModelId = 140_001; // AVAX
+  // const nextModelId = 220_001; // MODE
+  // const nextModelId = 160_001; // TRON
+  // const nextModelId = 230_001; // CELO
+  // const nextModelId = 240_001; // ZETA
+  const nextModelId = 1_020_001; // ZETA
+
+  // ***************************
+
+  const constructorParams = [
+    name,
+    symbol,
+    mintPrice,
+    royaltyReceiver,
+    royalPortion,
+    nextModelId,
+  ];
+
+  const RealWorldGatewayCollection = (await deployOrUpgrade(
+    undefined,
+    "RealWorldGatewayCollection",
+    constructorParams,
+    config,
+    true
+  )) as unknown as RealWorldGatewayCollection;
+
+  return RealWorldGatewayCollection.target;
+}
+
+async function deployRealWorldHybridGateway(
+  workerHubAddress: string,
+  stakingHubAddress: string,
+  collectionAddress: string
+) {
+  console.log("DEPLOY HYBRID MODEL...");
+  // const WorkerHub = await ethers.getContractFactory("WorkerHub");
+  const RealWorldStakingHub = await ethers.getContractFactory("RealWorldStakingHub");
+  const RealWorldGatewayCollection = await ethers.getContractFactory("RealWorldGatewayCollection");
+
+  assert.ok(collectionAddress, `Missing ${networkName}_COLLECTION_ADDRESS !`);
+  assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
+  const modelOwnerAddress = config.l2OwnerAddress;
+  assert.ok(
+    modelOwnerAddress,
+    `Missing ${networkName}_L2_OWNER_ADDRESS from environment variables!`
+  );
+
+  const identifier = 0;
+  const name = "ETERNAL V2";
+  const minHardware = 1;
+  const metadataObj = {
+    version: 1,
+    model_name: "unslot-DeepSeek-R1-Distill-Llama-70B-Q8_0",
+    model_type: "text",
+    model_url:
+      "https://gateway.lighthouse.storage/ipfs/bafkreidpoxthbkrgq2zpcqhrujp2kdxqb7yysxfq5oy57inwmj4gjsv7si",
+    model_file_hash: "",
+    min_hardware: 1,
+    verifier_url: "",
+    verifier_file_hash: "",
+  };
+  const metadata = JSON.stringify(metadataObj, null, "\t");
+
+  const constructorParams = [
+    workerHubAddress,
+    collectionAddress,
+    identifier,
+    name,
+    metadata,
+  ];
+  const RealWorldHybridGateway = (await deployOrUpgrade(
+    undefined,
+    "RealWorldHybridGateway",
+    constructorParams,
+    config,
+    true
+  )) as unknown as RealWorldHybridGateway;
+
+  const RealWorldHybridGatewayAddress = RealWorldHybridGateway.target;
+
+  // COLLECTION MINT NFT TO MODEL OWNER
+  const signer1 = (await ethers.getSigners())[0];
+  console.log("COLLECTION MINT NFT TO MODEL OWNER...");
+  const collection = RealWorldGatewayCollection.attach(
+    collectionAddress
+  ) as RealWorldGatewayCollection;
+  const mintReceipt = await (
+    await collection
+      .connect(signer1)
+      .mint(modelOwnerAddress, metadata, RealWorldHybridGatewayAddress)
+  ).wait();
+
+  const newTokenEvent = (mintReceipt!.logs as EventLog[]).find(
+    (event: EventLog) => event.eventName === "NewToken"
+  );
+  if (newTokenEvent) {
+    console.log("tokenId: ", newTokenEvent.args?.tokenId);
+  }
+
+  // STAKING HUB REGISTER MODEL
+  console.log("STAKING HUB REGISTER MODEL...");
+  const stakingHub = RealWorldStakingHub.attach(stakingHubAddress) as RealWorldStakingHub;
+  const txRegis = await stakingHub.registerGateway(
+    RealWorldHybridGatewayAddress,
+    minHardware,
+    ethers.parseEther("0")
+  );
+  const receipt = await txRegis.wait();
+  console.log("Tx hash: ", receipt?.hash);
+  console.log("Tx status: ", receipt?.status);
+
+  return RealWorldHybridGatewayAddress;
+}
+
+async function deploySystemPromptManager(
+  l2OwnerAddress: string,
+  RealWorldHybridGatewayAddress: string,
+  workerHubAddress: string
+) {
+  console.log("DEPLOY SYSTEM PROMPT MANAGER...");
+
+  assert.ok(l2OwnerAddress, `Missing ${networkName}_L2_OWNER_ADDRESS!`);
+  assert.ok(RealWorldHybridGatewayAddress, `Missing ${networkName}_HYBRID_MODEL_ADDRESS!`);
+  assert.ok(workerHubAddress, `Missing ${networkName}_WORKER_HUB_ADDRESS!`);
+
+  const name = "Eternal AI";
+  const symbol = "";
+  const mintPrice = ethers.parseEther("0");
+  const royaltyReceiver = l2OwnerAddress;
+  const royalPortion = 5_00;
+  const nextModelId = 1;
+
+  const constructorParams = [
+    name,
+    symbol,
+    mintPrice,
+    royaltyReceiver,
+    royalPortion,
+    nextModelId,
+    RealWorldHybridGatewayAddress,
+    workerHubAddress,
+  ];
+
+  const systemPromptManager = (await deployOrUpgrade(
+    undefined,
+    "SystemPromptManager",
+    constructorParams,
+    config,
+    true
+  )) as unknown as SystemPromptManager;
+
+  return systemPromptManager.target;
+}
+
+export async function getContractInstance(
+  proxyAddress: string,
+  contractName: string
+) {
+  const contractFact = await ethers.getContractFactory(contractName);
+  const contractIns = contractFact.attach(proxyAddress);
+
+  return contractIns;
+}
+
+async function saveDeployedAddresses(networkName: string, addresses: any) {
+  const filePath = path.join(__dirname, `../deployedAddresses.json`);
+  let data: { [key: string]: any } = {};
+
+  if (fs.existsSync(filePath)) {
+    data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  }
+
+  data[networkName] = addresses;
+
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
+
+async function main() {
+  const masterWallet = (await ethers.getSigners())[0];
+
+  const wEAIAddress = config.wEAIAddress;
+  const daoTokenAddress = await deployDAOToken();
+  const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
+  const stakingHubAddress = await deployStakingHub(
+    daoTokenAddress.toString(),
+    treasuryAddress.toString()
+  );
+  const workerHubAddress = await deployWorkerHub(
+    daoTokenAddress.toString(),
+    treasuryAddress.toString(),
+    stakingHubAddress.toString(),
+    masterWallet
+  );
+  const collectionAddress = await deployRealWorldGatewayCollection();
+
+  const RealWorldHybridGatewayAddress = await deployRealWorldHybridGateway(
+    workerHubAddress.toString(),
+    stakingHubAddress.toString(),
+    collectionAddress.toString()
+  );
+
+  const systemPromptManagerAddress = await deploySystemPromptManager(
+    config.l2OwnerAddress,
+    RealWorldHybridGatewayAddress.toString(),
+    workerHubAddress.toString()
+  );
+
+  const deployedAddresses = {
+    wEAIAddress,
+    daoTokenAddress,
+    treasuryAddress,
+    stakingHubAddress,
+    workerHubAddress,
+    collectionAddress,
+    RealWorldHybridGatewayAddress,
+    systemPromptManagerAddress,
+  };
+
+  const networkName = network.name.toUpperCase();
+
+  await saveDeployedAddresses(networkName, deployedAddresses);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

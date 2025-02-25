@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {IHybridModel} from "../interfaces/IHybridModel.sol";
+import {IHybridGateway} from "./interfaces/IHybridGateway.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {IInferable} from "../interfaces/IInferable.sol";
-import {HybridModelStorage} from "../storages/HybridModelStorage.sol";
+import {HybridGatewayStorage} from "./storages/HybridGatewayStorage.sol";
 
-contract RealWorldHybridModel is
-    HybridModelStorage,
+contract RealWorldHybridGateway is
+    HybridGatewayStorage,
     OwnableUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
@@ -20,7 +20,7 @@ contract RealWorldHybridModel is
 
     function initialize(
         address _workerHub,
-        address _modelCollection,
+        address _gatewayCollection,
         uint256 _identifier,
         string calldata _name,
         string calldata _metadata
@@ -30,16 +30,16 @@ contract RealWorldHybridModel is
         __ReentrancyGuard_init();
 
         workerHub = _workerHub;
-        modelCollection = _modelCollection;
+        gatewayCollection = _gatewayCollection;
         identifier = _identifier;
         name = _name;
         metadata = _metadata;
     }
 
-    modifier onlyModelCollection() {
+    modifier onlyGatewayCollection() {
         require(
-            msg.sender == modelCollection,
-            "Caller is not the modelCollection"
+            msg.sender == gatewayCollection,
+            "Caller is not the gatewayCollection"
         );
         _;
     }
@@ -76,10 +76,10 @@ contract RealWorldHybridModel is
         emit MetadataUpdate(_metadata);
     }
 
-    function setModelId(uint256 _modelId) external onlyModelCollection {
-        if (identifier != 0) revert ModelIdAlreadySet();
-        identifier = _modelId;
-        emit IdentifierUpdate(_modelId);
+    function setGatewayId(uint256 _gatewayId) external onlyGatewayCollection {
+        if (identifier != 0) revert GatewayIdAlreadySet();
+        identifier = _gatewayId;
+        emit IdentifierUpdate(_gatewayId);
     }
 
     function infer(

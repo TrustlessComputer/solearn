@@ -13,12 +13,12 @@ import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/t
 import {IERC721MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 
-import {IModel} from "../interfaces/IModel.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
 
-import {ModelCollectionStorage} from "../storages/ModelCollectionStorage.sol";
+import {GatewayCollectionStorage} from "./storages/GatewayCollectionStorage.sol";
 
-contract RealWorldModelCollection is
-    ModelCollectionStorage,
+contract RealWorldGatewayCollection is
+    GatewayCollectionStorage,
     EIP712Upgradeable,
     ERC721EnumerableUpgradeable,
     ERC721PausableUpgradeable,
@@ -42,7 +42,7 @@ contract RealWorldModelCollection is
         uint256 _mintPrice,
         address _royaltyReceiver,
         uint16 _royaltyPortion,
-        uint256 _nextModelId
+        uint256 _nextGatewayId
     ) external initializer {
         __ERC721_init(_name, _symbol);
         __ERC721Pausable_init();
@@ -51,7 +51,7 @@ contract RealWorldModelCollection is
         mintPrice = _mintPrice;
         royaltyReceiver = _royaltyReceiver;
         royaltyPortion = _royaltyPortion;
-        nextModelId = _nextModelId;
+        nextGatewayId = _nextGatewayId;
 
         isManager[owner()] = true;
     }
@@ -100,18 +100,18 @@ contract RealWorldModelCollection is
     function mint_(
         address _to,
         string calldata _uri,
-        address _model,
+        address _gateway,
         uint256 tokenId
     ) internal returns (uint256) {
-        if (_model == address(0)) revert InvalidModel();
+        if (_gateway == address(0)) revert InvalidGateway();
         if (msg.value < mintPrice) revert InsufficientFunds();
 
         _safeMint(_to, tokenId);
         _setTokenURI(tokenId, _uri);
-        models[tokenId] = _model;
-        IModel(_model).setModelId(tokenId);
+        gateways[tokenId] = _gateway;
+        IGateway(_gateway).setGatewayId(tokenId);
 
-        emit NewToken(tokenId, _uri, _model, msg.sender);
+        emit NewToken(tokenId, _uri, _gateway, msg.sender);
 
         return tokenId;
     }
@@ -119,44 +119,44 @@ contract RealWorldModelCollection is
     function mint(
         address _to,
         string calldata _uri,
-        address _model
+        address _gateway
     ) external payable onlyManager returns (uint256) {
-        while (models[nextModelId] != address(0)) {
-            nextModelId++;
+        while (gateways[nextGatewayId] != address(0)) {
+            nextGatewayId++;
         }
-        uint256 tokenId = nextModelId++;
+        uint256 tokenId = nextGatewayId++;
 
-        return mint_(_to, _uri, _model, tokenId);
+        return mint_(_to, _uri, _gateway, tokenId);
     }
 
     function mintBySignature(
         address _to,
         string calldata _uri,
-        address _model,
+        address _gateway,
         address _manager,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public virtual returns (uint256) {
-        bytes32 hash = getHashToSign(_to, _uri, _model, _manager);
+        bytes32 hash = getHashToSign(_to, _uri, _gateway, _manager);
 
         address signer = ECDSAUpgradeable.recover(hash, v, r, s);
         if (signer != _manager || !isManager[_manager])
             revert InvalidSignature();
-        while (models[nextModelId] != address(0)) {
-            nextModelId++;
+        while (gateways[nextGatewayId] != address(0)) {
+            nextGatewayId++;
         }
-        uint256 tokenId = nextModelId++;
-        return mint_(_to, _uri, _model, tokenId);
+        uint256 tokenId = nextGatewayId++;
+        return mint_(_to, _uri, _gateway, tokenId);
     }
 
     function getHashToSign(
         address _to,
         string calldata _uri,
-        address _model,
+        address _gateway,
         address _manager
     ) public view virtual returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(_to, _uri, _model, _manager));
+        bytes32 structHash = keccak256(abi.encode(_to, _uri, _gateway, _manager));
 
         return _hashTypedDataV4(structHash);
     }
@@ -174,18 +174,18 @@ contract RealWorldModelCollection is
         emit TokenURIUpdate(_tokenId, _uri);
     }
 
-    function updateTokenModel(
+    function updateTokenGateway(
         uint256 _tokenId,
-        address _model
+        address _gateway
     ) external onlyOwner {
-        require(_model != address(0), "invalid token model");
+        require(_gateway != address(0), "invalid token gateway");
 
-        models[_tokenId] = _model;
-        emit TokenModelUpdate(_tokenId, _model);
+        gateways[_tokenId] = _gateway;
+        emit TokenGatewayUpdate(_tokenId, _gateway);
     }
 
-    function modelAddressOf(uint256 _tokenId) external view returns (address) {
-        return models[_tokenId];
+    function gatewayAddressOf(uint256 _tokenId) external view returns (address) {
+        return gateways[_tokenId];
     }
 
     function royaltyInfo(
@@ -262,14 +262,14 @@ contract RealWorldModelCollection is
         super._burn(_tokenId);
     }
 
-    function setModelId(
-        address _model,
+    function setGatewayId(
+        address _gateway,
         uint256 tokenId
     ) internal returns (uint256) {
-        if (_model == address(0)) revert InvalidModel();
+        if (_gateway == address(0)) revert InvalidGateway();
 
-        models[tokenId] = _model;
-        IModel(_model).setModelId(tokenId);
+        gateways[tokenId] = _gateway;
+        IGateway(_gateway).setGatewayId(tokenId);
 
         return tokenId;
     }

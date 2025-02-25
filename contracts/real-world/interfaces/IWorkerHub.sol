@@ -30,7 +30,7 @@ interface IWorkerHub is IPromptable {
         uint256 value; // this value is calculated by msg.value - feeL2 - feeTreasury
         uint256 feeL2;
         uint256 feeTreasury;
-        address modelAddress;
+        address gatewayAddress;
         uint40 submitTimeout; // limit time to capture the miner role and submit the solution
         PromptStatus status;
         address creator;
@@ -55,7 +55,7 @@ interface IWorkerHub is IPromptable {
 
     event NewPrompt(
         uint256 indexed promptId,
-        address indexed model,
+        address indexed gateway,
         address indexed creator,
         uint256 value,
         uint256 originPromptId
@@ -63,7 +63,7 @@ interface IWorkerHub is IPromptable {
 
     event RawSubmitted(
         uint256 indexed promptId,
-        address indexed model,
+        address indexed gateway,
         address indexed creator,
         uint256 value,
         uint256 originPromptId,
@@ -121,7 +121,7 @@ interface IWorkerHub is IPromptable {
     event DAOTokenMintedV2(
         uint256 chainId,
         uint256 inferenceId,
-        address modelAddress,
+        address gatewayAddress,
         DAOTokenReceiverInfor[] receivers
     );
     event StreamedData(uint256 indexed assignmentId, bytes data);
@@ -152,7 +152,7 @@ interface IWorkerHub is IPromptable {
     error InvalidAddress();
 
     function getMinFeeToUse(
-        address _modelAddress
+        address _gatewayAddress
     ) external view returns (uint256);
 
     function getTreasuryAddress() external view returns (address);
