@@ -9,134 +9,145 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
 
     string public builtWith = "javascript"; // e.g., "python", "java"
-    mapping(string => string) private _endPoints;
-    uint256 private _configsNum;
-    mapping(uint256 => AgentLogicConfig) private _agentLogicConfigs;
+    uint16 private _currentVersion;
+    mapping(uint256 version => uint32) private _configsNum;
+    mapping(uint256 version => mapping(string => string)) private _endPoints;
+    mapping(uint256 version => mapping(uint256 => AgentLogicConfig))
+        private _agentLogicConfigs;
 
     uint256[50] private __gap;
 
+    modifier checkVersion(uint16 version) {
+        _validateVersion(version);
+        _;
+    }
+
     function initialize(
-        AgentLogicConfig[] calldata logicCfs
+        AgentLogicConfig[] calldata logicCfs,
+        Endpoint[] calldata endpoints
     ) external initializer {
         __Ownable_init();
 
-        uint256 len = logicCfs.length;
-
-        for (uint256 i = 0; i < len; i++) {
-            _addNewAgentLogicConfig(logicCfs[i]);
-        }
+        addNewAgentConfigs(logicCfs, endpoints);
     }
 
-    function addNewAgentConfig(
+    function addNewAgentConfigs(
         AgentLogicConfig[] calldata logicCfs,
-        string[] calldata keys,
-        string[] calldata values
-    ) external virtual onlyOwner {
-        uint256 epLen = keys.length;
-
-        if (epLen != values.length) {
-            revert InvalidData();
-        }
+        Endpoint[] calldata endpoints
+    ) public virtual onlyOwner {
+        uint16 version = _bumpVersion();
 
         uint256 cfLen = logicCfs.length;
+        uint256 epLen = endpoints.length;
 
         for (uint256 i = 0; i < cfLen; i++) {
-            _addNewAgentLogicConfig(logicCfs[i]);
+            _addNewAgentLogicConfig(version, logicCfs[i]);
         }
 
         for (uint256 i = 0; i < epLen; i++) {
-            _updateEndpoint(keys[i], values[i]);
+            _updateEndpoint(version, endpoints[i]);
         }
     }
 
-    /**
-     * @notice Adds new storage information.
-     * @param storageInfo The storage information to add.
-     */
+    function _bumpVersion() private view returns (uint16) {
+        return ++_currentVersion;
+    }
+
     function _addNewAgentLogicConfig(
+        uint16 version,
         AgentLogicConfig calldata storageInfo
     ) internal virtual {
-        _agentLogicConfigs[_configsNum] = storageInfo;
-        emit AgentLogicConfigCreate(_configsNum, storageInfo);
+        uint256 cfNum = _getConfigsNumber(version);
+        _agentLogicConfigs[version][cfNum] = storageInfo;
+        emit AgentLogicConfigCreate(version, cfNum, storageInfo);
         _configsNum++;
     }
 
-    function updateAgentLogicConfig(
-        uint256 cfIdx,
-        AgentLogicConfig calldata cf
-    ) external onlyOwner {
-        if (cfIdx >= _configsNum) {
-            revert InvalidData();
-        }
-        _updateAgentLogicConfig(cfIdx, cf);
-    }
+    // function updateAgentLogicConfig(
+    //     uint16 version,
+    //     uint256 cfIdx,
+    //     AgentLogicConfig calldata cf
+    // ) external onlyOwner checkVersion(version) {
+    //     uint256 cfNum = _getConfigsNumber(version);
 
-    function _updateAgentLogicConfig(
-        uint256 cfIdx,
-        AgentLogicConfig calldata cf
-    ) internal virtual {
-        _agentLogicConfigs[cfIdx] = cf;
-        emit AgentLogicConfigUpdate(cfIdx, cf);
-    }
+    //     if (cfIdx >= cfNum) {
+    //         revert InvalidData();
+    //     }
+    //     _updateAgentLogicConfig(version, cfIdx, cf);
+    // }
 
-    function removeAgentLogicConfig(uint256 cfIdx) external onlyOwner {
-        if (cfIdx >= _configsNum) {
-            revert InvalidData();
-        }
+    // function _updateAgentLogicConfig(
+    //     uint16 version,
+    //     uint256 cfIdx,
+    //     AgentLogicConfig calldata cf
+    // ) internal virtual {
+    //     _agentLogicConfigs[version][cfIdx] = cf;
+    //     emit AgentLogicConfigUpdate(version, cfIdx, cf);
+    // }
 
-        uint256 lastIdx = _configsNum - 1;
-        if (cfIdx < lastIdx) {
-            _agentLogicConfigs[cfIdx] = _agentLogicConfigs[lastIdx];
-        }
+    // function removeAgentLogicConfig(
+    //     uint16 version,
+    //     uint256 cfIdx
+    // ) external onlyOwner checkVersion(version) {
+    //     uint256 cfNum = _getConfigsNumber(version);
 
-        delete _agentLogicConfigs[lastIdx];
-        _configsNum--;
-        emit AgentLogicConfigRemove(cfIdx);
-    }
+    //     if (cfIdx >= cfNum) {
+    //         revert InvalidData();
+    //     }
+
+    //     uint256 lastIdx = cfNum - 1;
+    //     if (cfIdx < lastIdx) {
+    //         _agentLogicConfigs[version][cfIdx] = _agentLogicConfigs[version][
+    //             lastIdx
+    //         ];
+    //     }
+
+    //     delete _agentLogicConfigs[version][lastIdx];
+    //     _configsNum--;
+    //     emit AgentLogicConfigRemove(version, cfIdx);
+    // }
 
     function updateEndpoints(
-        string[] calldata keys,
-        string[] calldata values
-    ) external onlyOwner {
-        uint256 len = keys.length;
-
-        if (len != values.length) {
-            revert InvalidData();
-        }
+        uint16 version,
+        Endpoint[] calldata endpoints
+    ) external onlyOwner checkVersion(version) {
+        uint256 len = endpoints.length;
 
         for (uint256 i = 0; i < len; i++) {
-            _updateEndpoint(keys[i], values[i]);
+            _updateEndpoint(version, endpoints[i]);
         }
     }
 
     function _updateEndpoint(
-        string calldata key,
-        string calldata value
+        uint16 version,
+        Endpoint calldata endpoint
     ) internal virtual {
-        _endPoints[key] = value;
-        emit EndpointUpdate(key, value);
+        _endPoints[version][endpoint.key] = endpoint.value;
+        emit EndpointUpdate(version, endpoint);
     }
 
     function getEndpoints(
-        string[] calldata keys
-    ) external view returns (string[] memory values) {
-        uint256 len = keys.length;
-        values = new string[](len);
+        uint16 version,
+        string[] calldata epKeys
+    ) external view returns (string[] memory epValues) {
+        uint256 len = epKeys.length;
+        epValues = new string[](len);
 
         for (uint256 i = 0; i < len; i++) {
-            values[i] = _endPoints[keys[i]];
+            epValues[i] = _endPoints[epKeys[i]];
         }
     }
 
-    function fetchCode() external view returns (string memory code) {
+    function fetchAllAgentLogic(
+        uint16 version
+    ) external view checkVersion(version) returns (string memory code) {
+        uint256 len = _getConfigsNumber(version);
         string memory libsCode = "";
         string memory devScripts = "";
-        uint256 len = _configsNum;
-        // logic = new string[](len);
 
-        for (uint256 i = 0; i < len; i++) {
-            AgentLogicConfig memory cf = _agentLogicConfigs[i];
-            string memory trunk = fetchLogicByConfig(cf);
+        for (uint256 cdIdx = 0; cdIdx < len; cdIdx++) {
+            AgentLogicConfig memory cf = _agentLogicConfigs[version][cdIdx];
+            string memory trunk = _fetchLogicByConfig(version, cf);
 
             if (cf.fileType == FileType.LIBRARY) {
                 libsCode = string(abi.encodePacked(libsCode, trunk));
@@ -165,25 +176,9 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
             );
     }
 
-    function fetchAllAgentLogic()
-        external
-        view
-        virtual
-        returns (string[] memory filename, string[] memory logic)
-    {
-        uint256 len = _configsNum;
-        filename = new string[](len);
-        logic = new string[](len);
-
-        for (uint256 i = 0; i < len; i++) {
-            filename[i] = _agentLogicConfigs[i].fileName;
-            logic[i] = fetchLogicByConfig(_agentLogicConfigs[i]);
-        }
-    }
-
-    function fetchLogicByConfig(
+    function _fetchLogicByConfig(
         AgentLogicConfig memory cf
-    ) public view virtual returns (string memory logic) {
+    ) internal view virtual returns (string memory logic) {
         if (keccak256(bytes(getStorageMode(cf))) == _IPFS_SIG) {
             logic = cf.fileName; // return the IPFS hash
         } else {
@@ -196,25 +191,21 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     ) public view virtual returns (string memory) {
         if (cf.fileStore != address(0)) {
             return "fs";
-        } else {
-            return "ipfs";
         }
+        return "ipfs";
     }
 
-    function getAgentLogicConfigs()
-        external
-        view
-        returns (AgentLogicConfig[] memory configs)
-    {
-        uint256 len = _configsNum;
-        configs = new AgentLogicConfig[](len);
-
-        for (uint256 i = 0; i < len; i++) {
-            configs[i] = _agentLogicConfigs[i];
-        }
+    function _getConfigsNumber(uint16 version) internal view returns (uint256) {
+        return _configsNum[version];
     }
 
-    function getConfigsNumber() external view returns (uint256) {
-        return _configsNum;
+    function getCurrentVersion() external view returns (uint16) {
+        return _currentVersion;
+    }
+
+    function _validateVersion(uint16 version) internal view {
+        if (version > _currentVersion) {
+            revert InvalidVersion();
+        }
     }
 }
