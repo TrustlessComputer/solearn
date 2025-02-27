@@ -2,15 +2,16 @@
 pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IUtilityAgent} from "./IUtilityAgent.sol";
+import {IAgent} from "./IAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
-contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
+
+contract AgentUpgradeable is IAgent, OwnableUpgradeable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
 
     string private _implementationLanguage; // e.g., "python", "javascript"...
     uint16 private _currentVersion;
     mapping(uint256 version => mapping(string => string)) private _endPoints;
-    mapping(uint256 version => uint32) private _pointersNum;
+    mapping(uint256 version => uint256) private _pointersNum;
     mapping(uint256 version => mapping(uint256 => CodePointer))
         private _codePointers;
 
@@ -27,11 +28,11 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     ) external initializer {
         __Ownable_init();
 
-        addNewAgentConfigs(pointers, endpoints);
+        publishAgentCode(pointers, endpoints);
         _implementationLanguage = "javascript";
     }
 
-    function addNewAgentConfigs(
+    function publishAgentCode(
         CodePointer[] calldata pointers,
         Endpoint[] calldata endpoints
     ) public virtual onlyOwner {
@@ -61,7 +62,7 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
 
         _codePointers[version][pNum] = pointer;
 
-        emit CodePointerCreate(version, pNum, pointer);
+        emit CodePointerCreated(version, pNum, pointer);
         _pointersNum[version]++;
     }
 
@@ -81,7 +82,7 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
         Endpoint calldata endpoint
     ) internal virtual {
         _endPoints[version][endpoint.key] = endpoint.value;
-        emit EndpointUpdate(version, endpoint);
+        emit EndpointUpdated(version, endpoint);
     }
 
     function getEndpoints(
@@ -96,7 +97,7 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
         }
     }
 
-    function fetchAllAgentLogic(
+    function getAgentCode(
         uint16 version
     ) external view checkVersion(version) returns (string memory code) {
         uint256 len = _getPointersNumber(version);
@@ -109,7 +110,7 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
 
             if (p.fileType == FileType.LIBRARY) {
                 libsCode = string(abi.encodePacked(libsCode, trunk));
-            } else if (p.fileType == FileType.DEV_SCRIPT) {
+            } else if (p.fileType == FileType.MAIN_SCRIPT) {
                 devScripts = string(abi.encodePacked(devScripts, trunk));
             }
         }
@@ -169,7 +170,7 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
         }
     }
 
-    function getImplementationLanguage() external view returns (string memory) {
+    function getCodeLanguage() external view returns (string memory) {
         return _implementationLanguage;
     }
 }

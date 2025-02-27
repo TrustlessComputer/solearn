@@ -1,11 +1,11 @@
 import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
-import { UtilityAgentUpgradeable, IUtilityAgent } from "../typechain-types";
+import { AgentUpgradeable, IUtilityAgent } from "../typechain-types";
 import { Signer } from "ethers";
 const helpers = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
-describe("UtilityAgentUpgradeable", async function () {
-  let utilityAgent: UtilityAgentUpgradeable;
+describe("AgentUpgradeable", async function () {
+  let utilityAgent: AgentUpgradeable;
   let owner: Signer;
   let addr1: Signer;
   let addr2: Signer;
@@ -17,10 +17,10 @@ describe("UtilityAgentUpgradeable", async function () {
   beforeEach(async function () {
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
-    const UtilityAgentUpgradeable = await ethers.getContractFactory(
-      "UtilityAgentUpgradeable"
+    const AgentUpgradeable = await ethers.getContractFactory(
+      "AgentUpgradeable"
     );
-    utilityAgent = (await upgrades.deployProxy(UtilityAgentUpgradeable, [
+    utilityAgent = (await upgrades.deployProxy(AgentUpgradeable, [
       [
         {
           retrieveAddress: mockFileStoreAddress,
@@ -29,7 +29,7 @@ describe("UtilityAgentUpgradeable", async function () {
         },
         {
           retrieveAddress: mockFileStoreAddress,
-          fileType: 2,
+          fileType: 0,
           fileName: "devScript.text",
         },
       ],
@@ -39,16 +39,14 @@ describe("UtilityAgentUpgradeable", async function () {
           value: "https://rpc-testnet.sepolia.com",
         },
       ],
-    ])) as unknown as UtilityAgentUpgradeable;
+    ])) as unknown as AgentUpgradeable;
 
     await utilityAgent.waitForDeployment();
   });
 
   it("Should initialize correctly", async function () {
     expect(await utilityAgent.getCurrentVersion()).to.equal(1);
-    expect(await utilityAgent.getImplementationLanguage()).to.equal(
-      "javascript"
-    );
+    expect(await utilityAgent.getCodeLanguage()).to.equal("javascript");
   });
 
   it("Should add new agent configurations", async function () {
@@ -68,7 +66,7 @@ describe("UtilityAgentUpgradeable", async function () {
 
     await utilityAgent
       .connect(owner)
-      .addNewAgentConfigs(newPointers, newEndpoints);
+      .publishAgentCode(newPointers, newEndpoints);
 
     expect(await utilityAgent.getCurrentVersion()).to.equal(2);
 
@@ -114,9 +112,7 @@ describe("UtilityAgentUpgradeable", async function () {
   //   });
 
   it("Should get implementation language", async function () {
-    expect(await utilityAgent.getImplementationLanguage()).to.equal(
-      "javascript"
-    );
+    expect(await utilityAgent.getCodeLanguage()).to.equal("javascript");
   });
 
   it("Should get current version", async function () {
@@ -140,9 +136,9 @@ describe("UtilityAgentUpgradeable", async function () {
 
     await utilityAgent
       .connect(owner)
-      .addNewAgentConfigs(newPointers, newEndpoints);
+      .publishAgentCode(newPointers, newEndpoints);
 
-    let code = await utilityAgent.fetchAllAgentLogic(2);
+    let code = await utilityAgent.getAgentCode(2);
     expect(code).includes("ipfs://abcxyz");
   });
 });

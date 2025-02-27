@@ -3,11 +3,10 @@ pragma solidity ^0.8.0;
 
 import {File} from "./IFileStore.sol";
 
-interface IUtilityAgent {
+interface IAgent {
     enum FileType {
-        NIL,
         LIBRARY,
-        DEV_SCRIPT
+        MAIN_SCRIPT
     }
 
     struct CodePointer {
@@ -21,18 +20,18 @@ interface IUtilityAgent {
         string value;
     }
 
-    event CodePointerCreate(
+    event CodePointerCreated(
         uint256 indexed version,
         uint256 indexed pIndex,
         CodePointer newPointer
     );
-    event EndpointUpdate(uint256 version, Endpoint endpoint);
+    event EndpointUpdated(uint256 version, Endpoint endpoint);
 
     error InvalidData();
     error ZeroAddress();
     error InvalidVersion();
 
-    function addNewAgentConfigs(
+    function publishAgentCode(
         CodePointer[] calldata pointers,
         Endpoint[] calldata endpoints
     ) external;
@@ -47,11 +46,11 @@ interface IUtilityAgent {
         string[] memory epKeys
     ) external view returns (string[] memory epValues);
 
-    function fetchAllAgentLogic(
+    function getAgentCode(
         uint16 version
     ) external view returns (string memory code);
 
-    function getImplementationLanguage() external view returns (string memory);
+    function getCodeLanguage() external view returns (string memory);
 
     function getCurrentVersion() external view returns (uint16);
 }
