@@ -28,20 +28,25 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable {
     ) external initializer {
         __Ownable_init();
 
-        publishAgentCode(pointers, endpoints);
         _implementationLanguage = "javascript";
+        publishAgentCode(pointers, endpoints);
     }
 
     function publishAgentCode(
         CodePointer[] calldata pointers,
         Endpoint[] calldata endpoints
     ) public virtual onlyOwner {
-        uint16 version = _bumpVersion();
+        if (pointers.length == 0) revert InvalidData();
 
+        uint16 version = _bumpVersion();
         uint256 pLen = pointers.length;
         uint256 epLen = endpoints.length;
 
         for (uint256 i = 0; i < pLen; i++) {
+            // Validate pointer
+            if (keccak256(bytes(pointers[i].fileName)) == keccak256("")) {
+                revert InvalidData();
+            }
             _addNewCodePointer(version, pointers[i]);
         }
 
@@ -102,25 +107,33 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable {
     ) external view checkVersion(version) returns (string memory code) {
         uint256 len = _getPointersNumber(version);
         string memory libsCode = "";
-        string memory devScripts = "";
+        string memory mainScripts = "";
 
         for (uint256 pIdx = 0; pIdx < len; pIdx++) {
             CodePointer memory p = _codePointers[version][pIdx];
-            string memory trunk = _fetchLogicByPointer(p);
+
+            string memory trunk = _getCodeByPointer(p);
 
             if (p.fileType == FileType.LIBRARY) {
-                libsCode = string(abi.encodePacked(libsCode, trunk));
+                libsCode = _concatStrings(libsCode, trunk);
             } else if (p.fileType == FileType.MAIN_SCRIPT) {
-                devScripts = string(abi.encodePacked(devScripts, trunk));
+                mainScripts = _concatStrings(mainScripts, trunk);
             }
         }
 
-        return _buildScript(libsCode, devScripts);
+        return _buildScript(libsCode, mainScripts);
+    }
+
+    function _concatStrings(
+        string memory a,
+        string memory b
+    ) internal pure returns (string memory) {
+        return string(abi.encodePacked(a, b));
     }
 
     function _buildScript(
         string memory libsCode,
-        string memory devScripts
+        string memory mainScripts
     ) internal pure returns (string memory) {
         return
             string(
@@ -129,13 +142,14 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable {
                     libsCode,
                     '"></script>',
                     '<script name="dev">getGzipFile(dataURItoBlob("',
-                    devScripts,
+                    mainScripts,
                     '"));</script>'
                 )
             );
     }
 
-    function _fetchLogicByPointer(
+    //TODO: kelvin test case invalid fs contract address
+    function _getCodeByPointer(
         CodePointer memory p
     ) internal view virtual returns (string memory logic) {
         if (keccak256(bytes(_getStorageMode(p))) == _IPFS_SIG) {

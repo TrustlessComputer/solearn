@@ -1,6 +1,6 @@
 import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
-import { AgentUpgradeable, IUtilityAgent } from "../typechain-types";
+import { AgentUpgradeable, IAgent } from "../typechain-types";
 import { Signer } from "ethers";
 const helpers = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
@@ -50,14 +50,14 @@ describe("AgentUpgradeable", async function () {
   });
 
   it("Should add new agent configurations", async function () {
-    const newPointers: IUtilityAgent.CodePointerStruct[] = [
+    const newPointers: IAgent.CodePointerStruct[] = [
       {
         retrieveAddress: mockFileStoreAddress,
         fileType: 1,
         fileName: "new_ethers.text",
       },
     ];
-    const newEndpoints: IUtilityAgent.EndpointStruct[] = [
+    const newEndpoints: IAgent.EndpointStruct[] = [
       {
         key: "new_rpc_url",
         value: "https://new-rpc.com",
@@ -77,7 +77,7 @@ describe("AgentUpgradeable", async function () {
 
   it("Should update endpoints", async function () {
     const version = await utilityAgent.getCurrentVersion();
-    const endpoints: IUtilityAgent.EndpointStruct[] = [
+    const endpoints: IAgent.EndpointStruct[] = [
       {
         key: "sepolia_rpc_url",
         value: "https://updated-rpc.com",
@@ -92,7 +92,7 @@ describe("AgentUpgradeable", async function () {
   });
 
   it("Should revert on invalid version", async function () {
-    const endpoints: IUtilityAgent.EndpointStruct[] = [
+    const endpoints: IAgent.EndpointStruct[] = [
       {
         key: "sepolia_rpc_url",
         value: "https://updated-rpc.com",
@@ -120,14 +120,14 @@ describe("AgentUpgradeable", async function () {
   });
 
   it("Should add new agent configurations using ipfs", async function () {
-    const newPointers: IUtilityAgent.CodePointerStruct[] = [
+    const newPointers: IAgent.CodePointerStruct[] = [
       {
         retrieveAddress: ethers.ZeroAddress,
         fileType: 1,
         fileName: "ipfs://abcxyz",
       },
     ];
-    const newEndpoints: IUtilityAgent.EndpointStruct[] = [
+    const newEndpoints: IAgent.EndpointStruct[] = [
       {
         key: "new_rpc_url",
         value: "https://new-rpc.com",

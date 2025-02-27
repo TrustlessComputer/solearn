@@ -30,6 +30,7 @@ interface IAgent {
     error InvalidData();
     error ZeroAddress();
     error InvalidVersion();
+    error InvalidPointer(address retrieveAddress, string fileName);
 
     function publishAgentCode(
         CodePointer[] calldata pointers,
