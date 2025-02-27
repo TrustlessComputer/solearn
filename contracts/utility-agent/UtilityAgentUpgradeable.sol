@@ -7,7 +7,7 @@ import {IFileStore, File} from "./IFileStore.sol";
 contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
 
-    string private _implementationLanguage; // e.g., "python", "java"
+    string private _implementationLanguage; // e.g., "python", "javascript"...
     uint16 private _currentVersion;
     mapping(uint256 version => mapping(string => string)) private _endPoints;
     mapping(uint256 version => uint32) private _pointersNum;

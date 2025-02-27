@@ -16,6 +16,11 @@ interface IUtilityAgent {
         string fileName;
     }
 
+    struct Endpoint {
+        string key;
+        string value;
+    }
+
     event CodePointerCreate(
         uint256 indexed version,
         uint256 indexed pIndex,
@@ -26,11 +31,6 @@ interface IUtilityAgent {
     error InvalidData();
     error ZeroAddress();
     error InvalidVersion();
-
-    struct Endpoint {
-        string key;
-        string value;
-    }
 
     function addNewAgentConfigs(
         CodePointer[] calldata pointers,

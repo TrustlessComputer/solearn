@@ -122,4 +122,27 @@ describe("UtilityAgentUpgradeable", async function () {
   it("Should get current version", async function () {
     expect(await utilityAgent.getCurrentVersion()).to.equal(1);
   });
+
+  it("Should add new agent configurations using ipfs", async function () {
+    const newPointers: IUtilityAgent.CodePointerStruct[] = [
+      {
+        retrieveAddress: ethers.ZeroAddress,
+        fileType: 1,
+        fileName: "ipfs://abcxyz",
+      },
+    ];
+    const newEndpoints: IUtilityAgent.EndpointStruct[] = [
+      {
+        key: "new_rpc_url",
+        value: "https://new-rpc.com",
+      },
+    ];
+
+    await utilityAgent
+      .connect(owner)
+      .addNewAgentConfigs(newPointers, newEndpoints);
+
+    let code = await utilityAgent.fetchAllAgentLogic(2);
+    expect(code).includes("ipfs://abcxyz");
+  });
 });
