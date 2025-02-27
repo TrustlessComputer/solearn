@@ -4,16 +4,15 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IUtilityAgent} from "./IUtilityAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
-
 contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
 
-    string public builtWith = "javascript"; // e.g., "python", "java"
+    string private _implementationLanguage; // e.g., "python", "java"
     uint16 private _currentVersion;
-    mapping(uint256 version => uint32) private _configsNum;
     mapping(uint256 version => mapping(string => string)) private _endPoints;
-    mapping(uint256 version => mapping(uint256 => AgentLogicConfig))
-        private _agentLogicConfigs;
+    mapping(uint256 version => uint32) private _pointersNum;
+    mapping(uint256 version => mapping(uint256 => CodePointer))
+        private _codePointers;
 
     uint256[50] private __gap;
 
@@ -23,25 +22,26 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     }
 
     function initialize(
-        AgentLogicConfig[] calldata logicCfs,
+        CodePointer[] calldata pointers,
         Endpoint[] calldata endpoints
     ) external initializer {
         __Ownable_init();
 
-        addNewAgentConfigs(logicCfs, endpoints);
+        addNewAgentConfigs(pointers, endpoints);
+        _implementationLanguage = "javascript";
     }
 
     function addNewAgentConfigs(
-        AgentLogicConfig[] calldata logicCfs,
+        CodePointer[] calldata pointers,
         Endpoint[] calldata endpoints
     ) public virtual onlyOwner {
         uint16 version = _bumpVersion();
 
-        uint256 cfLen = logicCfs.length;
+        uint256 pLen = pointers.length;
         uint256 epLen = endpoints.length;
 
-        for (uint256 i = 0; i < cfLen; i++) {
-            _addNewAgentLogicConfig(version, logicCfs[i]);
+        for (uint256 i = 0; i < pLen; i++) {
+            _addNewCodePointer(version, pointers[i]);
         }
 
         for (uint256 i = 0; i < epLen; i++) {
@@ -49,63 +49,21 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
         }
     }
 
-    function _bumpVersion() private view returns (uint16) {
+    function _bumpVersion() private returns (uint16) {
         return ++_currentVersion;
     }
 
-    function _addNewAgentLogicConfig(
+    function _addNewCodePointer(
         uint16 version,
-        AgentLogicConfig calldata storageInfo
+        CodePointer calldata pointer
     ) internal virtual {
-        uint256 cfNum = _getConfigsNumber(version);
-        _agentLogicConfigs[version][cfNum] = storageInfo;
-        emit AgentLogicConfigCreate(version, cfNum, storageInfo);
-        _configsNum++;
+        uint256 pNum = _getPointersNumber(version);
+
+        _codePointers[version][pNum] = pointer;
+
+        emit CodePointerCreate(version, pNum, pointer);
+        _pointersNum[version]++;
     }
-
-    // function updateAgentLogicConfig(
-    //     uint16 version,
-    //     uint256 cfIdx,
-    //     AgentLogicConfig calldata cf
-    // ) external onlyOwner checkVersion(version) {
-    //     uint256 cfNum = _getConfigsNumber(version);
-
-    //     if (cfIdx >= cfNum) {
-    //         revert InvalidData();
-    //     }
-    //     _updateAgentLogicConfig(version, cfIdx, cf);
-    // }
-
-    // function _updateAgentLogicConfig(
-    //     uint16 version,
-    //     uint256 cfIdx,
-    //     AgentLogicConfig calldata cf
-    // ) internal virtual {
-    //     _agentLogicConfigs[version][cfIdx] = cf;
-    //     emit AgentLogicConfigUpdate(version, cfIdx, cf);
-    // }
-
-    // function removeAgentLogicConfig(
-    //     uint16 version,
-    //     uint256 cfIdx
-    // ) external onlyOwner checkVersion(version) {
-    //     uint256 cfNum = _getConfigsNumber(version);
-
-    //     if (cfIdx >= cfNum) {
-    //         revert InvalidData();
-    //     }
-
-    //     uint256 lastIdx = cfNum - 1;
-    //     if (cfIdx < lastIdx) {
-    //         _agentLogicConfigs[version][cfIdx] = _agentLogicConfigs[version][
-    //             lastIdx
-    //         ];
-    //     }
-
-    //     delete _agentLogicConfigs[version][lastIdx];
-    //     _configsNum--;
-    //     emit AgentLogicConfigRemove(version, cfIdx);
-    // }
 
     function updateEndpoints(
         uint16 version,
@@ -128,30 +86,30 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
 
     function getEndpoints(
         uint16 version,
-        string[] calldata epKeys
+        string[] memory epKeys
     ) external view returns (string[] memory epValues) {
         uint256 len = epKeys.length;
         epValues = new string[](len);
 
         for (uint256 i = 0; i < len; i++) {
-            epValues[i] = _endPoints[epKeys[i]];
+            epValues[i] = _endPoints[version][epKeys[i]];
         }
     }
 
     function fetchAllAgentLogic(
         uint16 version
     ) external view checkVersion(version) returns (string memory code) {
-        uint256 len = _getConfigsNumber(version);
+        uint256 len = _getPointersNumber(version);
         string memory libsCode = "";
         string memory devScripts = "";
 
-        for (uint256 cdIdx = 0; cdIdx < len; cdIdx++) {
-            AgentLogicConfig memory cf = _agentLogicConfigs[version][cdIdx];
-            string memory trunk = _fetchLogicByConfig(version, cf);
+        for (uint256 pIdx = 0; pIdx < len; pIdx++) {
+            CodePointer memory p = _codePointers[version][pIdx];
+            string memory trunk = _fetchLogicByPointer(p);
 
-            if (cf.fileType == FileType.LIBRARY) {
+            if (p.fileType == FileType.LIBRARY) {
                 libsCode = string(abi.encodePacked(libsCode, trunk));
-            } else if (cf.fileType == FileType.DEV_SCRIPT) {
+            } else if (p.fileType == FileType.DEV_SCRIPT) {
                 devScripts = string(abi.encodePacked(devScripts, trunk));
             }
         }
@@ -162,7 +120,7 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
     function _buildScript(
         string memory libsCode,
         string memory devScripts
-    ) internal view returns (string memory) {
+    ) internal pure returns (string memory) {
         return
             string(
                 abi.encodePacked(
@@ -176,27 +134,29 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
             );
     }
 
-    function _fetchLogicByConfig(
-        AgentLogicConfig memory cf
+    function _fetchLogicByPointer(
+        CodePointer memory p
     ) internal view virtual returns (string memory logic) {
-        if (keccak256(bytes(getStorageMode(cf))) == _IPFS_SIG) {
-            logic = cf.fileName; // return the IPFS hash
+        if (keccak256(bytes(_getStorageMode(p))) == _IPFS_SIG) {
+            logic = p.fileName; // return the IPFS hash
         } else {
-            logic = IFileStore(cf.fileStore).getFile(cf.fileName).read();
+            logic = IFileStore(p.retrieveAddress).getFile(p.fileName).read();
         }
     }
 
-    function getStorageMode(
-        AgentLogicConfig memory cf
-    ) public view virtual returns (string memory) {
-        if (cf.fileStore != address(0)) {
+    function _getStorageMode(
+        CodePointer memory p
+    ) internal view virtual returns (string memory) {
+        if (p.retrieveAddress != address(0)) {
             return "fs";
         }
         return "ipfs";
     }
 
-    function _getConfigsNumber(uint16 version) internal view returns (uint256) {
-        return _configsNum[version];
+    function _getPointersNumber(
+        uint16 version
+    ) internal view returns (uint256) {
+        return _pointersNum[version];
     }
 
     function getCurrentVersion() external view returns (uint16) {
@@ -207,5 +167,9 @@ contract UtilityAgentUpgradeable is IUtilityAgent, OwnableUpgradeable {
         if (version > _currentVersion) {
             revert InvalidVersion();
         }
+    }
+
+    function getImplementationLanguage() external view returns (string memory) {
+        return _implementationLanguage;
     }
 }

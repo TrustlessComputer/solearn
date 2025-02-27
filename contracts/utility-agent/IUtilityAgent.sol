@@ -5,80 +5,53 @@ import {File} from "./IFileStore.sol";
 
 interface IUtilityAgent {
     enum FileType {
+        NIL,
         LIBRARY,
         DEV_SCRIPT
     }
 
-    struct AgentLogicConfig {
-        address fileStore;
+    struct CodePointer {
+        address retrieveAddress;
         FileType fileType;
         string fileName;
     }
+
+    event CodePointerCreate(
+        uint256 indexed version,
+        uint256 indexed pIndex,
+        CodePointer newPointer
+    );
+    event EndpointUpdate(uint256 version, Endpoint endpoint);
+
+    error InvalidData();
+    error ZeroAddress();
+    error InvalidVersion();
 
     struct Endpoint {
         string key;
         string value;
     }
 
-    event AgentLogicConfigCreate(
-        uint256 indexed version,
-        uint256 indexed cfIndex,
-        AgentLogicConfig newConfig
-    );
-    event AgentLogicConfigUpdate(
-        uint256 indexed version,
-        uint256 indexed cfIndex,
-        AgentLogicConfig newConfig
-    );
-    event AgentLogicConfigRemove(
-        uint256 indexed version,
-        uint256 indexed cfIndex
-    );
-    event EndpointUpdate(uint256 indexed version, Endpoint endpoint);
-
-    error InvalidData();
-    error InvalidVersion();
-    error ZeroAddress();
-
-    function bumpVersion() external;
-
-    function getCurrentVersion() external view returns (uint16);
-
     function addNewAgentConfigs(
-        uint16 version,
-        AgentLogicConfig[] calldata logicCfs,
-        string[] calldata keys,
-        string[] calldata values
+        CodePointer[] calldata pointers,
+        Endpoint[] calldata endpoints
     ) external;
-
-    function updateAgentLogicConfig(
-        uint16 version,
-        uint256 cfIdx,
-        AgentLogicConfig calldata cf
-    ) external;
-
-    function removeAgentLogicConfig(uint16 version, uint256 cfIdx) external;
 
     function updateEndpoints(
         uint16 version,
-        string[] calldata keys,
-        string[] calldata values
+        Endpoint[] calldata endpoints
     ) external;
 
     function getEndpoints(
         uint16 version,
-        string[] calldata keys
-    ) external view returns (string[] memory values);
+        string[] memory epKeys
+    ) external view returns (string[] memory epValues);
 
     function fetchAllAgentLogic(
         uint16 version
-    ) external view checkVersion(version) returns (string memory code);
+    ) external view returns (string memory code);
 
-    function fetchLogicByConfig(
-        AgentLogicConfig memory cf
-    ) public view virtual returns (string memory logic);
+    function getImplementationLanguage() external view returns (string memory);
 
-    function getStorageMode(
-        AgentLogicConfig memory cf
-    ) public view virtual returns (string memory);
+    function getCurrentVersion() external view returns (uint16);
 }
