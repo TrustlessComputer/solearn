@@ -248,6 +248,9 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_DEEP_HERMES_1,
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_DEEP_HERMES_2,
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_DEEP_HERMES_3,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_1_14B_1,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_1_14B_2,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_1_14B_3,
       ],
       l2OwnerAddress: process.env.BASE_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.BASE_MAINNET_TREASURY_ADDRESS,
@@ -263,6 +266,7 @@ const config: HardhatUserConfig = {
       hybridModelAddress_4: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_4,
       hybridModelAddress_5: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_5,
       hybridModelAddress_6: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_6,
+      hybridModelAddress_7: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_7,
       hybridModelScoringAddress:
         process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
