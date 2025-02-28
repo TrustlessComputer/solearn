@@ -274,19 +274,21 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
     } as any,
     base_testnet: {
-      url: "https://base-sepolia.blockpi.network/v1/rpc/public",
+      url: "https://base-sepolia.g.alchemy.com/v2/..",
       chainId: 84532,
-      accounts: [process.env.BASE_TESTNET_PRIVATE_KEY],
+      accounts: [
+        process.env.BASE_TESTNET_PRIVATE_KEY,
+        process.env.BASE_TESTNET_PRIVATE_KEY_WORKER_1,
+        process.env.BASE_TESTNET_PRIVATE_KEY_WORKER_2,
+        process.env.BASE_TESTNET_PRIVATE_KEY_WORKER_3,
+      ],
       l2OwnerAddress: process.env.BASE_TESTNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.BASE_TESTNET_TREASURY_ADDRESS,
       collectionAddress: process.env.BASE_TESTNET_COLLECTION_ADDRESS,
       workerHubAddress: process.env.BASE_TESTNET_WORKER_HUB_ADDRESS,
+      stakingHubAddress: process.env.BASE_TESTNET_STAKING_HUB_ADDRESS,
       daoTokenAddress: process.env.BASE_TESTNET_DAO_TOKEN_ADDRESS,
-      workerHubScoringAddress:
-        process.env.BASE_TESTNET_WORKER_HUB_SCORING_ADDRESS,
       hybridModelAddress: process.env.BASE_TESTNET_HYBRID_MODEL_ADDRESS,
-      hybridModelScoringAddress:
-        process.env.BASE_TESTNET_HYBRID_MODEL_SCORING_ADDRESS,
       systemPromptManagerAddress:
         process.env.BASE_TESTNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       wEAIAddress: process.env.BASE_TESTNET_WEAI,
