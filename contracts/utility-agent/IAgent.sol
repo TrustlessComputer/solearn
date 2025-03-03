@@ -15,9 +15,11 @@ interface IAgent {
         string fileName;
     }
 
-    struct Endpoint {
-        string key;
-        string value;
+    struct SignData {
+        CodePointer[] pointers;
+        address[] depsAgents;
+        bool isOnchain;
+        uint16 currentVersion;
     }
 
     event CodePointerCreated(
@@ -25,8 +27,8 @@ interface IAgent {
         uint256 indexed pIndex,
         CodePointer newPointer
     );
-    event EndpointUpdated(uint256 version, Endpoint endpoint);
 
+    error Unauthenticated();
     error InvalidData();
     error ZeroAddress();
     error InvalidVersion();
@@ -34,18 +36,22 @@ interface IAgent {
 
     function publishAgentCode(
         CodePointer[] calldata pointers,
-        Endpoint[] calldata endpoints
-    ) external;
+        address[] calldata depsAgents,
+        bool isOnchain
+    ) external returns (uint16 version);
 
-    function updateEndpoints(
-        uint16 version,
-        Endpoint[] calldata endpoints
-    ) external;
+    function publishAgentCodeWithSignature(
+        CodePointer[] calldata pointers,
+        address[] calldata depsAgents,
+        bool isOnchain,
+        bytes calldata signature
+    ) external returns (uint16 version);
 
-    function getEndpoints(
-        uint16 version,
-        string[] memory epKeys
-    ) external view returns (string[] memory epValues);
+    function getDepsAgents(
+        uint16 version
+    ) external view returns (address[] memory);
+
+    function isOnchain(uint256 version) external view returns (bool);
 
     function getAgentCode(
         uint16 version

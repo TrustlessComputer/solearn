@@ -2,18 +2,27 @@
 pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IAgent} from "./IAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
+import "hardhat/console.sol";
 
-contract AgentUpgradeable is IAgent, OwnableUpgradeable {
+contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
+    bytes32 private constant SIGN_DATA_TYPEHASH =
+        keccak256(
+            "SignData(CodePointer[] pointers,address[] depsAgents,bool isOnchain,uint16 currentVersion)CodePointer(address retrieveAddress,uint8 fileType,string fileName)"
+        );
 
-    string private _implementationLanguage; // e.g., "python", "javascript"...
+    string private _codeLanguage; // e.g., "python", "javascript"...
+    address private _agentOwner;
     uint16 private _currentVersion;
-    mapping(uint256 version => mapping(string => string)) private _endPoints;
+
+    mapping(uint256 version => bool) private _isOnchain;
     mapping(uint256 version => uint256) private _pointersNum;
     mapping(uint256 version => mapping(uint256 => CodePointer))
         private _codePointers;
+    mapping(uint256 version => address[]) private _depsAgents;
 
     uint256[50] private __gap;
 
@@ -22,37 +31,79 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable {
         _;
     }
 
-    function initialize(
-        CodePointer[] calldata pointers,
-        Endpoint[] calldata endpoints
-    ) external initializer {
-        __Ownable_init();
+    modifier onlyAgentOwner() {
+        if (msg.sender != _agentOwner) revert Unauthenticated();
+        _;
+    }
 
-        _implementationLanguage = "javascript";
-        publishAgentCode(pointers, endpoints);
+    function initialize(
+        string memory agentName,
+        string memory agentVersion,
+        string memory codeLanguage,
+        CodePointer[] calldata pointers,
+        address[] calldata depsAgents,
+        address agentOwner,
+        bool isOnchain
+    ) external initializer {
+        if (agentOwner == address(0)) {
+            revert ZeroAddress();
+        }
+        __Ownable_init();
+        __EIP712_init(agentName, agentVersion);
+
+        _codeLanguage = codeLanguage;
+        _agentOwner = agentOwner;
+        _publishAgentCode(pointers, depsAgents, isOnchain);
     }
 
     function publishAgentCode(
         CodePointer[] calldata pointers,
-        Endpoint[] calldata endpoints
-    ) public virtual onlyOwner {
+        address[] calldata depsAgents,
+        bool isOnchain
+    ) external virtual onlyAgentOwner returns (uint16) {
+        return _publishAgentCode(pointers, depsAgents, isOnchain);
+    }
+
+    function publishAgentCodeWithSignature(
+        CodePointer[] calldata pointers,
+        address[] calldata depsAgents,
+        bool isOnchain,
+        bytes calldata signature
+    ) external virtual returns (uint16) {
+        bytes32 digest = getHashToSign(pointers, depsAgents, isOnchain);
+        if (ECDSAUpgradeable.recover(digest, signature) != _agentOwner) {
+            revert Unauthenticated();
+        }
+        return _publishAgentCode(pointers, depsAgents, isOnchain);
+    }
+
+    function _publishAgentCode(
+        CodePointer[] calldata pointers,
+        address[] calldata depsAgents,
+        bool isOnchain
+    ) internal virtual returns (uint16) {
         if (pointers.length == 0) revert InvalidData();
 
         uint16 version = _bumpVersion();
-        uint256 pLen = pointers.length;
-        uint256 epLen = endpoints.length;
+        _isOnchain[version] = isOnchain;
 
+        uint256 pLen = pointers.length;
         for (uint256 i = 0; i < pLen; i++) {
-            // Validate pointer
-            if (keccak256(bytes(pointers[i].fileName)) == keccak256("")) {
+            if (bytes(pointers[i].fileName).length == 0) {
                 revert InvalidData();
             }
             _addNewCodePointer(version, pointers[i]);
         }
 
-        for (uint256 i = 0; i < epLen; i++) {
-            _updateEndpoint(version, endpoints[i]);
+        uint256 depsLen = depsAgents.length;
+        for (uint256 i = 0; i < depsLen; i++) {
+            if (depsAgents[i] == address(0)) {
+                revert ZeroAddress();
+            }
+            _depsAgents[version].push(depsAgents[i]);
         }
+
+        return version;
     }
 
     function _bumpVersion() private returns (uint16) {
@@ -71,35 +122,14 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable {
         _pointersNum[version]++;
     }
 
-    function updateEndpoints(
-        uint16 version,
-        Endpoint[] calldata endpoints
-    ) external onlyOwner checkVersion(version) {
-        uint256 len = endpoints.length;
-
-        for (uint256 i = 0; i < len; i++) {
-            _updateEndpoint(version, endpoints[i]);
-        }
+    function getDepsAgents(
+        uint16 version
+    ) external view checkVersion(version) returns (address[] memory) {
+        return _depsAgents[version];
     }
 
-    function _updateEndpoint(
-        uint16 version,
-        Endpoint calldata endpoint
-    ) internal virtual {
-        _endPoints[version][endpoint.key] = endpoint.value;
-        emit EndpointUpdated(version, endpoint);
-    }
-
-    function getEndpoints(
-        uint16 version,
-        string[] memory epKeys
-    ) external view returns (string[] memory epValues) {
-        uint256 len = epKeys.length;
-        epValues = new string[](len);
-
-        for (uint256 i = 0; i < len; i++) {
-            epValues[i] = _endPoints[version][epKeys[i]];
-        }
+    function isOnchain(uint256 version) external view returns (bool) {
+        return _isOnchain[version];
     }
 
     function getAgentCode(
@@ -112,16 +142,16 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable {
         for (uint256 pIdx = 0; pIdx < len; pIdx++) {
             CodePointer memory p = _codePointers[version][pIdx];
 
-            string memory trunk = _getCodeByPointer(p);
+            string memory codeChunk = _getCodeByPointer(p);
 
             if (p.fileType == FileType.LIBRARY) {
-                libsCode = _concatStrings(libsCode, trunk);
+                libsCode = _concatStrings(libsCode, codeChunk);
             } else if (p.fileType == FileType.MAIN_SCRIPT) {
-                mainScripts = _concatStrings(mainScripts, trunk);
+                mainScripts = _concatStrings(mainScripts, codeChunk);
             }
         }
 
-        return _buildScript(libsCode, mainScripts);
+        return _concatStrings(libsCode, mainScripts);
     }
 
     function _concatStrings(
@@ -131,24 +161,6 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable {
         return string(abi.encodePacked(a, b));
     }
 
-    function _buildScript(
-        string memory libsCode,
-        string memory mainScripts
-    ) internal pure returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    '<script sandbox="allow-scripts" type="text/javascript" name="DECOMPRESS_LIB" src="data:@file/javascript;base64,',
-                    libsCode,
-                    '"></script>',
-                    '<script name="dev">getGzipFile(dataURItoBlob("',
-                    mainScripts,
-                    '"));</script>'
-                )
-            );
-    }
-
-    //TODO: kelvin test case invalid fs contract address
     function _getCodeByPointer(
         CodePointer memory p
     ) internal view virtual returns (string memory logic) {
@@ -185,6 +197,45 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable {
     }
 
     function getCodeLanguage() external view returns (string memory) {
-        return _implementationLanguage;
+        return _codeLanguage;
+    }
+
+    function getHashToSign(
+        CodePointer[] calldata pointers,
+        address[] calldata depsAgents,
+        bool isOnchain
+    ) public view virtual returns (bytes32) {
+        bytes32 CODEPOINTER_TYPEHASH = keccak256(
+            "CodePointer(address retrieveAddress,uint8 fileType,string fileName)"
+        );
+
+        bytes32[] memory pointerHashes = new bytes32[](pointers.length);
+
+        uint256 pLen = pointers.length;
+        for (uint i = 0; i < pLen; i++) {
+            pointerHashes[i] = keccak256(
+                abi.encode(
+                    CODEPOINTER_TYPEHASH,
+                    pointers[i].retrieveAddress,
+                    pointers[i].fileType,
+                    keccak256(bytes(pointers[i].fileName))
+                )
+            );
+        }
+
+        bytes32 pointersHash = keccak256(abi.encodePacked(pointerHashes));
+        bytes32 depsAgentsHash = keccak256(abi.encodePacked(depsAgents));
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                SIGN_DATA_TYPEHASH,
+                pointersHash,
+                depsAgentsHash,
+                isOnchain,
+                _currentVersion
+            )
+        );
+
+        return _hashTypedDataV4(structHash);
     }
 }
