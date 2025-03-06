@@ -29,10 +29,10 @@ interface IAgent {
     );
 
     error Unauthenticated();
+    error DigestAlreadyUsed();
     error InvalidData();
     error ZeroAddress();
     error InvalidVersion();
-    error InvalidPointer(address retrieveAddress, string fileName);
 
     function publishAgentCode(
         CodePointer[] calldata pointers,
@@ -60,4 +60,8 @@ interface IAgent {
     function getCodeLanguage() external view returns (string memory);
 
     function getCurrentVersion() external view returns (uint16);
+
+    function getAgentName() external view returns (string memory);
+
+    function getAgentOwner() external view returns (address);
 }

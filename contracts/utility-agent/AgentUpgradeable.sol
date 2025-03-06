@@ -5,7 +5,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IAgent} from "./IAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
-import "hardhat/console.sol";
 
 contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
@@ -15,9 +14,10 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
         );
 
     string private _codeLanguage; // e.g., "python", "javascript"...
-    address private _agentOwner;
     uint16 private _currentVersion;
+    address private _agentOwner;
 
+    mapping(bytes32 signature => bool) private _usedDigests;
     mapping(uint256 version => bool) private _isOnchain;
     mapping(uint256 version => uint256) private _pointersNum;
     mapping(uint256 version => mapping(uint256 => CodePointer))
@@ -71,9 +71,15 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
         bytes calldata signature
     ) external virtual returns (uint16) {
         bytes32 digest = getHashToSign(pointers, depsAgents, isOnchain);
+        if (_usedDigests[digest]) {
+            revert DigestAlreadyUsed();
+        }
         if (ECDSAUpgradeable.recover(digest, signature) != _agentOwner) {
             revert Unauthenticated();
         }
+
+        _usedDigests[digest] = true;
+
         return _publishAgentCode(pointers, depsAgents, isOnchain);
     }
 
@@ -158,7 +164,7 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
         string memory a,
         string memory b
     ) internal pure returns (string memory) {
-        return string(abi.encodePacked(a, b));
+        return string(abi.encodePacked(a, "\n", b));
     }
 
     function _getCodeByPointer(
@@ -237,5 +243,13 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
         );
 
         return _hashTypedDataV4(structHash);
+    }
+
+    function getAgentName() external view returns (string memory) {
+        return _EIP712Name();
+    }
+
+    function getAgentOwner() external view returns (address) {
+        return _agentOwner;
     }
 }
