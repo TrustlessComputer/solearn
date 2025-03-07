@@ -12,6 +12,7 @@ import {
   StakingHub,
   SystemPromptManager,
   Treasury,
+  IBASERegistrarController, 
 } from "../typechain-types";
 import { deployOrUpgrade } from "./lib/utils";
 import { EventLog, Signer } from "ethers";
@@ -396,7 +397,23 @@ async function deployAgent() {
   const agentLanguage = "javascript";
   const deps: string[] = [];
   const owner = admin.address;
-  const isOnchain = true;
+
+  // ens base testnet
+  const registrar = "0x49aE3cC2e3AA768B1e5654f5D3C6002144A59581";
+  const resolver = "0x6533C94869D28fAA8dF77cc63f9e2b2D6Cf77eBA";
+  const duration = 365 * 24 * 60 * 60; // 1 year
+
+  const functionSignature = "initialize(address,address,uint256)";
+  const iface = new ethers.Interface([`function ${functionSignature}`]);
+  const nameService = "0x" + iface.encodeFunctionData("initialize", [registrar, resolver, duration]).slice(10);
+
+  const ins = (await getContractInstance(
+    registrar,
+    "IBASERegistrarController"
+  )) as unknown as IBASERegistrarController;
+
+  const price = await ins.registerPrice(agentName, duration);
+  console.log("price: ", price);
 
   const initParams = [
     agentName,
@@ -405,7 +422,7 @@ async function deployAgent() {
     agentCfs,
     deps,
     owner,
-    isOnchain,
+    nameService,
   ];
 
   const agent = (await deployOrUpgrade(
@@ -413,7 +430,8 @@ async function deployAgent() {
     "AgentUpgradeable",
     initParams,
     config,
-    true
+    true,
+    price.toString()
   )) as unknown as AgentUpgradeable;
 
   return agent.target;

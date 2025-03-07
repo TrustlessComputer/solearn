@@ -17,7 +17,8 @@ export const deployOrUpgrade = async (
   contractName: any,
   constructorParams: any[],
   networkConfig: any,
-  isInitializable: boolean
+  isInitializable: boolean,
+  value?: string
 ) => {
   // console.log(networkConfig);
   if (networkConfig.zksync) {
@@ -33,7 +34,8 @@ export const deployOrUpgrade = async (
       address,
       contractName,
       constructorParams,
-      isInitializable
+      isInitializable,
+      value
     );
   }
 };
@@ -91,7 +93,8 @@ async function deployOrUpgradeLocal(
   address: any,
   contractName: any,
   constructorParams: any[],
-  isInitializable: boolean
+  isInitializable: boolean,
+  value?: string
 ) {
   const contractFactory = await hre.ethers.getContractFactory(contractName);
   return (address = address
@@ -103,7 +106,7 @@ async function deployOrUpgradeLocal(
         // return address;
       })()
     : await (async () => {
-        const options = isInitializable ? { initializer: "initialize" } : {};
+        const options = isInitializable ? { initializer: "initialize", txOverrides: { value: value } } : {};
         var contract = await upgrades.deployProxy(
           contractFactory,
           constructorParams,

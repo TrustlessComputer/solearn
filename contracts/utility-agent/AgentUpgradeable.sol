@@ -5,12 +5,13 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IAgent} from "./IAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
+import {BASERegistrar} from "../ens/BASERegistar.sol";
 
-contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
+contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASERegistrar {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
     bytes32 private constant SIGN_DATA_TYPEHASH =
         keccak256(
-            "SignData(CodePointer[] pointers,address[] depsAgents,bool isOnchain,uint16 currentVersion)CodePointer(address retrieveAddress,uint8 fileType,string fileName)"
+            "SignData(CodePointer[] pointers,address[] depsAgents,uint16 currentVersion)CodePointer(address retrieveAddress,uint8 fileType,string fileName)"
         );
 
     string private _codeLanguage; // e.g., "python", "javascript"...
@@ -18,7 +19,6 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
     address private _agentOwner;
 
     mapping(bytes32 signature => bool) private _usedDigests;
-    mapping(uint256 version => bool) private _isOnchain;
     mapping(uint256 version => uint256) private _pointersNum;
     mapping(uint256 version => mapping(uint256 => CodePointer))
         private _codePointers;
@@ -37,40 +37,39 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
     }
 
     function initialize(
-        string memory agentName,
+        string calldata agentName,
         string memory agentVersion,
         string memory codeLanguage,
         CodePointer[] calldata pointers,
         address[] calldata depsAgents,
         address agentOwner,
-        bool isOnchain
-    ) external initializer {
+        bytes calldata nameService
+    ) external payable initializer {
         if (agentOwner == address(0)) {
             revert ZeroAddress();
         }
         __Ownable_init();
         __EIP712_init(agentName, agentVersion);
+        __BASERegistrar_init(agentName, nameService);
 
         _codeLanguage = codeLanguage;
         _agentOwner = agentOwner;
-        _publishAgentCode(pointers, depsAgents, isOnchain);
+        _publishAgentCode(pointers, depsAgents);
     }
 
     function publishAgentCode(
         CodePointer[] calldata pointers,
-        address[] calldata depsAgents,
-        bool isOnchain
+        address[] calldata depsAgents
     ) external virtual onlyAgentOwner returns (uint16) {
-        return _publishAgentCode(pointers, depsAgents, isOnchain);
+        return _publishAgentCode(pointers, depsAgents);
     }
 
     function publishAgentCodeWithSignature(
         CodePointer[] calldata pointers,
         address[] calldata depsAgents,
-        bool isOnchain,
         bytes calldata signature
     ) external virtual returns (uint16) {
-        bytes32 digest = getHashToSign(pointers, depsAgents, isOnchain);
+        bytes32 digest = getHashToSign(pointers, depsAgents);
         if (_usedDigests[digest]) {
             revert DigestAlreadyUsed();
         }
@@ -80,18 +79,16 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
 
         _usedDigests[digest] = true;
 
-        return _publishAgentCode(pointers, depsAgents, isOnchain);
+        return _publishAgentCode(pointers, depsAgents);
     }
 
     function _publishAgentCode(
         CodePointer[] calldata pointers,
-        address[] calldata depsAgents,
-        bool isOnchain
+        address[] calldata depsAgents
     ) internal virtual returns (uint16) {
         if (pointers.length == 0) revert InvalidData();
 
         uint16 version = _bumpVersion();
-        _isOnchain[version] = isOnchain;
 
         uint256 pLen = pointers.length;
         for (uint256 i = 0; i < pLen; i++) {
@@ -134,9 +131,6 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
         return _depsAgents[version];
     }
 
-    function isOnchain(uint256 version) external view returns (bool) {
-        return _isOnchain[version];
-    }
 
     function getAgentCode(
         uint16 version
@@ -208,8 +202,7 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
 
     function getHashToSign(
         CodePointer[] calldata pointers,
-        address[] calldata depsAgents,
-        bool isOnchain
+        address[] calldata depsAgents
     ) public view virtual returns (bytes32) {
         bytes32 CODEPOINTER_TYPEHASH = keccak256(
             "CodePointer(address retrieveAddress,uint8 fileType,string fileName)"
@@ -237,7 +230,6 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
                 SIGN_DATA_TYPEHASH,
                 pointersHash,
                 depsAgentsHash,
-                isOnchain,
                 _currentVersion
             )
         );
