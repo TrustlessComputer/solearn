@@ -18,6 +18,8 @@ import { deployOrUpgrade } from "./lib/utils";
 import { EventLog, Signer } from "ethers";
 import path from "path";
 import fs from "fs";
+import * as hre from "hardhat";
+import { getInitializerData } from "@openzeppelin/hardhat-upgrades/dist/utils/initializer-data";
 
 const config = network.config as any;
 const networkName = network.name.toUpperCase();
@@ -392,7 +394,7 @@ async function deployAgent() {
     },
   ];
 
-  const agentName = "TestAgent";
+  const agentName = "TestAgent4";
   const agentVersion = "1";
   const agentLanguage = "javascript";
   const deps: string[] = [];
@@ -425,26 +427,21 @@ async function deployAgent() {
     nameService,
   ];
 
-  const agent = (await deployOrUpgrade(
-    undefined,
-    "AgentUpgradeable",
-    initParams,
-    config,
-    true,
-    price.toString()
-  )) as unknown as AgentUpgradeable;
-
-  return agent.target;
+  const agentUpgrade = await hre.ethers.getContractFactory("AgentUpgradeable");
+  const implAddr = await upgrades.deployImplementation(agentUpgrade);
+  const contractInterface = agentUpgrade.interface;
+  const data = getInitializerData(contractInterface, initParams, "initialize");
+  const transparentUpgrade = await hre.ethers.getContractFactory("TransparentUpgradeableProxy");
+  // todo: update admin address
+  const proxy = await transparentUpgrade.deploy(implAddr, "0xc15acdE807cf9fa5907A3fcDd3F79FE59BAea1b1", data, {value: price.toString()});
+  return await proxy.getAddress();
 }
 
 export async function getContractInstance(
   proxyAddress: string,
   contractName: string
 ) {
-  const contractFact = await ethers.getContractFactory(contractName);
-  const contractIns = contractFact.attach(proxyAddress);
-
-  return contractIns;
+  return await ethers.getContractAt(contractName, proxyAddress);
 }
 
 async function saveDeployedAddresses(networkName: string, addresses: any) {
@@ -516,7 +513,6 @@ async function main() {
   console.log("Agent builtWith: ", await ins.getCodeLanguage());
   console.log("Agent version: ", await ins.getCurrentVersion());
   console.log("Agent name: ", await ins.getAgentName());
-  console.log("Agent isOnchain: ", await ins.isOnchain(1));
   console.log("Agent owner: ", await ins.getAgentOwner());
 
   // console.log(await ethers.provider.resolveName("kelvin26.eth"));
