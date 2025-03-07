@@ -406,7 +406,7 @@ async function deployAgent() {
 
   const functionSignature = "initialize(address,address,uint256)";
   const iface = new ethers.Interface([`function ${functionSignature}`]);
-  const nameService = iface.encodeFunctionData("initialize", [registrar, resolver, duration]).slice(4);
+  const nameService = "0x" + iface.encodeFunctionData("initialize", [registrar, resolver, duration]).slice(10);
 
   const ins = (await getContractInstance(
     registrar,
