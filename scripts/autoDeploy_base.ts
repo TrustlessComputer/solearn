@@ -1,8 +1,10 @@
 import assert from "assert";
 import { ethers, network, upgrades } from "hardhat";
 import {
+  AgentUpgradeable,
   DAOToken,
   HybridModel,
+  IAgent,
   IWorkerHub,
   ModelCollection,
   PromptScheduler,
@@ -372,6 +374,51 @@ async function deploySystemPromptManager(
   return systemPromptManager.target;
 }
 
+async function deployAgent() {
+  console.log("DEPLOY AGENT...");
+  const admin = (await ethers.getSigners())[0];
+
+  const agentCfs: IAgent.CodePointerStruct[] = [
+    {
+      retrieveAddress: "0xFe1411d6864592549AdE050215482e4385dFa0FB",
+      fileType: 0,
+      fileName: "ethers.text",
+    },
+    {
+      retrieveAddress: "0xFe1411d6864592549AdE050215482e4385dFa0FB",
+      fileType: 1,
+      fileName: "devScript.text",
+    },
+  ];
+
+  const agentName = "TestAgent";
+  const agentVersion = "1";
+  const agentLanguage = "javascript";
+  const deps: string[] = [];
+  const owner = admin.address;
+  const isOnchain = true;
+
+  const initParams = [
+    agentName,
+    agentVersion,
+    agentLanguage,
+    agentCfs,
+    deps,
+    owner,
+    isOnchain,
+  ];
+
+  const agent = (await deployOrUpgrade(
+    undefined,
+    "AgentUpgradeable",
+    initParams,
+    config,
+    true
+  )) as unknown as AgentUpgradeable;
+
+  return agent.target;
+}
+
 export async function getContractInstance(
   proxyAddress: string,
   contractName: string
@@ -398,47 +445,63 @@ async function saveDeployedAddresses(networkName: string, addresses: any) {
 async function main() {
   const masterWallet = (await ethers.getSigners())[0];
 
-  const wEAIAddress = config.wEAIAddress;
-  const daoTokenAddress = await deployDAOToken();
-  const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
-  const stakingHubAddress = await deployStakingHub(
-    daoTokenAddress.toString(),
-    treasuryAddress.toString()
-  );
-  const workerHubAddress = await deployWorkerHub(
-    daoTokenAddress.toString(),
-    treasuryAddress.toString(),
-    stakingHubAddress.toString(),
-    masterWallet
-  );
-  const collectionAddress = await deployModelCollection();
+  // const wEAIAddress = config.wEAIAddress;
+  // const daoTokenAddress = await deployDAOToken();
+  // const treasuryAddress = await deployTreasury(daoTokenAddress.toString());
+  // const stakingHubAddress = await deployStakingHub(
+  //   daoTokenAddress.toString(),
+  //   treasuryAddress.toString()
+  // );
+  // const workerHubAddress = await deployWorkerHub(
+  //   daoTokenAddress.toString(),
+  //   treasuryAddress.toString(),
+  //   stakingHubAddress.toString(),
+  //   masterWallet
+  // );
+  // const collectionAddress = await deployModelCollection();
 
-  const hybridModelAddress = await deployHybridModel(
-    workerHubAddress.toString(),
-    stakingHubAddress.toString(),
-    collectionAddress.toString()
-  );
+  // const hybridModelAddress = await deployHybridModel(
+  //   workerHubAddress.toString(),
+  //   stakingHubAddress.toString(),
+  //   collectionAddress.toString()
+  // );
 
-  const systemPromptManagerAddress = await deploySystemPromptManager(
-    config.l2OwnerAddress,
-    hybridModelAddress.toString(),
-    workerHubAddress.toString()
-  );
+  // const systemPromptManagerAddress = await deploySystemPromptManager(
+  //   config.l2OwnerAddress,
+  //   hybridModelAddress.toString(),
+  //   workerHubAddress.toString()
+  // );
 
-  const deployedAddresses = {
-    wEAIAddress,
-    daoTokenAddress,
-    treasuryAddress,
-    stakingHubAddress,
-    workerHubAddress,
-    collectionAddress,
-    hybridModelAddress,
-    systemPromptManagerAddress,
-  };
+  // const deployedAddresses = {
+  //   wEAIAddress,
+  //   daoTokenAddress,
+  //   treasuryAddress,
+  //   stakingHubAddress,
+  //   workerHubAddress,
+  //   collectionAddress,
+  //   hybridModelAddress,
+  //   systemPromptManagerAddress,
+  // };
 
-  const networkName = network.name.toUpperCase();
+  // const networkName = network.name.toUpperCase();
 
-  await saveDeployedAddresses(networkName, deployedAddresses);
+  // await saveDeployedAddresses(networkName, deployedAddresses);
+
+  const agentAddr = await deployAgent();
+
+  const ins = (await getContractInstance(
+    agentAddr.toString(),
+    "AgentUpgradeable"
+  )) as unknown as AgentUpgradeable;
+
+  console.log("Agent address: ", ins.target);
+  console.log("Agent builtWith: ", await ins.getCodeLanguage());
+  console.log("Agent version: ", await ins.getCurrentVersion());
+  console.log("Agent name: ", await ins.getAgentName());
+  console.log("Agent isOnchain: ", await ins.isOnchain(1));
+  console.log("Agent owner: ", await ins.getAgentOwner());
+
+  // console.log(await ethers.provider.resolveName("kelvin26.eth"));
 }
 
 main()
