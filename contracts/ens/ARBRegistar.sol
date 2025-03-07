@@ -12,7 +12,7 @@ contract ARBRegistrar is Initializable {
     bytes32 private constant NODE =
         0xd924c6d6935f3bf84be3da0b40fabe48800690c760c2db576028a389f1b54f89;
 
-    function __BASERegistrar_init(address _registrar, address _resolver, string[] calldata names, uint duration)
+    function __ARBRegistrar_init(address _registrar, address _resolver, string[] calldata names, uint duration)
         external onlyInitializing
     {
         registrar = IARBRegistrarController(_registrar);
