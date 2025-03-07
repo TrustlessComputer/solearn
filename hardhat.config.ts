@@ -723,6 +723,7 @@ const config: HardhatUserConfig = {
     apiKey: {
       regtest3: "abc123",
       arbitrumOne: "def456",
+      baseSepolia: process.env.BASE_TESTNET_VERIFY_KEY as string,
     },
     customChains: [
       {
