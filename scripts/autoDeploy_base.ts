@@ -397,7 +397,6 @@ async function deployAgent() {
   const agentLanguage = "javascript";
   const deps: string[] = [];
   const owner = admin.address;
-  const isOnchain = true;
 
   // ens base testnet
   const registrar = "0x49aE3cC2e3AA768B1e5654f5D3C6002144A59581";
@@ -423,7 +422,6 @@ async function deployAgent() {
     agentCfs,
     deps,
     owner,
-    isOnchain,
     nameService,
   ];
 

@@ -18,7 +18,6 @@ interface IAgent {
     struct SignData {
         CodePointer[] pointers;
         address[] depsAgents;
-        bool isOnchain;
         uint16 currentVersion;
     }
 
@@ -36,23 +35,19 @@ interface IAgent {
 
     function publishAgentCode(
         CodePointer[] calldata pointers,
-        address[] calldata depsAgents,
-        bool isOnchain
+        address[] calldata depsAgents
     ) external returns (uint16 version);
 
     function publishAgentCodeWithSignature(
         CodePointer[] calldata pointers,
         address[] calldata depsAgents,
-        bool isOnchain,
         bytes calldata signature
     ) external returns (uint16 version);
 
     function getDepsAgents(
         uint16 version
     ) external view returns (address[] memory);
-
-    function isOnchain(uint256 version) external view returns (bool);
-
+    
     function getAgentCode(
         uint16 version
     ) external view returns (string memory code);
