@@ -19,6 +19,8 @@ struct RegisterRequest {
 }
 
 interface IBASERegistrarController {
+    function registerPrice(string memory name, uint256 duration) external view returns (uint256);
+
     function register(RegisterRequest calldata request) external payable;
 
     function renew(string calldata name, uint256 duration) external payable;
