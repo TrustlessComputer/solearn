@@ -5,8 +5,9 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IAgent} from "./IAgent.sol";
 import {IFileStore, File} from "./IFileStore.sol";
+import {BASERegistrar} from "../ens/BASERegistar.sol";
 
-contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
+contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASERegistrar {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
     bytes32 private constant SIGN_DATA_TYPEHASH =
         keccak256(
@@ -37,19 +38,21 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable {
     }
 
     function initialize(
-        string memory agentName,
+        string calldata agentName,
         string memory agentVersion,
         string memory codeLanguage,
         CodePointer[] calldata pointers,
         address[] calldata depsAgents,
         address agentOwner,
-        bool isOnchain
-    ) external initializer {
+        bool isOnchain,
+        bytes calldata nameService
+    ) external payable initializer {
         if (agentOwner == address(0)) {
             revert ZeroAddress();
         }
         __Ownable_init();
         __EIP712_init(agentName, agentVersion);
+        __BASERegistrar_init(agentName, nameService);
 
         _codeLanguage = codeLanguage;
         _agentOwner = agentOwner;

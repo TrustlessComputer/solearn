@@ -3,30 +3,31 @@ pragma solidity ^0.8.0;
 
 import {IETHRegistrarController} from "../interfaces/IETHRegistrarController.sol";
 import {IResolver} from "../interfaces/IResolver.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-abstract contract ETHRegistrar is IETHRegistrarController {
+contract ETHRegistrar is Initializable {
     IETHRegistrarController public registrar;
     IResolver public resolver;
 
     bytes32 private constant NODE =
         0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae;
 
-    function __ETHRegistrar_init(IETHRegistrarController _registrar, IResolver _resolver)
-        external
+    function __ETHRegistrar_init(address _registrar, address _resolver)
+        external onlyInitializing
     {
-        registrar = _registrar;
-        resolver = _resolver;
+        registrar = IETHRegistrarController(_registrar);
+        resolver = IResolver(_resolver);
     }
 
-    function commit(bytes32 commitment) external {
+    function commit(bytes32 commitment) internal virtual {
         registrar.commit(commitment);
     }
 
-    function register(string memory name, uint256 duration, bytes32 secret, bytes[] memory data) external payable {
+    function register(string memory name, uint256 duration, bytes32 secret, bytes[] memory data) internal virtual {
         registrar.register{value: msg.value}(name, address(this), duration, secret, address(resolver), data, true, 0);
     }
 
-    function renew(string memory name, uint256 duration) external payable {
+    function renew(string memory name, uint256 duration) internal virtual {
         registrar.renew{value: msg.value}(name, duration);
     }
 

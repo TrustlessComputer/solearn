@@ -22,4 +22,6 @@ interface IBASERegistrarController {
     function register(RegisterRequest calldata request) external payable;
 
     function renew(string calldata name, uint256 duration) external payable;
+
+    function rootNode() external view returns (bytes32);
 }

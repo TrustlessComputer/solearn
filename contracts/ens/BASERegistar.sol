@@ -3,22 +3,27 @@ pragma solidity ^0.8.0;
 
 import {IBASERegistrarController, RegisterRequest} from "../interfaces/IBASERegistrarController.sol";
 import {IResolver} from "../interfaces/IResolver.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-abstract contract BASERegistrar is IBASERegistrarController {
+contract BASERegistrar is Initializable {
     IBASERegistrarController public registrar;
     IResolver public resolver;
 
-    bytes32 private constant NODE =
-        0xff1e3c0eb00ec714e34b6114125fbde1dea2f24a72fbf672e7b7fd5690328e10;
+    bytes32 private NODE;
 
-    function __BASERegistrar_init(IBASERegistrarController _registrar, IResolver _resolver)
-        external
+    function __BASERegistrar_init(string calldata agentName, bytes calldata nameService)
+        internal onlyInitializing
     {
-        registrar = _registrar;
-        resolver = _resolver;
+        (address _registrar, address _resolver, uint _duration) = abi.decode(nameService, (address, address, uint));        
+
+        registrar = IBASERegistrarController(_registrar);
+        NODE = registrar.rootNode();
+        resolver = IResolver(_resolver);
+
+        register(agentName, _duration);
     }
 
-    function register(string memory name, uint256 duration) external payable {
+    function register(string memory name, uint256 duration) internal {
         bytes[] memory data = new bytes[](2);
         bytes32 node = keccak256(abi.encodePacked(NODE, keccak256(bytes(name))));
 

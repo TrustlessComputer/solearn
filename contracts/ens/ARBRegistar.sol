@@ -3,23 +3,26 @@ pragma solidity ^0.8.0;
 
 import {IARBRegistrarController, ReferralInfo} from "../interfaces/IARBRegistrarController.sol";
 import {IResolver} from "../interfaces/IResolver.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-abstract contract ARBRegistrar is IARBRegistrarController {
+contract ARBRegistrar is Initializable {
     IARBRegistrarController public registrar;
     IResolver public resolver;
 
     bytes32 private constant NODE =
         0xd924c6d6935f3bf84be3da0b40fabe48800690c760c2db576028a389f1b54f89;
 
-    function __BASERegistrar_init(IARBRegistrarController _registrar, IResolver _resolver)
-        external
+    function __BASERegistrar_init(address _registrar, address _resolver, string[] calldata names, uint duration)
+        external onlyInitializing
     {
-        registrar = _registrar;
-        resolver = _resolver;
+        registrar = IARBRegistrarController(_registrar);
+        resolver = IResolver(_resolver);
+
+        bulkRegister(names, duration);
     }
 
-    function bulkRegister(string[] calldata names, uint duration) external payable {
-        registrar.bulkRegister(names, address(this), duration, address(resolver), false, true, ReferralInfo({
+    function bulkRegister(string[] calldata names, uint duration) internal {
+        registrar.bulkRegister{value: msg.value}(names, address(this), duration, address(resolver), false, true, ReferralInfo({
             referrerAddress: address(0),
             referrerNodehash: bytes32(0),
             referralAmount: 0,
@@ -28,8 +31,8 @@ abstract contract ARBRegistrar is IARBRegistrarController {
         }));
     }
 
-    function renew(string memory name, uint256 duration) external payable {
-        registrar.renew(name, duration);
+    function renew(string memory name, uint256 duration) internal {
+        registrar.renew{value: msg.value}(name, duration);
     }
 
     function getAddressByENS(string memory name) public view returns (address) {
