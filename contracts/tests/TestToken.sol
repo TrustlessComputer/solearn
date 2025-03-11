@@ -20,3 +20,13 @@ contract TestToken is ERC20PermitUpgradeable {
         _mint(_owner, _amount);
     }
 }
+
+interface IRegsitryENS {
+    function resolver(bytes32 node) external view returns (address);
+}
+
+interface IResolverENS {
+    function name(bytes32 node) external view returns (string memory);
+    function addr(bytes32 node) external view returns (address);
+}
+

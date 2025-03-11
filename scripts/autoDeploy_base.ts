@@ -13,6 +13,9 @@ import {
   SystemPromptManager,
   Treasury,
   IBASERegistrarController, 
+  IRegsitryENS,
+  IResolverENS,
+  IRegsitry,
 } from "../typechain-types";
 import { deployOrUpgrade } from "./lib/utils";
 import { EventLog, Signer } from "ethers";
@@ -394,15 +397,15 @@ async function deployAgent() {
     },
   ];
 
-  const agentName = "TestAgent4";
+  const agentName = "TestAgent10";
   const agentVersion = "1";
   const agentLanguage = "javascript";
   const deps: string[] = [];
   const owner = admin.address;
 
   // ens base testnet
-  const registrar = "0x49aE3cC2e3AA768B1e5654f5D3C6002144A59581";
-  const resolver = "0x6533C94869D28fAA8dF77cc63f9e2b2D6Cf77eBA";
+  const registrar = "0xBC89775F8A6Aa2ec81EB1e1149aaF398Ceb11aC6";
+  const resolver = "0x6ceF0b500BCE501b9c71A1E160B1930cbEbbD157";
   const duration = 365 * 24 * 60 * 60; // 1 year
 
   const functionSignature = "initialize(address,address,uint256)";
@@ -434,7 +437,70 @@ async function deployAgent() {
   const transparentUpgrade = await hre.ethers.getContractFactory("TransparentUpgradeableProxy");
   // todo: update admin address
   const proxy = await transparentUpgrade.deploy(implAddr, "0xc15acdE807cf9fa5907A3fcDd3F79FE59BAea1b1", data, {value: price.toString()});
+
+  // name => address
+  console.log("resolve address: ", await resolveAddress(agentName + ".basetest.eth"));
+
   return await proxy.getAddress();
+}
+
+async function resolveAddress(inputName: string) {
+  // address => name 
+  const node = await nameHash(inputName);
+  const insRegistry = (await getContractInstance(
+    "0x616655C1F5D9DC6f5161Dd1656EE953f1C8dB995",
+    "IRegsitryENS"
+  )) as unknown as IRegsitryENS;
+
+  const resolverAddr = await insRegistry.resolver(node);
+
+  const insResolver = (await getContractInstance(
+    resolverAddr,
+    "IResolverENS"
+  )) as unknown as IResolverENS;
+
+  const address = await insResolver.addr(node);
+
+  return address;
+}
+
+async function normalize(input: string): Promise<string> {
+  try {
+    // Convert to unicode normalized form (NFD)
+    let output = input.normalize('NFD');
+    
+    // Preserve leading period if present in input
+    if (input.startsWith('.') && !output.startsWith('.')) {
+      output = '.' + output;
+    }
+
+    return output;
+  } catch (err) {
+    throw new Error(`Failed to convert to standard unicode: ${err}`);
+  }
+}
+
+async function nameHash(name: string): Promise<string> {
+  let hash = new Uint8Array(32); // Initialize 32-byte array with zeros
+
+  if (name === '') {
+    return ethers.hexlify(hash);
+  }
+
+  const normalizedName = await normalize(name);
+  const labels = normalizedName.split('.');
+
+  for (let i = labels.length - 1; i >= 0; i--) {
+    try {
+      const labelHash = ethers.keccak256(ethers.toUtf8Bytes(labels[i]));
+      const concatRes = ethers.concat([hash, labelHash]);
+      hash = ethers.keccak256(concatRes);
+    } catch (err) {
+      throw new Error(`Failed to hash label ${labels[i]}: ${err}`);
+    }
+  }
+
+  return hash;
 }
 
 export async function getContractInstance(
