@@ -251,6 +251,9 @@ const config: HardhatUserConfig = {
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_1_14B_1,
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_1_14B_2,
         process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_1_14B_3,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_IMG_1,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_IMG_2,
+        process.env.BASE_MAINNET_PRIVATE_KEY_WORKER_WAN2_IMG_3,
       ],
       l2OwnerAddress: process.env.BASE_MAINNET_L2_OWNER_ADDRESS,
       treasuryAddress: process.env.BASE_MAINNET_TREASURY_ADDRESS,
@@ -258,8 +261,6 @@ const config: HardhatUserConfig = {
       workerHubAddress: process.env.BASE_MAINNET_WORKER_HUB_ADDRESS,
       stakingHubAddress: process.env.BASE_MAINNET_STAKING_HUB_ADDRESS,
       daoTokenAddress: process.env.BASE_MAINNET_DAO_TOKEN_ADDRESS,
-      workerHubScoringAddress:
-        process.env.BASE_MAINNET_WORKER_HUB_SCORING_ADDRESS,
       hybridModelAddress_1: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_1,
       hybridModelAddress_2: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_2,
       hybridModelAddress_3: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_3,
@@ -267,8 +268,7 @@ const config: HardhatUserConfig = {
       hybridModelAddress_5: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_5,
       hybridModelAddress_6: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_6,
       hybridModelAddress_7: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_7,
-      hybridModelScoringAddress:
-        process.env.BASE_MAINNET_HYBRID_MODEL_SCORING_ADDRESS,
+      hybridModelAddress_8: process.env.BASE_MAINNET_HYBRID_MODEL_ADDRESS_8,
       systemPromptManagerAddress:
         process.env.BASE_MAINNET_SYSTEM_PROMPT_MANAGER_ADDRESS,
       wEAIAddress: process.env.BASE_MAINNET_WEAI,
