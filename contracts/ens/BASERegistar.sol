@@ -9,23 +9,20 @@ contract BASERegistrar is Initializable {
     IBASERegistrarController public registrar;
     IResolver public resolver;
 
-    bytes32 private NODE;
-
     function __BASERegistrar_init(string calldata agentName, bytes calldata nameService)
         internal onlyInitializing
     {
         (address _registrar, address _resolver, uint _duration) = abi.decode(nameService, (address, address, uint));        
 
         registrar = IBASERegistrarController(_registrar);
-        NODE = registrar.rootNode();
         resolver = IResolver(_resolver);
 
-        register(agentName, _duration);
+        register(agentName, _duration, registrar.rootNode());
     }
 
-    function register(string memory name, uint256 duration) internal {
+    function register(string memory name, uint256 duration, bytes32 baseNode) internal {
         bytes[] memory data = new bytes[](2);
-        bytes32 node = keccak256(abi.encodePacked(NODE, keccak256(bytes(name))));
+        bytes32 node = keccak256(abi.encodePacked(baseNode, keccak256(bytes(name))));
 
         // set addr
         bytes memory data1 = abi.encodeWithSelector(IResolver.setAddr.selector, node, 60, abi.encodePacked(address(this)));
@@ -45,15 +42,6 @@ contract BASERegistrar is Initializable {
                 reverseRecord: true
             })
         );
-    }
-
-    function renew(string memory name, uint256 duration) external payable {
-        registrar.renew{value: msg.value}(name, duration);
-    }
-
-    function getAddressByENS(string memory name) public view returns (address) {
-        bytes32 node = keccak256(abi.encodePacked(NODE, keccak256(bytes(name))));
-        return resolver.addr(node);
     }
 
     /**
