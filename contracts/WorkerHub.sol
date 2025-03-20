@@ -764,4 +764,12 @@ contract WorkerHub is
     function getMinerRequirement() external view returns (uint8) {
         return minerRequirement;
     }
+
+    function getSubmitDuration() external view returns (uint40) {
+        return submitDuration;
+    }
+
+    function setSubmitDuration(uint40 newDuration) external onlyOwner {
+        submitDuration = newDuration;
+    }
 }
