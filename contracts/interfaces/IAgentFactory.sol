@@ -12,8 +12,7 @@ interface IAgentFactory {
         string calldata agentName,
         string calldata codeLanguage,
         IAgent.CodePointer[] calldata pointers,
-        address[] calldata depsAgents,
-        address agentOwner
+        address[] calldata depsAgents
     ) external returns (address agent);
 
     function publishAgentCode(

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IAgent} from "../interfaces/IAgent.sol";
 import {IFileStore, File} from "../interfaces/IFileStore.sol";
-import {BASERegistrar} from "../ens/BASERegistar.sol";
 
-contract AgentUpgradeable is IAgent, OwnableUpgradeable, BASERegistrar {
+contract AgentUpgradeable is IAgent, Initializable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
     bytes32 private constant SIGN_DATA_TYPEHASH =
         keccak256(
@@ -16,6 +15,7 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable, BASERegistrar {
     string private _codeLanguage; // e.g., "python", "javascript"...
     uint16 private _currentVersion;
     address private _factory;
+    string private _agentName;
 
     mapping(bytes32 signature => bool) private _usedDigests;
     mapping(uint256 version => uint256) private _pointersNum;
@@ -36,22 +36,15 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable, BASERegistrar {
     }
 
     function initialize(
-        string calldata agentName,
+        string memory agentName,
         string memory codeLanguage,
         CodePointer[] calldata pointers,
-        address[] calldata depsAgents,
-        address agentOwner,
-        bytes calldata nameService
+        address[] calldata depsAgents
     ) external payable initializer {
-        if (agentOwner == address(0)) {
-            revert ZeroAddress();
-        }
-        __Ownable_init();
-        __BASERegistrar_init(agentName, nameService);
-
         _codeLanguage = codeLanguage;
         _publishAgentCode(pointers, depsAgents);
         _factory = msg.sender;
+        _agentName = agentName;
     }
 
     function publishAgentCode(
@@ -109,7 +102,6 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable, BASERegistrar {
     ) external view checkVersion(version) returns (address[] memory) {
         return _depsAgents[version];
     }
-
 
     function getAgentCode(
         uint16 version
@@ -177,5 +169,9 @@ contract AgentUpgradeable is IAgent, OwnableUpgradeable, BASERegistrar {
 
     function getCodeLanguage() external view returns (string memory) {
         return _codeLanguage;
+    }
+
+    function getAgentName() external view returns (string memory) {
+        return _agentName;
     }
 }

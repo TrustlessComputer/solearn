@@ -8,15 +8,10 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IEAI721Intelligence} from "../interfaces/IEAI721Intelligence.sol";
 
 contract AgentFactory is IAgentFactory, OwnableUpgradeable {
-
-    uint256 constant DURATION = 10 * 365 days; // 10 years
-
     address _implementation;
     // collection => agentId => agent address
     mapping (address => mapping(uint256 => address)) public agents;
-    // name service param
-    address _registrar;
-    address _resolver;
+    mapping (string => bool) public isNameRegistered;
 
     // Modifier
     modifier onlyAgentOwner(address collection, uint256 agentId) {
@@ -26,14 +21,9 @@ contract AgentFactory is IAgentFactory, OwnableUpgradeable {
 
     function initialize(
         address owner, 
-        address implementation,
-        address registrar,
-        address resolver
+        address implementation
     ) public initializer {
         _transferOwnership(owner);
-
-        _registrar = registrar;
-        _resolver = resolver;
         _implementation = implementation;
     }
 
@@ -43,22 +33,20 @@ contract AgentFactory is IAgentFactory, OwnableUpgradeable {
         string calldata agentName,
         string calldata codeLanguage,
         IAgent.CodePointer[] memory pointers,
-        address[] calldata depsAgents,
-        address agentOwner
+        address[] calldata depsAgents
     ) external onlyAgentOwner(collection, agentId) returns (address agent) {
+        require(!isNameRegistered[agentName], "Agent name already registered");
         require(agents[collection][agentId] == address(0), "Agent already exists");
 
+        isNameRegistered[agentName] = true;
         agent = address(new AgentProxy());
         AgentUpgradeable(agent).initialize(
-            agentName, 
+            agentName,
             codeLanguage, 
             pointers, 
-            depsAgents, 
-            agentOwner, 
-            abi.encode(_registrar, _resolver, DURATION)
+            depsAgents
         );
-        AgentUpgradeable(agent).transferOwnership(_msgSender());
-
+        
         agents[collection][agentId] = agent;
         emit AgentCreated(collection, agentId, agent);
     }
