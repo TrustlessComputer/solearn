@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-import {IAgent} from "./IAgent.sol";
-import {IFileStore, File} from "./IFileStore.sol";
+import {IAgent} from "../interfaces/IAgent.sol";
+import {IFileStore, File} from "../interfaces/IFileStore.sol";
 import {BASERegistrar} from "../ens/BASERegistar.sol";
 
 contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASERegistrar {

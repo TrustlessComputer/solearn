@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import {File, BytecodeSlice} from "./File.sol";
+import {File, BytecodeSlice} from "../utility-agent/File.sol";
 
 /// @title EthFS FileStore interface
 /// @notice Specifies a content-addressable onchain file store
