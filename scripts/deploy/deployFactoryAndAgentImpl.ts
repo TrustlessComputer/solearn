@@ -17,9 +17,7 @@ async function deployFactoryAndAgentImpl() {
   // params
   const constructorParams = [
     "0x1D272FcA4EAdCc2d68072018A43cDdFfC00cADdE", // owner
-    agentUpgradeableImpl.target, // implementation
-    "0xF2a97c4756A0a2cDBd068a769B3D3a90906877E0", // registrar
-    "0x52501A4A04342987b3969883fF20228d21511a28" // resolver
+    agentUpgradeableImpl.target // implementation
   ];
 
   // deploy factory
