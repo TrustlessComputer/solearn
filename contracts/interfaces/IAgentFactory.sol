@@ -10,7 +10,6 @@ interface IAgentFactory {
         uint256 agentId,
         address collection,
         string calldata agentName,
-        string calldata agentVersion,
         string calldata codeLanguage,
         IAgent.CodePointer[] calldata pointers,
         address[] calldata depsAgents,

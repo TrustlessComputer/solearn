@@ -2,12 +2,11 @@
 pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {EIP712Upgradeable, ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {IAgent} from "../interfaces/IAgent.sol";
 import {IFileStore, File} from "../interfaces/IFileStore.sol";
 import {BASERegistrar} from "../ens/BASERegistar.sol";
 
-contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASERegistrar {
+contract AgentUpgradeable is IAgent, OwnableUpgradeable, BASERegistrar {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
     bytes32 private constant SIGN_DATA_TYPEHASH =
         keccak256(
@@ -16,7 +15,6 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASE
 
     string private _codeLanguage; // e.g., "python", "javascript"...
     uint16 private _currentVersion;
-    address private _agentOwner;
     address private _factory;
 
     mapping(bytes32 signature => bool) private _usedDigests;
@@ -32,14 +30,13 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASE
         _;
     }
 
-    modifier onlyAgentOwnerOrFactory() {
-        if (msg.sender != _agentOwner && msg.sender != _factory) revert Unauthenticated();
+    modifier onlyFactory() {
+        if (msg.sender != _factory) revert Unauthenticated();
         _;
     }
 
     function initialize(
         string calldata agentName,
-        string memory agentVersion,
         string memory codeLanguage,
         CodePointer[] calldata pointers,
         address[] calldata depsAgents,
@@ -50,11 +47,9 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASE
             revert ZeroAddress();
         }
         __Ownable_init();
-        __EIP712_init(agentName, agentVersion);
         __BASERegistrar_init(agentName, nameService);
 
         _codeLanguage = codeLanguage;
-        _agentOwner = agentOwner;
         _publishAgentCode(pointers, depsAgents);
         _factory = msg.sender;
     }
@@ -62,25 +57,7 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASE
     function publishAgentCode(
         CodePointer[] calldata pointers,
         address[] calldata depsAgents
-    ) external virtual onlyAgentOwnerOrFactory returns (uint16) {
-        return _publishAgentCode(pointers, depsAgents);
-    }
-
-    function publishAgentCodeWithSignature(
-        CodePointer[] calldata pointers,
-        address[] calldata depsAgents,
-        bytes calldata signature
-    ) external virtual returns (uint16) {
-        bytes32 digest = getHashToSign(pointers, depsAgents);
-        if (_usedDigests[digest]) {
-            revert DigestAlreadyUsed();
-        }
-        if (ECDSAUpgradeable.recover(digest, signature) != _agentOwner) {
-            revert Unauthenticated();
-        }
-
-        _usedDigests[digest] = true;
-
+    ) external virtual onlyFactory returns (uint16) {
         return _publishAgentCode(pointers, depsAgents);
     }
 
@@ -200,50 +177,5 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASE
 
     function getCodeLanguage() external view returns (string memory) {
         return _codeLanguage;
-    }
-
-    function getHashToSign(
-        CodePointer[] calldata pointers,
-        address[] calldata depsAgents
-    ) public view virtual returns (bytes32) {
-        bytes32 CODEPOINTER_TYPEHASH = keccak256(
-            "CodePointer(address retrieveAddress,uint8 fileType,string fileName)"
-        );
-
-        bytes32[] memory pointerHashes = new bytes32[](pointers.length);
-
-        uint256 pLen = pointers.length;
-        for (uint i = 0; i < pLen; i++) {
-            pointerHashes[i] = keccak256(
-                abi.encode(
-                    CODEPOINTER_TYPEHASH,
-                    pointers[i].retrieveAddress,
-                    pointers[i].fileType,
-                    keccak256(bytes(pointers[i].fileName))
-                )
-            );
-        }
-
-        bytes32 pointersHash = keccak256(abi.encodePacked(pointerHashes));
-        bytes32 depsAgentsHash = keccak256(abi.encodePacked(depsAgents));
-
-        bytes32 structHash = keccak256(
-            abi.encode(
-                SIGN_DATA_TYPEHASH,
-                pointersHash,
-                depsAgentsHash,
-                _currentVersion
-            )
-        );
-
-        return _hashTypedDataV4(structHash);
-    }
-
-    function getAgentName() external view returns (string memory) {
-        return _EIP712Name();
-    }
-
-    function getAgentOwner() external view returns (address) {
-        return _agentOwner;
     }
 }

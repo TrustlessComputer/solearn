@@ -41,7 +41,6 @@ contract AgentFactory is IAgentFactory, OwnableUpgradeable {
         uint256 agentId,
         address collection,
         string calldata agentName,
-        string calldata agentVersion,
         string calldata codeLanguage,
         IAgent.CodePointer[] memory pointers,
         address[] calldata depsAgents,
@@ -52,7 +51,6 @@ contract AgentFactory is IAgentFactory, OwnableUpgradeable {
         agent = address(new AgentProxy());
         AgentUpgradeable(agent).initialize(
             agentName, 
-            agentVersion, 
             codeLanguage, 
             pointers, 
             depsAgents, 

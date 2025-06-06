@@ -37,13 +37,7 @@ interface IAgent {
         CodePointer[] calldata pointers,
         address[] calldata depsAgents
     ) external returns (uint16 version);
-
-    function publishAgentCodeWithSignature(
-        CodePointer[] calldata pointers,
-        address[] calldata depsAgents,
-        bytes calldata signature
-    ) external returns (uint16 version);
-
+    
     function getDepsAgents(
         uint16 version
     ) external view returns (address[] memory);
@@ -55,8 +49,4 @@ interface IAgent {
     function getCodeLanguage() external view returns (string memory);
 
     function getCurrentVersion() external view returns (uint16);
-
-    function getAgentName() external view returns (string memory);
-
-    function getAgentOwner() external view returns (address);
 }
