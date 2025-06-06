@@ -17,6 +17,7 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASE
     string private _codeLanguage; // e.g., "python", "javascript"...
     uint16 private _currentVersion;
     address private _agentOwner;
+    address private _factory;
 
     mapping(bytes32 signature => bool) private _usedDigests;
     mapping(uint256 version => uint256) private _pointersNum;
@@ -31,8 +32,8 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASE
         _;
     }
 
-    modifier onlyAgentOwner() {
-        if (msg.sender != _agentOwner) revert Unauthenticated();
+    modifier onlyAgentOwnerOrFactory() {
+        if (msg.sender != _agentOwner && msg.sender != _factory) revert Unauthenticated();
         _;
     }
 
@@ -55,12 +56,13 @@ contract AgentUpgradeable is IAgent, EIP712Upgradeable, OwnableUpgradeable, BASE
         _codeLanguage = codeLanguage;
         _agentOwner = agentOwner;
         _publishAgentCode(pointers, depsAgents);
+        _factory = msg.sender;
     }
 
     function publishAgentCode(
         CodePointer[] calldata pointers,
         address[] calldata depsAgents
-    ) external virtual onlyAgentOwner returns (uint16) {
+    ) external virtual onlyAgentOwnerOrFactory returns (uint16) {
         return _publishAgentCode(pointers, depsAgents);
     }
 
