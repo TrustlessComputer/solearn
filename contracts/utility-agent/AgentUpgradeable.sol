@@ -7,10 +7,6 @@ import {IFileStore, File} from "../interfaces/IFileStore.sol";
 
 contract AgentUpgradeable is IAgent, Initializable {
     bytes32 private constant _IPFS_SIG = keccak256(bytes("ipfs"));
-    bytes32 private constant SIGN_DATA_TYPEHASH =
-        keccak256(
-            "SignData(CodePointer[] pointers,address[] depsAgents,uint16 currentVersion)CodePointer(address retrieveAddress,uint8 fileType,string fileName)"
-        );
 
     string private _codeLanguage; // e.g., "python", "javascript"...
     uint16 private _currentVersion;
